@@ -1,0 +1,30 @@
+name: Printer support
+description: Ask for a printer or filament changer Spooler doesn't read yet
+labels: [enhancement, printer]
+body:
+  - type: input
+    id: printer
+    attributes:
+      label: Printer and firmware
+      placeholder: "Elegoo Centauri Carbon, OpenCentauri 0.3"
+    validations:
+      required: true
+  - type: input
+    id: changer
+    attributes:
+      label: Filament changer, if any
+      placeholder: "AFC BoxTurtle, Happy Hare, AMS..."
+  - type: textarea
+    id: report
+    attributes:
+      label: What the printer reports
+      description: |
+        For Klipper: the answer of `http://<printer>/printer/objects/query?print_task_config&filament_detect`
+        and `http://<printer>/server/database/item?namespace=lane_data`. Remove serials and codes.
+      render: json
+  - type: checkboxes
+    id: test
+    attributes:
+      label: Testing
+      options:
+        - label: I can try a test build on this printer

@@ -13,3 +13,7 @@ spooler_settings.json
 .vscode/
 .idea/
 .DS_Store
+
+# Tool caches and local agent state
+.ruff_cache/
+.claude/scheduled_tasks.lock

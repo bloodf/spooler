@@ -1,10 +1,23 @@
-name: Feature Request
-description: Suggest a new idea or an improvement
+name: Feature request
+description: Suggest an idea or an improvement
 labels: [enhancement]
 body:
   - type: textarea
-    id: idea
+    id: problem
     attributes:
-      label: Your idea or improvement suggestion
+      label: What are you trying to do?
+      description: The problem or the workflow, in your own words.
     validations:
       required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would help?
+      description: How you'd like Spooler to handle it.
+    validations:
+      required: true
+  - type: input
+    id: printer
+    attributes:
+      label: Printer, if it matters
+      placeholder: "Bambu Lab X1C with AMS"
