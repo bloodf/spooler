@@ -111,7 +111,7 @@ globalThis.orca = { postMessage() {}, onMessage(h) { handlers.push(h); } };
 (function () {\n""" + script + "\n" + scenario + "\n})();"
         path = Path(tempfile.mkdtemp()) / "page.js"
         path.write_text(harness, encoding="utf-8")
-        out = subprocess.run([NODE, str(path)], capture_output=True, text=True, timeout=30)
+        out = subprocess.run([NODE, str(path)], capture_output=True, text=True, encoding="utf-8", timeout=30)
         self.assertEqual(out.returncode, 0, out.stderr[-2000:])
         return json.loads(out.stdout.strip().splitlines()[-1])
 
