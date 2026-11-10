@@ -89,6 +89,7 @@ def build_wheel(text):
         for name, data in files.items():
             info = zipfile.ZipInfo(name, date_time=(2026, 1, 1, 0, 0, 0))  # same bytes on every build
             info.compress_type = zipfile.ZIP_DEFLATED
+            info.external_attr = 0o644 << 16  # rw-r--r--, or some tools unpack it unreadable
             wheel.writestr(info, data)
     return out
 

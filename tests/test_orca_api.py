@@ -157,6 +157,27 @@ class ConfigTest(unittest.TestCase):
         self.assertEqual(settings["weight_display"], sp.parse_weights("nonsense"))
         self.assertEqual(settings["plate_check"], sp.parse_flag("no"))
 
+    def test_a_value_that_fails_its_check_is_skipped(self):
+        with mock.patch.dict(sp.CONFIG_KEYS, {"low_stock_grams": lambda v: 1 / 0}):
+            sp.sync_config(Capability({"low_stock_grams": 5, "spoolman_url": None, "show_cart": True}))
+        settings = sp.get_settings()
+        self.assertEqual(settings["low_stock_grams"], 150)
+        self.assertEqual(settings["spoolman_url"], "http://spoolman:7912")
+        self.assertTrue(settings["show_cart"])
+
+    def test_saving_on_the_settings_page_mirrors_at_once(self):
+        cap = Capability()
+        sp.sync_config(cap)
+        window = sp.SpoolerWindow()
+        window.get_config, window.save_config = cap.get_config, cap.save_config
+        with mock.patch.object(sp.orca.host.ui, "message", create=True):
+            window._save_settings("http://other:7912", 90)
+        self.assertEqual(json.loads(cap.stored)["spoolman_url"], sp.clean_url("http://other:7912"))
+        # A restart now finds the plugin manager's copy already the same as the file.
+        sp._config["last"] = None
+        sp.sync_config(cap)
+        self.assertEqual(sp.get_settings()["spoolman_url"], sp.clean_url("http://other:7912"))
+
     def test_builds_without_the_config_api_are_left_alone(self):
         sp.sync_config(object())
         sp.sync_config(Capability(accept=False))
@@ -184,7 +205,7 @@ class Filaments:
 class SavedCopyTest(unittest.TestCase):
     def setUp(self):
         base = {"inherits": "Generic PLA @U1", "filament_flow_ratio": "0.98", "pressure_advance": "0.04",
-                "filament_settings_id": "x"}
+                "filament_settings_id": "x", "filament_vendor": "Acme", "default_filament_colour": "#000000"}
         self.presets = [Preset(SPOOLER, base),
                         Preset("My Black", dict(base, filament_flow_ratio="0.95", filament_settings_id="y")),
                         Preset("Unrelated", dict(base, inherits="Generic PETG", filament_flow_ratio="0.9"))]
@@ -219,6 +240,26 @@ class SavedCopyTest(unittest.TestCase):
         self.event("PresetSaved", "My Black", "new")
         self.event("PresetSelected", SPOOLER, "filament")
         self.event("PresetSaved", "Unrelated", "new")  # inherits something else
+        self.assertEqual(self.sent, [])
+
+    def test_another_filament_tweaked_after_picking_a_spooler_preset(self):
+        # Review case: pick a Spooler preset, then the generic parent, tweak and save it.
+        generic = Preset("Generic PLA @U1", {"inherits": "", "filament_flow_ratio": "0.98"})
+        tweaked = Preset("My PLA", {"inherits": "Generic PLA @U1", "filament_flow_ratio": "0.9"})
+        self.presets += [generic, tweaked]
+        orca.host.preset_bundle = lambda: types.SimpleNamespace(filaments=Filaments(self.presets))
+        self.event("PresetSelected", SPOOLER, "filament")
+        self.event("PresetSelected", "Generic PLA @U1", "filament")
+        self.event("PresetSaved", "My PLA", "new")
+        self.assertEqual(self.sent, [])
+
+    def test_a_copy_of_another_spooler_filament_does_not_match(self):
+        red = Preset("Red copy", dict(self.presets[0]._config, default_filament_colour="#FF0000",
+                                      filament_flow_ratio="0.9"))
+        self.presets.append(red)
+        orca.host.preset_bundle = lambda: types.SimpleNamespace(filaments=Filaments(self.presets))
+        self.event("PresetSelected", SPOOLER, "filament")
+        self.event("PresetSaved", "Red copy", "new")
         self.assertEqual(self.sent, [])
 
     def test_overwrites_and_other_preset_types_are_ignored(self):
@@ -259,6 +300,11 @@ class WheelTest(unittest.TestCase):
             self.assertIn(f"Version: {sp.PLUGIN_VERSION}\n", metadata)
             self.assertIn("Tag: py3-none-any\n", wheel.read(f"{self.info}/WHEEL").decode())
             self.assertEqual(wheel.read("spooler/__init__.py"), (ROOT / "plugin" / "spooler" / "spooler_any.py").read_bytes())
+
+    def test_files_are_readable_when_unpacked(self):
+        with zipfile.ZipFile(self.path) as wheel:
+            for info in wheel.infolist():
+                self.assertEqual(info.external_attr >> 16, 0o644, info.filename)
 
     def test_record_hashes_match(self):
         with zipfile.ZipFile(self.path) as wheel:

@@ -293,10 +293,17 @@ def sync_config(capability) -> None:
         stored = config_view(raw) if isinstance(raw, dict) else {}
         settings = get_settings()
         if stored and stored != _config["last"] and stored != config_view(settings):
-            changed = {key: CONFIG_KEYS[key](value) for key, value in stored.items()}
-            settings = {**settings, **changed}
-            save_settings(settings)
-            log.info("Took %s from OrcaSlicer's plugin manager", ", ".join(sorted(changed)))
+            changed = {}
+            for key, value in stored.items():
+                try:
+                    if value is not None:
+                        changed[key] = CONFIG_KEYS[key](value)
+                except Exception:
+                    log.warning("Ignored %s=%r from OrcaSlicer's plugin manager", key, value)
+            if changed:
+                settings = {**settings, **changed}
+                save_settings(settings)
+                log.info("Took %s from OrcaSlicer's plugin manager", ", ".join(sorted(changed)))
         current = config_view(settings)
         if current != stored and not capability.save_config(json.dumps(current)):
             log.warning("OrcaSlicer did not store Spooler's settings in the plugin manager")
@@ -1513,13 +1520,20 @@ def saved_copy_changes(name: str) -> tuple[str, dict] | None:
         return None
     filaments = orca.host.preset_bundle().filaments
     copy = filaments.find_preset(name)
-    origin = next((n for n in reversed(_recent_filaments) if n.startswith(PROFILE_PREFIX) and n != name), "")
+    # The filament picked just before the save, not counting the copy (OrcaSlicer picks it
+    # after saving): the preset that was being edited. Only a Spooler preset counts.
+    before = [n for n in _recent_filaments if n != name]
+    origin = before[-1] if before and before[-1].startswith(PROFILE_PREFIX) else ""
     spooler = filaments.find_preset(origin) if origin else None
     if copy is None or spooler is None:
         return None
-    # A copy keeps the Spooler preset (or its parent) as what it inherits from.
-    if str(copy.config_value("inherits") or "") not in (origin, str(spooler.config_value("inherits") or "")):
-        return None
+    # A copy keeps what the Spooler preset inherits from, and the filament it was made for:
+    # its vendor and colour, which Spooler sets from Spoolman. Another filament's preset
+    # tweaked after picking this one doesn't pass.
+    for key in ("inherits", "filament_vendor", "default_filament_colour"):
+        if copy.config_value(key) != spooler.config_value(key) and not (
+                key == "inherits" and copy.config_value(key) == origin):
+            return None
     changes = {}
     for key in sorted(ORCA_SETTINGS_KEYS):
         mine, theirs = copy.config_value(key), spooler.config_value(key)
@@ -6976,6 +6990,7 @@ class SpoolerWindow(orca.script.ScriptPluginCapabilityBase):
             log.info("Settings saved (url=%s, low stock=%s g, filament check=%s, margin=%s%%)",
                      url, settings["low_stock_grams"], settings["plate_check"],
                      settings["plate_margin_percent"])
+            sync_config(self)
             return True
         orca.host.ui.message(
             f"Could not write settings to {SETTINGS_FILE}. Check that this folder is writable.",
@@ -7372,6 +7387,7 @@ if _PAGES:
                 log.info("Settings saved (url=%s, low stock=%s g, filament check=%s, margin=%s%%)",
                          url, settings["low_stock_grams"], settings["plate_check"],
                          settings["plate_margin_percent"])
+                sync_config(self)
                 return True
             orca.host.ui.message(
                 f"Could not write settings to {SETTINGS_FILE}. Check that this folder is writable.",
