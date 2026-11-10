@@ -6,7 +6,7 @@
 # name = "Spooler"
 # description = "Spoolman inventory for OrcaSlicer: auto-synced filament profiles and live printer slots"
 # author = "bloodf (fork of Spoolio by Dan J Moore)"
-# version = "0.9.4"
+# version = "0.9.5"
 # ///
 
 import asyncio
@@ -48,7 +48,7 @@ except (ImportError, AttributeError):
 _SLICING = hasattr(getattr(orca, "slicing", None), "SlicingPipelineCapabilityBase")
 
 PLUGIN_NAME = "Spooler"
-PLUGIN_VERSION = "0.9.4"
+PLUGIN_VERSION = "0.9.5"
 # Stamped per operating system by scripts/build.py.
 BUILD_TARGET = "any"
 
@@ -7402,7 +7402,6 @@ class SpoolerKeepSlots(orca.script.ScriptPluginCapabilityBase):
         return orca.ExecutionResult.success("Stopped keeping the filament slots synced.")
 
 
-@orca.plugin
 def permission_targets() -> dict:
     """What Spooler declares to OrcaSlicer up front: its data folder, its worker threads and the
     fixed addresses it calls. Spoolman, Moonraker and printer addresses are the user's own, so
@@ -7426,6 +7425,7 @@ def request_permissions() -> None:
         log.exception("Could not declare permissions")
 
 
+@orca.plugin
 class SpoolerPlugin(orca.base):
     def register_capabilities(self):
         request_permissions()

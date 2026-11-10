@@ -3,6 +3,12 @@
 Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); entries before
 0.9.0 are Spoolio's.
 
+## [0.9.5] - 2026-11-10
+
+### Fixed
+- 0.9.4 put OrcaSlicer's plugin marker on the wrong definition, so OrcaSlicer could not find the
+  plugin class and Spooler didn't load. The marker is back on the plugin class.
+
 ## [0.9.4] - 2026-11-10
 
 ### Changed

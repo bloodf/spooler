@@ -26,5 +26,12 @@ class PermissionsTest(unittest.TestCase):
         sp.request_permissions()
 
 
+class RegistrationTest(unittest.TestCase):
+    def test_only_the_plugin_class_is_decorated(self):
+        # @orca.plugin must sit on the plugin class: OrcaSlicer loads the one class it marks.
+        self.assertEqual(orca.decorated, [sp.SpoolerPlugin])
+        self.assertTrue(isinstance(sp.SpoolerPlugin, type) and issubclass(sp.SpoolerPlugin, orca.base))
+
+
 if __name__ == "__main__":
     unittest.main()

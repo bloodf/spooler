@@ -21,7 +21,8 @@ class _Base:
 def _stub_orca() -> types.ModuleType:
     orca = types.ModuleType("orca")
     orca.base = _Base
-    orca.plugin = lambda cls: cls
+    orca.decorated = []
+    orca.plugin = lambda cls: orca.decorated.append(cls) or cls
     orca.register_capability = lambda cls: None
     orca.PluginType = types.SimpleNamespace(Pages="Pages")
     orca.ExecutionResult = types.SimpleNamespace(success=lambda *a, **k: ("success", a),
