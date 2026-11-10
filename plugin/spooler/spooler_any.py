@@ -3368,6 +3368,26 @@ MAIN_PAGE = """
     background: var(--orca-bg); color: var(--orca-fg);
   }
   .sort-dir { flex: 0 0 auto; min-width: 32px; }
+  .cpick { position: relative; flex: 0 0 auto; }
+  #color-btn { display: flex; align-items: center; gap: 6px; height: 100%; min-height: 26px; }
+  #color-btn .caret { color: var(--orca-muted); }
+  .cdot {
+    display: inline-block; width: 13px; height: 13px; border-radius: 50%; flex-shrink: 0;
+    border: 1px solid rgba(127, 127, 127, 0.6);
+  }
+  .cdot.all { background: conic-gradient(#e5484d, #f5a524, #f5d90a, #46a758, #3e63dd, #8e4ec6, #e93d82, #e5484d); }
+  .cmenu {
+    position: absolute; right: 0; top: calc(100% + 4px); z-index: 30; min-width: 180px; max-height: 300px;
+    overflow-y: auto; padding: 4px; border: 1px solid var(--orca-border); border-radius: 6px;
+    background: var(--orca-bg); box-shadow: 0 6px 18px rgba(0, 0, 0, 0.3);
+  }
+  .cmenu button {
+    display: flex; align-items: center; gap: 8px; width: 100%; padding: 5px 8px;
+    border: 0; border-radius: 4px; text-align: left;
+  }
+  .cmenu button:hover, .cmenu button.on { background: rgba(127, 127, 127, 0.18); }
+  .cmenu .n { margin-left: auto; color: var(--orca-muted); font-size: 11px; }
+  .group-card .cdot { width: 16px; height: 16px; }
   .empty { color: var(--orca-muted); padding: 12px 4px; }
 
   .spool-card {
@@ -3505,7 +3525,7 @@ MAIN_PAGE = """
   .group-items { padding-left: 4px; }
   .group.collapsed .group-items { display: none; }
   #list.cols-2, #list.cols-2 .group-items { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 10px; align-items: start; }
-  #list.cols-2 > .group, #list.cols-2 > .empty { grid-column: 1 / -1; }
+  #list.cols-2 > .group, #list.cols-2 > .empty, #list.cols-2 .group.stack { grid-column: 1 / -1; }
   #list.cols-2 .group.collapsed .group-items { display: none; }
   @media (max-width: 640px) { #list.cols-2, #list.cols-2 .group-items { grid-template-columns: minmax(0, 1fr); } }
   .tabs { display: inline-flex; margin: 0 0 12px; border: 1px solid var(--orca-border); border-radius: 8px; overflow: hidden; }
@@ -3650,9 +3670,17 @@ MAIN_PAGE = """
     <button id="send-btn" title="Send the unsaved changes of the Spooler preset open in OrcaSlicer's filament settings to Spoolman">Send to Spoolman</button>
     <button id="filters-toggle" aria-expanded="false">Filters &#9662;</button>
   </div>
+  <div class="filters">
+    <input id="search" type="search" placeholder="Filter by name..." aria-label="Filter by name">
+    <div class="cpick">
+      <button id="color-btn" type="button" aria-haspopup="listbox" aria-expanded="false" aria-label="Filter by colour">
+        <span class="cdot" id="color-dot"></span><span id="color-label">All Colours</span><span class="caret">&#9662;</span>
+      </button>
+      <div id="color-menu" class="cmenu" role="listbox" hidden></div>
+    </div>
+  </div>
   <div id="filters-panel" hidden>
   <div class="filters">
-    <input id="search" type="text" placeholder="Filter by name...">
     <select id="material-filter"><option value="">All Materials</option></select>
     <select id="vendor-filter"><option value="">All Manufacturers</option></select>
   </div>
@@ -3712,6 +3740,11 @@ MAIN_PAGE = """
     const sortDirBtn = document.getElementById("sort-dir");
     const fToggle = document.getElementById("filters-toggle");
     const fPanel = document.getElementById("filters-panel");
+    const colorBtn = document.getElementById("color-btn");
+    const colorMenu = document.getElementById("color-menu");
+    const colorDot = document.getElementById("color-dot");
+    const colorLabel = document.getElementById("color-label");
+    let colorSel = "";
     const plateEl = document.getElementById("plate");
     const plateList = document.getElementById("plate-rows");
     const plateSort = sortKeyEl.querySelector('option[value="plate"]');
@@ -4520,8 +4553,8 @@ MAIN_PAGE = """
     }
 
     function filterLabel() {
-      const active = (searchEl.value.trim() ? 1 : 0) + (materialEl.value ? 1 : 0) +
-        (vendorEl.value ? 1 : 0) + (groupKeyEl.value !== "none" ? 1 : 0);
+      const active = (materialEl.value ? 1 : 0) + (vendorEl.value ? 1 : 0) +
+        (groupKeyEl.value !== "none" ? 1 : 0);
       fToggle.innerHTML = "Filters" + (active ? " (" + active + ")" : "") +
         (fPanel.hidden ? " &#9662;" : " &#9652;");
     }
@@ -4549,6 +4582,70 @@ MAIN_PAGE = """
       }
       fillOptions(materialEl, materials, materialEl.value);
       fillOptions(vendorEl, vendors, vendorEl.value);
+      renderColorMenu();
+    }
+
+    // Colour families for the colour filter: spools are matched by family, not exact hex, so
+    // "Blue" finds every blue whatever the vendor calls it.
+    const COLOR_FAMILIES = [
+      ["black", "Black", "#111111"], ["gray", "Gray", "#8a8a8a"], ["white", "White", "#f4f4f4"],
+      ["red", "Red", "#e5484d"], ["orange", "Orange", "#f5852a"], ["yellow", "Yellow", "#f5d90a"],
+      ["green", "Green", "#46a758"], ["blue", "Blue", "#3e63dd"], ["purple", "Purple", "#8e4ec6"],
+      ["pink", "Pink", "#e93d82"], ["brown", "Brown", "#8d5a3b"],
+      ["multi", "Multicolour", "conic-gradient(#e5484d, #f5d90a, #46a758, #3e63dd, #e5484d)"],
+    ];
+
+    function colorFamily(f) {
+      if (swatchCols(f).length > 1) return "multi";
+      const hex = swatchHex(f.color_hex);
+      if (!hex) return "";
+      const rgb = [1, 3, 5].map(function (i) { return parseInt(hex.slice(i, i + 2), 16) / 255; });
+      const max = Math.max.apply(null, rgb), min = Math.min.apply(null, rgb);
+      const l = (max + min) / 2, d = max - min;
+      const sat = d === 0 ? 0 : d / (1 - Math.abs(2 * l - 1));
+      if (l < 0.12 || (l < 0.2 && sat < 0.35)) return "black";
+      if (l > 0.9 && sat < 0.5) return "white";
+      if (sat < 0.15) return "gray";
+      let h = max === rgb[0] ? ((rgb[1] - rgb[2]) / d) % 6 : max === rgb[1] ? (rgb[2] - rgb[0]) / d + 2 : (rgb[0] - rgb[1]) / d + 4;
+      h = (h * 60 + 360) % 360;
+      if (h >= 15 && h < 45 && l < 0.42) return "brown";
+      if (h < 15 || h >= 345) return l > 0.7 ? "pink" : "red";
+      if (h < 40) return "orange";
+      if (h < 70) return "yellow";
+      if (h < 170) return "green";
+      if (h < 255) return "blue";
+      if (h < 290) return "purple";
+      return "pink";
+    }
+
+    function setColorButton() {
+      const fam = COLOR_FAMILIES.find(function (c) { return c[0] === colorSel; });
+      colorDot.className = fam ? "cdot" : "cdot all";
+      colorDot.style.background = fam ? fam[2] : "";
+      colorLabel.textContent = fam ? fam[1] : "All Colours";
+    }
+
+    function renderColorMenu() {
+      const counts = new Map();
+      allSpools.forEach(function (s) {
+        const fam = colorFamily(s.filament || {});
+        if (fam) counts.set(fam, (counts.get(fam) || 0) + 1);
+      });
+      if (colorSel && !counts.has(colorSel)) colorSel = "";
+      const item = function (key, label, dot, n) {
+        return '<button type="button" role="option" data-color="' + key + '" aria-selected="' + (colorSel === key) + '"' +
+          (colorSel === key ? ' class="on"' : '') + '><span class="cdot' + (key ? '' : ' all') + '"' +
+          (key ? ' style="background:' + dot + '"' : '') + '></span>' + label + '<span class="n">' + n + '</span></button>';
+      };
+      colorMenu.innerHTML = item("", "All Colours", "", allSpools.length) + COLOR_FAMILIES.filter(function (c) {
+        return counts.has(c[0]);
+      }).map(function (c) { return item(c[0], c[1], c[2], counts.get(c[0])); }).join("");
+      setColorButton();
+    }
+
+    function openColorMenu(open) {
+      colorMenu.hidden = !open;
+      colorBtn.setAttribute("aria-expanded", open ? "true" : "false");
     }
 
     function progressClass(percent) {
@@ -4616,7 +4713,7 @@ MAIN_PAGE = """
         ? s.initial_weight : filament.weight;
     }
 
-    function spoolRowHtml(s) {
+    function spoolRowHtml(s, inStack) {
       const filament = s.filament || {};
       const vendor = filament.vendor || {};
       const color = swatch(filament);
@@ -4642,7 +4739,7 @@ MAIN_PAGE = """
         : wMode === "percent" ? percent + '%'
         : '<span class="spool-pct">' + percent + '% \u00b7</span>' + remainingLabel;
       const dupe = dupes.get(filament.id);
-      const dupeHtml = dupe && dupe.count > 1
+      const dupeHtml = !inStack && dupe && dupe.count > 1
         ? '<span class="spool-dup">\u00d7' + dupe.count + ' \u00b7 ' + formatWeight(dupe.total) + ' together</span>'
         : '';
       const plateLabel = plateSlots.get(s.id);
@@ -4719,7 +4816,7 @@ MAIN_PAGE = """
       return { key: label, label: label };
     }
 
-    function groupRowHtml(group, collapsed) {
+    function groupRowHtml(group, collapsed, stack) {
       let totalOriginal = 0, totalRemaining = 0, hasOriginal = false, hasRemaining = false;
       group.items.forEach(function (s) {
         const original = originalWeight(s);
@@ -4736,22 +4833,62 @@ MAIN_PAGE = """
         : remainingLabel + ' \\u00b7 ' + percentLabel;
       const subLabel = [group.sub, count].filter(Boolean).join(" \\u00b7 ");
       return (
-        '<div class="group' + (collapsed ? " collapsed" : "") + '" data-key="' + group.key + '">' +
-          '<div class="group-card">' +
+        '<div class="group' + (stack ? " stack" : "") + (collapsed ? " collapsed" : "") + '" data-key="' + esc(group.key) + '">' +
+          '<div class="group-card" role="button" tabindex="0" aria-expanded="' + !collapsed + '">' +
             '<div class="arrow">' + (collapsed ? "\\u25b8" : "\\u25be") + '</div>' +
-            '<div class="group-info"><div class="group-name">' + group.label + '</div><div class="group-meta">' + subLabel + '</div></div>' +
+            (group.color ? '<span class="cdot" style="background:' + group.color + '"></span>' : '') +
+            '<div class="group-info"><div class="group-name">' + esc(group.label) + '</div><div class="group-meta">' + esc(subLabel) + '</div></div>' +
             '<div class="group-bar">' +
               '<div class="group-meta" style="text-align:right;margin-bottom:2px;">' + wLabel + '</div>' +
               '<div class="group-bar-track"><div class="group-bar-fill ' + progressClass(percent) +
                 '" style="width:' + (percent === null ? 0 : percent) + '%"></div></div>' +
             '</div>' +
           '</div>' +
-          '<div class="group-items">' + group.items.map(spoolRowHtml).join("") + '</div>' +
+          '<div class="group-items">' + (stack ? group.items.map(function (s) { return spoolRowHtml(s, true); }).join("")
+            : listHtml(group.items)) + '</div>' +
         '</div>'
       );
     }
 
     const collapsedGroups = new Set();
+    const openStacks = new Set();
+
+    // Spools of the same filament (vendor, name and colour) fold into one accordion showing their
+    // total; opening it lists each spool. Order follows the first spool of each stack.
+    function stackKey(s) {
+      const f = s.filament || {};
+      return ["stack", (f.vendor || {}).name || "", f.name || "", f.material || "",
+        swatchCols(f).join(",") || swatchHex(f.color_hex)].join("|").toLowerCase();
+    }
+
+    function listHtml(spools) {
+      const stacks = new Map();
+      spools.forEach(function (s) {
+        const key = stackKey(s);
+        if (!stacks.has(key)) stacks.set(key, []);
+        stacks.get(key).push(s);
+      });
+      return [...stacks.entries()].map(function (e) {
+        const items = e[1];
+        if (items.length < 2) return spoolRowHtml(items[0]);
+        const f = items[0].filament || {};
+        const group = {
+          key: e[0], label: f.name || ("Spool #" + items[0].id), items: items, color: swatch(f),
+          sub: [(f.vendor || {}).name, f.material].filter(Boolean).join(" \u00b7 "),
+        };
+        return groupRowHtml(group, !openStacks.has(group.key), true);
+      }).join("");
+    }
+
+    function toggleGroup(card) {
+      const groupEl = card.closest(".group");
+      const key = groupEl.dataset.key;
+      const set = groupEl.classList.contains("stack") ? openStacks : collapsedGroups;
+      if (set.has(key)) set.delete(key); else set.add(key);
+      const collapsed = groupEl.classList.toggle("collapsed");
+      card.setAttribute("aria-expanded", String(!collapsed));
+      card.querySelector(".arrow").innerHTML = collapsed ? "&#9656;" : "&#9662;";
+    }
 
     function renderGrouped(spools, mode) {
       const groups = new Map();
@@ -4769,15 +4906,6 @@ MAIN_PAGE = """
       listEl.innerHTML = ordered.map(function (group) {
         return groupRowHtml(group, collapsedGroups.has(group.key));
       }).join("");
-      listEl.querySelectorAll(".group-card").forEach(function (header) {
-        header.addEventListener("click", function () {
-          const groupEl = header.closest(".group");
-          const key = groupEl.dataset.key;
-          if (collapsedGroups.has(key)) collapsedGroups.delete(key); else collapsedGroups.add(key);
-          groupEl.classList.toggle("collapsed");
-          header.querySelector(".arrow").innerHTML = collapsedGroups.has(key) ? "&#9656;" : "&#9662;";
-        });
-      });
     }
 
     function applyFilters() {
@@ -4790,6 +4918,7 @@ MAIN_PAGE = """
         const vendorObj = filament.vendor || {};
         if (material && filament.material !== material) return false;
         if (vendor && vendorObj.name !== vendor) return false;
+        if (colorSel && colorFamily(filament) !== colorSel) return false;
         if (query) {
           const haystack = [filament.name, filament.material, vendorObj.name]
             .filter(Boolean).join(" ").toLowerCase();
@@ -4812,7 +4941,7 @@ MAIN_PAGE = """
       }
       const groupMode = groupKeyEl.value;
       if (groupMode === "none") {
-        listEl.innerHTML = filtered.map(spoolRowHtml).join("");
+        listEl.innerHTML = listHtml(filtered);
       } else {
         renderGrouped(filtered, groupMode);
       }
@@ -4866,7 +4995,30 @@ MAIN_PAGE = """
       }
     });
 
+    listEl.addEventListener("keydown", function (e) {
+      const card = e.target.closest(".group-card");
+      if (card && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); toggleGroup(card); }
+    });
+
+    colorBtn.addEventListener("click", function () { openColorMenu(colorMenu.hidden); });
+    colorMenu.addEventListener("click", function (e) {
+      const opt = e.target.closest("[data-color]");
+      if (!opt) return;
+      colorSel = opt.dataset.color;
+      openColorMenu(false);
+      renderColorMenu();
+      applyFilters();
+    });
+    document.addEventListener("click", function (e) {
+      if (!colorMenu.hidden && !e.target.closest(".cpick")) openColorMenu(false);
+    });
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "Escape" && !colorMenu.hidden) { openColorMenu(false); colorBtn.focus(); }
+    });
+
     listEl.addEventListener("click", function (e) {
+      const card = e.target.closest(".group-card");
+      if (card) { toggleGroup(card); return; }
       const btn = e.target.closest(".spool-cart");
       if (btn) {
         orca.postMessage({ type: "order", query: decodeURIComponent(btn.dataset.q) });

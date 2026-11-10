@@ -14,8 +14,8 @@ SPOOLS = json.loads((FIXTURES / "spoolman_spools.json").read_text(encoding="utf-
 # Every key a generated preset may carry: OrcaSlicer meta keys, plus options checked to exist in
 # PrintConfig.cpp. Any other key makes OrcaSlicer refuse the whole bundle.
 META_KEYS = {"type", "name", "from", "instantiation", "inherits", "version"}
-PLATE_KEYS = {f"{p}_plate_temp{l}" for p in ("cool", "eng", "hot", "supertack", "textured_cool", "textured")
-              for l in ("", "_initial_layer")}
+PLATE_KEYS = {f"{p}_plate_temp{layer}" for p in ("cool", "eng", "hot", "supertack", "textured_cool", "textured")
+              for layer in ("", "_initial_layer")}
 CONFIG_KEYS = {"compatible_printers", "compatible_printers_condition", "filament_settings_id",
                "default_filament_colour", "filament_vendor", "nozzle_temperature",
                "nozzle_temperature_initial_layer", "filament_density",
