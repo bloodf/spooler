@@ -1434,6 +1434,19 @@ def live_apply(dev_id: str, name: str, doc: object, link: str = "") -> None:
         prog.update({k: report[k] for k in PROG_KEYS if k in report})
         if isinstance(ams, dict) and "tray_now" in ams:
             prog["tray_now"] = ams["tray_now"]
+        dev = report.get("device")
+        ex = dev.get("extruder") if isinstance(dev, dict) else None
+        if isinstance(ex, dict):
+            if "state" in ex:
+                prog["ex_now"] = (_int(ex["state"], 0) >> 4) & 0xF
+            for e in ex.get("info") or []:
+                if isinstance(e, dict) and "snow" in e:
+                    prog.setdefault("snow", {})[_int(e.get("id"), 0)] = _int(e["snow"])
+        key = tray_key(prog)
+        if key != prog.get("key"):
+            prog["key"] = key
+            log.info("Active tray: %s (tray_now %s, extruder %s, snow %s)", key, prog.get("tray_now"),
+                     prog.get("ex_now"), prog.get("snow"))
         events = _note_tray(dev_id, state)
         if "gcode_state" in report:
             gs = str(report["gcode_state"]).upper()
@@ -1484,6 +1497,22 @@ STAGES = {
 }
 
 
+def tray_key(p: dict) -> int:
+    """Printer tray number feeding now: AMS unit*4+slot, AMS HT unit id, 254 external, -1 none.
+
+    H2 printers report it per extruder as snow = ams_id << 8 | slot; others only have tray_now.
+    """
+    snow = p.get("snow") or {}
+    if snow:
+        n = snow.get(p.get("ex_now", 0), snow[min(snow)] if len(snow) == 1 else -1)
+        unit, slot = n >> 8, n & 0xFF
+        if n < 0 or unit == 255:
+            return -1
+        return 254 if unit == 254 else unit if unit >= 128 else unit * 4 + slot
+    t = _int(p.get("tray_now"))
+    return t if 0 <= t <= 254 else -1
+
+
 def _live_prog(state: dict) -> dict | None:
     p = state.get("prog") or {}
     gs = str(p.get("gcode_state") or "").upper()
@@ -1494,7 +1523,7 @@ def _live_prog(state: dict) -> dict | None:
         return value if value >= 0 else None
 
     tray = None
-    t = _int(p.get("tray_now"))
+    t = tray_key(p)
     if 0 <= t < 128:
         tray = {"unit": t // 4, "slot": t % 4}
     elif 128 <= t < 254:
@@ -2335,7 +2364,7 @@ def _loaded(state: dict) -> list[dict]:
 def _note_tray(dev_id: str, state: dict) -> list[tuple]:
     """Remember each tray that feeds the running print. Holds _live_lock."""
     run, p = state.get("run"), state.get("prog") or {}
-    t = _int(p.get("tray_now"))
+    t = tray_key(p)
     if not run or not 0 <= t <= 254 or str(p.get("gcode_state") or "").upper() != "RUNNING":
         return []
     if _int(p.get("layer_num"), 0) < 1 or t in run.setdefault("used", []):
