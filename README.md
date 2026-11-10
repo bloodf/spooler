@@ -52,6 +52,10 @@ the rest is automatic.
 - **Spool list:** spools of the same filament (vendor, name and colour) fold into one row with
   their total; click it to see each spool. The name filter and a colour filter, which picks a
   colour family from swatches, sit above the list.
+- **Save a copy, keep the change.** OrcaSlicer's Save on a Spooler preset makes a separate copy;
+  Spooler sends that copy's changed calibration settings to Spoolman, so the Spooler preset has
+  them after its next rebuild.
+- **Settings in OrcaSlicer's plugin manager** too (Plugins > Spooler > Config), with Restore defaults.
 - **Works with u1control on the Snapmaker U1.** With [u1control](https://github.com/bloodf/u1control)
   installed, the Printer tab uses the spool u1control bound to each toolhead (on stock firmware it
   is the spool's Spoolman location, `Snapmaker U1 T1` and so on). Spooler publishes its preset names

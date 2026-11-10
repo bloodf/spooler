@@ -3,6 +3,29 @@
 Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); entries before
 0.9.0 are Spoolio's.
 
+## [0.11.0] - Unreleased
+
+### Added
+- Saving a copy of a Spooler preset in OrcaSlicer (OrcaSlicer can't save over a plugin's preset)
+  sends the copy's changed calibration settings to Spoolman, so the Spooler preset gets them on its
+  next rebuild. An OrcaSlicer notification says what was sent. `"send_saved_copies": false` in the
+  settings file turns it off.
+- Spooler's settings show in OrcaSlicer's plugin manager (Plugins > Spooler > Config), with Restore
+  defaults. A change made there is checked and saved like one made on the Settings page; the
+  Spoolman address is kept on Restore defaults.
+- Plugins > Run > "Spooler: Keep Slots Synced" stops when OrcaSlicer cancels it (Speed Dial or the
+  Plugins dialog).
+- `scripts/build.py` also builds a pure-Python wheel (`spooler-<version>-py3-none-any.whl`) that
+  runs on every OS. It is not published yet; the per-OS files stay the release until it is tried
+  in OrcaSlicer.
+
+### Fixed
+- OrcaSlicer notifications (the plate check after slicing) never showed: Spooler looked for the
+  notification levels on `orca.host.ui` instead of `orca.host.ui.NotificationLevel`.
+- Links on Windows open with the system's handler, as OrcaSlicer does, since Python's webbrowser
+  can report success inside OrcaSlicer without opening anything.
+- When OrcaSlicer refuses the preset bundle, the log names the bundles it offers.
+
 ## [0.10.0] - 2026-11-10
 
 ### Added
