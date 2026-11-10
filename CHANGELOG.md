@@ -8,7 +8,9 @@ Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); 
 ### Added
 - Works with [u1control](https://github.com/bloodf/u1control) on the Snapmaker U1:
   - On stock firmware a toolhead's spool is the one u1control bound to it, read from the spool's
-    Spoolman location `<printer label> T<n>` (or the older `U1 T<n>`). The order is the spool id
+    Spoolman location `<printer name> T<n>`: Spooler's label, the printer model, or any name ending
+    in "U1" (u1control's printer name, "Snapmaker U1" unless renamed; the oldest form is `U1 T<n>`).
+    The order is the spool id
     the printer reports, then that location, then the RFID tag, then vendor, material and colour.
     Archived spools never match; when two spools claim one toolhead the last used wins and a
     warning is logged. The slot's tooltip says "Spool linked by u1control". Spooler still never

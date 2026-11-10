@@ -1064,16 +1064,22 @@ def profile_snapshot() -> dict | None:
     except Exception:
         log.exception("Could not read the presets")
         return None
-    _ui_snap.clear()
+    # Key by key, never empty in between: worker threads read it while this runs.
     _ui_snap.update(snap)
+    for key in set(_ui_snap) - set(snap):
+        _ui_snap.pop(key, None)
     return snap
 
 
 def _write_json(path: Path, value: object) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_name(f".{path.name}.{threading.get_ident()}.tmp")
-    tmp.write_text(json.dumps(value, indent=2, ensure_ascii=False), encoding="utf-8")
-    os.replace(tmp, path)
+    try:
+        tmp.write_text(json.dumps(value, indent=2, ensure_ascii=False), encoding="utf-8")
+        os.replace(tmp, path)
+    except OSError:
+        tmp.unlink(missing_ok=True)
+        raise
 
 
 def profile_digest(files: dict) -> str:
@@ -1194,6 +1200,13 @@ def mark_keep_slots(active: bool, printer: str = "") -> None:
 def label_for_target(target: str) -> str:
     """Spooler's label for a printer ("Snapmaker U1"), from the last snapshot; "" when unknown."""
     return next((p["label"] for p in _ui_snap.get("printers") or [] if p["target"] == target), "")
+
+
+def location_names(target: str) -> tuple:
+    """The printer names a u1control location may start with for this printer: Spooler's label,
+    the printer model (the label without the nozzle Spooler adds when two presets share a model)."""
+    printer = next((p for p in _ui_snap.get("printers") or [] if p["target"] == target), {})
+    return tuple(name for name in dict.fromkeys((printer.get("label"), printer.get("model"))) if name)
 
 
 def profile_sync(spools: list[dict], snapshot: dict | None) -> dict:
@@ -2058,16 +2071,29 @@ def _location_key(text: object) -> str:
     return " ".join(str(text or "").split()).casefold()
 
 
-def spool_at_location(spools: list[dict], printer: str, number: int) -> dict | None:
+def _bound_here(location: object, names: tuple, number: int) -> bool:
+    """A location u1control wrote for toolhead T<number> of this printer: "<name> T<n>" with one
+    of its names, or any name ending in the word "U1" (u1control's printer name defaults to
+    "Snapmaker U1" and can be renamed, e.g. "Workshop U1"; the oldest form is "U1 T<n>")."""
+    key = _location_key(location)
+    suffix = f" t{number}"
+    if not key.endswith(suffix):
+        return False
+    name = key[:-len(suffix)].strip()
+    return name in {_location_key(n) for n in names} or re.fullmatch(r"(?:.*\s)?u1", name) is not None
+
+
+def spool_at_location(spools: list[dict], printer: str | tuple, number: int) -> dict | None:
     """The spool u1control bound to toolhead T<number> on stock U1 firmware, where the binding is
-    the spool's Spoolman location "<printer label> T<n>" (or the older "U1 T<n>"). Spooler only
-    reads locations, never writes them. Two spools claiming one toolhead: the last used wins."""
-    wanted = {_location_key(f"{name} T{number}") for name in (printer, "U1") if name}
-    found = [s for s in spools if not s.get("archived") and _location_key(s.get("location")) in wanted]
+    the spool's Spoolman location "<printer name> T<n>". Spooler only reads locations, never
+    writes them. Two spools claiming one toolhead: the last used wins."""
+    names = (printer,) if isinstance(printer, str) else tuple(printer)
+    found = [s for s in spools if not s.get("archived") and _bound_here(s.get("location"), names, number)]
     if len(found) > 1:
         found.sort(key=lambda s: str(s.get("last_used") or ""), reverse=True)
         log.warning("Spools %s all have the location of %s T%d; using %s, the last used",
-                    ", ".join(str(s.get("id")) for s in found), printer or "U1", number, found[0].get("id"))
+                    ", ".join(str(s.get("id")) for s in found), (names or ("U1",))[0], number,
+                    found[0].get("id"))
     return found[0] if found else None
 
 
@@ -2105,7 +2131,7 @@ def head_tray(index: int, config: dict, detect: dict, spools: list[dict], target
     uid = _card_uid(_list_at((detect or {}).get("info"), index))
     label = " ".join(part for part in (vendor, kind, "" if sub.upper() in ("", "NONE", "BASIC") else sub) if part)
     return slot_tray(index, _list_at(config.get("filament_spool_id"), index), uid, vendor, kind, rgba,
-                     label, spools, target, location=(label_for_target(target), index + 1), sub=sub)
+                     label, spools, target, location=(location_names(target), index + 1), sub=sub)
 
 
 LANE_MAX = 64  # more lanes than any filament changer has; a bad number can't build a huge list
@@ -7495,10 +7521,14 @@ class SpoolerKeepSlots(orca.script.ScriptPluginCapabilityBase):
         try:
             while _keep["run"] is run:
                 snap = dict(_ui_snap)
-                mark_keep_slots(True, label_for_target(snap.get("selected") or ""))
+                printer = label_for_target(snap.get("selected") or "")
+                if _keep["run"] is run:  # not after an unload marked it stopped
+                    mark_keep_slots(True, printer)
                 try:
                     if time.monotonic() - synced > REFRESH_SECS:
                         names, synced = sync_for(snap), time.monotonic()
+                        if _keep["run"] is run:  # the sync can take seconds: keep the marker fresh
+                            mark_keep_slots(True, printer)
                     trays = printer_trays(snap["host"])
                     for slot, name in keep_plan(trays, snap["slots"], names, snap.get("current") or [],
                                                 snap.get("gen", 0), seen):

@@ -21,8 +21,8 @@ U1_STATUS = json.loads((FIXTURES / "u1_status.json").read_text(encoding="utf-8")
 # Stock firmware: no filament_spool_id, no RFID card; u1control's sub type in head 4.
 STOCK = json.loads((FIXTURES / "u1_stock_status.json").read_text(encoding="utf-8"))
 SPOOLS = json.loads((FIXTURES / "u1control_spools.json").read_text(encoding="utf-8"))
-PRINTERS = [{"target": U1, "label": "Snapmaker U1", "hosts": ["http://u1"]},
-            {"target": SV06, "label": "Sovol SV06", "hosts": []}]
+PRINTERS = [{"target": U1, "label": "Snapmaker U1", "model": "Snapmaker U1", "hosts": ["http://u1"]},
+            {"target": SV06, "label": "Sovol SV06", "model": "Sovol SV06", "hosts": []}]
 
 
 def copy(value):
@@ -85,11 +85,23 @@ class LocationTest(Snapshot):
         self.assertIsNone(sp.spool_at_location(spools, "Snapmaker U1", 1))
         self.assertIsNone(sp.spool_at_location([dict(SPOOLS[0], location="Snapmaker U1 T10")], "Snapmaker U1", 1))
 
-    def test_without_a_known_label_only_the_old_form_counts(self):
+    def test_printer_renamed_in_u1control_or_with_a_nozzle_label(self):
+        names = ("Snapmaker U1 0.4", "Snapmaker U1")  # two U1 presets: the label carries the nozzle
+        at = lambda location: sp.spool_at_location([dict(SPOOLS[0], location=location)], names, 1)  # noqa: E731
+        for location in ("Snapmaker U1 T1", "snapmaker u1 0.4 t1", "Workshop U1 T1", "U1 T1"):
+            self.assertIsNotNone(at(location), location)
+        for location in ("Shelf T1", "Snapmaker U1 T2", "Snapmaker U1T1", "MU1 T1", "U1 T1 spare", "T1"):
+            self.assertIsNone(at(location), location)
+
+    def test_nozzle_label_still_binds_through_the_model(self):
+        sp._ui_snap["printers"] = [dict(PRINTERS[0], label="Snapmaker U1 0.4")]
+        self.assertEqual(self.trays(STOCK)[0]["spool_id"], 101)
+
+    def test_without_a_known_label_names_ending_in_u1_still_count(self):
+        # Before the Spooler tab has read OrcaSlicer's printers: "Snapmaker U1 T1" and "U1 T2" bind.
         sp._ui_snap["printers"] = []
         trays = self.trays(STOCK)
-        self.assertEqual(trays[1]["spool_id"], 103)
-        self.assertNotEqual(trays[0].get("linked"), "u1control")
+        self.assertEqual([t.get("spool_id") for t in trays[:2]], [101, 103])
 
     def test_archived_spools_never_match(self):
         archived = [dict(s, archived=True) for s in SPOOLS]
@@ -212,6 +224,11 @@ class ProfilesJsonTest(BridgeFolder):
         self.assertTrue(existed)
         self.assertEqual(sorted(p.name for p in dst.parent.iterdir()), ["profiles.json"])
 
+    def test_a_failed_write_leaves_no_temp_file(self):
+        with mock.patch.object(sp.os, "replace", side_effect=OSError("disk full")):
+            sp.publish_profiles({(7, U1): "X @Snapmaker U1"}, PRINTERS)
+        self.assertEqual(list((self.root / "spooler").iterdir()), [])
+
     def test_unchanged_presets_are_not_rewritten(self):
         sp.publish_profiles({(7, U1): "X @Snapmaker U1"}, PRINTERS)
         with mock.patch.object(sp, "_write_json") as write:
@@ -275,6 +292,24 @@ class KeepSlotsMarkerTest(BridgeFolder):
         self.assertEqual(asyncio.run(scenario())[0], "success")
         self.assertFalse(self.read("keep_slots.json")["active"])
         self.assertIsNone(sp._keep["run"])
+
+    def test_marker_is_refreshed_after_a_slow_sync(self):
+        sp.REFRESH_SECS, refresh = -1, sp.REFRESH_SECS  # sync on every pass
+        writes = []
+        real = sp.mark_keep_slots
+        try:
+            with mock.patch.object(sp, "mark_keep_slots", side_effect=lambda *a: writes.append(a) or real(*a)):
+                async def scenario():
+                    run = asyncio.ensure_future(sp.SpoolerKeepSlots().execute())
+                    await asyncio.sleep(0.05)
+                    await sp.SpoolerKeepSlots().execute()
+                    await asyncio.wait_for(run, 1)
+                asyncio.run(scenario())
+        finally:
+            sp.REFRESH_SECS = refresh
+        actives = [w for w in writes if w[0]]
+        self.assertGreaterEqual(len(actives), 2 * 2)  # before and after each pass's sync
+        self.assertEqual(writes[-1], (False,))
 
     def test_unload_when_not_running_writes_nothing(self):
         sp.SpoolerKeepSlots().on_unload()
