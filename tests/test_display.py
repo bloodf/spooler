@@ -144,6 +144,13 @@ console.log(JSON.stringify({{list, card}}));
         self.assertIn("In Use · U1 · T1", out["list"])
         self.assertLess(out["list"].index("980 g"), out["list"].index("400 g"))  # spool 2 is loaded: first
 
+    def test_groups_and_single_spools_share_one_card(self):
+        out = self.run_page(self.scenario({}))["list"]
+        self.assertNotIn("spool-tag", out)  # no manufacturer badge on top of the card
+        self.assertIn('class="spool-card stack-head"', out)
+        self.assertEqual(out.count('<span class="spool-vendor">Acme</span>'), 3)  # group and both spools
+        self.assertIn('<span class="stack-count">2</span>', out)
+
     def test_slot_card_has_the_spools_details(self):
         card = self.run_page(self.scenario({}))["card"]
         for text in ("Acme", "PLA", "#111111", "980 g of 1,000 g left", "Spool #2", "Shelf B",

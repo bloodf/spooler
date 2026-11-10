@@ -6,7 +6,7 @@
 # name = "Spooler"
 # description = "Spoolman inventory for OrcaSlicer: auto-synced filament profiles and live printer slots"
 # author = "bloodf (fork of Spoolio by Dan J Moore)"
-# version = "0.12.0"
+# version = "0.12.1"
 # ///
 
 import asyncio
@@ -48,7 +48,7 @@ except (ImportError, AttributeError):
 _SLICING = hasattr(getattr(orca, "slicing", None), "SlicingPipelineCapabilityBase")
 
 PLUGIN_NAME = "Spooler"
-PLUGIN_VERSION = "0.12.0"
+PLUGIN_VERSION = "0.12.1"
 # Stamped per operating system by scripts/build.py.
 BUILD_TARGET = "any"
 
@@ -4070,20 +4070,7 @@ MAIN_PAGE = """
     padding: 13px 14px 11px;
     margin-bottom: 9px;
   }
-  .spool-tag {
-    position: absolute; top: -8px; left: 14px;
-    display: flex; align-items: center; gap: 4px;
-    max-width: calc(100% - 28px);
-    padding: 2px 8px 2px 6px;
-    border-radius: 4px 9px 9px 0;
-    background: var(--orca-accent);
-    background: linear-gradient(135deg, color-mix(in srgb, var(--orca-accent) 80%, black), var(--orca-accent));
-    color: var(--orca-accent-fg);
-    font-size: 10px; font-weight: 700; letter-spacing: 0.02em;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
-  }
-  .spool-tag span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .spool-tag svg { width: 9px; height: 9px; flex-shrink: 0; }
+  .spool-vendor { font-style: normal; font-weight: 700; color: color-mix(in srgb, var(--orca-accent) 60%, var(--orca-fg) 40%); }
   .spool-body { display: flex; gap: 11px; align-items: flex-start; }
   .spool-swatch-col {
     display: flex; flex-direction: column; align-items: center; gap: 4px;
@@ -4130,14 +4117,26 @@ MAIN_PAGE = """
   }
   .head-card .head-line { font-style: normal; margin-top: 2px; }
   .head-card .head-preset { opacity: 0.8; font-style: italic; }
-  .group.stack > .group-card {
-    background: var(--orca-border); border-radius: 8px; padding: 10px 12px; margin-bottom: 6px;
+  .stack-head { cursor: pointer; }
+  .stack-head:hover, .stack-head:focus-visible { border-color: color-mix(in srgb, var(--orca-accent) 55%, var(--orca-border) 45%); outline: none; }
+  .stack-head .spool-swatch { position: relative; box-shadow: 4px -3px 0 -1px color-mix(in srgb, var(--orca-fg) 14%, var(--orca-bg) 86%), inset 0 0 0 1px rgba(0, 0, 0, 0.2); }
+  .stack-count {
+    position: absolute; right: -6px; bottom: -4px; min-width: 18px; height: 18px; padding: 0 5px;
+    border-radius: 99px; background: var(--orca-accent); color: var(--orca-accent-fg);
+    font-size: 10px; font-weight: 800; line-height: 18px; text-align: center; box-shadow: 0 0 0 2px var(--orca-bg);
   }
-  .group.stack > .group-card .cdot { width: 28px; height: 28px; }
-  .group.stack > .group-card .group-name { font-size: 14px; }
-  .group-card .group-bar { width: auto; min-width: 90px; max-width: 45%; }
-  .group-card .group-bar .group-meta { white-space: nowrap; }
-  .group.stack > .group-items { padding-left: 14px; border-left: 2px solid var(--orca-border); margin: 0 0 8px 12px; }
+  .stack-arrow { display: inline-flex; color: var(--orca-muted); transition: transform 0.15s ease; }
+  .stack-arrow svg { width: 14px; height: 14px; }
+  .group.stack:not(.collapsed) .stack-arrow { transform: rotate(90deg); color: var(--orca-accent); }
+  .group.stack { margin-bottom: 0; }
+  .group.stack:not(.collapsed) {
+    margin-bottom: 9px; padding: 6px 6px 0; border-radius: 17px;
+    background: color-mix(in srgb, var(--orca-fg) 3%, var(--orca-bg) 97%);
+    border: 1px solid color-mix(in srgb, var(--orca-accent) 35%, var(--orca-border) 65%);
+  }
+  .group.stack:not(.collapsed) > .stack-head { border-color: transparent; background: transparent; margin-bottom: 4px; }
+  .group.stack:not(.collapsed) > .stack-head:focus-visible { border-color: var(--orca-accent); }
+  .group.stack > .group-items { padding: 0 6px; }
   .spool-dup {
     margin-left: 8px; padding: 1px 8px; border-radius: 99px; vertical-align: middle;
     border: 1px solid var(--orca-border); color: var(--orca-muted);
@@ -4209,9 +4208,11 @@ MAIN_PAGE = """
   .group-card .group-bar-fill.low { background: #d9534f; }
   .group-items { padding-left: 4px; }
   .group.collapsed .group-items { display: none; }
-  #list.cols-2, #list.cols-2 .group-items { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 10px; align-items: start; }
-  #list.cols-2 > .group, #list.cols-2 > .empty, #list.cols-2 .group.stack { grid-column: 1 / -1; }
+  #list.cols-2, #list.cols-2 .group-items { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 10px; align-items: stretch; }
+  #list.cols-2 > .group:not(.stack), #list.cols-2 > .empty, #list.cols-2 .group.stack:not(.collapsed) { grid-column: 1 / -1; }
   #list.cols-2 .group.collapsed .group-items { display: none; }
+  #list.cols-2 .group.stack.collapsed { display: flex; flex-direction: column; }
+  #list.cols-2 .group.stack.collapsed > .stack-head { flex: 1; }
   @media (max-width: 640px) { #list.cols-2, #list.cols-2 .group-items { grid-template-columns: minmax(0, 1fr); } }
   .tabs { display: inline-flex; margin: 0 0 12px; border: 1px solid var(--orca-border); border-radius: 8px; overflow: hidden; }
   .tabs[hidden], #page-spools[hidden], #page-printer[hidden], #page-stats[hidden] { display: none; }
@@ -5682,6 +5683,7 @@ MAIN_PAGE = """
       const material = filament.material || "";
       const vendorName = vendor.name || "";
       const subtitleParts = [];
+      if (vendorName && shown("vendor")) subtitleParts.push('<span class="spool-vendor">' + esc(vendorName) + '</span>');
       if (material && shown("material")) subtitleParts.push(esc(material));
       if (filament.color_hex && shown("colour_code")) subtitleParts.push("#" + esc(filament.color_hex.replace(/^#/, "").toUpperCase()));
       if (typeof filament.diameter === "number" && shown("diameter")) subtitleParts.push(filament.diameter + "mm");
@@ -5708,17 +5710,6 @@ MAIN_PAGE = """
       const chipHtml = (plateLabel ? '<span class="plate-chip">On This Plate \u00b7 ' + plateLabel + '</span>' : '') +
         (where ? '<span class="use-chip" title="Loaded in ' + esc(where) + '">In Use \u00b7 ' + esc(where) + '</span>' : '');
       const percentTitle = percent === null ? "Remaining unknown" : percent + "% remaining";
-      const tagHtml = vendorName && shown("vendor")
-        ? '<div class="spool-tag">' +
-            '<svg viewBox="0 0 12 12" fill="currentColor">' +
-              '<rect x="0" y="0" width="5" height="5" rx="1"></rect>' +
-              '<rect x="7" y="0" width="5" height="5" rx="1"></rect>' +
-              '<rect x="0" y="7" width="5" height="5" rx="1"></rect>' +
-              '<rect x="7" y="7" width="5" height="5" rx="1"></rect>' +
-            '</svg>' +
-            '<span>' + esc(vendorName) + '</span>' +
-          '</div>'
-        : '';
       const tip = [name, vendorName, remainingLabel + (typeof original === "number" ? " of " + formatWeight(original) : "") + " left"].filter(Boolean).join(" \u00b7 ");
       const tint = lowTint(remaining);
       const searchQuery = [vendorName, s.lot_nr || name].filter(Boolean).join(" ");
@@ -5743,7 +5734,6 @@ MAIN_PAGE = """
         : '';
       return (
         '<div class="spool-card" title="' + tip.replace(/"/g, "&quot;") + '">' +
-          tagHtml +
           '<div class="spool-body">' +
             '<div class="spool-swatch-col">' +
               '<div class="spool-swatch" style="background:' + color + ring + '"></div>' +
@@ -5790,14 +5780,15 @@ MAIN_PAGE = """
         ? Math.max(0, Math.min(100, Math.round((totalRemaining / totalOriginal) * 100))) : null;
       const remainingLabel = hasRemaining
         ? formatWeight(totalRemaining) + (hasOriginal ? " of " + formatWeight(totalOriginal) : "") : "?";
-      const percentLabel = percent === null ? "?" : percent + "%";
       const count = group.items.length + " spool" + (group.items.length === 1 ? "" : "s");
+      if (stack) return stackHtml(group, collapsed, percent, remainingLabel, count);
+      const percentLabel = percent === null ? "?" : percent + "%";
       const wLabel = wMode === "grams" ? remainingLabel
         : wMode === "percent" ? (percent === null ? remainingLabel : percentLabel)
         : remainingLabel + ' \\u00b7 ' + percentLabel;
       const subLabel = [group.sub, count].filter(Boolean).join(" \\u00b7 ");
       return (
-        '<div class="group' + (stack ? " stack" : "") + (collapsed ? " collapsed" : "") + '" data-key="' + esc(group.key) + '">' +
+        '<div class="group' + (collapsed ? " collapsed" : "") + '" data-key="' + esc(group.key) + '">' +
           '<div class="group-card" role="button" tabindex="0" aria-expanded="' + !collapsed + '">' +
             '<div class="arrow">' + (collapsed ? "\\u25b8" : "\\u25be") + '</div>' +
             (group.color ? '<span class="cdot" style="background:' + group.color + '"></span>' : '') +
@@ -5808,8 +5799,46 @@ MAIN_PAGE = """
                 '" style="width:' + (percent === null ? 0 : percent) + '%"></div></div>' +
             '</div>' +
           '</div>' +
-          '<div class="group-items">' + (stack ? group.items.map(function (s) { return spoolRowHtml(s, true); }).join("")
-            : listHtml(group.items)) + '</div>' +
+          '<div class="group-items">' + listHtml(group.items) + '</div>' +
+        '</div>'
+      );
+    }
+
+    // A stack looks like a single spool's card: same swatch, title, weight, bar and detail line,
+    // with the number of spools on the swatch and an arrow to open it.
+    function stackHtml(group, collapsed, percent, remainingLabel, count) {
+      const f = group.items[0].filament || {};
+      const vendorName = (f.vendor || {}).name || "";
+      const parts = [];
+      if (vendorName && shown("vendor")) parts.push('<span class="spool-vendor">' + esc(vendorName) + '</span>');
+      if (f.material && shown("material")) parts.push(esc(f.material));
+      parts.push(count);
+      if (group.used) parts.push(group.used + " in use");
+      const wHtml = percent === null || wMode === "grams" ? remainingLabel
+        : wMode === "percent" ? percent + "%"
+        : '<span class="spool-pct">' + percent + '% \u00b7</span>' + remainingLabel;
+      const ring = swatchCols(f).length > 1 ? ";border-color:" + swatchMain(f) : "";
+      return (
+        '<div class="group stack' + (collapsed ? " collapsed" : "") + '" data-key="' + esc(group.key) + '">' +
+          '<div class="spool-card stack-head" role="button" tabindex="0" aria-expanded="' + !collapsed + '">' +
+            '<div class="spool-body">' +
+              '<div class="spool-swatch-col"><div class="spool-swatch" style="background:' + group.color + ring + '">' +
+                '<span class="stack-count">' + group.items.length + '</span></div></div>' +
+              '<div class="spool-main">' +
+                '<div class="spool-top">' +
+                  '<div class="spool-title">' + esc(group.label) + '</div>' +
+                  '<div class="spool-weight">' + wHtml +
+                    '<span class="stack-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"></path></svg></span>' +
+                  '</div>' +
+                '</div>' +
+                (shown("bar") ? '<div class="spool-bar-track" title="' + (percent === null ? "Remaining unknown" : percent + "% remaining") + '">' +
+                  '<div class="spool-bar-fill" style="width:' + (percent === null ? 0 : percent) + '%;background:' + swatchMain(f) + '"></div>' +
+                '</div>' : '') +
+                '<div class="spool-subtitle"><span class="sub-text">' + parts.join(" \u00b7 ") + '</span></div>' +
+              '</div>' +
+            '</div>' +
+          '</div>' +
+          '<div class="group-items">' + group.items.map(function (s) { return spoolRowHtml(s, true); }).join("") + '</div>' +
         '</div>'
       );
     }
@@ -5841,9 +5870,7 @@ MAIN_PAGE = """
         if (items.length < 2) return spoolRowHtml(items[0]);
         const f = items[0].filament || {};
         const group = {
-          key: e[0], label: f.name || ("Spool #" + items[0].id), items: items, color: swatch(f),
-          sub: [shown("vendor") ? (f.vendor || {}).name : "", shown("material") ? f.material : "",
-            used ? used + " in use" : ""].filter(Boolean).join(" \u00b7 "),
+          key: e[0], label: f.name || ("Spool #" + items[0].id), items: items, color: swatch(f), used: used,
         };
         return groupRowHtml(group, !openStacks.has(group.key), true);
       }).join("");
@@ -5856,7 +5883,8 @@ MAIN_PAGE = """
       if (set.has(key)) set.delete(key); else set.add(key);
       const collapsed = groupEl.classList.toggle("collapsed");
       card.setAttribute("aria-expanded", String(!collapsed));
-      card.querySelector(".arrow").innerHTML = collapsed ? "&#9656;" : "&#9662;";
+      const arrow = card.querySelector(".arrow");
+      if (arrow) arrow.innerHTML = collapsed ? "&#9656;" : "&#9662;";
     }
 
     function renderGrouped(spools, mode) {
@@ -5972,7 +6000,7 @@ MAIN_PAGE = """
     });
 
     listEl.addEventListener("keydown", function (e) {
-      const card = e.target.closest(".group-card");
+      const card = e.target.closest(".group-card, .stack-head");
       if (card && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); toggleGroup(card); }
     });
 
@@ -5993,7 +6021,7 @@ MAIN_PAGE = """
     });
 
     listEl.addEventListener("click", function (e) {
-      const card = e.target.closest(".group-card");
+      const card = e.target.closest(".group-card, .stack-head");
       if (card) { toggleGroup(card); return; }
       const btn = e.target.closest(".spool-cart");
       if (btn) {
