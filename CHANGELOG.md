@@ -3,7 +3,7 @@
 Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); entries before
 0.9.0 are Spoolio's.
 
-## [0.9.2] - Unreleased
+## [0.9.2] - 2026-11-10
 
 ### Added
 - Calibrated settings per filament: a Spoolman extra field `orca_settings` on the filament holds
