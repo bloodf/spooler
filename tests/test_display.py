@@ -2,6 +2,7 @@
 sent to the pages; the page script for grouped spools, loaded spools and full slot cards."""
 
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -75,6 +76,8 @@ class PagesTest(unittest.TestCase):
 
 
 NODE = shutil.which("node")
+if os.environ.get("CI") and not NODE:
+    raise RuntimeError("CI needs node to run the page script tests")
 
 
 @unittest.skipUnless(NODE, "node is needed to run the page script")
@@ -159,6 +162,22 @@ console.log(JSON.stringify({{list, card}}));
         visible = re.sub(r' (title|style)="[^"]*"', "", out["card"])
         for text in ("Acme", "#111111", "of 1,000 g", "Spool #2", "@U1", "spool-bar-track"):
             self.assertNotIn(text, visible)
+
+    def test_group_card_follows_the_switches(self):
+        out = self.run_page(self.scenario({"vendor": False, "material": False, "in_use": False}))
+        self.assertIn("group stack", out["list"])
+        visible = re.sub(r' (title|style)="[^"]*"', "", out["list"])
+        for text in ("Acme", "PLA", "in use", "In Use"):
+            self.assertNotIn(text, visible)
+        self.assertLess(visible.index("400 g"), visible.index("980 g"))  # list order kept
+
+    def test_slot_names_match_the_printer_panel(self):
+        out = self.run_page("""
+const one = {name: "X1", unit_label: "AMS 2 Pro", units: [{id: 0, kind: "ams", trays: []}]};
+const two = {name: "X1", units: [{id: 0, kind: "ams"}, {id: 1, kind: "ams"}]};
+console.log(JSON.stringify({one: slotName(one, one.units[0], 0, false), two: slotName(two, two.units[1], 2, false)}));
+""")
+        self.assertEqual(out, {"one": "AMS 2 Pro Slot 1", "two": "AMS 2 Slot 3"})
 
     def test_kilograms_when_exact_weights_are_off(self):
         out = self.run_page(self.scenario({"exact_weight": False}))

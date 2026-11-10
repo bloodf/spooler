@@ -5594,8 +5594,9 @@ MAIN_PAGE = """
       if (ext) return "External";
       if (lv.heads) return "T" + (i + 1);
       if (u.kind === "ht") return "AMS HT";
-      const n = lv.units.filter(function (x) { return x.kind === "ams"; }).indexOf(u) + 1;
-      return (lv.unit_label || "AMS") + " " + n + " Slot " + (i + 1);
+      const ams = lv.units.filter(function (x) { return x.kind === "ams"; });
+      const unit = lv.unit_label && lv.units.length === 1 ? lv.unit_label : (lv.unit_label || "AMS") + " " + (ams.indexOf(u) + 1);
+      return unit + " Slot " + (i + 1);
     }
 
     function computeInUse() {
@@ -5610,7 +5611,8 @@ MAIN_PAGE = """
       (cfg || []).forEach(function (p) {
         (p.units || []).forEach(function (u, ui) {
           (u.slots || []).forEach(function (id, si) {
-            if (id && !found.has(String(id))) found.set(String(id), p.name + " \u00b7 " + (u.kind === "ext" ? "External" : "Slot " + (si + 1)));
+            const unit = u.kind === "ht" ? "AMS HT " : p.units.length > 1 ? "Unit " + (ui + 1) + " " : "";
+            if (id && !found.has(String(id))) found.set(String(id), p.name + " \u00b7 " + (u.kind === "ext" ? "External" : unit + "Slot " + (si + 1)));
           });
         });
       });
@@ -5833,16 +5835,15 @@ MAIN_PAGE = """
       });
       return [...stacks.entries()].map(function (e) {
         // Loaded spools first, then the rest in the list's order.
-        const items = e[1].slice().sort(function (a, b) {
-          return (inUse.has(String(b.id)) ? 1 : 0) - (inUse.has(String(a.id)) ? 1 : 0);
-        });
+        const loaded = function (s) { return shown("in_use") && inUse.has(String(s.id)); };
+        const items = e[1].slice().sort(function (a, b) { return (loaded(b) ? 1 : 0) - (loaded(a) ? 1 : 0); });
+        const used = items.filter(loaded).length;
         if (items.length < 2) return spoolRowHtml(items[0]);
         const f = items[0].filament || {};
         const group = {
           key: e[0], label: f.name || ("Spool #" + items[0].id), items: items, color: swatch(f),
-          sub: [(f.vendor || {}).name, f.material,
-            items.some(function (s) { return inUse.has(String(s.id)); })
-              ? items.filter(function (s) { return inUse.has(String(s.id)); }).length + " in use" : ""].filter(Boolean).join(" \u00b7 "),
+          sub: [shown("vendor") ? (f.vendor || {}).name : "", shown("material") ? f.material : "",
+            used ? used + " in use" : ""].filter(Boolean).join(" \u00b7 "),
         };
         return groupRowHtml(group, !openStacks.has(group.key), true);
       }).join("");
