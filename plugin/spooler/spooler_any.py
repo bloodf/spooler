@@ -6,7 +6,7 @@
 # name = "Spooler"
 # description = "Spoolman inventory for OrcaSlicer: auto-synced filament profiles and live printer slots"
 # author = "bloodf (fork of Spoolio by Dan J Moore)"
-# version = "0.9.5"
+# version = "0.10.0"
 # ///
 
 import asyncio
@@ -48,7 +48,7 @@ except (ImportError, AttributeError):
 _SLICING = hasattr(getattr(orca, "slicing", None), "SlicingPipelineCapabilityBase")
 
 PLUGIN_NAME = "Spooler"
-PLUGIN_VERSION = "0.9.5"
+PLUGIN_VERSION = "0.10.0"
 # Stamped per operating system by scripts/build.py.
 BUILD_TARGET = "any"
 
@@ -1064,16 +1064,22 @@ def profile_snapshot() -> dict | None:
     except Exception:
         log.exception("Could not read the presets")
         return None
-    _ui_snap.clear()
+    # Key by key, never empty in between: worker threads read it while this runs.
     _ui_snap.update(snap)
+    for key in set(_ui_snap) - set(snap):
+        _ui_snap.pop(key, None)
     return snap
 
 
 def _write_json(path: Path, value: object) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_name(f".{path.name}.{threading.get_ident()}.tmp")
-    tmp.write_text(json.dumps(value, indent=2, ensure_ascii=False), encoding="utf-8")
-    os.replace(tmp, path)
+    try:
+        tmp.write_text(json.dumps(value, indent=2, ensure_ascii=False), encoding="utf-8")
+        os.replace(tmp, path)
+    except OSError:
+        tmp.unlink(missing_ok=True)
+        raise
 
 
 def profile_digest(files: dict) -> str:
@@ -1139,6 +1145,70 @@ def _install_profiles(root: Path, snapshot: dict, files: dict, digest: str) -> N
     raise last or RuntimeError("No OrcaSlicer user folder accepted the presets")
 
 
+# --- Files shared with u1control --------------------------------------------------------
+# u1control (github.com/bloodf/u1control) runs the Snapmaker U1 from OrcaSlicer and reads these
+# from <OrcaSlicer data folder>/spooler/, so both plugins pick the same preset for a spool and
+# only one of them changes the plate's slots:
+#   profiles.json:   {"version": 1, "updated": <unix s>,
+#                     "filaments": {"<filament id>": {"<printer label>": "_local/spooler/<preset>"}}}
+#   keep_slots.json: {"active": true, "printer": "<label>", "ts": <unix s>} while Keep Slots Synced
+#                    runs, refreshed every pass; {"active": false, "ts": ...} once it stops.
+BRIDGE_PROFILES = "profiles.json"
+BRIDGE_KEEP = "keep_slots.json"
+_bridge: dict = {"profiles": None}
+
+
+def bridge_dir() -> Path:
+    """<OrcaSlicer data folder>/spooler, where u1control looks for these files."""
+    root = _orca_data_dir()
+    return root / PROFILE_BUNDLE if root else DATA_DIR
+
+
+def profile_map(by_key: dict, printers: list[dict]) -> dict:
+    """{"<filament id>": {"<printer label>": "_local/spooler/<preset>"}} for every generated preset."""
+    labels = {p["target"]: p["label"] for p in printers}
+    out: dict = {}
+    for (fid, target), name in sorted(by_key.items(), key=lambda item: (str(item[0][0]), item[0][1])):
+        if target in labels:
+            out.setdefault(str(fid), {})[labels[target]] = PROFILE_PREFIX + name
+    return out
+
+
+def publish_profiles(by_key: dict, printers: list[dict]) -> None:
+    """Write profiles.json when the presets changed (or it is missing). Never raises."""
+    filaments = profile_map(by_key, printers)
+    path = bridge_dir() / BRIDGE_PROFILES
+    if filaments == _bridge["profiles"] and path.exists():
+        return
+    try:
+        _write_json(path, {"version": 1, "updated": int(time.time()), "filaments": filaments})
+        _bridge["profiles"] = filaments
+    except OSError as exc:
+        log.warning("Could not write %s: %s", path, exc)
+
+
+def mark_keep_slots(active: bool, printer: str = "") -> None:
+    """Tell u1control whether Keep Slots Synced owns the plate's slots. Never raises."""
+    marker = {"active": True, "printer": printer, "ts": int(time.time())} if active else \
+        {"active": False, "ts": int(time.time())}
+    try:
+        _write_json(bridge_dir() / BRIDGE_KEEP, marker)
+    except OSError as exc:
+        log.warning("Could not write %s: %s", BRIDGE_KEEP, exc)
+
+
+def label_for_target(target: str) -> str:
+    """Spooler's label for a printer ("Snapmaker U1"), from the last snapshot; "" when unknown."""
+    return next((p["label"] for p in _ui_snap.get("printers") or [] if p["target"] == target), "")
+
+
+def location_names(target: str) -> tuple:
+    """The printer names a u1control location may start with for this printer: Spooler's label,
+    the printer model (the label without the nozzle Spooler adds when two presets share a model)."""
+    printer = next((p for p in _ui_snap.get("printers") or [] if p["target"] == target), {})
+    return tuple(name for name in dict.fromkeys((printer.get("label"), printer.get("model"))) if name)
+
+
 def profile_sync(spools: list[dict], snapshot: dict | None) -> dict:
     """Write and hot-reload the Spoolman filament presets. Never raises."""
     if not snapshot:
@@ -1155,6 +1225,7 @@ def profile_sync(spools: list[dict], snapshot: dict | None) -> dict:
                 raise RuntimeError("OrcaSlicer's data folder was not found")
             _install_profiles(root, snapshot, files, digest)
             _profiles.update(names=by_key, count=len(files), error="", failed=("", 0.0))
+            publish_profiles(by_key, snapshot.get("printers") or [])
             _report("Profile sync", None)
         except Exception as exc:
             _profiles.update(error=str(exc), failed=(digest, time.monotonic()))
@@ -1615,6 +1686,7 @@ def _live_tray(slot: int, tray: dict) -> dict:
         "rfid": bool(uid.strip("0")),
         "spool": tray.get("spool_id"),
         "profile": tray.get("profile") or "",
+        "linked": tray.get("linked") or "",
     }
 
 
@@ -1974,7 +2046,7 @@ def _spool_tray(slot: int, spool: dict, target: str, **extra) -> dict:
     colour = profile_colour(filament)
     return {"id": str(slot), "tray_type": str(filament.get("material") or ""),
             "tray_color": colour + "FF", "tray_sub_brands": str(filament.get("name") or _spool_label(spool)),
-            "remain": _spool_remain(spool), "spool_id": spool.get("id"),
+            "remain": _spool_remain(spool), "spool_id": spool.get("id"), "filament_id": filament.get("id"),
             "profile": profile_for_spool(spool, target), **extra}
 
 
@@ -1995,18 +2067,61 @@ def _spool_by_id(spool_id: object, spools: list[dict]) -> dict | None:
     return next((s for s in spools if str(s.get("id")) == str(spool_id) and not s.get("archived")), None)
 
 
+def _location_key(text: object) -> str:
+    return " ".join(str(text or "").split()).casefold()
+
+
+def _bound_here(location: object, names: tuple, number: int) -> int:
+    """How surely a location is u1control's binding of toolhead T<number> on this printer:
+    2 for "<name> T<n>" with one of its names, 1 for any name ending in the word "U1"
+    (u1control's printer name is "Snapmaker U1" unless renamed, e.g. "Workshop U1"; the oldest
+    form is "U1 T<n>"), 0 for no binding."""
+    key = _location_key(location)
+    suffix = f" t{number}"
+    if not key.endswith(suffix):
+        return 0
+    name = key[:-len(suffix)].strip()
+    if name in {_location_key(n) for n in names}:
+        return 2
+    return 1 if re.fullmatch(r"(?:.*\s)?u1", name) else 0
+
+
+def spool_at_location(spools: list[dict], printer: str | tuple, number: int) -> dict | None:
+    """The spool u1control bound to toolhead T<number> on stock U1 firmware, where the binding is
+    the spool's Spoolman location "<printer name> T<n>". Spooler only reads locations, never
+    writes them. A location naming this printer exactly beats one that only ends in "U1"; two
+    spools equally sure: the last used wins. Limit: two U1s on one system preset share their
+    names here, so a spool left at the other U1's location can still match."""
+    names = (printer,) if isinstance(printer, str) else tuple(printer)
+    scored = [(_bound_here(s.get("location"), names, number), s) for s in spools if not s.get("archived")]
+    best = max((score for score, _ in scored), default=0)
+    found = [s for score, s in scored if score and score == best]
+    if len(found) > 1:
+        found.sort(key=lambda s: str(s.get("last_used") or ""), reverse=True)
+        log.warning("Spools %s all have the location of %s T%d; using %s, the last used",
+                    ", ".join(str(s.get("id")) for s in found), (names or ("U1",))[0], number,
+                    found[0].get("id"))
+    return found[0] if found else None
+
+
 def slot_tray(slot: int, spool_id: object, uid: str, vendor: str, kind: str, rgba: str, label: str,
-              spools: list[dict], target: str) -> dict:
+              spools: list[dict], target: str, location: tuple | None = None, sub: str = "") -> dict:
     """A Bambu-shaped tray for one printer slot, matched to a Spoolman spool: by the spool id the
-    printer reports, else by RFID tag, else by vendor, material and colour."""
-    spool = _spool_by_id(spool_id, spools)
+    printer reports, else (location = (printer label, toolhead number)) by the Spoolman location
+    u1control binds it with, else by RFID tag, else by vendor, material and colour, with the
+    printer's filament sub type breaking a tie."""
+    spool, linked = _spool_by_id(spool_id, spools), ""
+    if spool is None and location:
+        spool = spool_at_location(spools, *location)
+        linked = "u1control" if spool is not None else ""
     if spool is None and uid:
         spool = match_spool({"tag_uid": uid}, spools)
     if spool is None and kind and rgba:
-        found = match_spools({"preset": "", "vendor": vendor, "material": kind, "colour": rgba[:6]}, spools)
+        found = match_spools({"preset": "", "vendor": vendor, "material": kind, "colour": rgba[:6],
+                              "sub_type": sub}, spools)
         spool = found[0] if found else None
     if spool is not None:
-        tray = _spool_tray(slot, spool, target, tag_uid=uid)
+        tray = _spool_tray(slot, spool, target, tag_uid=uid, **({"linked": linked} if linked else {}))
         return dict(tray, tray_color=rgba) if rgba else tray
     return {"id": str(slot), "tray_type": kind, "tray_color": rgba, "tray_sub_brands": label,
             "tag_uid": uid, "remain": None, "spool_id": None, "profile": ""}
@@ -2023,7 +2138,7 @@ def head_tray(index: int, config: dict, detect: dict, spools: list[dict], target
     uid = _card_uid(_list_at((detect or {}).get("info"), index))
     label = " ".join(part for part in (vendor, kind, "" if sub.upper() in ("", "NONE", "BASIC") else sub) if part)
     return slot_tray(index, _list_at(config.get("filament_spool_id"), index), uid, vendor, kind, rgba,
-                     label, spools, target)
+                     label, spools, target, location=(location_names(target), index + 1), sub=sub)
 
 
 LANE_MAX = 64  # more lanes than any filament changer has; a bad number can't build a huge list
@@ -2597,6 +2712,12 @@ def usage_track(dev_id: str, state: dict, has_state: bool) -> list[tuple]:
 
     The run is saved to disk while it lasts, so a dropped link or a restart picks it up again.
     """
+    # Only Bambu Live Link prints are booked here. Printers found from a preset's host address
+    # ("auto-..." ids: Moonraker, Anycubic) are not: on the Snapmaker U1 the u1control plugin
+    # books each toolhead's use to Spoolman, and Moonraker's own Spoolman integration books
+    # other Klipper printers, so booking them here too would count the filament twice.
+    if str(dev_id).startswith("auto-"):
+        return []
     job = state.get("job") or {}
     gcode = job.get("gcode_state")
     if not gcode or source() != "spoolman" or not state.get("link") or usage_mode() == "off":
@@ -3317,7 +3438,24 @@ def match_spools(slot: dict, spools: list[dict]) -> list[dict]:
             found.append((distance, exact, spool))
     # An exact colour beats a near one, and an exact material beats a variant.
     pool = [item for item in found if item[0] <= 1] or found
-    return [spool for *_, spool in [item for item in pool if item[1]] or pool]
+    spools_left = [spool for *_, spool in [item for item in pool if item[1]] or pool]
+    return sub_type_pick(spools_left, slot.get("sub_type"))
+
+
+def _sub_key(text: object) -> str:
+    """A filament name as the U1's sub type field holds it: u1control writes the Spoolman name
+    with spaces (and ; = quotes) as "_", cut to 32 characters. "_" and spaces count as one."""
+    return re.sub(r"[\s_;=\"']+", " ", str(text or "")).strip().casefold()
+
+
+def sub_type_pick(spools: list[dict], sub: object) -> list[dict]:
+    """The tied spools whose filament name is the printer's sub type, else all of them."""
+    key = _sub_key(sub)
+    if len(spools) < 2 or not key:
+        return spools
+    same = [s for s in spools if _sub_key(re.sub(r"[\s;=\"']+", "_",
+                                                 str((s.get("filament") or {}).get("name") or "").strip())[:32]) == key]
+    return same or spools
 
 
 def group_slots(slots: list[dict]) -> list[dict]:
@@ -4503,7 +4641,9 @@ MAIN_PAGE = """
       const profile = (t.profile || "").split("/").pop();
       const sub = [t.type, t.colour ? "#" + t.colour : ""].filter(Boolean).join(" \u00b7 ");
       const rfid = t.rfid ? '<div class="spool-rfid" title="RFID spool"><span>RFID</span></div>' : "";
-      const tip = profile ? ' title="OrcaSlicer preset: ' + esc(profile) + '"' : "";
+      const tipText = [profile ? "OrcaSlicer preset: " + profile : "",
+        t.linked === "u1control" ? "Spool linked by u1control" : ""].filter(Boolean).join(" \u00b7 ");
+      const tip = tipText ? ' title="' + esc(tipText) + '"' : "";
       return '<div class="spool-card"' + tip + '><div class="spool-body">' +
         '<div class="spool-swatch-col"><div class="spool-swatch" style="background:' + color + '"></div>' + rfid + '</div>' +
         '<div class="spool-main"><div class="spool-top"><div class="spool-title">' + esc(t.name || t.type) + '</div>' +
@@ -7322,10 +7462,19 @@ def keep_plan(trays: list[dict], slots: int, names: set[str], current: list, gen
         spool = trays[slot - 1].get("spool_id")
         held, system = current[slot - 1] if slot <= len(current) else ("", False)
         last = seen.get(slot)
-        if held != name and (last is None or last[0] != spool or (system and gen > last[1])):
+        if held != name and (last is None or last[0] != spool or (system and gen > last[1])) and \
+                not same_filament(held, trays[slot - 1].get("filament_id")):
             changes.append((slot, name))
         seen[slot] = (spool, gen)
     return changes
+
+
+def same_filament(held: str, filament_id: object) -> bool:
+    """A slot holds a Spooler preset of this filament, for some printer: what u1control may have
+    picked for the same spool. Keep Slots leaves it, so the two plugins never take turns."""
+    short = held[len(PROFILE_PREFIX):] if held.startswith(PROFILE_PREFIX) else ""
+    return bool(short) and filament_id is not None and any(
+        name == short and fid == filament_id for (fid, _target), name in _profiles["names"].items())
 
 
 SNAPSHOT_EVENTS = ("PresetSelected", "PresetSaved", "ProjectOpened", "NewProject")
@@ -7379,9 +7528,14 @@ class SpoolerKeepSlots(orca.script.ScriptPluginCapabilityBase):
         try:
             while _keep["run"] is run:
                 snap = dict(_ui_snap)
+                printer = label_for_target(snap.get("selected") or "")
+                if _keep["run"] is run:  # not after an unload marked it stopped
+                    mark_keep_slots(True, printer)
                 try:
                     if time.monotonic() - synced > REFRESH_SECS:
                         names, synced = sync_for(snap), time.monotonic()
+                        if _keep["run"] is run:  # the sync can take seconds: keep the marker fresh
+                            mark_keep_slots(True, printer)
                     trays = printer_trays(snap["host"])
                     for slot, name in keep_plan(trays, snap["slots"], names, snap.get("current") or [],
                                                 snap.get("gen", 0), seen):
@@ -7399,7 +7553,13 @@ class SpoolerKeepSlots(orca.script.ScriptPluginCapabilityBase):
         finally:
             if _keep["run"] is run:
                 _keep["run"] = None
+            mark_keep_slots(False)
         return orca.ExecutionResult.success("Stopped keeping the filament slots synced.")
+
+    def on_unload(self):
+        if _keep["run"] is not None:
+            _keep["run"] = None
+            mark_keep_slots(False)
 
 
 def permission_targets() -> dict:

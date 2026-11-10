@@ -3,6 +3,31 @@
 Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); entries before
 0.9.0 are Spoolio's.
 
+## [0.10.0] - Unreleased
+
+### Added
+- Works with [u1control](https://github.com/bloodf/u1control) on the Snapmaker U1:
+  - On stock firmware a toolhead's spool is the one u1control bound to it, read from the spool's
+    Spoolman location `<printer name> T<n>`: Spooler's label, the printer model, or any name ending
+    in "U1" (u1control's printer name, "Snapmaker U1" unless renamed; the oldest form is `U1 T<n>`).
+    The order is the spool id
+    the printer reports, then that location, then the RFID tag, then vendor, material and colour.
+    Archived spools never match; when two spools claim one toolhead the last used wins and a
+    warning is logged. The slot's tooltip says "Spool linked by u1control". Spooler still never
+    changes a spool's location.
+  - Spooler writes `profiles.json` to `<OrcaSlicer data folder>/spooler/`, listing the preset of
+    every Spoolman filament on every printer, so u1control picks the same preset.
+  - While Plugins > Run > "Spooler: Keep Slots Synced" runs it keeps `keep_slots.json` fresh, and
+    marks it stopped when it stops or the plugin unloads; u1control then leaves slot sync to it.
+  - When several spools match a toolhead's vendor, material and colour, the filament sub type
+    u1control writes on the printer picks the one with that filament name.
+  - Keep Slots Synced leaves a slot that holds a Spooler preset of the same filament, for any
+    printer, so the two plugins don't take turns changing it.
+
+### Changed
+- Filament used on Moonraker and Anycubic printers is still not booked by Spooler (u1control books
+  each U1 toolhead, Moonraker books other Klipper printers); this is now checked by a test.
+
 ## [0.9.5] - 2026-11-10
 
 ### Fixed

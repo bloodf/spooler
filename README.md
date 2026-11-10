@@ -52,6 +52,14 @@ the rest is automatic.
 - **Spool list:** spools of the same filament (vendor, name and colour) fold into one row with
   their total; click it to see each spool. The name filter and a colour filter, which picks a
   colour family from swatches, sit above the list.
+- **Works with u1control on the Snapmaker U1.** With [u1control](https://github.com/bloodf/u1control)
+  installed, the Printer tab uses the spool u1control bound to each toolhead (on stock firmware it
+  is the spool's Spoolman location, `Snapmaker U1 T1` and so on). Spooler publishes its preset names
+  in `<OrcaSlicer data folder>/spooler/profiles.json` so both pick the same preset, and while Keep
+  Slots Synced runs u1control leaves the plate's slots to it. Filament use on the U1 is booked by
+  u1control, not Spooler. The binding is found when u1control's printer name is Spooler's printer
+  label or model, or ends in "U1" (the default "Snapmaker U1", or e.g. "Workshop U1"); with two U1s
+  name them apart in u1control.
 - **Klipper/Moonraker printers are found for you.** Any printer preset with a host address appears
   in the ***Printer*** tab with no further setup:
   - **Snapmaker U1:** all four toolheads, matched to your Spoolman spools by the spool id the
