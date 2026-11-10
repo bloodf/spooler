@@ -233,9 +233,6 @@ class ButtonTest(unittest.TestCase):
         self.assertTrue('id="send-btn"' in page and 'type: "send"' in page, "no Send to Spoolman button")
 
 
-if __name__ == "__main__":
-    unittest.main()
-
 
 class NativeAndFieldsTest(SendTest):
     """Density, diameter and cost go to Spoolman's own fields; calibration fields feed presets."""
@@ -285,7 +282,7 @@ class AutoSendTest(unittest.TestCase):
     def setUp(self):
         self.started = []
         self.originals = (sp.start_send, sp.source, sp.get_settings)
-        sp.start_send = lambda post, edits=None: self.started.append(edits)
+        sp.start_send = lambda post, edits=None, auto=False: self.started.append(edits)
         sp.source = lambda: "spoolman"
         sp.get_settings = lambda: {}
         sp._auto.update(seen=None, sent=None, busy=False)
@@ -311,9 +308,21 @@ class AutoSendTest(unittest.TestCase):
         sp.auto_send(None)
         self.assertEqual(self.started, [])
 
+    def test_kept_settings_are_not_resent(self):
+        sp._auto["kept"]["X @Snapmaker U1"] = {"filament_flow_ratio"}
+        orca.host.preset_bundle = lambda: bundle({"filament_flow_ratio": "0.95", "fan_max_speed": "80"})
+        sp.auto_send(None)
+        sp.auto_send(None)
+        sp._auto["kept"].clear()
+        self.assertEqual([set(changes) for _, changes in self.started], [{"fan_max_speed"}])
+
     def test_off_in_settings(self):
         sp.get_settings = lambda: {"auto_send": False}
         orca.host.preset_bundle = lambda: bundle({"filament_flow_ratio": "0.95"})
         sp.auto_send(None)
         sp.auto_send(None)
         self.assertEqual(self.started, [])
+
+
+if __name__ == "__main__":
+    unittest.main()

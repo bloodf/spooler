@@ -6,7 +6,7 @@
 # name = "Spooler"
 # description = "Spoolman inventory for OrcaSlicer: auto-synced filament profiles and live printer slots"
 # author = "bloodf (fork of Spoolio by Dan J Moore)"
-# version = "0.9.1"
+# version = "0.9.2"
 # ///
 
 import asyncio
@@ -48,7 +48,7 @@ except (ImportError, AttributeError):
 _SLICING = hasattr(getattr(orca, "slicing", None), "SlicingPipelineCapabilityBase")
 
 PLUGIN_NAME = "Spooler"
-PLUGIN_VERSION = "0.9.1"
+PLUGIN_VERSION = "0.9.2"
 # Stamped per operating system by scripts/build.py.
 BUILD_TARGET = "any"
 
@@ -863,13 +863,14 @@ def extra_number(filament: dict, field: str) -> float | None:
 
 
 _fields_ready: set = set()
+_fields_failed: dict = {}  # Spoolman address: when adding the fields last failed, to retry later
 
 
 def ensure_fields() -> None:
     """Add Spooler's calibration fields to Spoolman's filament form, once per Spoolman address.
     Never raises: a Spoolman that refuses them only means the fields can't be filled in there."""
     url = clean_url(get_settings().get("spoolman_url"))
-    if not url or url in _fields_ready:
+    if not url or url in _fields_ready or time.monotonic() - _fields_failed.get(url, -PROFILE_RETRY) < PROFILE_RETRY:
         return
     try:
         have = {field.get("key") for field in spoolman_call("GET", "field/filament") or []}
@@ -883,7 +884,7 @@ def ensure_fields() -> None:
         _fields_ready.add(url)
     except Exception as exc:
         log.warning("Could not add Spooler's fields to Spoolman: %s", exc)
-        _fields_ready.add(url)  # Don't retry on every refresh; a restart tries again.
+        _fields_failed[url] = time.monotonic()
 
 
 def orca_settings_data(filament: dict) -> dict | None:
@@ -1296,6 +1297,7 @@ def send_changes(name: str, changes: dict, snapshot: dict) -> str:
         spoolman_call("PATCH", f"filament/{int(fid)}", patch)
     # Always, so the presets also take the values Spoolman kept. OrcaSlicer's reload keeps every
     # unsaved edit, so a kept setting's edit stays unsaved for the user to send again or discard.
+    _auto["kept"][name] = set(kept)
     result = load_spools_synced(snapshot) or {}
     rebuild_error = (result.get("profiles") or {}).get("error") if result.get("ok") else result.get("error")
     notes = []
@@ -1322,7 +1324,7 @@ def native_value(key: str, text: str, filament: dict) -> float | None:
     if key != "filament_cost":
         return number
     weight = _num(filament.get("weight"))
-    return round(number * weight / 1000, 2) if weight else None
+    return round(number * weight / 1000, 6) if weight else None
 
 
 # Edits made in OrcaSlicer reach Spoolman by themselves: every tick the open Spooler preset's
@@ -1330,7 +1332,7 @@ def native_value(key: str, text: str, filament: dict) -> float | None:
 # being typed isn't sent half done) they are sent. The same changes are never sent twice, so a
 # setting Spoolman kept its own value for doesn't loop. "auto_send": false in the settings file
 # turns it off; Send to Spoolman still works.
-_auto: dict = {"seen": None, "sent": None, "busy": False}
+_auto: dict = {"seen": None, "sent": None, "busy": False, "kept": {}}
 
 
 def auto_send(post) -> None:
@@ -1342,20 +1344,24 @@ def auto_send(post) -> None:
     except Exception:
         _auto["seen"] = None
         return
-    changes = {key: value for key, value in changes.items() if key in ORCA_SETTINGS_KEYS}
+    # A setting Spoolman kept its own value for is only sent again by hand.
+    kept = _auto["kept"].get(name, set())
+    changes = {key: value for key, value in changes.items() if key in ORCA_SETTINGS_KEYS and key not in kept}
     mark = (name, tuple(sorted((key, value[0]) for key, value in changes.items())))
     if not changes or mark == _auto["sent"] or mark != _auto["seen"]:
         _auto["seen"] = mark
         return
     _auto["sent"] = mark
     log.info("Sending %s's edits to Spoolman", name)
-    start_send(post, (name, changes))
+    start_send(post, (name, changes), auto=True)
 
 
-def start_send(post, edits: tuple | None = None) -> None:
+def start_send(post, edits: tuple | None = None, auto: bool = False) -> None:
     """Send the unsaved changes of the Spooler preset open in OrcaSlicer to Spoolman. Call it on the
     UI thread; post() gets {"type": "sent", "ok": ..., "text": ...} when it is done."""
     try:
+        if _auto["busy"]:
+            raise RuntimeError("Already sending to Spoolman; try again in a moment.")
         if source() != "spoolman":
             raise RuntimeError("Sending needs Spoolman as the source.")
         snapshot = refresh_snapshot()
@@ -1364,8 +1370,12 @@ def start_send(post, edits: tuple | None = None) -> None:
         name, changes = edits or edited_changes()
     except Exception as exc:
         log.warning("Send to Spoolman: %s", exc)
+        if auto:
+            _auto["sent"] = None  # so the next tick tries again
         post({"type": "sent", "ok": False, "text": str(exc)})
         return
+    if not auto:
+        _auto["kept"].pop(name, None)
 
     def worker():
         try:
@@ -1373,6 +1383,8 @@ def start_send(post, edits: tuple | None = None) -> None:
         except Exception as exc:
             log.exception("Sending %s to Spoolman failed", name)
             text, ok = _spoolman_error(exc), False
+            if auto:
+                _auto["sent"] = None
         finally:
             _auto["busy"] = False
         post({"type": "sent", "ok": ok, "text": text})
