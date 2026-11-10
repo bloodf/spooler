@@ -3,6 +3,25 @@
 Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); entries before
 0.9.0 are Spoolio's.
 
+## [0.12.0] - Unreleased
+
+### Added
+- Settings > Display switches every part of the Spools and Printer tabs on or off: grouping of
+  spools of the same filament, where a spool is loaded, the manufacturer tag, material, colour
+  code, diameter, RFID badge, remaining bar, Spoolman location, spool number and exact weights; and
+  on each printer slot the manufacturer, material, colour code, grams left, remaining bar, spool
+  number and location, OrcaSlicer preset and RFID badge.
+- Printer slots (Snapmaker U1 toolheads, AMS slots, lanes) show the loaded spool in full: its
+  manufacturer, material and colour, grams left of the spool's weight, spool number and location,
+  whether u1control linked it, and its OrcaSlicer preset.
+- A spool loaded in a printer shows where ("In Use · Snapmaker U1 · T1"), and inside a group the
+  loaded spools come first.
+
+### Changed
+- Weights are exact (2,380 g, not 2.38 kg) unless Settings > Display says otherwise, and a group of
+  spools shows what is left of the group's total ("1,380 g of 2,000 g").
+- Grouped spools stand out as their own card, with the spools inside indented under it.
+
 ## [0.11.1] - 2026-11-10
 
 Documentation only; the plugin is the same as 0.11.0.
