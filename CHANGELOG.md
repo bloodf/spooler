@@ -3,6 +3,13 @@
 Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); entries before
 0.9.0 are Spoolio's.
 
+## [0.9.4] - 2026-11-10
+
+### Changed
+- Spooler declares the access it needs when it loads: its data folder, its worker threads and the
+  fixed addresses it calls (the GitHub release check and Bambu Cloud sign-in). OrcaSlicer asks
+  once; Spoolman, Moonraker and printer addresses are still asked for on first use.
+
 ## [0.9.3] - 2026-11-10
 
 Everything in 0.9.2, which never reached Orca Cloud.

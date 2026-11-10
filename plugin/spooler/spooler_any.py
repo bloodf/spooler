@@ -6,7 +6,7 @@
 # name = "Spooler"
 # description = "Spoolman inventory for OrcaSlicer: auto-synced filament profiles and live printer slots"
 # author = "bloodf (fork of Spoolio by Dan J Moore)"
-# version = "0.9.3"
+# version = "0.9.4"
 # ///
 
 import asyncio
@@ -48,7 +48,7 @@ except (ImportError, AttributeError):
 _SLICING = hasattr(getattr(orca, "slicing", None), "SlicingPipelineCapabilityBase")
 
 PLUGIN_NAME = "Spooler"
-PLUGIN_VERSION = "0.9.3"
+PLUGIN_VERSION = "0.9.4"
 # Stamped per operating system by scripts/build.py.
 BUILD_TARGET = "any"
 
@@ -7403,8 +7403,32 @@ class SpoolerKeepSlots(orca.script.ScriptPluginCapabilityBase):
 
 
 @orca.plugin
+def permission_targets() -> dict:
+    """What Spooler declares to OrcaSlicer up front: its data folder, its worker threads and the
+    fixed addresses it calls. Spoolman, Moonraker and printer addresses are the user's own, so
+    OrcaSlicer asks for them on first use."""
+    urls = [RELEASE_API]
+    for region in BAMBU_HOSTS:
+        urls += [BAMBU_HOSTS[region] + LOGIN_PATH, BAMBU_HOSTS[region] + CODE_PATH,
+                 TFA_HOSTS[region] + LOGIN_PATH]
+    return {"fs_readwrite": [str(DATA_DIR)], "network_http": urls, "threading": True}
+
+
+def request_permissions() -> None:
+    """Declare Spooler's access while the plugin registers; OrcaSlicer builds without the call
+    just prompt on first use."""
+    request = getattr(orca, "request_permissions", None)
+    if request is None:
+        return
+    try:
+        request(**permission_targets())
+    except Exception:
+        log.exception("Could not declare permissions")
+
+
 class SpoolerPlugin(orca.base):
     def register_capabilities(self):
+        request_permissions()
         if _PAGES:
             orca.register_capability(SpoolerPage)
         else:
