@@ -3,6 +3,16 @@
 Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); entries before
 0.9.0 are Spoolio's.
 
+## [0.12.1] - Unreleased
+
+### Changed
+- Spool cards are redrawn: a group of spools of the same filament now looks exactly like a single
+  spool's card (swatch, name, weight, bar and detail line), with the number of spools on its swatch
+  and an arrow. Closed, it takes one cell of the grid like any spool; open, it spans the row and
+  shows its spools inside one panel.
+- The manufacturer is part of the card's detail line instead of a badge on top of the card.
+- Cards in the same row of the two-column list have the same height.
+
 ## [0.12.0] - 2026-11-10
 
 ### Added
