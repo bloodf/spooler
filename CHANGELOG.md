@@ -17,12 +17,22 @@ Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); 
   filament settings go into the filament's `orca_settings` field, in the section for that preset's
   printer, and the presets are rebuilt. A setting changed in Spoolman meanwhile keeps Spoolman's
   value.
-- `orca_settings` also takes density, diameter, cost, Z shrinkage and notes.
+- `orca_settings` also takes Z shrinkage and notes.
+- Preset edits made in OrcaSlicer are sent to Spoolman by themselves once they have stayed the same
+  for a few seconds while the Spooler tab is open; `"auto_send": false` in the settings file turns
+  this off. Density, diameter and cost are written to Spoolman's own filament fields.
+- Spooler adds Flow ratio, Pressure advance and Max volumetric speed number fields to Spoolman's
+  filament form; the presets take them for every printer.
+- Spools of the same filament and colour fold into one accordion row showing their total weight.
+- The name filter is always shown, next to a new colour filter with colour swatches.
 - Klipper filament changers run by AFC, Happy Hare or anything else that writes Moonraker's
   `lane_data`: every lane shows in the Printer tab, matched to its Spoolman spool, and Load Printer
   Filaments fills the plate's slots lane by lane.
 - Plugins > Run > "Spooler: Keep Slots Synced" keeps the plate's slots on the lanes' presets while
   it runs; run it again to stop it.
+
+### Fixed
+- A printer reporting an absurd lane number no longer builds a huge lane list.
 
 ### Changed
 - Publishing a GitHub release publishes it to Orca Cloud.

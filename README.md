@@ -31,18 +31,27 @@ the rest is automatic.
     slow-down settings, shrinkage (also in Z), softening temperature, density, diameter, cost and
     notes. Other keys are ignored, and so is text that isn't one number (say `"0,95"`) for a number
     setting.
+  - Spooler adds three number fields to Spoolman's filament form, ***Flow ratio***,
+    ***Pressure advance*** and ***Max volumetric speed***, for the values people calibrate most.
+    They apply to every printer; a value in `orca_settings` wins over them.
   - The presets follow Spoolman: new filaments appear, filaments whose spools are all archived
     disappear, and changes are picked up on each refresh (every 60 seconds while the Spooler tab
     is open).
   - "Your printers" are the printers behind every printer preset with a host address
     (Printer settings > Connection), plus the printer currently selected.
-- **Change a preset in OrcaSlicer and send it to Spoolman.** Edit a Spooler preset in OrcaSlicer's
-  filament settings, then press ***Send to Spoolman*** on the Spools tab instead of Save. The
-  changed settings go into the filament's `orca_settings` field, in the section for that preset's
-  printer (the field is created when Spoolman doesn't have it), and the presets are rebuilt, so
+- **Change a preset in OrcaSlicer and it reaches Spoolman.** Edit a Spooler preset in OrcaSlicer's
+  filament settings and leave it a few seconds: while the Spooler tab is open the change is sent
+  to Spoolman by itself (or press ***Send to Spoolman*** on the Spools tab; never Save, which makes
+  a copy that stops following Spoolman). Density, diameter and cost go to Spoolman's own fields;
+  the other settings go into the filament's `orca_settings` field, in the section for that preset's
+  printer (the field is created when Spoolman doesn't have it). The presets are then rebuilt, so
   the preset keeps your change and shows no unsaved changes. A setting changed in Spoolman
   meanwhile keeps Spoolman's value and stays unsaved in OrcaSlicer, for you to send again or
-  discard. Colour, vendor, material and name are changed in Spoolman.
+  discard. Colour, vendor, material and name are changed in Spoolman. To send only by hand, set
+  `"auto_send": false` in Spooler's settings file.
+- **Spool list:** spools of the same filament (vendor, name and colour) fold into one row with
+  their total; click it to see each spool. The name filter and a colour filter, which picks a
+  colour family from swatches, sit above the list.
 - **Klipper/Moonraker printers are found for you.** Any printer preset with a host address appears
   in the ***Printer*** tab with no further setup:
   - **Snapmaker U1:** all four toolheads, matched to your Spoolman spools by the spool id the

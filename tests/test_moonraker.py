@@ -172,6 +172,10 @@ class LaneTest(unittest.TestCase):
         self.assertEqual(units[1]["tray"][1]["id"], "1")
         self.assertEqual(units[1]["tray"][1]["spool_id"], 34)
 
+    def test_absurd_lane_number_is_ignored(self):
+        units = self.units({"T0": lane(1, 34), "bad": lane(10**9, 34)})
+        self.assertEqual(len(units), 1)
+
     def test_live_state_shows_lanes(self):
         doc, _ = sp.moon_report({}, None, SPOOLS, U1, LANES)
         sp._live["printers"].clear()

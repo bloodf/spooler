@@ -235,3 +235,85 @@ class ButtonTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class NativeAndFieldsTest(SendTest):
+    """Density, diameter and cost go to Spoolman's own fields; calibration fields feed presets."""
+
+    def patches(self):
+        return [body for method, path, body in self.calls if method == "PATCH"]
+
+    def test_native_settings_patch_spoolmans_fields(self):
+        self.filament["weight"] = 1000
+        self.filament["extra"]["orca_settings"] = stored({"*": {"filament_density": "1.2"}})
+        self.send(filament_density=("1.27", "1.2"), filament_cost=("25", "20"))
+        patch = self.patches()[0]
+        self.assertEqual((patch["density"], patch["price"]), (1.27, 25.0))
+        # The shadowing copy is removed so a later Spoolman edit still reaches the preset.
+        self.assertEqual(json.loads(json.loads(patch["extra"]["orca_settings"])), {"*": {}})
+
+    def test_native_only_leaves_orca_settings_alone(self):
+        self.send(filament_diameter=("1.75", "1.8"))
+        self.assertEqual(self.patches(), [{"diameter": 1.75}])
+
+    def test_calibration_fields_reach_the_preset_and_orca_settings_wins(self):
+        filament = {"id": 1, "name": "X", "material": "PLA", "extra": {
+            "orca_flow_ratio": "0.96", "orca_pressure_advance": "0.03", "orca_max_volumetric_speed": "\"\"",
+            "orca_settings": stored({U1: {"filament_flow_ratio": "0.9"}})}}
+        preset = sp.profile_preset(filament, "X", "Generic PLA", U1)
+        self.assertEqual(preset["pressure_advance"], ["0.03"])
+        self.assertEqual(preset["enable_pressure_advance"], ["1"])
+        self.assertEqual(preset["filament_flow_ratio"], ["0.9"])
+        self.assertNotIn("filament_max_volumetric_speed", preset)
+        self.assertEqual(sp.profile_preset(filament, "X", "Generic PLA", "Other")["filament_flow_ratio"], ["0.96"])
+
+    def test_ensure_fields_adds_missing_ones_once(self):
+        self.fields = [{"key": "orca_flow_ratio"}]
+        sp._fields_ready.clear()
+        settings = sp.get_settings
+        sp.get_settings = lambda: {"spoolman_url": "http://spoolman:7912"}
+        try:
+            sp.ensure_fields()
+            sp.ensure_fields()
+        finally:
+            sp.get_settings = settings
+        posts = [path for method, path, _ in self.calls if method == "POST"]
+        self.assertEqual(posts, ["field/filament/orca_pressure_advance", "field/filament/orca_max_volumetric_speed"])
+
+
+class AutoSendTest(unittest.TestCase):
+    def setUp(self):
+        self.started = []
+        self.originals = (sp.start_send, sp.source, sp.get_settings)
+        sp.start_send = lambda post, edits=None: self.started.append(edits)
+        sp.source = lambda: "spoolman"
+        sp.get_settings = lambda: {}
+        sp._auto.update(seen=None, sent=None, busy=False)
+
+    def tearDown(self):
+        sp.start_send, sp.source, sp.get_settings = self.originals
+        orca.host.preset_bundle = None
+
+    def test_sends_once_the_edit_settles_and_never_twice(self):
+        orca.host.preset_bundle = lambda: bundle({"filament_flow_ratio": "0.95"})
+        sp.auto_send(None)
+        self.assertEqual(self.started, [])  # first sight: maybe still typing
+        sp.auto_send(None)
+        self.assertEqual(self.started, [("X @Snapmaker U1", {"filament_flow_ratio": ("0.95", "0.98")})])
+        sp.auto_send(None)
+        sp.auto_send(None)
+        self.assertEqual(len(self.started), 1)
+
+    def test_a_changing_value_waits(self):
+        orca.host.preset_bundle = lambda: bundle({"filament_flow_ratio": "0.9"})
+        sp.auto_send(None)
+        orca.host.preset_bundle = lambda: bundle({"filament_flow_ratio": "0.95"})
+        sp.auto_send(None)
+        self.assertEqual(self.started, [])
+
+    def test_off_in_settings(self):
+        sp.get_settings = lambda: {"auto_send": False}
+        orca.host.preset_bundle = lambda: bundle({"filament_flow_ratio": "0.95"})
+        sp.auto_send(None)
+        sp.auto_send(None)
+        self.assertEqual(self.started, [])
