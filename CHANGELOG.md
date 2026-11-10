@@ -13,11 +13,27 @@ Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); 
 - Anycubic Kobra X (and other Anycubic printers in LAN mode): the multi-colour box slots and the
   external spool show in the Printer tab, matched to Spoolman spools by material and colour. The
   printer is found from its preset's host address, like Moonraker printers.
+- Send to Spoolman on the Spools tab: the unsaved changes of a Spooler preset open in OrcaSlicer's
+  filament settings go into the filament's `orca_settings` field, in the section for that preset's
+  printer, and the presets are rebuilt. A setting changed in Spoolman meanwhile keeps Spoolman's
+  value.
+- `orca_settings` also takes density, diameter, cost, Z shrinkage and notes.
+- Klipper filament changers run by AFC, Happy Hare or anything else that writes Moonraker's
+  `lane_data`: every lane shows in the Printer tab, matched to its Spoolman spool, and Load Printer
+  Filaments fills the plate's slots lane by lane.
+- Plugins > Run > "Spooler: Keep Slots Synced" keeps the plate's slots on the lanes' presets while
+  it runs; run it again to stop it.
 
 ### Changed
 - Publishing a GitHub release publishes it to Orca Cloud.
 - The Spoolman bed temperature is set on every bed plate type, not only the smooth and textured
   PEI plates.
+- In `orca_settings`, text that isn't one number (say `"0,95"`) is ignored for a number setting
+  instead of reaching OrcaSlicer as several values.
+
+### Fixed
+- Klipper printers whose Moonraker answers missing objects with an empty one never showed the
+  active spool.
 
 ## [0.9.1] - 2026-11-09
 

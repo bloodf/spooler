@@ -28,6 +28,9 @@ class Preset:
     def config_value(self, key):
         return _serialize(self._config[key]) if key in self._config else None
 
+    def config_keys(self):
+        return list(self._config)
+
     def label(self, no_alias=False):
         return self.name
 

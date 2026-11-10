@@ -9,6 +9,7 @@
 # version = "0.9.1"
 # ///
 
+import asyncio
 import base64
 import ftplib
 import hashlib
@@ -655,8 +656,11 @@ ORCA_SETTINGS_KEYS = frozenset({
     "filament_deretraction_speed", "filament_z_hop", "filament_ironing_flow",
     "filament_ironing_speed", "filament_ironing_spacing", "filament_ironing_inset",
     "fan_min_speed", "fan_max_speed", "slow_down_layer_time", "slow_down_min_speed",
-    "filament_shrink", "temperature_vitrification",
+    "filament_shrink", "temperature_vitrification", "filament_density", "filament_diameter",
+    "filament_cost", "filament_shrinkage_compensation_z", "filament_notes",
 })
+# The one listed setting OrcaSlicer holds as text; every other is a number, a percentage or on/off.
+TEXT_KEYS = frozenset({"filament_notes"})
 PROFILE_RETRY = 300  # seconds before a refused set of presets is offered again
 _profiles: dict = {"names": {}, "error": "", "count": 0, "failed": ("", 0.0)}
 _profile_lock = threading.Lock()
@@ -814,27 +818,50 @@ def profile_preset(filament: dict, name: str, parent: str, target: str) -> dict:
     return preset
 
 
-def orca_settings(filament: dict, target: str) -> dict:
-    """The allowed keys of the filament's orca_settings extra field that apply to one printer,
-    as preset values. A field that isn't a JSON object is ignored."""
+def orca_settings_data(filament: dict) -> dict | None:
+    """The filament's orca_settings field as {section: settings}, a flat object being the "*"
+    section; {} when the field is empty, None when it isn't a JSON object."""
     raw = (filament.get("extra") or {}).get(ORCA_SETTINGS_FIELD)
     try:
         data = json.loads(raw) if isinstance(raw, str) else raw
-        data = json.loads(data) if isinstance(data, str) else data  # Spoolman stores text as JSON
+        data = json.loads(data) if isinstance(data, str) and data.strip() else data  # Spoolman stores text as JSON
     except ValueError:
+        return None
+    if data is None or (isinstance(data, str) and not data.strip()):
         return {}
     if not isinstance(data, dict):
+        return None
+    return data if any(isinstance(v, dict) for v in data.values()) else {"*": data}
+
+
+def _number(text: str) -> float | None:
+    try:
+        return float(text.rstrip("%"))
+    except ValueError:
+        return None
+
+
+def _one_value(key: str, value: object) -> bool:
+    """A value OrcaSlicer can take for the setting: text holding one number, percentage or "nil"
+    for a number setting, since "0,95" would reach it as the two values 0 and 95."""
+    if isinstance(value, bool) or not isinstance(value, (str, int, float)):
+        return False
+    return key in TEXT_KEYS or not isinstance(value, str) or value == "nil" or _number(value) is not None
+
+
+def orca_settings(filament: dict, target: str) -> dict:
+    """The allowed keys of the filament's orca_settings extra field that apply to one printer,
+    as preset values. A field that isn't a JSON object is ignored."""
+    data = orca_settings_data(filament)
+    if not data:
         return {}
-    if not any(isinstance(v, dict) for v in data.values()):
-        data = {"*": data}
     low = target.lower()
     sections = [data.get("*")] + [v for k, v in data.items() if k != "*" and k.lower() in low]
     out = {}
     for section in sections:
         for key, value in (section.items() if isinstance(section, dict) else ()):
             values = value if isinstance(value, list) else [value]
-            if key in ORCA_SETTINGS_KEYS and values and all(
-                    isinstance(v, (str, int, float)) and not isinstance(v, bool) for v in values):
+            if key in ORCA_SETTINGS_KEYS and values and all(_one_value(key, v) for v in values):
                 out[key] = [v if isinstance(v, str) else _fmt(v) for v in values]
     return out
 
@@ -955,11 +982,16 @@ def profile_snapshot() -> dict | None:
             _parent_cache.update(key=key, parents=parent_candidates(filaments))
         printers = target_printers(bundle)
         selected = _root_printer(bundle.printers, bundle.printers.selected_preset())
+        current = bundle.current_filament_preset_names()
         snap = {"names": set(filaments.preset_names()), "parents": _parent_cache["parents"],
                 "printers": printers, "selected": selected,
                 "folder": profile_user_folder(bundle, _orca_data_dir()),
                 "host": moon_base(bundle.full_config_value("print_host")),
-                "slots": len(bundle.current_filament_preset_names())}
+                "slots": len(current),
+                # Each slot's preset and whether it is a system one, as OrcaSlicer's own sync picks.
+                "current": [(name, bool(getattr(filaments.find_preset(name), "is_system", False)))
+                            for name in current],
+                "gen": _ui_snap.get("gen", 0) + 1}
     except Exception:
         log.exception("Could not read the presets")
         return None
@@ -1083,6 +1115,146 @@ def profile_for_spool(spool: dict | None, target: str) -> str:
     filament = (spool or {}).get("filament") or {}
     name = _profiles["names"].get((filament.get("id"), target))
     return PROFILE_PREFIX + name if name else ""
+
+# --- Sending preset edits to Spoolman ----------------------------------------------------
+# OrcaSlicer won't save over a plugin's preset (Save makes a separate user copy that stops
+# following Spoolman), so edits made in its filament settings are sent from the Spooler tab
+# instead: each changed setting goes into the filament's orca_settings field, in the section for
+# the preset's printer, then the presets are rebuilt. The reload keeps the unsaved edits, which
+# now match the preset, so none are left.
+
+
+def spoolman_call(method: str, path: str, body: object = None) -> object:
+    """One Spoolman API request with a JSON body and answer; raises urllib's errors."""
+    url = f"{clean_url(get_settings().get('spoolman_url'))}/api/v1/{path}"
+    data = None if body is None else json.dumps(body).encode("utf-8")
+    request = urllib.request.Request(url, data=data, method=method, headers={"Content-Type": "application/json"})
+    with urllib.request.urlopen(request, timeout=TIMEOUT) as resp:
+        return json.loads(resp.read().decode("utf-8") or "null")
+
+
+def orca_items(text: str, key: str) -> list[str]:
+    """A setting's values as config_value() writes them: numbers comma separated, text semicolon
+    separated and, when it holds spaces or special characters, quoted with C escapes."""
+    if key not in TEXT_KEYS:
+        return [item.strip() for item in text.split(",")]
+    items = []
+    for quoted, plain in re.findall(r'"((?:[^"\\]|\\.)*)"|([^;]+)', text):
+        unescape = {"n": "\n", "r": "\r"}
+        items.append(re.sub(r"\\(.)", lambda m: unescape.get(m.group(1), m.group(1)), quoted)
+                     if quoted or not plain else plain.strip())
+    return items or [""]
+
+
+def _same(first: list[str], second: list[str]) -> bool:
+    """The same values, as text or as numbers ("99.5" and "99.5%"); one value stands for every
+    nozzle variant, as in the presets."""
+    if len(first) == 1:
+        first = first * len(second)
+    if len(second) == 1:
+        second = second * len(first)
+    return len(first) == len(second) and all(
+        a == b or (_six_digits(a) is not None and _six_digits(a) == _six_digits(b)) for a, b in zip(first, second))
+
+
+def _six_digits(text: str) -> str | None:
+    """A number as OrcaSlicer keeps it, 6 significant digits ("0.03256789" is kept as 0.0325679)."""
+    number = _number(text)
+    return None if number is None else f"{number:.6g}"
+
+
+def edited_changes() -> tuple[str, dict]:
+    """(preset name, {setting: (edited text, saved text)}) for the Spooler preset open in
+    OrcaSlicer's filament settings. Call it on the UI thread; raises RuntimeError saying what to do."""
+    filaments = orca.host.preset_bundle().filaments
+    edited = filaments.get_edited_preset()
+    saved = filaments.find_preset(edited.name)
+    if saved is None or not edited.name.startswith(PROFILE_PREFIX):
+        raise RuntimeError("Open a Spooler preset in OrcaSlicer's filament settings and change it first.")
+    name = edited.name[len(PROFILE_PREFIX):]
+    changes = {key: (edited.config_value(key), saved.config_value(key)) for key in edited.config_keys()
+               if edited.config_value(key) != saved.config_value(key)}
+    if not changes:
+        raise RuntimeError(f"{name} has no unsaved changes to send.")
+    return name, changes
+
+
+def send_changes(name: str, changes: dict, snapshot: dict) -> str:
+    """Write a Spooler preset's changed settings into its filament's orca_settings field, in the
+    section for the preset's printer, and rebuild the presets. Returns what happened, for the user.
+    Runs on a worker thread."""
+    fid, target = next((key for key, known in _profiles["names"].items() if known == name), (None, ""))
+    if fid is None:
+        raise RuntimeError(f"{name} is no longer a Spooler preset. Refresh, then send it again.")
+    filament = spoolman_call("GET", f"filament/{int(fid)}")
+    data = orca_settings_data(filament)
+    if data is None:  # Never overwrite what can't be read back.
+        raise RuntimeError(f"The {ORCA_SETTINGS_FIELD} field of {name}'s filament isn't a JSON object; "
+                           "fix it in Spoolman, then send again.")
+    # What Spoolman gives this printer now; a setting that differs from what the preset was made
+    # from was changed in Spoolman meanwhile, and Spoolman's value is kept.
+    now = profile_preset(filament, name, "", target)
+    section, sent, kept, other = {}, [], [], []
+    for key, (text, saved) in sorted(changes.items()):
+        if key not in ORCA_SETTINGS_KEYS:
+            other.append(key)
+        elif key in now and not _same(now[key], orca_items(saved or "", key)):
+            kept.append(key)
+        else:
+            items = orca_items(text, key)
+            section[key] = items[0] if len(items) == 1 else items
+            sent.append(key)
+    if section:
+        if ORCA_SETTINGS_FIELD not in {field["key"] for field in spoolman_call("GET", "field/filament")}:
+            spoolman_call("POST", f"field/filament/{ORCA_SETTINGS_FIELD}",
+                          {"name": "Orca settings", "field_type": "text"})
+        # Last, so it beats any other section that matches the printer.
+        data[target] = {**data.pop(target, {}), **section}
+        # Every field goes back, as some Spoolman versions replace the whole extra map on a PATCH.
+        extra = {**(filament.get("extra") or {}), ORCA_SETTINGS_FIELD: json.dumps(json.dumps(data))}
+        spoolman_call("PATCH", f"filament/{int(fid)}", {"extra": extra})
+    # Always, so the presets also take the values Spoolman kept. OrcaSlicer's reload keeps every
+    # unsaved edit, so a kept setting's edit stays unsaved for the user to send again or discard.
+    result = load_spools_synced(snapshot) or {}
+    rebuild_error = (result.get("profiles") or {}).get("error") if result.get("ok") else result.get("error")
+    notes = []
+    if sent:
+        notes.append(f"Sent {', '.join(sent)} to Spoolman for {name}.")
+    if kept:
+        notes.append(f"Kept Spoolman's newer value for {', '.join(kept)}: the preset now has it, and your "
+                     "change stays unsaved; send again to use yours, or discard it.")
+    if other:
+        notes.append(f"Not sent: {', '.join(other)}. Spoolman's {ORCA_SETTINGS_FIELD} field holds only "
+                     "calibration settings; colour, vendor, material and name come from its own fields.")
+    if rebuild_error:
+        notes.append(f"The presets were not rebuilt: {rebuild_error}")
+    return " ".join(notes)
+
+
+def start_send(post) -> None:
+    """Send the unsaved changes of the Spooler preset open in OrcaSlicer to Spoolman. Call it on the
+    UI thread; post() gets {"type": "sent", "ok": ..., "text": ...} when it is done."""
+    try:
+        if source() != "spoolman":
+            raise RuntimeError("Sending needs Spoolman as the source.")
+        snapshot = refresh_snapshot()
+        if snapshot is None:
+            raise RuntimeError("Could not read OrcaSlicer's presets.")
+        name, changes = edited_changes()
+    except Exception as exc:
+        log.warning("Send to Spoolman: %s", exc)
+        post({"type": "sent", "ok": False, "text": str(exc)})
+        return
+
+    def worker():
+        try:
+            text, ok = send_changes(name, changes, snapshot), True
+        except Exception as exc:
+            log.exception("Sending %s to Spoolman failed", name)
+            text, ok = _spoolman_error(exc), False
+        post({"type": "sent", "ok": ok, "text": text})
+
+    threading.Thread(target=worker, daemon=True).start()
 
 
 PRINTER_SLOTS = {"ams": 4, "ht": 1, "ext": 1}
@@ -1629,9 +1801,25 @@ def _spool_by_id(spool_id: object, spools: list[dict]) -> dict | None:
     return next((s for s in spools if str(s.get("id")) == str(spool_id) and not s.get("archived")), None)
 
 
+def slot_tray(slot: int, spool_id: object, uid: str, vendor: str, kind: str, rgba: str, label: str,
+              spools: list[dict], target: str) -> dict:
+    """A Bambu-shaped tray for one printer slot, matched to a Spoolman spool: by the spool id the
+    printer reports, else by RFID tag, else by vendor, material and colour."""
+    spool = _spool_by_id(spool_id, spools)
+    if spool is None and uid:
+        spool = match_spool({"tag_uid": uid}, spools)
+    if spool is None and kind and rgba:
+        found = match_spools({"preset": "", "vendor": vendor, "material": kind, "colour": rgba[:6]}, spools)
+        spool = found[0] if found else None
+    if spool is not None:
+        tray = _spool_tray(slot, spool, target, tag_uid=uid)
+        return dict(tray, tray_color=rgba) if rgba else tray
+    return {"id": str(slot), "tray_type": kind, "tray_color": rgba, "tray_sub_brands": label,
+            "tag_uid": uid, "remain": None, "spool_id": None, "profile": ""}
+
+
 def head_tray(index: int, config: dict, detect: dict, spools: list[dict], target: str = "") -> dict:
-    """A Bambu-shaped tray for one Snapmaker U1 toolhead, matched to a Spoolman spool: by the
-    spool id the printer reports, else by RFID tag, else by vendor, material and colour."""
+    """A Bambu-shaped tray for one Snapmaker U1 toolhead."""
     if not _list_at(config.get("filament_exist"), index):
         return {"id": str(index)}
     kind = str(_list_at(config.get("filament_type"), index) or "").strip()
@@ -1639,21 +1827,33 @@ def head_tray(index: int, config: dict, detect: dict, spools: list[dict], target
     vendor = str(_list_at(config.get("filament_vendor"), index) or "").strip()
     rgba = str(_list_at(config.get("filament_color_rgba"), index) or "").lstrip("#").upper()
     uid = _card_uid(_list_at((detect or {}).get("info"), index))
-    spool = _spool_by_id(_list_at(config.get("filament_spool_id"), index), spools)
-    if spool is None and uid:
-        spool = match_spool({"tag_uid": uid}, spools)
-    if spool is None and kind and rgba:
-        found = match_spools({"preset": "", "vendor": vendor, "material": kind, "colour": rgba[:6]}, spools)
-        spool = found[0] if found else None
-    if spool is not None:
-        tray = _spool_tray(index, spool, target, tag_uid=uid)
-        return dict(tray, tray_color=rgba) if rgba else tray
     label = " ".join(part for part in (vendor, kind, "" if sub.upper() in ("", "NONE", "BASIC") else sub) if part)
-    return {"id": str(index), "tray_type": kind, "tray_color": rgba, "tray_sub_brands": label,
-            "tag_uid": uid, "remain": None, "spool_id": None, "profile": ""}
+    return slot_tray(index, _list_at(config.get("filament_spool_id"), index), uid, vendor, kind, rgba,
+                     label, spools, target)
 
 
-def moon_report(status: dict, active_spool: object, spools: list[dict], target: str = "") -> tuple[dict, bool]:
+def lane_units(lanes: dict, spools: list[dict], target: str) -> list[dict]:
+    """Moonraker lane_data, as AFC, Happy Hare and other MMU integrations write it, as Bambu-shaped
+    units of four trays. Each entry's "lane" is its 0-based slot; an empty material is an empty lane."""
+    trays: dict = {}
+    for entry in lanes.values():
+        index = _int(entry.get("lane")) if isinstance(entry, dict) else -1
+        if index < 0:
+            continue
+        trays[index] = {"id": str(index % 4)}
+        kind = str(entry.get("material") or "").strip()
+        if kind:
+            colour = _hex6(entry.get("color"))
+            vendor = str(entry.get("vendor_name") or "").strip()
+            label = " ".join(part for part in (vendor, str(entry.get("name") or "").strip() or kind) if part)
+            trays[index] = slot_tray(index % 4, entry.get("spool_id"), "", vendor, kind,
+                                     colour + "FF" if colour else "", label, spools, target)
+    return [{"id": str(unit), "tray": [trays.get(unit * 4 + i, {"id": str(i)}) for i in range(4)]}
+            for unit in range(max(trays, default=-1) // 4 + 1)]
+
+
+def moon_report(status: dict, active_spool: object, spools: list[dict], target: str = "",
+                lanes: dict | None = None) -> tuple[dict, bool]:
     """(Bambu-shaped report, has toolheads) from Moonraker's answers."""
     config = status.get("print_task_config")
     if isinstance(config, dict) and isinstance(config.get("filament_exist"), list):
@@ -1661,20 +1861,36 @@ def moon_report(status: dict, active_spool: object, spools: list[dict], target: 
         heads = len(config["filament_exist"])
         trays = [head_tray(i, config, detect, spools, target) for i in range(heads)]
         return {"print": {"ams": {"ams": [{"id": "0", "tray": trays}]}}}, True
+    if lanes:
+        return {"print": {"ams": {"ams": lane_units(lanes, spools, target)}}}, False
     spool = _spool_by_id(active_spool, spools)
     ext = _spool_tray(MOON_EXT, spool, target) if spool else {"id": str(MOON_EXT)}
     return {"print": {"vt_tray": ext}}, False
 
 
+def moon_lanes(base: str) -> dict:
+    """The lanes an MMU integration wrote to Moonraker's lane_data namespace, or {}."""
+    try:
+        lanes = _moon_get(base, "/server/database/item?namespace=lane_data").get("value")
+    except urllib.error.HTTPError:
+        return {}  # No lane_data namespace: nothing on the printer writes it.
+    # The format isn't standard across tools: an entry without a lane number can't be placed.
+    return {key: entry for key, entry in (lanes.items() if isinstance(lanes, dict) else ())
+            if isinstance(entry, dict) and _int(entry.get("lane")) >= 0}
+
+
 def moon_poll(base: str) -> tuple[dict, bool]:
     status = _moon_get(base, "/printer/objects/query?print_task_config&filament_detect").get("status") or {}
-    active = None
-    if "print_task_config" not in status:
-        try:
-            active = _moon_get(base, "/server/spoolman/spool_id").get("spool_id")
-        except urllib.error.HTTPError:
-            active = None  # Moonraker without its Spoolman integration
-    return moon_report(status, active, _spool_cache["spools"] or [], target_for_host(base))
+    active = lanes = None
+    # Moonraker answers {} for an object the printer doesn't have (only the U1 has this one).
+    if not status.get("print_task_config"):
+        lanes = moon_lanes(base)
+        if not lanes:
+            try:
+                active = _moon_get(base, "/server/spoolman/spool_id").get("spool_id")
+            except urllib.error.HTTPError:
+                active = None  # Moonraker without its Spoolman integration
+    return moon_report(status, active, _spool_cache["spools"] or [], target_for_host(base), lanes)
 
 
 def is_moonraker(base: str) -> bool:
@@ -3137,9 +3353,10 @@ MAIN_PAGE = """
     background: transparent; color: var(--orca-fg);
   }
   button:hover { border-color: var(--orca-accent); }
-  #settings-btn, #plate-recheck, #plate-dismiss, #filters-toggle {
+  #settings-btn, #plate-recheck, #plate-dismiss, #filters-toggle, #send-btn {
     padding: 7px 16px; border-radius: 6px; font-size: 13px; font-weight: 700;
   }
+  #send-btn { margin-left: auto; }
   #settings-btn, .sort-dir { background: var(--orca-accent); color: var(--orca-accent-fg); border-color: var(--orca-accent); }
   .filters { display: flex; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; }
   .filters input, .filters select {
@@ -3430,6 +3647,7 @@ MAIN_PAGE = """
   <div id="page-spools">
   <div class="listbar">
     <div id="status">Loading...</div>
+    <button id="send-btn" title="Send the unsaved changes of the Spooler preset open in OrcaSlicer's filament settings to Spoolman">Send to Spoolman</button>
     <button id="filters-toggle" aria-expanded="false">Filters &#9662;</button>
   </div>
   <div id="filters-panel" hidden>
@@ -4636,6 +4854,9 @@ MAIN_PAGE = """
         setPlate(null);
       } else if (data && data.type === "usage") {
         setUsage(data.usage, true);
+      } else if (data && data.type === "sent") {
+        statusEl.textContent = data.text;
+        statusEl.className = data.ok ? "" : "error";
       } else if (data && data.type === "live") {
         const key = JSON.stringify(data.live);
         liveData = data.live;
@@ -4668,6 +4889,11 @@ MAIN_PAGE = """
 
     document.getElementById("settings-btn").addEventListener("click", function () {
       orca.postMessage({ type: "settings" });
+    });
+    document.getElementById("send-btn").addEventListener("click", function () {
+      statusEl.textContent = "Sending to Spoolman...";
+      statusEl.className = "";
+      orca.postMessage({ type: "send" });
     });
     fToggle.addEventListener("click", function () { setFilters(fPanel.hidden); });
     try { setFilters(localStorage.getItem("spooler.filters") === "1"); } catch (err) { setFilters(false); }
@@ -5841,6 +6067,8 @@ class SpoolerWindow(orca.script.ScriptPluginCapabilityBase):
             save_printer_code(data.get("id"), data.get("code"))
         elif msg_type in ("usage_mode", "usage_book", "usage_undo"):
             threading.Thread(target=lambda: self._panel.post({"type": "usage", "usage": usage_action(data)}), daemon=True).start()
+        elif msg_type == "send":
+            start_send(self._panel.post)
 
     def _push_data(self):
         if self._panel is None or not self._panel.is_open():
@@ -6010,6 +6238,8 @@ if _PAGES:
                     threading.Thread(target=recheck, daemon=True).start()
                 elif msg_type == "plate_dismiss":
                     _plate.update(payload=None, slots=[])
+                elif msg_type == "send":
+                    start_send(self.post_message)
             except Exception:
                 log.exception("on_message() raised (arg0=%r)", arg0)
 
@@ -6218,9 +6448,9 @@ if _SLICING:
 
 def printer_trays(base: str) -> list[dict]:
     """The printer's slots in slicer order, each with its matched profile."""
-    doc, heads = moon_poll(base)
-    report = doc["print"]
-    return report["ams"]["ams"][0]["tray"] if heads else [report["vt_tray"]]
+    report = moon_poll(base)[0]["print"]
+    units = (report.get("ams") or {}).get("ams")
+    return [tray for unit in units for tray in unit["tray"]] if units else [report["vt_tray"]]
 
 
 def slot_plan(trays: list[dict], slots: int, names: set[str]) -> tuple[list, list]:
@@ -6237,8 +6467,9 @@ def slot_plan(trays: list[dict], slots: int, names: set[str]) -> tuple[list, lis
     return plan, missing
 
 
-def load_printer_filaments(snap: dict) -> str:
-    """Select the matching profile for each plate slot. Runs on the Script worker."""
+def sync_for(snap: dict) -> set[str]:
+    """Sync the presets from Spoolman for the selected printer and return every preset name a slot
+    can take. Raises RuntimeError saying what is missing. Runs on the Script worker."""
     if not snap:
         raise RuntimeError(f"Open the {PLUGIN_NAME} tab once, then run this again.")
     if not snap.get("host"):
@@ -6249,7 +6480,12 @@ def load_printer_filaments(snap: dict) -> str:
     state = profile_sync(result["spools"], snap)
     if state["error"]:
         raise RuntimeError("The filament presets could not be updated: " + state["error"])
-    names = snap["names"] | {PROFILE_PREFIX + n for n in state["names"].values()}
+    return snap["names"] | {PROFILE_PREFIX + n for n in state["names"].values()}
+
+
+def load_printer_filaments(snap: dict) -> str:
+    """Select the matching profile for each plate slot. Runs on the Script worker."""
+    names = sync_for(snap)
     plan, missing = slot_plan(printer_trays(snap["host"]), snap["slots"], names)
     done, failed = 0, []
     for slot, name in plan:
@@ -6266,6 +6502,23 @@ def load_printer_filaments(snap: dict) -> str:
     if failed:
         text += " Could not change slot(s) " + ", ".join(map(str, failed)) + "."
     return text
+
+
+def keep_plan(trays: list[dict], slots: int, names: set[str], current: list, gen: int,
+              seen: dict) -> list[tuple[int, str]]:
+    """The slots Keep Slots Synced (re)assigns: those whose lane's spool changed since the last pass,
+    and those holding a system preset (what OrcaSlicer's own Sync filaments picks) in a snapshot
+    newer than the last pass. User presets are left alone. Updates seen: {slot: (spool, gen)}."""
+    plan, _ = slot_plan(trays, slots, names)
+    changes = []
+    for slot, name in plan:
+        spool = trays[slot - 1].get("spool_id")
+        held, system = current[slot - 1] if slot <= len(current) else ("", False)
+        last = seen.get(slot)
+        if held != name and (last is None or last[0] != spool or (system and gen > last[1])):
+            changes.append((slot, name))
+        seen[slot] = (spool, gen)
+    return changes
 
 
 SNAPSHOT_EVENTS = ("PresetSelected", "PresetSaved", "ProjectOpened", "NewProject")
@@ -6296,6 +6549,52 @@ class SpoolerLoadFilaments(orca.script.ScriptPluginCapabilityBase):
             return orca.ExecutionResult.failure(orca.PluginResult.RecoverableError, str(exc))
 
 
+_keep: dict = {"run": None}
+
+
+class SpoolerKeepSlots(orca.script.ScriptPluginCapabilityBase):
+    """Plugins > Run: keep the plate's filament slots on what each printer lane holds, until run
+    again. OrcaSlicer only lets a running Plugins > Run action change slots, so this one stays."""
+
+    def get_name(self):
+        return f"{PLUGIN_NAME}: Keep Slots Synced"
+
+    async def execute(self):
+        if _keep["run"] is not None:
+            _keep["run"] = None
+            return orca.ExecutionResult.success("Stopped keeping the filament slots synced.")
+        try:
+            names = sync_for(dict(_ui_snap))
+        except Exception as exc:
+            return orca.ExecutionResult.failure(orca.PluginResult.RecoverableError, str(exc))
+        run = _keep["run"] = object()
+        seen, synced = {}, time.monotonic()
+        try:
+            while _keep["run"] is run:
+                snap = dict(_ui_snap)
+                try:
+                    if time.monotonic() - synced > REFRESH_SECS:
+                        names, synced = sync_for(snap), time.monotonic()
+                    trays = printer_trays(snap["host"])
+                    for slot, name in keep_plan(trays, snap["slots"], names, snap.get("current") or [],
+                                                snap.get("gen", 0), seen):
+                        try:
+                            orca.host.preset.filament.begin_update(slot, name).commit()
+                            # The selection refreshed the snapshot before the slot changed, so it
+                            # still shows the old preset: only a later snapshot may count.
+                            seen[slot] = (seen[slot][0], _ui_snap.get("gen", 0))
+                        except Exception as exc:
+                            log.warning("Could not load %s into slot %d: %s", name, slot, exc)
+                    _report("Keep Slots Synced", None)
+                except Exception as exc:
+                    _report("Keep Slots Synced", str(exc))
+                await asyncio.sleep(MOON_POLL)
+        finally:
+            if _keep["run"] is run:
+                _keep["run"] = None
+        return orca.ExecutionResult.success("Stopped keeping the filament slots synced.")
+
+
 @orca.plugin
 class SpoolerPlugin(orca.base):
     def register_capabilities(self):
@@ -6306,3 +6605,4 @@ class SpoolerPlugin(orca.base):
         if _SLICING:
             orca.register_capability(SpoolerFilamentCheck)
         orca.register_capability(SpoolerLoadFilaments)
+        orca.register_capability(SpoolerKeepSlots)
