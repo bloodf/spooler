@@ -3,7 +3,7 @@
 Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); entries before
 0.9.0 are Spoolio's.
 
-## [0.12.0] - Unreleased
+## [0.12.0] - 2026-11-10
 
 ### Added
 - Settings > Display switches every part of the Spools and Printer tabs on or off: grouping of
