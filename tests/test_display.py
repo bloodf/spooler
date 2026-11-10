@@ -179,6 +179,16 @@ console.log(JSON.stringify({one: slotName(one, one.units[0], 0, false), two: slo
 """)
         self.assertEqual(out, {"one": "AMS 2 Pro Slot 1", "two": "AMS 2 Slot 3"})
 
+    def test_manual_slot_names_match_the_manual_panel(self):
+        out = self.run_page("""
+liveData = {printers: []};
+cfg = [{name: "P1", units: [{kind: "ams", slots: ["1"]}, {kind: "ht", slots: ["2"]},
+                            {kind: "ams", slots: [null, "3"]}, {kind: "ext", slots: ["4"]}]}];
+computeInUse();
+console.log(JSON.stringify(Object.fromEntries(inUse)));
+""")
+        self.assertEqual(out, {"1": "P1 · AMS 1 Slot 1", "2": "P1 · AMS HT", "3": "P1 · AMS 2 Slot 2", "4": "P1 · External"})
+
     def test_kilograms_when_exact_weights_are_off(self):
         out = self.run_page(self.scenario({"exact_weight": False}))
         self.assertIn("1.38 kg of 2.00 kg", out["list"])

@@ -5609,10 +5609,10 @@ MAIN_PAGE = """
         if (lv.ext) add(lv.ext, "External");
       });
       (cfg || []).forEach(function (p) {
-        (p.units || []).forEach(function (u, ui) {
+        (p.units || []).forEach(function (u) {
           (u.slots || []).forEach(function (id, si) {
-            const unit = u.kind === "ht" ? "AMS HT " : p.units.length > 1 ? "Unit " + (ui + 1) + " " : "";
-            if (id && !found.has(String(id))) found.set(String(id), p.name + " \u00b7 " + (u.kind === "ext" ? "External" : unit + "Slot " + (si + 1)));
+            const where = u.kind === "ext" ? "External" : u.kind === "ht" ? unitLabel(p, u) : unitLabel(p, u) + " Slot " + (si + 1);
+            if (id && !found.has(String(id))) found.set(String(id), p.name + " \u00b7 " + where);
           });
         });
       });
