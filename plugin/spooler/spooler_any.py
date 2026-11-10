@@ -1607,6 +1607,10 @@ class AuthError(Exception):
     pass
 
 
+class TopicError(Exception):
+    pass
+
+
 PUSHALL = '{"pushing": {"sequence_id": "0", "command": "pushall"}}'
 
 
@@ -1637,6 +1641,8 @@ def _mqtt_run(sock, user: str, password: str, topics: list[str], push: list[tupl
             heard = now
         elif now - heard > LIVE_DEAD:
             raise ConnectionError("The printer stopped answering")
+        if packet and packet[0] >> 4 == 9 and 128 in packet[1][2:]:
+            raise TopicError("The printer refused the status topic")
         if packet and packet[0] >> 4 == 3:
             body = packet[1]
             size = struct.unpack("!H", body[:2])[0]
@@ -1657,13 +1663,30 @@ def _live_active() -> bool:
     return time.monotonic() - _live["seen"] < LIVE_IDLE or _live["keep"]
 
 
+def _cert_serial(sock) -> str:
+    """Serial from the printer certificate's subject CN."""
+    found = ""
+    for part in (sock.getpeercert(binary_form=True) or b"").split(b"\x06\x03\x55\x04\x03")[1:]:
+        if len(part) > 2 and part[1] < 128:
+            val = part[2:2 + part[1]].decode("ascii", "ignore")
+            if re.fullmatch(r"[A-Za-z0-9]{8,32}", val):
+                found = val
+    return found
+
+
 def _local_session(pid: str, link: dict, stop: threading.Event) -> None:
     context = ssl.create_default_context()
     context.check_hostname = False
     context.verify_mode = ssl.CERT_NONE
-    serial = link["serial"]
     with socket.create_connection((link["ip"], LOCAL_PORT), timeout=8) as raw:
         with context.wrap_socket(raw, server_hostname=link["ip"]) as sock:
+            serial = link["serial"]
+            if not serial:
+                try:
+                    serial = _cert_serial(sock)
+                except (OSError, ValueError):
+                    serial = ""
+                log.info("Printer serial %s", "read from its certificate" if serial else "not found, listening for any")
             topics = [f"device/{serial or '+'}/report"]
             push = [(f"device/{serial}/request", PUSHALL)] if serial else []
             asked: set[str] = set()
@@ -1696,6 +1719,10 @@ def _local_run(pid: str, link: dict, stop: threading.Event) -> None:
             _live["links"][pid] = "auth"
             log.warning("A printer refused the access code")
             return
+        except TopicError:
+            _live["links"][pid] = "serial"
+            log.warning("A printer refused the status topic")
+            return
         except Exception as exc:
             fails = 0 if time.monotonic() - start > LIVE_DEAD else fails + 1
             _live["links"][pid] = "unreachable" if fails else "connecting"
@@ -1726,7 +1753,7 @@ def _local_sync() -> bool:
                 _live["printers"].pop(pid, None)
     for pid, link in wanted.items():
         entry = _local.get(pid)
-        if entry and (entry["thread"].is_alive() or _live["links"].get(pid) in ("auth", "none")):
+        if entry and (entry["thread"].is_alive() or _live["links"].get(pid) in ("auth", "none", "serial")):
             continue
         stop = threading.Event()
         run = _moon_run if link.get("kind") == "moonraker" else _local_run
@@ -4087,6 +4114,7 @@ MAIN_PAGE = """
         return '<span class="live-dot' + (lv.age > 180 ? " stale" : "") + '"></span>Live';
       }
       if (st === "auth") return "Wrong access code";
+      if (st === "serial") return "The printer needs its serial number - add it under Live Link";
       if (st === "unreachable") return "Can't reach " + esc(p.ip) + " - is the printer on and in LAN mode?";
       if (st === "waiting") return "Connected, waiting for the printer to report";
       return "Connecting to " + esc(p.ip) + "...";
@@ -4095,7 +4123,7 @@ MAIN_PAGE = """
     function linkForm(p) {
       return '<div class="linkform">' +
         '<label>IP Address<input data-f="ip" value="' + esc(p.ip || "") + '" placeholder="192.168.1.50" autocomplete="off"></label>' +
-        '<label>Serial Number<input data-f="serial" value="' + esc(p.serial || "") + '" placeholder="Optional" autocomplete="off"></label>' +
+        '<label>Serial Number<input data-f="serial" value="' + esc(p.serial || "") + '" placeholder="Optional - found automatically" autocomplete="off"></label>' +
         '<label>Access Code<input data-f="code" type="password" autocomplete="off" placeholder="' + (p.has_code ? "Saved - leave blank to keep" : "Shown on the printer") + '"></label>' +
         '<div class="bar"><button class="sbtn" data-act="link-save" data-p="' + esc(p.id) + '">Save</button>' +
         '<button class="sbtn ghost" data-act="link-cancel" data-p="' + esc(p.id) + '">Cancel</button>' +
