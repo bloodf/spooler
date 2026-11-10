@@ -3,6 +3,14 @@
 Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); entries before
 0.9.0 are Spoolio's.
 
+## [0.11.1] - 2026-11-10
+
+Documentation only; the plugin is the same as 0.11.0.
+
+### Added
+- A contributor guide, security policy, code of conduct, a tour of the code
+  (`docs/how-it-works.md`), and issue and pull request templates.
+
 ## [0.11.0] - 2026-11-10
 
 ### Added
