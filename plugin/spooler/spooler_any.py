@@ -4135,6 +4135,7 @@ MAIN_PAGE = """
     border: 1px solid color-mix(in srgb, var(--orca-accent) 35%, var(--orca-border) 65%);
   }
   .group.stack:not(.collapsed) > .stack-head { border-color: transparent; background: transparent; margin-bottom: 4px; }
+  .group.stack:not(.collapsed) > .stack-head:focus-visible { border-color: var(--orca-accent); }
   .group.stack > .group-items { padding: 0 6px; }
   .spool-dup {
     margin-left: 8px; padding: 1px 8px; border-radius: 99px; vertical-align: middle;
@@ -4210,10 +4211,8 @@ MAIN_PAGE = """
   #list.cols-2, #list.cols-2 .group-items { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 10px; align-items: stretch; }
   #list.cols-2 > .group:not(.stack), #list.cols-2 > .empty, #list.cols-2 .group.stack:not(.collapsed) { grid-column: 1 / -1; }
   #list.cols-2 .group.collapsed .group-items { display: none; }
-  #list.cols-2 { align-items: stretch; }
-  #list.cols-2 > .spool-card, #list.cols-2 .group-items > .spool-card { box-sizing: border-box; }
-  #list.cols-2 > .group.stack.collapsed { display: flex; flex-direction: column; }
-  #list.cols-2 > .group.stack.collapsed > .stack-head { flex: 1; }
+  #list.cols-2 .group.stack.collapsed { display: flex; flex-direction: column; }
+  #list.cols-2 .group.stack.collapsed > .stack-head { flex: 1; }
   @media (max-width: 640px) { #list.cols-2, #list.cols-2 .group-items { grid-template-columns: minmax(0, 1fr); } }
   .tabs { display: inline-flex; margin: 0 0 12px; border: 1px solid var(--orca-border); border-radius: 8px; overflow: hidden; }
   .tabs[hidden], #page-spools[hidden], #page-printer[hidden], #page-stats[hidden] { display: none; }
@@ -5781,15 +5780,15 @@ MAIN_PAGE = """
         ? Math.max(0, Math.min(100, Math.round((totalRemaining / totalOriginal) * 100))) : null;
       const remainingLabel = hasRemaining
         ? formatWeight(totalRemaining) + (hasOriginal ? " of " + formatWeight(totalOriginal) : "") : "?";
-      const percentLabel = percent === null ? "?" : percent + "%";
       const count = group.items.length + " spool" + (group.items.length === 1 ? "" : "s");
+      if (stack) return stackHtml(group, collapsed, percent, remainingLabel, count);
+      const percentLabel = percent === null ? "?" : percent + "%";
       const wLabel = wMode === "grams" ? remainingLabel
         : wMode === "percent" ? (percent === null ? remainingLabel : percentLabel)
         : remainingLabel + ' \\u00b7 ' + percentLabel;
       const subLabel = [group.sub, count].filter(Boolean).join(" \\u00b7 ");
-      if (stack) return stackHtml(group, collapsed, percent, remainingLabel, count);
       return (
-        '<div class="group' + (stack ? " stack" : "") + (collapsed ? " collapsed" : "") + '" data-key="' + esc(group.key) + '">' +
+        '<div class="group' + (collapsed ? " collapsed" : "") + '" data-key="' + esc(group.key) + '">' +
           '<div class="group-card" role="button" tabindex="0" aria-expanded="' + !collapsed + '">' +
             '<div class="arrow">' + (collapsed ? "\\u25b8" : "\\u25be") + '</div>' +
             (group.color ? '<span class="cdot" style="background:' + group.color + '"></span>' : '') +
@@ -5800,8 +5799,7 @@ MAIN_PAGE = """
                 '" style="width:' + (percent === null ? 0 : percent) + '%"></div></div>' +
             '</div>' +
           '</div>' +
-          '<div class="group-items">' + (stack ? group.items.map(function (s) { return spoolRowHtml(s, true); }).join("")
-            : listHtml(group.items)) + '</div>' +
+          '<div class="group-items">' + listHtml(group.items) + '</div>' +
         '</div>'
       );
     }
