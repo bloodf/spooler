@@ -6,7 +6,7 @@
 # name = "Spooler"
 # description = "Spoolman inventory for OrcaSlicer: auto-synced filament profiles and live printer slots"
 # author = "bloodf (fork of Spoolio by Dan J Moore)"
-# version = "0.11.1"
+# version = "0.12.0"
 # ///
 
 import asyncio
@@ -48,7 +48,7 @@ except (ImportError, AttributeError):
 _SLICING = hasattr(getattr(orca, "slicing", None), "SlicingPipelineCapabilityBase")
 
 PLUGIN_NAME = "Spooler"
-PLUGIN_VERSION = "0.11.1"
+PLUGIN_VERSION = "0.12.0"
 # Stamped per operating system by scripts/build.py.
 BUILD_TARGET = "any"
 
@@ -231,6 +231,47 @@ def parse_progress(value: object) -> dict:
 
 def progress_settings() -> dict:
     return parse_progress(get_settings().get("progress"))
+
+
+# What the Spools and Printer tabs show, each switched in Settings > Display: {key: default}.
+DISPLAY_DEFAULTS = {
+    # Spools tab
+    "group_same": True,     # spools of one filament fold into one row
+    "in_use": True,         # which printer slot a spool is loaded in
+    "vendor": True,         # the manufacturer tag
+    "material": True,
+    "colour_code": True,    # #RRGGBB
+    "diameter": True,
+    "rfid": True,
+    "bar": True,            # the remaining-weight bar
+    "location": True,       # the Spoolman location
+    "spool_id": False,
+    "exact_weight": True,   # 2,380 g instead of 2.38 kg
+    # Printer tab: each slot's card
+    "head_vendor": True,
+    "head_material": True,
+    "head_colour_code": True,
+    "head_weight": True,    # grams left of the spool's weight
+    "head_bar": True,
+    "head_spool": True,     # spool id and location
+    "head_preset": True,    # the OrcaSlicer preset, on the card instead of only on hover
+    "head_rfid": True,
+}
+
+
+def parse_display(value: object) -> dict:
+    value = value if isinstance(value, dict) else {}
+    return {key: parse_flag(value.get(key), default) for key, default in DISPLAY_DEFAULTS.items()}
+
+
+def display_settings() -> dict:
+    return parse_display(get_settings().get("display"))
+
+
+def save_display(value: object) -> None:
+    """Save Settings > Display on its own, so it never depends on the connection check."""
+    if isinstance(value, dict):
+        save_settings({**get_settings(), "display": parse_display(value)})
 
 
 CURRENCIES = ("spoolman", "gbp", "eur", "usd")
@@ -4083,6 +4124,20 @@ MAIN_PAGE = """
   .spool-bar-fill { height: 100%; border-radius: 3px; }
   .spool-pct { font-size: 12px; color: var(--orca-muted); }
   .spool-weight.low .spool-pct { color: inherit; opacity: 0.8; }
+  .use-chip {
+    margin-left: 6px; padding: 1px 7px; border-radius: 99px; white-space: nowrap;
+    background: rgba(0, 150, 136, 0.18); color: var(--orca-accent); font-style: normal; font-size: 11px; font-weight: 700;
+  }
+  .head-card .head-line { font-style: normal; margin-top: 2px; }
+  .head-card .head-preset { opacity: 0.8; font-style: italic; }
+  .group.stack > .group-card {
+    background: var(--orca-border); border-radius: 8px; padding: 10px 12px; margin-bottom: 6px;
+  }
+  .group.stack > .group-card .cdot { width: 28px; height: 28px; }
+  .group.stack > .group-card .group-name { font-size: 14px; }
+  .group-card .group-bar { width: auto; min-width: 90px; max-width: 45%; }
+  .group-card .group-bar .group-meta { white-space: nowrap; }
+  .group.stack > .group-items { padding-left: 14px; border-left: 2px solid var(--orca-border); margin: 0 0 8px 12px; }
   .spool-dup {
     margin-left: 8px; padding: 1px 8px; border-radius: 99px; vertical-align: middle;
     border: 1px solid var(--orca-border); color: var(--orca-muted);
@@ -4442,6 +4497,12 @@ MAIN_PAGE = """
     let lowStockGrams = __LOW_STOCK_DEFAULT__;
     let wMode = "both";
     let cart = false;
+    const DISPLAY_DEFAULTS = __DISPLAY_DEFAULTS__;
+    let disp = Object.assign({}, DISPLAY_DEFAULTS);
+    // Settings > Display: is this part shown?
+    function shown(key) { return disp[key] !== false; }
+    // Where each spool is loaded right now: spool id -> "Snapmaker U1 · T1".
+    let inUse = new Map();
     let sortDir = "asc";
     let plate = null;
     let plateSlots = new Map();
@@ -4781,18 +4842,33 @@ MAIN_PAGE = """
       const color = t.colour ? "#" + t.colour : "#888";
       const pct = t.remain === null ? null : Math.round(t.remain);
       const profile = (t.profile || "").split("/").pop();
-      const sub = [t.type, t.colour ? "#" + t.colour : ""].filter(Boolean).join(" \u00b7 ");
-      const rfid = t.rfid ? '<div class="spool-rfid" title="RFID spool"><span>RFID</span></div>' : "";
+      const spool = t.spool != null ? allSpools.find(function (s) { return String(s.id) === String(t.spool); }) : null;
+      const f = (spool || {}).filament || {};
+      const vendor = (f.vendor || {}).name || "";
+      const sub = [shown("head_vendor") ? vendor : "", shown("head_material") ? t.type : "",
+        shown("head_colour_code") && t.colour ? "#" + t.colour : ""].filter(Boolean).join(" \u00b7 ");
+      const left = spool && typeof spool.remaining_weight === "number" ? spool.remaining_weight : null;
+      const full = spool ? originalWeight(spool) : null;
+      const weight = shown("head_weight") && left !== null
+        ? formatWeight(left) + (typeof full === "number" ? " of " + formatWeight(full) : "") + " left" : "";
+      const where = shown("head_spool") && spool
+        ? ["Spool #" + spool.id, spool.location || "", t.linked === "u1control" ? "linked by u1control" : ""].filter(Boolean).join(" \u00b7 ")
+        : "";
+      const preset = shown("head_preset") && profile ? profile : "";
+      const rfid = t.rfid && shown("head_rfid") ? '<div class="spool-rfid" title="RFID spool"><span>RFID</span></div>' : "";
       const tipText = [profile ? "OrcaSlicer preset: " + profile : "",
         t.linked === "u1control" ? "Spool linked by u1control" : ""].filter(Boolean).join(" \u00b7 ");
       const tip = tipText ? ' title="' + esc(tipText) + '"' : "";
-      return '<div class="spool-card"' + tip + '><div class="spool-body">' +
+      const line = function (text, cls) {
+        return text ? '<div class="spool-subtitle head-line' + (cls ? " " + cls : "") + '"><span class="sub-text">' + esc(text) + '</span></div>' : "";
+      };
+      return '<div class="spool-card head-card"' + tip + '><div class="spool-body">' +
         '<div class="spool-swatch-col"><div class="spool-swatch" style="background:' + color + '"></div>' + rfid + '</div>' +
         '<div class="spool-main"><div class="spool-top"><div class="spool-title">' + esc(t.name || t.type) + '</div>' +
         '<div class="spool-weight">' + (pct === null ? "" : pct + "%") + '</div></div>' +
-        '<div class="spool-bar-track" title="' + (pct === null ? "Remaining unknown" : pct + "% remaining") + '">' +
-        '<div class="spool-bar-fill" style="width:' + (pct === null ? 0 : pct) + '%;background:' + color + '"></div></div>' +
-        '<div class="spool-subtitle"><span class="sub-text">' + esc(sub) + '</span></div></div></div></div>';
+        (shown("head_bar") ? '<div class="spool-bar-track" title="' + (pct === null ? "Remaining unknown" : pct + "% remaining") + '">' +
+          '<div class="spool-bar-fill" style="width:' + (pct === null ? 0 : pct) + '%;background:' + color + '"></div></div>' : '') +
+        line(sub) + line(weight) + line(where) + line(preset, "head-preset") + '</div></div></div>';
     }
 
     const PROG_STATES = {
@@ -5508,9 +5584,41 @@ MAIN_PAGE = """
 
     function formatWeight(grams) {
       if (typeof grams !== "number") return "?";
+      if (shown("exact_weight")) return Math.round(grams).toLocaleString("en-US") + " g";
       return Math.abs(grams) >= 1000
         ? (grams / 1000).toFixed(2) + " kg"
         : Math.round(grams) + " g";
+    }
+
+    function slotName(lv, u, i, ext) {
+      if (ext) return "External";
+      if (lv.heads) return "T" + (i + 1);
+      if (u.kind === "ht") return "AMS HT";
+      const ams = lv.units.filter(function (x) { return x.kind === "ams"; });
+      const unit = lv.unit_label && lv.units.length === 1 ? lv.unit_label : (lv.unit_label || "AMS") + " " + (ams.indexOf(u) + 1);
+      return unit + " Slot " + (i + 1);
+    }
+
+    function computeInUse() {
+      const found = new Map();
+      (liveData.printers || []).forEach(function (lv) {
+        const add = function (t, label) { if (t && t.spool != null) found.set(String(t.spool), lv.name + " \u00b7 " + label); };
+        (lv.units || []).forEach(function (u) {
+          (u.trays || []).forEach(function (t, i) { add(t, slotName(lv, u, i, false)); });
+        });
+        if (lv.ext) add(lv.ext, "External");
+      });
+      (cfg || []).forEach(function (p) {
+        (p.units || []).forEach(function (u) {
+          (u.slots || []).forEach(function (id, si) {
+            const where = u.kind === "ext" ? "External" : u.kind === "ht" ? unitLabel(p, u) : unitLabel(p, u) + " Slot " + (si + 1);
+            if (id && !found.has(String(id))) found.set(String(id), p.name + " \u00b7 " + where);
+          });
+        });
+      });
+      const changed = found.size !== inUse.size || [...found].some(function (e) { return inUse.get(e[0]) !== e[1]; });
+      inUse = found;
+      return changed;
     }
 
     function lowTint(grams) {
@@ -5574,9 +5682,11 @@ MAIN_PAGE = """
       const material = filament.material || "";
       const vendorName = vendor.name || "";
       const subtitleParts = [];
-      if (material) subtitleParts.push(material);
-      if (filament.color_hex) subtitleParts.push("#" + filament.color_hex.replace(/^#/, "").toUpperCase());
-      if (typeof filament.diameter === "number") subtitleParts.push(filament.diameter + "mm");
+      if (material && shown("material")) subtitleParts.push(esc(material));
+      if (filament.color_hex && shown("colour_code")) subtitleParts.push("#" + esc(filament.color_hex.replace(/^#/, "").toUpperCase()));
+      if (typeof filament.diameter === "number" && shown("diameter")) subtitleParts.push(filament.diameter + "mm");
+      if (s.location && shown("location")) subtitleParts.push(esc(s.location));
+      if (shown("spool_id") && s.id != null) subtitleParts.push("#" + esc(s.id));
       const subtitle = subtitleParts.join(" \\u00b7 ");
       const tags = tagUids(s);
       const original = originalWeight(s);
@@ -5594,9 +5704,11 @@ MAIN_PAGE = """
         ? '<span class="spool-dup">\u00d7' + dupe.count + ' \u00b7 ' + formatWeight(dupe.total) + ' together</span>'
         : '';
       const plateLabel = plateSlots.get(s.id);
-      const chipHtml = plateLabel ? '<span class="plate-chip">On This Plate \u00b7 ' + plateLabel + '</span>' : '';
+      const where = shown("in_use") ? inUse.get(String(s.id)) : "";
+      const chipHtml = (plateLabel ? '<span class="plate-chip">On This Plate \u00b7 ' + plateLabel + '</span>' : '') +
+        (where ? '<span class="use-chip" title="Loaded in ' + esc(where) + '">In Use \u00b7 ' + esc(where) + '</span>' : '');
       const percentTitle = percent === null ? "Remaining unknown" : percent + "% remaining";
-      const tagHtml = vendorName
+      const tagHtml = vendorName && shown("vendor")
         ? '<div class="spool-tag">' +
             '<svg viewBox="0 0 12 12" fill="currentColor">' +
               '<rect x="0" y="0" width="5" height="5" rx="1"></rect>' +
@@ -5604,7 +5716,7 @@ MAIN_PAGE = """
               '<rect x="0" y="7" width="5" height="5" rx="1"></rect>' +
               '<rect x="7" y="7" width="5" height="5" rx="1"></rect>' +
             '</svg>' +
-            '<span>' + vendorName + '</span>' +
+            '<span>' + esc(vendorName) + '</span>' +
           '</div>'
         : '';
       const tip = [name, vendorName, remainingLabel + (typeof original === "number" ? " of " + formatWeight(original) : "") + " left"].filter(Boolean).join(" \u00b7 ");
@@ -5618,8 +5730,8 @@ MAIN_PAGE = """
               '<path d="M2 3h3l2.4 12.2a1.5 1.5 0 0 0 1.5 1.2h8.6a1.5 1.5 0 0 0 1.5-1.1L21 8H6"></path>' +
             '</svg></button>'
         : '';
-      const rfidHtml = tags.length
-        ? '<div class="spool-rfid" title="RFID: ' + tags.join(", ") + '">' +
+      const rfidHtml = tags.length && shown("rfid")
+        ? '<div class="spool-rfid" title="RFID: ' + esc(tags.join(", ")) + '">' +
             '<span>RFID</span>' +
             '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round">' +
               '<circle cx="5" cy="19" r="1.8" fill="currentColor" stroke="none"></circle>' +
@@ -5639,12 +5751,12 @@ MAIN_PAGE = """
             '</div>' +
             '<div class="spool-main">' +
               '<div class="spool-top">' +
-                '<div class="spool-title">' + name + dupeHtml + '</div>' +
+                '<div class="spool-title">' + esc(name) + dupeHtml + '</div>' +
                 '<div class="spool-weight' + (tint ? ' low" style="color:' + tint : '') + '">' + wHtml + cartHtml + '</div>' +
               '</div>' +
-              '<div class="spool-bar-track" title="' + percentTitle + '">' +
+              (shown("bar") ? '<div class="spool-bar-track" title="' + percentTitle + '">' +
                 '<div class="spool-bar-fill" style="width:' + (percent === null ? 0 : percent) + '%;background:' + main + '"></div>' +
-              '</div>' +
+              '</div>' : '') +
               '<div class="spool-subtitle"><span class="sub-text">' + subtitle + '</span>' + chipHtml + '</div>' +
             '</div>' +
           '</div>' +
@@ -5676,7 +5788,8 @@ MAIN_PAGE = """
       });
       const percent = (hasOriginal && hasRemaining && totalOriginal > 0)
         ? Math.max(0, Math.min(100, Math.round((totalRemaining / totalOriginal) * 100))) : null;
-      const remainingLabel = hasRemaining ? formatWeight(totalRemaining) : "?";
+      const remainingLabel = hasRemaining
+        ? formatWeight(totalRemaining) + (hasOriginal ? " of " + formatWeight(totalOriginal) : "") : "?";
       const percentLabel = percent === null ? "?" : percent + "%";
       const count = group.items.length + " spool" + (group.items.length === 1 ? "" : "s");
       const wLabel = wMode === "grams" ? remainingLabel
@@ -5713,6 +5826,7 @@ MAIN_PAGE = """
     }
 
     function listHtml(spools) {
+      if (!shown("group_same")) return spools.map(function (s) { return spoolRowHtml(s); }).join("");
       const stacks = new Map();
       spools.forEach(function (s) {
         const key = stackKey(s);
@@ -5720,12 +5834,16 @@ MAIN_PAGE = """
         stacks.get(key).push(s);
       });
       return [...stacks.entries()].map(function (e) {
-        const items = e[1];
+        // Loaded spools first, then the rest in the list's order.
+        const loaded = function (s) { return shown("in_use") && inUse.has(String(s.id)); };
+        const items = e[1].slice().sort(function (a, b) { return (loaded(b) ? 1 : 0) - (loaded(a) ? 1 : 0); });
+        const used = items.filter(loaded).length;
         if (items.length < 2) return spoolRowHtml(items[0]);
         const f = items[0].filament || {};
         const group = {
           key: e[0], label: f.name || ("Spool #" + items[0].id), items: items, color: swatch(f),
-          sub: [(f.vendor || {}).name, f.material].filter(Boolean).join(" \u00b7 "),
+          sub: [shown("vendor") ? (f.vendor || {}).name : "", shown("material") ? f.material : "",
+            used ? used + " in use" : ""].filter(Boolean).join(" \u00b7 "),
         };
         return groupRowHtml(group, !openStacks.has(group.key), true);
       }).join("");
@@ -5810,6 +5928,7 @@ MAIN_PAGE = """
       computeDupes();
       if (typeof payload.low_stock_grams === "number") lowStockGrams = payload.low_stock_grams;
       if (typeof payload.weight_display === "string") wMode = payload.weight_display;
+      if (payload.display && typeof payload.display === "object") disp = Object.assign({}, DISPLAY_DEFAULTS, payload.display);
       if (typeof payload.show_cart === "boolean") cart = payload.show_cart;
       if (payload.spool_columns) listEl.classList.toggle("cols-2", payload.spool_columns === 2);
       if (Array.isArray(payload.printers)) cfg = payload.printers;
@@ -5823,6 +5942,7 @@ MAIN_PAGE = """
       buildPrinters();
       updateTabs();
       renderPrinters();
+      computeInUse();
       applyFilters();
     }
 
@@ -5846,6 +5966,7 @@ MAIN_PAGE = """
         liveData = data.live;
         if (data.usage) setUsage(data.usage);
         if (key !== liveKey && !picking && !renaming && !linkOpen) { liveKey = key; renderPrinters(); }
+        if (computeInUse()) applyFilters();  // "In Use" chips and loaded-first order follow the printers
         renderProgress();
       }
     });
@@ -5970,6 +6091,8 @@ SETTINGS_PAGE = """
   .divider.spaced { margin-top: 18px; }
   .hint { margin-top: 6px; font-size: 12px; color: var(--orca-muted); }
   .check-row { display: flex; align-items: center; gap: 8px; margin: 0 0 12px 0; cursor: pointer; }
+  .disp-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 12px; }
+  .disp-list .check-row { margin-bottom: 8px; }
   .check-row input {
     -webkit-appearance: none; appearance: none; flex: none; width: 17px; height: 17px; margin: 0;
     border: 1.5px solid var(--orca-muted); border-radius: 4px; background: transparent; cursor: pointer;
@@ -6175,6 +6298,16 @@ SETTINGS_PAGE = """
     <div class="cur-row"><span class="nm">Headphone_Stand.3mf</span><span>94.3 g</span><span><span class="cur">£</span>2.08</span></div>
   </div>
   <div class="pp-card st-off" id="stats-off">The Stats tab is hidden. Print history is still recorded.</div><!--/stats-preview-->
+
+  <div class="divider spaced"></div>
+
+  <!--display--><h3><span class="emoji">👁️</span>Display</h3>
+  <div class="hint">Choose what the Spools and Printer tabs show.</div>
+  <div class="field-label">Spools tab</div>
+  <div id="disp-spools" class="disp-list"></div>
+  <div class="field-label">Printer tab: each slot</div>
+  <div id="disp-heads" class="disp-list"></div><!--/display-->
+  <!--display-preview--><div class="hint">Changes apply when you save, and stay on this computer.</div><!--/display-preview-->
 
   <div class="divider spaced"></div>
 
@@ -6514,6 +6647,41 @@ SETTINGS_PAGE = """
     // anything unprompted; see _on_settings's "ready" handler.
     orca.postMessage({ type: "ready" });
 
+    // Settings > Display: one checkbox per key of DISPLAY_DEFAULTS in the plugin.
+    const DISPLAY_LABELS = {
+      "disp-spools": [
+        ["group_same", "Group spools of the same filament"],
+        ["in_use", "Show where a spool is loaded"],
+        ["vendor", "Manufacturer tag"], ["material", "Material"], ["colour_code", "Colour code"],
+        ["diameter", "Diameter"], ["rfid", "RFID badge"], ["bar", "Remaining bar"],
+        ["location", "Spoolman location"], ["spool_id", "Spool number"],
+        ["exact_weight", "Exact weights (2,380 g, not 2.38 kg)"],
+      ],
+      "disp-heads": [
+        ["head_vendor", "Manufacturer"], ["head_material", "Material"], ["head_colour_code", "Colour code"],
+        ["head_weight", "Grams left of the spool"], ["head_bar", "Remaining bar"],
+        ["head_spool", "Spool number and location"], ["head_preset", "OrcaSlicer preset"],
+        ["head_rfid", "RFID badge"],
+      ],
+    };
+    function setDisplay(values) {
+      Object.keys(DISPLAY_LABELS).forEach(function (id) {
+        const box = document.getElementById(id);
+        if (!box) return;
+        box.innerHTML = DISPLAY_LABELS[id].map(function (item) {
+          return '<label class="check-row"><input type="checkbox" data-disp="' + item[0] + '"' +
+            (values[item[0]] !== false ? " checked" : "") + '>' + item[1] + '</label>';
+        }).join("");
+      });
+    }
+    function dispPick() {
+      const out = {};
+      document.querySelectorAll("[data-disp]").forEach(function (el) { out[el.dataset.disp] = el.checked; });
+      return out;
+    }
+    setDisplay(__DISPLAY__);
+    window.__spoolerSetDisplay = setDisplay;
+
     saveEl.addEventListener("click", function () {
       const url = urlEl.value.trim();
       const lowStock = document.getElementById("low-stock").value;
@@ -6526,6 +6694,7 @@ SETTINGS_PAGE = """
         spool_columns: cPick(),
         progress: progPick(),
         stats: statsPick(),
+        display: dispPick(),
       });
     });
     refreshSave();
@@ -6544,6 +6713,7 @@ def main_html() -> str:
         PLUGIN_NAME="Spooler",
         LOW_STOCK_DEFAULT=LOW_DEFAULT,
         REFRESH_MS=REFRESH_SECS * 1000,
+        DISPLAY_DEFAULTS=json.dumps(DISPLAY_DEFAULTS),
     )
 
 
@@ -6579,6 +6749,7 @@ def settings_html(current_url: str, spoolman_info: dict, low_stock_grams: float,
         COLUMNS=parse_columns(columns),
         PROGRESS=json.dumps(parse_progress(progress)),
         STATS=json.dumps(parse_stats(stats)),
+        DISPLAY=json.dumps(display_settings()),
         CUR_CODE=_cur["code"] or "EUR",
         LOG_PATH=html.escape(str(LOG_FILE)),
         STATUS_TEXT=html.escape(status_text),
@@ -6856,6 +7027,7 @@ TAB_BRIDGE = """
     var progOn = document.getElementById("show-progress");
     progOn.checked = prog.on !== false;
     progOn.dispatchEvent(new Event("change"));
+    if (data.display && window.__spoolerSetDisplay) window.__spoolerSetDisplay(data.display);
     var st = data.stats || {};
     if (data.cur_code) document.getElementById("cur-code").textContent = data.cur_code;
     var cur = document.querySelector('input[name="stats-cur"][value="' + (st.cur || "spoolman") + '"]');
@@ -6893,7 +7065,8 @@ def tab_html(initial_view: str, current_url: str, low_stock_grams: float,
     feedback_button = _button(settings_header, "feedback")
     sec = {name: _section(settings_body, name) for name in (
         "steps", "reorder", "check", "check-hint", "server", "about", "weights", "weights-preview",
-        "layout", "layout-preview", "stats", "stats-preview", "printer", "printer-preview", "footer")}
+        "layout", "layout-preview", "stats", "stats-preview", "display", "display-preview", "printer",
+        "printer-preview", "footer")}
     # The version, update check and log path sit beside the footer buttons.
     footer = sec["footer"]
     version_row = re.search(r'<div class="version-row">.*?</div>', footer, re.S).group(0)
@@ -6910,6 +7083,7 @@ def tab_html(initial_view: str, current_url: str, low_stock_grams: float,
         card(sec["weights"], "Preview", sec["weights-preview"]),
         card(sec["layout"], "Preview", sec["layout-preview"]),
         card(sec["stats"], "Preview", sec["stats-preview"]),
+        card(sec["display"], "Note", sec["display-preview"]),
         card(sec["check"], "Before You Start", sec["check-hint"]),
         card(sec["printer"], "Preview", sec["printer-preview"]),
         footer,
@@ -7070,6 +7244,7 @@ class SpoolerWindow(orca.script.ScriptPluginCapabilityBase):
             if self._settings_window is not None:
                 self._check_connection(url, self._settings_window, data.get("source"))
         elif msg_type == "save":
+            save_display(data.get("display"))
             # The page already gates Save; enforce it here too.
             url = (data.get("url") or "").strip()
             src = parse_source(data.get("source"))
@@ -7179,7 +7354,7 @@ class SpoolerWindow(orca.script.ScriptPluginCapabilityBase):
             self._refreshing = False
             if panel.is_open():
                 panel.post({"type": "spools", "low_stock_grams": low_stock_grams,
-                            "weight_display": weight_mode(), "show_cart": cart_on(),
+                            "weight_display": weight_mode(), "show_cart": cart_on(), "display": display_settings(),
                             "spool_columns": spool_columns(), **printer_state(), **result})
 
         threading.Thread(target=worker, daemon=True).start()
@@ -7361,7 +7536,7 @@ if _PAGES:
                 result = load_spools_synced(snapshot)
                 self._refreshing = False
                 self.post_message({"type": "spools", "low_stock_grams": low_stock_grams,
-                                   "weight_display": weight_mode(), "show_cart": cart_on(),
+                                   "weight_display": weight_mode(), "show_cart": cart_on(), "display": display_settings(),
                                    "spool_columns": spool_columns(), **printer_state(), **result})
 
             threading.Thread(target=worker, daemon=True).start()
@@ -7414,6 +7589,7 @@ if _PAGES:
                 "weight_display": weight_mode(),
                 "show_cart": cart_on(),
                 "spool_columns": spool_columns(),
+                "display": display_settings(),
                 "progress": progress_settings(),
                 "stats": stats_settings(),
                 "cur_code": _cur["code"] or "EUR",
@@ -7457,6 +7633,7 @@ if _PAGES:
                 url = (data.get("url") or "").strip()
                 self._check_connection(url, self._settings_window, data.get("source"))
             elif msg_type == "save":
+                save_display(data.get("display"))
                 url = (data.get("url") or "").strip()
                 src = parse_source(data.get("source"))
                 verified = (self._verified_bambu if src == "bambu"

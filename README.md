@@ -58,6 +58,9 @@ the rest is automatic.
 - **Spool list:** spools of the same filament (vendor, name and colour) fold into one row with
   their total; click it to see each spool. The name filter and a colour filter, which picks a
   colour family from swatches, sit above the list.
+- **You choose what's shown.** Settings > Display switches each part of the spool list and of the
+  printer slots on or off; printer slots can show the loaded spool in full (manufacturer, grams
+  left, spool number, location, preset).
 - **Save a copy, keep the change.** OrcaSlicer's Save on a Spooler preset makes a separate copy;
   Spooler sends that copy's changed calibration settings to Spoolman, so the Spooler preset has
   them after its next rebuild.
