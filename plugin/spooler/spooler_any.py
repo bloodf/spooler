@@ -6,7 +6,7 @@
 # name = "Spooler"
 # description = "Spoolman inventory for OrcaSlicer: auto-synced filament profiles and live printer slots"
 # author = "bloodf (fork of Spoolio by Dan J Moore)"
-# version = "0.10.0"
+# version = "0.11.0"
 # ///
 
 import asyncio
@@ -48,7 +48,7 @@ except (ImportError, AttributeError):
 _SLICING = hasattr(getattr(orca, "slicing", None), "SlicingPipelineCapabilityBase")
 
 PLUGIN_NAME = "Spooler"
-PLUGIN_VERSION = "0.10.0"
+PLUGIN_VERSION = "0.11.0"
 # Stamped per operating system by scripts/build.py.
 BUILD_TARGET = "any"
 
@@ -167,6 +167,8 @@ def get_settings() -> dict:
         "spool_columns": 1,
         "progress": {},
         "stats": {},
+        "auto_send": True,
+        "send_saved_copies": True,
     }
     for path in (SETTINGS_FILE, OLD_SETTINGS):
         try:
@@ -257,6 +259,66 @@ def save_settings(settings: dict) -> bool:
     except OSError:
         log.exception("Could not write %s", SETTINGS_FILE)
         return False
+
+
+# The settings shown in OrcaSlicer's plugin manager (Plugins > Spooler > Config). Spooler's own
+# settings file stays the source; the plugin manager holds a copy, and a change made there is
+# taken back into the file. Each value goes through the same check as the Settings page.
+CONFIG_KEYS = {
+    "spoolman_url": lambda v: clean_url(str(v)),
+    "spool_source": lambda v: parse_source(v),
+    "low_stock_grams": lambda v: parse_low(v),
+    "plate_check": lambda v: parse_flag(v),
+    "plate_margin_percent": lambda v: parse_margin(v),
+    "weight_display": lambda v: parse_weights(v),
+    "show_cart": lambda v: parse_flag(v, default=False),
+    "spool_columns": lambda v: parse_columns(v),
+    "auto_send": lambda v: parse_flag(v),
+    "send_saved_copies": lambda v: parse_flag(v),
+}
+_config: dict = {"last": None}
+
+
+def config_view(settings: dict) -> dict:
+    return {key: settings[key] for key in CONFIG_KEYS if key in settings}
+
+
+def sync_config(capability) -> None:
+    """Keep the plugin manager's copy and the settings file the same. A change made in the
+    plugin manager since the last sync wins; otherwise the file is copied there. Never raises."""
+    if not (callable(getattr(capability, "get_config", None)) and callable(getattr(capability, "save_config", None))):
+        return
+    try:
+        raw = json.loads(capability.get_config() or "{}")
+        stored = config_view(raw) if isinstance(raw, dict) else {}
+        settings = get_settings()
+        if stored and stored != _config["last"] and stored != config_view(settings):
+            changed = {}
+            for key, value in stored.items():
+                try:
+                    if value is not None:
+                        changed[key] = CONFIG_KEYS[key](value)
+                except Exception:
+                    log.warning("Ignored %s=%r from OrcaSlicer's plugin manager", key, value)
+            if changed:
+                settings = {**settings, **changed}
+                save_settings(settings)
+                log.info("Took %s from OrcaSlicer's plugin manager", ", ".join(sorted(changed)))
+        current = config_view(settings)
+        if current != stored and not capability.save_config(json.dumps(current)):
+            log.warning("OrcaSlicer did not store Spooler's settings in the plugin manager")
+        _config["last"] = current
+    except Exception:
+        log.exception("Could not sync the plugin manager's settings")
+
+
+def default_config() -> dict:
+    """What the plugin manager's Restore defaults puts back."""
+    settings = dict(get_settings())
+    defaults = {**settings, "low_stock_grams": LOW_DEFAULT, "plate_check": True,
+                "plate_margin_percent": DEFAULT_MARGIN, "weight_display": "both", "show_cart": False,
+                "spool_columns": 1, "auto_send": True, "send_saved_copies": True}
+    return config_view(defaults)  # The Spoolman address and source stay: they are yours.
 
 
 def get_spools(spoolman_url: str) -> dict:
@@ -1120,6 +1182,15 @@ def profile_folders(root: Path, snapshot: dict) -> list[str]:
     return found + ["default"]
 
 
+def offered_bundles() -> object:
+    """The local bundle ids OrcaSlicer offers for reload, for the log; None when it can't say."""
+    list_ids = getattr(orca.host.preset.bundles, "list_ids", None)
+    try:
+        return list(list_ids()) if callable(list_ids) else None
+    except Exception:
+        return None
+
+
 def _install_profiles(root: Path, snapshot: dict, files: dict, digest: str) -> None:
     """Write the bundle where OrcaSlicer reads it and reload it. Raises when it is refused."""
     last = None
@@ -1133,6 +1204,8 @@ def _install_profiles(root: Path, snapshot: dict, files: dict, digest: str) -> N
             orca.host.preset.bundles.reload_local(PROFILE_BUNDLE)
         except RuntimeError as exc:
             last = exc
+            log.info("OrcaSlicer did not take the bundle in %s: %s (bundles it offers: %s)",
+                     folder, exc, offered_bundles())
             if "does not exist" not in str(exc):
                 raise
             if fresh:
@@ -1425,6 +1498,66 @@ def auto_send(post) -> None:
     _auto["sent"] = mark
     log.info("Sending %s's edits to Spoolman", name)
     start_send(post, (name, changes), auto=True)
+
+
+# Save on a Spooler preset makes a separate user copy (OrcaSlicer can't save over a plugin's
+# preset). When that copy was made from a Spooler preset, its changed calibration settings are
+# sent to Spoolman too, so the next rebuild of the Spooler preset has them. "send_saved_copies":
+# false in the settings turns this off. The copy itself is left as it is.
+_recent_filaments: list = []  # the filament presets picked last, newest last
+
+
+def note_filament_selected(name: str) -> None:
+    if name:
+        _recent_filaments[:] = [n for n in _recent_filaments if n != name][-4:] + [name]
+
+
+def saved_copy_changes(name: str) -> tuple[str, dict] | None:
+    """(Spooler preset name, {setting: (copy's text, Spooler preset's text)}) for a user preset
+    just saved from a Spooler preset, or None when it wasn't one or nothing calibrated changed.
+    Call it on the UI thread."""
+    if not name or name.startswith(PROFILE_PREFIX):
+        return None
+    filaments = orca.host.preset_bundle().filaments
+    copy = filaments.find_preset(name)
+    # The filament picked just before the save, not counting the copy (OrcaSlicer picks it
+    # after saving): the preset that was being edited. Only a Spooler preset counts.
+    before = [n for n in _recent_filaments if n != name]
+    origin = before[-1] if before and before[-1].startswith(PROFILE_PREFIX) else ""
+    spooler = filaments.find_preset(origin) if origin else None
+    if copy is None or spooler is None:
+        return None
+    # A copy keeps what the Spooler preset inherits from, and the filament it was made for:
+    # its vendor and colour, which Spooler sets from Spoolman. Another filament's preset
+    # tweaked after picking this one doesn't pass.
+    for key in ("inherits", "filament_vendor", "default_filament_colour"):
+        if copy.config_value(key) != spooler.config_value(key) and not (
+                key == "inherits" and copy.config_value(key) == origin):
+            return None
+    changes = {}
+    for key in sorted(ORCA_SETTINGS_KEYS):
+        mine, theirs = copy.config_value(key), spooler.config_value(key)
+        if mine is not None and mine != theirs:
+            changes[key] = (mine, theirs or "")
+    return (origin[len(PROFILE_PREFIX):], changes) if changes else None
+
+
+def send_saved_copy(name: str) -> None:
+    """On PresetSaved: send a saved copy's calibration changes to Spoolman. Never raises."""
+    try:
+        if source() != "spoolman" or not parse_flag(get_settings().get("send_saved_copies"), True):
+            return
+        edits = saved_copy_changes(name)
+        if edits is None:
+            return
+        log.info("%s was saved from %s; sending its changes to Spoolman", name, edits[0])
+
+        def done(result: dict) -> None:
+            push_notice("info" if result.get("ok") else "warning", f"Spooler: {result.get('text')}")
+
+        start_send(done, edits)
+    except Exception:
+        log.exception("Could not send the saved copy %s to Spoolman", name)
 
 
 def start_send(post, edits: tuple | None = None, auto: bool = False) -> None:
@@ -3334,6 +3467,14 @@ def get_release() -> dict:
 def open_url(url: str) -> bool:
     log.info("Opening %s", url)
     try:
+        if sys.platform == "win32":
+            # What OrcaSlicer itself does (ShellExecute): inside its Python, webbrowser.open can
+            # report success on Windows without opening anything.
+            try:
+                os.startfile(url)
+                return True
+            except OSError:
+                log.warning("os.startfile could not open %s, trying webbrowser", url)
         if webbrowser.open(url):
             return True
         # webbrowser reports "no browser available" (common on Linux) by returning
@@ -3640,7 +3781,8 @@ def push_notice(kind: str, text: str) -> bool:
     ui = orca.host.ui
     push = getattr(ui, "push_notification", None)
     level_name = "WarningNotificationLevel" if kind == "warning" else "RegularNotificationLevel"
-    level = getattr(ui, level_name, None)
+    # OrcaSlicer 2.5 has the levels on ui.NotificationLevel; older builds had them on ui itself.
+    level = getattr(getattr(ui, "NotificationLevel", None), level_name, None) or getattr(ui, level_name, None)
     if push is None or level is None:
         log.info("Notifications are not available in this build: %s", text)
         return False
@@ -6829,6 +6971,7 @@ class SpoolerWindow(orca.script.ScriptPluginCapabilityBase):
     def _save_settings(self, url, low_stock, plate_check=True,
                        plate_margin=DEFAULT_MARGIN, weight="both", cart=False, src="spoolman",
                        progress=None, columns=None, stats=None):
+        sync_config(self)  # take a pending plugin-manager edit first, so this save wins over it
         settings = get_settings()
         settings["spool_source"] = parse_source(src)
         if settings["spool_source"] == "spoolman":
@@ -6848,6 +6991,7 @@ class SpoolerWindow(orca.script.ScriptPluginCapabilityBase):
             log.info("Settings saved (url=%s, low stock=%s g, filament check=%s, margin=%s%%)",
                      url, settings["low_stock_grams"], settings["plate_check"],
                      settings["plate_margin_percent"])
+            sync_config(self)
             return True
         orca.host.ui.message(
             f"Could not write settings to {SETTINGS_FILE}. Check that this folder is writable.",
@@ -6988,6 +7132,7 @@ class SpoolerWindow(orca.script.ScriptPluginCapabilityBase):
     def on_message(self, data):
         msg_type = data.get("type") if isinstance(data, dict) else None
         if msg_type in ("ready", "refresh"):
+            sync_config(self)
             self._push_data()
         elif msg_type == "settings":
             self._open_settings()
@@ -7061,6 +7206,9 @@ class SpoolerWindow(orca.script.ScriptPluginCapabilityBase):
             return
         self._open_panel()
 
+    def get_default_config(self):
+        return default_config()
+
     def on_load(self):
         log.info(
             "%s %s loaded (Python %s, %s)",
@@ -7069,6 +7217,7 @@ class SpoolerWindow(orca.script.ScriptPluginCapabilityBase):
             platform.python_version(),
             platform.platform(),
         )
+        sync_config(self)
         self._open()
 
     def execute(self):
@@ -7158,6 +7307,7 @@ if _PAGES:
                     return
                 msg_type = data.get("type")
                 if msg_type in ("ready", "refresh"):
+                    sync_config(self)
                     self._push_data()
                     if msg_type == "ready" and _plate["payload"]:
                         send_plate(_plate["payload"])
@@ -7219,6 +7369,7 @@ if _PAGES:
         def _save_settings(self, url, low_stock, plate_check=True,
                            plate_margin=DEFAULT_MARGIN, weight="both", cart=False, src="spoolman",
                            progress=None, columns=None, stats=None):
+            sync_config(self)  # take a pending plugin-manager edit first, so this save wins over it
             settings = get_settings()
             settings["spool_source"] = parse_source(src)
             if settings["spool_source"] == "spoolman":
@@ -7238,6 +7389,7 @@ if _PAGES:
                 log.info("Settings saved (url=%s, low stock=%s g, filament check=%s, margin=%s%%)",
                          url, settings["low_stock_grams"], settings["plate_check"],
                          settings["plate_margin_percent"])
+                sync_config(self)
                 return True
             orca.host.ui.message(
                 f"Could not write settings to {SETTINGS_FILE}. Check that this folder is writable.",
@@ -7350,6 +7502,9 @@ if _PAGES:
             elif msg_type == "cancel":
                 self._settings_window.close()
 
+        def get_default_config(self):
+            return default_config()
+
         def on_load(self):
             log.info(
                 "%s %s loaded as a native tab (Python %s, %s)",
@@ -7358,6 +7513,7 @@ if _PAGES:
                 platform.python_version(),
                 platform.platform(),
             )
+            sync_config(self)
 
         def on_unload(self):
             log.info("Unloading")
@@ -7489,9 +7645,14 @@ class SpoolerLoadFilaments(orca.script.ScriptPluginCapabilityBase):
     def on_lifecycle_event(self, event, ctx):
         # Preset and project events arrive on the UI thread, where the presets may be read;
         # execute() runs on a worker thread, so it uses this snapshot.
+        events = getattr(orca, "LifecycleEvent", None)
         try:
-            if any(event == getattr(orca.LifecycleEvent, name, None) for name in SNAPSHOT_EVENTS):
+            if event == getattr(events, "PresetSelected", None) and getattr(ctx, "msg", "") == "filament":
+                note_filament_selected(str(getattr(ctx, "name", "") or ""))
+            if any(event == getattr(events, name, None) for name in SNAPSHOT_EVENTS):
                 refresh_snapshot()
+            if event == getattr(events, "PresetSaved", None) and getattr(ctx, "msg", "") == "new":
+                send_saved_copy(str(getattr(ctx, "name", "") or ""))
         except Exception:
             log.exception("Snapshot on %s failed", event)
 
@@ -7560,6 +7721,10 @@ class SpoolerKeepSlots(orca.script.ScriptPluginCapabilityBase):
         if _keep["run"] is not None:
             _keep["run"] = None
             mark_keep_slots(False)
+
+    def on_cancelled(self):
+        """OrcaSlicer's cancel for a running action (Speed Dial or Plugins > Run)."""
+        self.on_unload()
 
 
 def permission_targets() -> dict:
