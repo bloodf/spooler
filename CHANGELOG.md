@@ -3,7 +3,7 @@
 Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); entries before
 0.9.0 are Spoolio's.
 
-## [0.11.0] - Unreleased
+## [0.11.0] - 2026-11-10
 
 ### Added
 - Saving a copy of a Spooler preset in OrcaSlicer (OrcaSlicer can't save over a plugin's preset)
