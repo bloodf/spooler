@@ -3,7 +3,7 @@
 Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); entries before
 0.9.0 are Spoolio's.
 
-## [0.12.1] - Unreleased
+## [0.12.1] - 2026-11-10
 
 ### Changed
 - Spool cards are redrawn: a group of spools of the same filament now looks exactly like a single
