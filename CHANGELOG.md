@@ -3,6 +3,13 @@
 Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); entries before
 0.9.0 are Spoolio's.
 
+## [0.9.3] - 2026-11-10
+
+Everything in 0.9.2, which never reached Orca Cloud.
+
+### Fixed
+- Publishing to Orca Cloud: release notes containing a semicolon no longer break the upload.
+
 ## [0.9.2] - 2026-11-10
 
 ### Added

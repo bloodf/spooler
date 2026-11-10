@@ -6,7 +6,7 @@
 # name = "Spooler"
 # description = "Spoolman inventory for OrcaSlicer: auto-synced filament profiles and live printer slots"
 # author = "bloodf (fork of Spoolio by Dan J Moore)"
-# version = "0.9.2"
+# version = "0.9.3"
 # ///
 
 import asyncio
@@ -48,7 +48,7 @@ except (ImportError, AttributeError):
 _SLICING = hasattr(getattr(orca, "slicing", None), "SlicingPipelineCapabilityBase")
 
 PLUGIN_NAME = "Spooler"
-PLUGIN_VERSION = "0.9.2"
+PLUGIN_VERSION = "0.9.3"
 # Stamped per operating system by scripts/build.py.
 BUILD_TARGET = "any"
 

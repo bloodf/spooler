@@ -58,7 +58,7 @@ jobs:
             "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=orcacloud" | jq -r .value)"
           metadata="$(jq -cn --arg version "${TAG#v}" --rawfile changelog notes.md \
             '{version: $version, changelog: ($changelog | .[0:4000])}')"
-          args=(-F "metadata=$metadata")
+          args=(--form-string "metadata=$metadata")
           for file in dist/*.py; do
             args+=(-F "files=@$file")
           done
