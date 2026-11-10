@@ -93,6 +93,12 @@ class LocationTest(Snapshot):
         for location in ("Shelf T1", "Snapmaker U1 T2", "Snapmaker U1T1", "MU1 T1", "U1 T1 spare", "T1"):
             self.assertIsNone(at(location), location)
 
+    def test_exact_printer_name_beats_a_name_ending_in_u1(self):
+        spools = [dict(SPOOLS[0], id=201, location="Workshop U1 T1", last_used="2026-11-10T00:00:00Z"),
+                  dict(SPOOLS[0], id=202, location="Snapmaker U1 T1", last_used="2026-01-01T00:00:00Z")]
+        self.assertEqual(sp.spool_at_location(spools, ("Snapmaker U1",), 1)["id"], 202)
+        self.assertEqual(sp.spool_at_location(spools, ("Workshop U1",), 1)["id"], 201)
+
     def test_nozzle_label_still_binds_through_the_model(self):
         sp._ui_snap["printers"] = [dict(PRINTERS[0], label="Snapmaker U1 0.4")]
         self.assertEqual(self.trays(STOCK)[0]["spool_id"], 101)

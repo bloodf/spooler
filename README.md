@@ -57,7 +57,9 @@ the rest is automatic.
   is the spool's Spoolman location, `Snapmaker U1 T1` and so on). Spooler publishes its preset names
   in `<OrcaSlicer data folder>/spooler/profiles.json` so both pick the same preset, and while Keep
   Slots Synced runs u1control leaves the plate's slots to it. Filament use on the U1 is booked by
-  u1control, not Spooler.
+  u1control, not Spooler. The binding is found when u1control's printer name is Spooler's printer
+  label or model, or ends in "U1" (the default "Snapmaker U1", or e.g. "Workshop U1"); with two U1s
+  name them apart in u1control.
 - **Klipper/Moonraker printers are found for you.** Any printer preset with a host address appears
   in the ***Printer*** tab with no further setup:
   - **Snapmaker U1:** all four toolheads, matched to your Spoolman spools by the spool id the

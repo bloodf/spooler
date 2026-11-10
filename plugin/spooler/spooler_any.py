@@ -2071,24 +2071,31 @@ def _location_key(text: object) -> str:
     return " ".join(str(text or "").split()).casefold()
 
 
-def _bound_here(location: object, names: tuple, number: int) -> bool:
-    """A location u1control wrote for toolhead T<number> of this printer: "<name> T<n>" with one
-    of its names, or any name ending in the word "U1" (u1control's printer name defaults to
-    "Snapmaker U1" and can be renamed, e.g. "Workshop U1"; the oldest form is "U1 T<n>")."""
+def _bound_here(location: object, names: tuple, number: int) -> int:
+    """How surely a location is u1control's binding of toolhead T<number> on this printer:
+    2 for "<name> T<n>" with one of its names, 1 for any name ending in the word "U1"
+    (u1control's printer name is "Snapmaker U1" unless renamed, e.g. "Workshop U1"; the oldest
+    form is "U1 T<n>"), 0 for no binding."""
     key = _location_key(location)
     suffix = f" t{number}"
     if not key.endswith(suffix):
-        return False
+        return 0
     name = key[:-len(suffix)].strip()
-    return name in {_location_key(n) for n in names} or re.fullmatch(r"(?:.*\s)?u1", name) is not None
+    if name in {_location_key(n) for n in names}:
+        return 2
+    return 1 if re.fullmatch(r"(?:.*\s)?u1", name) else 0
 
 
 def spool_at_location(spools: list[dict], printer: str | tuple, number: int) -> dict | None:
     """The spool u1control bound to toolhead T<number> on stock U1 firmware, where the binding is
     the spool's Spoolman location "<printer name> T<n>". Spooler only reads locations, never
-    writes them. Two spools claiming one toolhead: the last used wins."""
+    writes them. A location naming this printer exactly beats one that only ends in "U1"; two
+    spools equally sure: the last used wins. Limit: two U1s on one system preset share their
+    names here, so a spool left at the other U1's location can still match."""
     names = (printer,) if isinstance(printer, str) else tuple(printer)
-    found = [s for s in spools if not s.get("archived") and _bound_here(s.get("location"), names, number)]
+    scored = [(_bound_here(s.get("location"), names, number), s) for s in spools if not s.get("archived")]
+    best = max((score for score, _ in scored), default=0)
+    found = [s for score, s in scored if score and score == best]
     if len(found) > 1:
         found.sort(key=lambda s: str(s.get("last_used") or ""), reverse=True)
         log.warning("Spools %s all have the location of %s T%d; using %s, the last used",
