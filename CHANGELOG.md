@@ -30,6 +30,11 @@ Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); 
   Filaments fills the plate's slots lane by lane.
 - Plugins > Run > "Spooler: Keep Slots Synced" keeps the plate's slots on the lanes' presets while
   it runs; run it again to stop it.
+- A Stats tab (from Spoolio 0.9.5): filament used per week, per material and per spool, filament
+  cost, spools running low with an estimate of how many weeks they last, and a print history.
+  Prints are recorded in `history.json` as they are booked to Spoolman, even while the tab is
+  hidden. Settings > Configure Stats shows or hides the tab and picks the currency: Spoolman's own
+  setting, or a £, € or $ symbol.
 
 ### Fixed
 - A printer reporting an absurd lane number no longer builds a huge lane list.
@@ -42,6 +47,11 @@ Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); 
   instead of reaching OrcaSlicer as several values.
 
 ### Fixed
+- Live Link reads the printer's serial number from its certificate when the field is left blank,
+  so printers that refused the wildcard status topic now report (from Spoolio 0.9.5). A printer
+  that still refuses it shows "needs its serial number" instead of retrying.
+- H2 printers: the tray feeding the print is read from the active extruder, so slots and the
+  booked spools follow the real tray (from Spoolio 0.9.5).
 - Klipper printers whose Moonraker answers missing objects with an empty one never showed the
   active spool.
 

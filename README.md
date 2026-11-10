@@ -143,7 +143,7 @@ OrcaSlicer asks before a plugin does anything sensitive. Granting Spooler full a
 > The **Printer** tab sits beside **Spools** and shows a card for each of your printers. Click ***+ Add Printer***, then add an AMS or an external spool, you can create it to match your setup, and use ***+ Assign Spool*** to choose which of your spools is in each slot. This is stored in Spooler only and nothing is changed in Spoolman or Bambu Cloud. With Bambu Cloud, spools your library has linked to a slot also show, but that can lag behind what is physically loaded.
 >
 > ### Live Link
-> To read a printer directly, press ***Live Link*** on its card and enter its IP address, its serial number (optional, but helps if you have several printers) and its access code, all found in the printer's network settings with LAN mode on. The slots then show what the printer reports and how long ago it was updated. Spooler keeps the access code in a private file on your computer and only reads from the printer. Removing a printer also removes its Live Link.
+> To read a printer directly, press ***Live Link*** on its card and enter its IP address, its serial number (optional, Spooler reads it from the printer's certificate when left blank) and its access code, all found in the printer's network settings with LAN mode on. The slots then show what the printer reports and how long ago it was updated. Spooler keeps the access code in a private file on your computer and only reads from the printer. Removing a printer also removes its Live Link.
 
 > [!TIP]
 > ### Filament Usage Booking

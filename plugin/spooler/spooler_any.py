@@ -166,6 +166,7 @@ def get_settings() -> dict:
         "show_cart": False,
         "spool_columns": 1,
         "progress": {},
+        "stats": {},
     }
     for path in (SETTINGS_FILE, OLD_SETTINGS):
         try:
@@ -228,6 +229,18 @@ def parse_progress(value: object) -> dict:
 
 def progress_settings() -> dict:
     return parse_progress(get_settings().get("progress"))
+
+
+CURRENCIES = ("spoolman", "gbp", "eur", "usd")
+
+
+def parse_stats(value: object) -> dict:
+    v = value if isinstance(value, dict) else {}
+    return {"on": parse_flag(v.get("on")), "cur": v.get("cur") if v.get("cur") in CURRENCIES else "spoolman"}
+
+
+def stats_settings() -> dict:
+    return parse_stats(get_settings().get("stats"))
 
 
 def plate_settings() -> tuple[bool, int]:
@@ -1426,7 +1439,8 @@ def printer_state() -> dict:
     printers = [dict(p, has_code=p.get("kind") == "moonraker" or bool(codes.get(_code_key(p["id"]))))
                 for p in printers_cfg() if _live["links"].get(p["id"]) != "none"]
     live = any(p["ip"] and p["has_code"] for p in printers)
-    return {"printers": printers, "live_ok": live, "usage": usage_state(), "progress": progress_settings()}
+    return {"printers": printers, "live_ok": live, "usage": usage_state(), "progress": progress_settings(),
+            "stats": stats_settings()}
 
 
 LOCAL_PORT = 8883
@@ -1546,6 +1560,19 @@ def live_apply(dev_id: str, name: str, doc: object, link: str = "") -> None:
         prog.update({k: report[k] for k in PROG_KEYS if k in report})
         if isinstance(ams, dict) and "tray_now" in ams:
             prog["tray_now"] = ams["tray_now"]
+        dev = report.get("device")
+        ex = dev.get("extruder") if isinstance(dev, dict) else None
+        if isinstance(ex, dict):
+            if "state" in ex:
+                prog["ex_now"] = (_int(ex["state"], 0) >> 4) & 0xF
+            for e in ex.get("info") or []:
+                if isinstance(e, dict) and "snow" in e:
+                    prog.setdefault("snow", {})[_int(e.get("id"), 0)] = _int(e["snow"])
+        key = tray_key(prog)
+        if key != prog.get("key"):
+            prog["key"] = key
+            log.info("Active tray: %s (tray_now %s, extruder %s, snow %s)", key, prog.get("tray_now"),
+                     prog.get("ex_now"), prog.get("snow"))
         events = _note_tray(dev_id, state)
         if "gcode_state" in report:
             gs = str(report["gcode_state"]).upper()
@@ -1596,6 +1623,22 @@ STAGES = {
 }
 
 
+def tray_key(p: dict) -> int:
+    """Printer tray number feeding now: AMS unit*4+slot, AMS HT unit id, 254 external, -1 none.
+
+    H2 printers report it per extruder as snow = ams_id << 8 | slot; others only have tray_now.
+    """
+    snow = p.get("snow") or {}
+    if snow:
+        n = snow.get(p.get("ex_now", 0), snow[min(snow)] if len(snow) == 1 else -1)
+        unit, slot = n >> 8, n & 0xFF
+        if n < 0 or unit == 255:
+            return -1
+        return 254 if unit == 254 else unit if unit >= 128 else unit * 4 + slot
+    t = _int(p.get("tray_now"))
+    return t if 0 <= t <= 254 else -1
+
+
 def _live_prog(state: dict) -> dict | None:
     p = state.get("prog") or {}
     gs = str(p.get("gcode_state") or "").upper()
@@ -1606,7 +1649,7 @@ def _live_prog(state: dict) -> dict | None:
         return value if value >= 0 else None
 
     tray = None
-    t = _int(p.get("tray_now"))
+    t = tray_key(p)
     if 0 <= t < 128:
         tray = {"unit": t // 4, "slot": t % 4}
     elif 128 <= t < 254:
@@ -1690,6 +1733,10 @@ class AuthError(Exception):
     pass
 
 
+class TopicError(Exception):
+    pass
+
+
 PUSHALL = '{"pushing": {"sequence_id": "0", "command": "pushall"}}'
 
 
@@ -1720,6 +1767,8 @@ def _mqtt_run(sock, user: str, password: str, topics: list[str], push: list[tupl
             heard = now
         elif now - heard > LIVE_DEAD:
             raise ConnectionError("The printer stopped answering")
+        if packet and packet[0] >> 4 == 9 and 128 in packet[1][2:]:
+            raise TopicError("The printer refused the status topic")
         if packet and packet[0] >> 4 == 3:
             body = packet[1]
             size = struct.unpack("!H", body[:2])[0]
@@ -1740,13 +1789,30 @@ def _live_active() -> bool:
     return time.monotonic() - _live["seen"] < LIVE_IDLE or _live["keep"]
 
 
+def _cert_serial(sock) -> str:
+    """Serial from the printer certificate's subject CN."""
+    found = ""
+    for part in (sock.getpeercert(binary_form=True) or b"").split(b"\x06\x03\x55\x04\x03")[1:]:
+        if len(part) > 2 and part[1] < 128:
+            val = part[2:2 + part[1]].decode("ascii", "ignore")
+            if re.fullmatch(r"[A-Za-z0-9]{8,32}", val):
+                found = val
+    return found
+
+
 def _local_session(pid: str, link: dict, stop: threading.Event) -> None:
     context = ssl.create_default_context()
     context.check_hostname = False
     context.verify_mode = ssl.CERT_NONE
-    serial = link["serial"]
     with socket.create_connection((link["ip"], LOCAL_PORT), timeout=8) as raw:
         with context.wrap_socket(raw, server_hostname=link["ip"]) as sock:
+            serial = link["serial"]
+            if not serial:
+                try:
+                    serial = _cert_serial(sock)
+                except (OSError, ValueError):
+                    serial = ""
+                log.info("Printer serial %s", "read from its certificate" if serial else "not found, listening for any")
             topics = [f"device/{serial or '+'}/report"]
             push = [(f"device/{serial}/request", PUSHALL)] if serial else []
             asked: set[str] = set()
@@ -1779,6 +1845,10 @@ def _local_run(pid: str, link: dict, stop: threading.Event) -> None:
             _live["links"][pid] = "auth"
             log.warning("A printer refused the access code")
             return
+        except TopicError:
+            _live["links"][pid] = "serial"
+            log.warning("A printer refused the status topic")
+            return
         except Exception as exc:
             fails = 0 if time.monotonic() - start > LIVE_DEAD else fails + 1
             _live["links"][pid] = "unreachable" if fails else "connecting"
@@ -1809,7 +1879,7 @@ def _local_sync() -> bool:
                 _live["printers"].pop(pid, None)
     for pid, link in wanted.items():
         entry = _local.get(pid)
-        if entry and (entry["thread"].is_alive() or _live["links"].get(pid) in ("auth", "none")):
+        if entry and (entry["thread"].is_alive() or _live["links"].get(pid) in ("auth", "none", "serial")):
             continue
         stop = threading.Event()
         run = _moon_run if link.get("kind") == "moonraker" else _local_run
@@ -2450,7 +2520,7 @@ def _loaded(state: dict) -> list[dict]:
 def _note_tray(dev_id: str, state: dict) -> list[tuple]:
     """Remember each tray that feeds the running print. Holds _live_lock."""
     run, p = state.get("run"), state.get("prog") or {}
-    t = _int(p.get("tray_now"))
+    t = tray_key(p)
     if not run or not 0 <= t <= 254 or str(p.get("gcode_state") or "").upper() != "RUNNING":
         return []
     if _int(p.get("layer_num"), 0) < 1 or t in run.setdefault("used", []):
@@ -2900,6 +2970,7 @@ def usage_book(entry_id: str, chosen: list | None) -> None:
             log.info("Booked %.1f g to Spoolman spool %s", grams, spool)
         entry["state"] = "booked" if all(row["state"] == "booked" for row in entry["rows"]) else "pending"
         usage_save(data)
+        hist_note(entry, by_id)
 
 
 def usage_undo(entry_id: str) -> None:
@@ -2922,6 +2993,7 @@ def usage_undo(entry_id: str) -> None:
         if not any(row["state"] == "booked" for row in entry["rows"]):
             entry["state"] = "undone"
         usage_save(data)
+        hist_note(entry, {})
 
 
 def usage_action(data: dict) -> dict:
@@ -2936,6 +3008,157 @@ def usage_action(data: dict) -> dict:
     elif kind == "usage_undo":
         usage_undo(str(data.get("run") or ""))
     return usage_state()
+
+
+HISTORY_FILE = DATA_DIR / "history.json"
+CUR_SIGNS = {"GBP": "£", "EUR": "€", "USD": "$"}
+PERIODS = {"30": 30, "90": 90, "year": 0, "all": -1}
+_cur = {"url": "", "code": "", "time": 0.0}
+
+
+def hist_load() -> list[dict]:
+    try:
+        data = json.loads(HISTORY_FILE.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        return []
+    except (OSError, ValueError):
+        log.exception("Could not read %s", HISTORY_FILE)
+        return []
+    return [e for e in data if isinstance(e, dict)] if isinstance(data, list) else []
+
+
+def _hex(sp: dict) -> str:
+    f = sp.get("filament") or {}
+    cs = [c for c in (_hex6(x) for x in str(f.get("multi_color_hexes") or "").split(",")) if c]
+    return (cs[0] if len(cs) > 1 else _hex6(f.get("color_hex"))) or ""
+
+
+def _cost(sp: dict, grams: float) -> float | None:
+    f = sp.get("filament") or {}
+    price = sp.get("price") if isinstance(sp.get("price"), (int, float)) else f.get("price")
+    wt = sp.get("initial_weight") or f.get("weight")
+    if not isinstance(price, (int, float)) or not isinstance(wt, (int, float)) or wt <= 0:
+        return None
+    return round(price / wt * grams, 4)
+
+
+def hist_note(entry: dict, by_id: dict) -> None:
+    """Keep the uncapped history in step with a print's booked rows. Holds _usage_lock."""
+    hist = hist_load()
+    old = next((e for e in hist if e.get("id") == entry["id"]), None)
+    prev = {r.get("spool"): r for r in (old or {}).get("rows") or []}
+    rows = []
+    for row in entry["rows"]:
+        if row["state"] != "booked":
+            continue
+        sp, p = by_id.get(row["spool"]), prev.get(row["spool"]) or {}
+        if sp:
+            f = sp.get("filament") or {}
+            p = {"label": row.get("label") or _spool_label(sp), "material": f.get("material") or row.get("material") or "",
+                 "colour": _hex(sp) or _hex6(row.get("colour")), "cost": _cost(sp, row["grams"])}
+        rows.append({"spool": row["spool"], "grams": row["grams"], "label": p.get("label") or row.get("label") or "",
+                     "material": p.get("material") or row.get("material") or "",
+                     "colour": p.get("colour") or _hex6(row.get("colour")), "cost": p.get("cost")})
+    hist = [e for e in hist if e.get("id") != entry["id"]]
+    if rows:
+        hist.append({"id": entry["id"], "time": entry.get("time") or time.time(), "name": entry.get("name") or "",
+                     "printer": entry.get("printer") or "", "result": entry.get("result") or "",
+                     "pct": entry.get("pct"), "rows": rows})
+        hist.sort(key=lambda e: e.get("time") or 0)
+    elif old is None:
+        return
+    try:
+        HISTORY_FILE.write_text(json.dumps(hist), encoding="utf-8")
+    except OSError:
+        log.exception("Could not write %s", HISTORY_FILE)
+
+
+def spoolman_currency(url: str) -> str:
+    """Spoolman's own currency setting, cached; EUR is Spoolman's default."""
+    if _cur["url"] == url and time.monotonic() - _cur["time"] < CACHE_SECS * 5:
+        return _cur["code"]
+    code = "EUR"
+    try:
+        with urllib.request.urlopen(f"{url}/api/v1/setting/currency", timeout=TIMEOUT) as resp:
+            val = json.loads(resp.read().decode("utf-8")).get("value")
+        val = json.loads(val) if isinstance(val, str) and val.startswith('"') else val
+        if isinstance(val, str) and re.fullmatch(r"[A-Za-z]{3}", val.strip()):
+            code = val.strip().upper()
+    except Exception as exc:
+        log.info("Could not read the currency from Spoolman: %s", exc)
+    _cur.update(url=url, code=code, time=time.monotonic())
+    return code
+
+
+def stats_data(period: object) -> dict:
+    cfg = stats_settings()
+    url = clean_url(get_settings().get("spoolman_url"))
+    code = spoolman_currency(url) if cfg["cur"] == "spoolman" and url else cfg["cur"].upper()
+    if cfg["cur"] == "spoolman" and not url:
+        code = "EUR"
+    with _usage_lock:
+        hist = hist_load()
+    now = time.time()
+    lt = time.localtime(now)
+    days = PERIODS.get(str(period), 30)
+    if days > 0:
+        start = now - days * 86400
+    elif days == 0:
+        start = time.mktime((lt.tm_year, 1, 1, 0, 0, 0, 0, 0, -1))
+    else:
+        start = 0.0
+    sel = [e for e in hist if (e.get("time") or 0) >= start]
+    total = sum(r["grams"] for e in sel for r in e["rows"])
+    costs = [r["cost"] for e in sel for r in e["rows"] if isinstance(r.get("cost"), (int, float))]
+    mats: dict = {}
+    top: dict = {}
+    for e in sel:
+        for r in e["rows"]:
+            m = (r.get("material") or "Other").strip() or "Other"
+            mats[m] = mats.get(m, 0) + r["grams"]
+            t = top.setdefault(r["spool"], {"label": r["label"], "colour": r["colour"], "g": 0})
+            t["g"] += r["grams"]
+    week0 = time.mktime((lt.tm_year, lt.tm_mon, lt.tm_mday - lt.tm_wday, 0, 0, 0, 0, 0, -1))
+    weeks = []
+    for i in range(7, -1, -1):
+        a = time.mktime((lt.tm_year, lt.tm_mon, lt.tm_mday - lt.tm_wday - 7 * i, 0, 0, 0, 0, 0, -1))
+        b = time.mktime((lt.tm_year, lt.tm_mon, lt.tm_mday - lt.tm_wday - 7 * i + 7, 0, 0, 0, 0, 0, -1))
+        parts: dict = {}
+        for e in hist:
+            if a <= (e.get("time") or 0) < b:
+                for r in e["rows"]:
+                    k = parts.setdefault(r["spool"], {"label": r["label"], "colour": r["colour"], "g": 0})
+                    k["g"] += r["grams"]
+        weeks.append({"start": a, "now": a == week0,
+                      "parts": sorted(parts.values(), key=lambda x: -x["g"])})
+    low = parse_low(get_settings().get("low_stock_grams"))
+    rate: dict = {}
+    for e in hist:
+        if (e.get("time") or 0) >= now - 28 * 86400:
+            for r in e["rows"]:
+                rate[r["spool"]] = rate.get(r["spool"], 0) + r["grams"] / 4
+    out, nlow = [], 0
+    for sp in (plate_spools(url) if url else None) or []:
+        left = sp.get("remaining_weight")
+        if sp.get("archived") or not isinstance(left, (int, float)):
+            continue
+        is_low = left < low
+        nlow += is_low
+        wk = left / rate[sp.get("id")] if rate.get(sp.get("id")) else None
+        if is_low or (wk is not None and wk <= 8):
+            f = sp.get("filament") or {}
+            full = sp.get("initial_weight") or f.get("weight") or 0
+            out.append({"label": _spool_label(sp), "colour": _hex(sp), "left": left, "low": is_low,
+                        "weeks": round(wk, 1) if wk is not None else None,
+                        "pct": max(0, min(100, left / full * 100)) if full else None})
+    out.sort(key=lambda x: (not x["low"], x["weeks"] if x["weeks"] is not None else 99, x["left"]))
+    return {"period": str(period), "since": hist[0]["time"] if hist else None, "code": code,
+            "sign": CUR_SIGNS.get(code, code + " "), "grams": round(total, 1), "prints": len(sel),
+            "cost": round(sum(costs), 2) if costs else None, "low": nlow,
+            "mats": sorted(({"name": k, "g": round(v, 1)} for k, v in mats.items()), key=lambda x: -x["g"]),
+            "top": sorted(top.values(), key=lambda x: -x["g"])[:5], "weeks": weeks, "soon": out[:5],
+            "history": [{"time": e["time"], "name": e["name"], "printer": e["printer"], "result": e["result"],
+                         "pct": e.get("pct"), "rows": e["rows"]} for e in reversed(sel)]}
 
 
 def is_newer(latest: str, current: str) -> bool:
@@ -3644,7 +3867,64 @@ MAIN_PAGE = """
   #list.cols-2 .group.collapsed .group-items { display: none; }
   @media (max-width: 640px) { #list.cols-2, #list.cols-2 .group-items { grid-template-columns: minmax(0, 1fr); } }
   .tabs { display: inline-flex; margin: 0 0 12px; border: 1px solid var(--orca-border); border-radius: 8px; overflow: hidden; }
-  .tabs[hidden], #page-spools[hidden], #page-printer[hidden] { display: none; }
+  .tabs[hidden], #page-spools[hidden], #page-printer[hidden], #page-stats[hidden] { display: none; }
+  .st-bar { display: flex; align-items: center; gap: 10px; margin: 0 0 12px; flex-wrap: wrap; }
+  .st-bar select { padding: 5px 8px; border: 1px solid var(--orca-border); border-radius: 4px; background: var(--orca-bg); color: var(--orca-fg); }
+  .st-bar select option { background: var(--orca-bg); color: var(--orca-fg); }
+  .st-note { color: var(--orca-muted); font-size: 12px; margin-left: auto; }
+  .st-tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-bottom: 10px; }
+  .st-tile, .st-card { border: 1px solid var(--orca-border); border-radius: 8px; padding: 12px 14px; background: var(--orca-border); background: color-mix(in srgb, var(--orca-fg) 5%, var(--orca-bg) 95%); min-width: 0; }
+  .st-tile span { font-size: 12px; color: var(--orca-muted); }
+  .st-tile b { display: block; font-size: 22px; font-weight: 700; margin-top: 4px; color: var(--orca-fg); }
+  .st-tile.low b { color: #e0a030; }
+  .st-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; }
+  .st-card h3 { margin: 0 0 10px; font-size: 14px; color: var(--orca-fg); }
+  .st-empty { color: var(--orca-muted); font-size: 12px; padding: 6px 0; }
+  .st-row { display: flex; align-items: center; gap: 10px; font-size: 13px; margin: 7px 0; }
+  .st-row .l { width: 170px; flex-shrink: 1; min-width: 60px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .st-row .t { flex: 1; height: 10px; border-radius: 5px; background: color-mix(in srgb, var(--orca-fg) 10%, transparent); overflow: hidden; }
+  .st-row .t i { display: block; height: 100%; background: var(--orca-accent); border-radius: 5px; }
+  .st-row .t i.red { background: #d9534f; }
+  .st-row .v { width: 70px; text-align: right; color: var(--orca-muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .st-sw { width: 12px; height: 12px; border-radius: 50%; border: 1px solid var(--orca-border); flex-shrink: 0; }
+  .st-weeks { display: flex; align-items: flex-end; gap: 8px; height: 150px; padding-top: 6px; }
+  .st-weeks > div { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; font-size: 11px; color: var(--orca-muted); gap: 4px; white-space: nowrap; min-width: 0; }
+  .st-weeks em { font-style: normal; color: var(--orca-fg); }
+  .st-weeks .stk { display: flex; flex-direction: column; width: 100%; gap: 2px; border-radius: 4px 4px 0 0; overflow: hidden; }
+  .st-weeks .stk i { display: block; min-height: 3px; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .14); }
+  .st-weeks .stk.now { opacity: .6; }
+  .st-wk-note { font-size: 11px; color: var(--orca-muted); margin-top: 8px; }
+  .st-donut { display: flex; align-items: center; gap: 22px; }
+  .st-donut svg { width: 150px; height: 150px; flex-shrink: 0; }
+  .st-donut .c1 { font-size: 6.5px; font-weight: 700; fill: var(--orca-fg); }
+  .st-donut .c2 { font-size: 3.6px; fill: var(--orca-muted); }
+  .st-leg { flex: 1; font-size: 13px; min-width: 0; }
+  .st-leg div { display: flex; align-items: center; gap: 8px; margin: 8px 0; }
+  .st-leg .k { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; }
+  .st-leg .n { flex: 1; }
+  .st-leg .v { color: var(--orca-muted); font-variant-numeric: tabular-nums; }
+  .ph { grid-column: 1 / -1; }
+  .ph-h { display: flex; align-items: center; gap: 10px; cursor: pointer; user-select: none; }
+  .ph-h h3 { margin: 0; }
+  .ph-h .sum { color: var(--orca-muted); font-size: 12px; flex: 1; }
+  .ph-h .chev { color: var(--orca-muted); transition: transform .15s; }
+  .ph.open .chev { transform: rotate(180deg); }
+  .ph-b { margin-top: 10px; overflow-x: auto; }
+  .ph:not(.open) .ph-b { display: none; }
+  .ph table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .ph th { text-align: left; font-weight: 600; font-size: 12px; color: var(--orca-muted); padding: 0 10px 8px; border-bottom: 1px solid var(--orca-border); }
+  .ph td { padding: 9px 10px; border-bottom: 1px solid var(--orca-border); vertical-align: middle; }
+  .ph tr:last-child td { border-bottom: 0; }
+  .ph th.r, .ph td.r { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .ph td.d { color: var(--orca-muted); white-space: nowrap; }
+  .ph .nm { font-weight: 600; }
+  .ph .pr { color: var(--orca-muted); font-size: 12px; }
+  .ph .mats { display: flex; flex-wrap: wrap; gap: 6px; }
+  .ph .m { display: inline-flex; align-items: center; gap: 5px; padding: 2px 8px 2px 4px; border-radius: 99px; background: color-mix(in srgb, var(--orca-fg) 8%, transparent); font-size: 12px; white-space: nowrap; }
+  .ph .m i { width: 10px; height: 10px; border-radius: 50%; border: 1px solid var(--orca-border); }
+  .ph .fail { font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 99px; background: rgba(217, 83, 79, .18); color: #ff8a85; margin-left: 6px; }
+  .ph .more { display: block; margin: 10px auto 0; }
+  @media (max-width: 760px) { .st-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } .st-grid { grid-template-columns: minmax(0, 1fr); } }
   .tabs button { background: transparent; color: var(--orca-fg); border: 0; border-right: 1px solid var(--orca-border); border-radius: 0; padding: 7px 20px; font-weight: 600; cursor: pointer; }
   .tabs button:last-child { border-right: 0; }
   .tabs button.on { background: var(--orca-accent); color: var(--orca-accent-fg); }
@@ -3777,7 +4057,8 @@ MAIN_PAGE = """
   </div><!--/header-->
   <div id="tabs" class="tabs">
     <button data-tab="spools" class="on">Spools</button>
-    <button data-tab="printer">Printer<span id="tab-dot" hidden></span></button>
+    <button data-tab="printer" id="tab-printer">Printer<span id="tab-dot" hidden></span></button>
+    <button data-tab="stats" id="tab-stats" hidden>Stats</button>
   </div>
   <div id="page-spools">
   <div class="listbar">
@@ -3842,6 +4123,7 @@ MAIN_PAGE = """
     <div id="plate-slot"></div>
     <div id="usage-slot"></div>
   </div>
+  <div id="page-stats" hidden></div>
 
   <script>
     const statusEl = document.getElementById("status");
@@ -3902,7 +4184,18 @@ MAIN_PAGE = """
     let picking = null;
     const KINDS = { ams: 4, ht: 1, ext: 1 };
     const RANK = { ams: 0, ht: 1, ext: 2 };
-    try { if (localStorage.getItem("spooler.tab") === "printer") tab = "printer"; } catch (err) {}
+    try { const t = localStorage.getItem("spooler.tab"); if (t === "printer" || t === "stats") tab = t; } catch (err) {}
+    const statsEl = document.getElementById("page-stats");
+    const statsBtn = document.getElementById("tab-stats");
+    const printerBtn = document.getElementById("tab-printer");
+    let stats = { on: true, cur: "spoolman" };
+    let stData = null;
+    let stPeriod = "30";
+    let phOpen = false;
+    let phShown = 7;
+    try { stPeriod = localStorage.getItem("spooler.period") || "30"; phOpen = localStorage.getItem("spooler.history") === "1"; } catch (err) {}
+    const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const ST_COLS = ["var(--orca-accent)", "#5b8def", "#e0a030", "#9b6bd6", "#4fb3a9", "#d9534f", "#888"];
 
     function esc(v) {
       return String(v).replace(/[&<>"]/g, function (c) {
@@ -4173,6 +4466,7 @@ MAIN_PAGE = """
         return '<span class="live-dot' + (lv.age > 180 ? " stale" : "") + '"></span>Live';
       }
       if (st === "auth") return "Wrong access code";
+      if (st === "serial") return "The printer needs its serial number - add it under Live Link";
       if (st === "unreachable") return "Can't reach " + esc(p.ip) + " - is the printer on and in LAN mode?";
       if (st === "waiting") return "Connected, waiting for the printer to report";
       return "Connecting to " + esc(p.ip) + "...";
@@ -4181,7 +4475,7 @@ MAIN_PAGE = """
     function linkForm(p) {
       return '<div class="linkform">' +
         '<label>IP Address<input data-f="ip" value="' + esc(p.ip || "") + '" placeholder="192.168.1.50" autocomplete="off"></label>' +
-        '<label>Serial Number<input data-f="serial" value="' + esc(p.serial || "") + '" placeholder="Optional" autocomplete="off"></label>' +
+        '<label>Serial Number<input data-f="serial" value="' + esc(p.serial || "") + '" placeholder="Optional - found automatically" autocomplete="off"></label>' +
         '<label>Access Code<input data-f="code" type="password" autocomplete="off" placeholder="' + (p.has_code ? "Saved - leave blank to keep" : "Shown on the printer") + '"></label>' +
         '<div class="bar"><button class="sbtn" data-act="link-save" data-p="' + esc(p.id) + '">Save</button>' +
         '<button class="sbtn ghost" data-act="link-cancel" data-p="' + esc(p.id) + '">Cancel</button>' +
@@ -4459,17 +4753,165 @@ MAIN_PAGE = """
     }, 30000);
 
     function updateTabs() {
-      const onPrinter = showTab && tab === "printer";
-      tabsEl.hidden = !showTab;
-      document.getElementById("page-spools").hidden = onPrinter;
+      const stOn = stats.on && usage.enabled;
+      const view = tab === "stats" ? (stOn ? "stats" : "spools") : showTab && tab === "printer" ? "printer" : "spools";
+      const onPrinter = view === "printer";
+      tabsEl.hidden = !showTab && !stOn;
+      printerBtn.hidden = !showTab;
+      statsBtn.hidden = !stOn;
+      if (stOn) printerBtn.style.removeProperty("border-right"); else printerBtn.style.setProperty("border-right", "0", "important");
+      document.getElementById("page-spools").hidden = view !== "spools";
       document.getElementById("page-printer").hidden = !onPrinter;
+      statsEl.hidden = view !== "stats";
       if (showTab) plateSlot.appendChild(plateEl); else listEl.parentNode.insertBefore(plateEl, listEl);
       plateEl.classList.toggle("on-printer", showTab);
       if (onPrinter) pollLive();
+      if (view === "stats") { if (!stData) renderStats(); askStats(); }
       tabsEl.querySelectorAll("button").forEach(function (b) {
-        b.classList.toggle("on", b.dataset.tab === (onPrinter ? "printer" : "spools"));
+        b.classList.toggle("on", b.dataset.tab === view);
       });
     }
+
+    function askStats() {
+      orca.postMessage({ type: "stats", period: stPeriod });
+    }
+
+    function stW(g) {
+      return g >= 1000 ? (g / 1000).toFixed(2) + " kg" : Math.round(g) + " g";
+    }
+
+    function stMoney(v) {
+      return typeof v === "number" ? esc(stData.sign) + v.toFixed(2) : "&ndash;";
+    }
+
+    function stCol(c) {
+      return c ? "#" + c : "#888";
+    }
+
+    function stDate(t) {
+      const d = new Date(t * 1000);
+      const now = new Date();
+      const day = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+      const hm = String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0");
+      if (d.getTime() >= day) return "Today " + hm;
+      if (d.getTime() >= day - 86400000) return "Yesterday " + hm;
+      return d.getDate() + " " + MONTHS[d.getMonth()] + (d.getFullYear() !== now.getFullYear() ? " " + d.getFullYear() : "") + " " + hm;
+    }
+
+    function stWeeks(d) {
+      const max = Math.max.apply(null, d.weeks.map(function (w) { return w.parts.reduce(function (a, p) { return a + p.g; }, 0); }).concat([0]));
+      if (!max) return '<div class="st-empty">No filament booked in the last 8 weeks.</div>';
+      return '<div class="st-weeks">' + d.weeks.map(function (w) {
+        const g = w.parts.reduce(function (a, p) { return a + p.g; }, 0);
+        const day = new Date(w.start * 1000);
+        const parts = w.parts.map(function (p) {
+          return '<i style="flex:' + p.g + ';background:' + stCol(p.colour) + '" title="' + esc(p.label) + ': ' + Math.round(p.g) + ' g"></i>';
+        }).join("");
+        return '<div>' + (g ? '<em>' + stW(g) + '</em>' : '') + '<span class="stk' + (w.now ? ' now' : '') + '" style="height:' + (g ? Math.max(3, g / max * 80) : 0) + '%">' + parts + '</span>' +
+          (w.now ? 'This Week' : day.getDate() + ' ' + MONTHS[day.getMonth()]) + '</div>';
+      }).join("") + '</div><div class="st-wk-note">Each bar is split by the filament used that week. Hover a section to see it.</div>';
+    }
+
+    function stDonut(d) {
+      if (!d.mats.length) return '<div class="st-empty">Nothing booked in this period.</div>';
+      const top = d.mats.slice(0, 6);
+      const rest = d.mats.slice(6).reduce(function (a, m) { return a + m.g; }, 0);
+      if (rest) top.push({ name: "Other", g: rest });
+      let at = 0;
+      const rings = top.map(function (m, i) {
+        const len = m.g / d.grams * 100;
+        const out = '<circle cx="21" cy="21" r="15.915" stroke="' + ST_COLS[i] + '" stroke-dasharray="' + Math.max(0, len - 0.5).toFixed(2) + ' ' + (100 - Math.max(0, len - 0.5)).toFixed(2) + '" stroke-dashoffset="' + (-at).toFixed(2) + '"/>';
+        at += len;
+        return out;
+      }).join("");
+      return '<div class="st-donut"><svg viewBox="0 0 42 42"><g transform="rotate(-90 21 21)" fill="none" stroke-width="6">' + rings + '</g>' +
+        '<text x="21" y="21.6" text-anchor="middle" class="c1">' + stW(d.grams) + '</text><text x="21" y="26.4" text-anchor="middle" class="c2">' +
+        d.mats.length + (d.mats.length === 1 ? ' Material' : ' Materials') + '</text></svg><div class="st-leg">' + top.map(function (m, i) {
+          return '<div><span class="k" style="background:' + ST_COLS[i] + '"></span><span class="n">' + esc(m.name) + '</span><span class="v">' +
+            stW(m.g) + ' &middot; ' + Math.round(m.g / d.grams * 100) + '%</span></div>';
+        }).join("") + '</div></div>';
+    }
+
+    function stTop(d) {
+      if (!d.top.length) return '<div class="st-empty">Nothing booked in this period.</div>';
+      const max = d.top[0].g;
+      return d.top.map(function (t) {
+        return '<div class="st-row"><span class="st-sw" style="background:' + stCol(t.colour) + '"></span><span class="l">' + esc(t.label) + '</span>' +
+          '<span class="t"><i style="width:' + (t.g / max * 100) + '%"></i></span><span class="v">' + stW(t.g) + '</span></div>';
+      }).join("");
+    }
+
+    function stSoon(d) {
+      if (!d.soon.length) return '<div class="st-empty">No spools are running low.</div>';
+      return d.soon.map(function (s) {
+        const wk = s.weeks === null ? "" : s.weeks < 1 ? "< 1 week" : "~" + Math.round(s.weeks) + (Math.round(s.weeks) === 1 ? " week" : " weeks");
+        return '<div class="st-row"><span class="st-sw" style="background:' + stCol(s.colour) + '"></span><span class="l">' + esc(s.label) + '</span>' +
+          '<span class="t"><i class="' + (s.low ? 'red' : '') + '" style="width:' + (s.pct === null ? 100 : s.pct) + '%"></i></span><span class="v">' +
+          (s.low || !wk ? stW(s.left) : wk) + '</span></div>';
+      }).join("");
+    }
+
+    function stHistory(d) {
+      const list = d.history.slice(0, phShown);
+      const sum = d.prints + (d.prints === 1 ? ' Print' : ' Prints') + ' &middot; ' + stW(d.grams) + (d.cost !== null ? ' &middot; ' + stMoney(d.cost) : '');
+      const rows = list.map(function (e) {
+        const g = e.rows.reduce(function (a, r) { return a + r.grams; }, 0);
+        const costs = e.rows.filter(function (r) { return typeof r.cost === "number"; });
+        const cost = costs.length ? costs.reduce(function (a, r) { return a + r.cost; }, 0) : null;
+        const fail = e.result === "cancelled" ? '<span class="fail">Failed at ' + (e.pct || 0) + '%</span>' : '';
+        return '<tr><td class="d">' + stDate(e.time) + '</td><td><span class="nm">' + esc(e.name || "Print") + '</span>' + fail +
+          (e.printer ? '<br><span class="pr">' + esc(e.printer) + '</span>' : '') + '</td><td><div class="mats">' + e.rows.map(function (r) {
+            return '<span class="m" title="' + esc(r.label) + '"><i style="background:' + stCol(r.colour) + '"></i>' + esc(r.material || "") + ' ' + r.grams.toFixed(1) + ' g</span>';
+          }).join("") + '</div></td><td class="r">' + g.toFixed(1) + ' g</td><td class="r">' + stMoney(cost) + '</td></tr>';
+      }).join("");
+      const body = list.length ? '<table><thead><tr><th>Date</th><th>Print</th><th>Material Used</th><th class="r">Weight</th><th class="r">Cost</th></tr></thead><tbody>' +
+        rows + '</tbody></table>' + (d.history.length > phShown ? '<button class="sbtn ghost more" data-st="more">Show More</button>' : '')
+        : '<div class="st-empty">No prints booked in this period.</div>';
+      return '<div class="st-card ph' + (phOpen ? ' open' : '') + '"><div class="ph-h" data-st="history"><h3>Print History</h3><span class="sum">' + sum +
+        '</span><span class="chev">&#9662;</span></div><div class="ph-b">' + body + '</div></div>';
+    }
+
+    function renderStats() {
+      const d = stData;
+      if (!d) { statsEl.innerHTML = '<div class="st-empty">Loading stats...</div>'; return; }
+      const since = d.since ? new Date(d.since * 1000) : null;
+      const opts = [["30", "Last 30 Days"], ["90", "Last 90 Days"], ["year", "This Year"], ["all", "All Time"]].map(function (o) {
+        return '<option value="' + o[0] + '"' + (stPeriod === o[0] ? ' selected' : '') + '>' + o[1] + '</option>';
+      }).join("");
+      statsEl.innerHTML = '<div class="st-bar"><select data-st="period">' + opts + '</select><span class="st-note">' +
+        (since ? 'From prints Spooler booked since ' + since.getDate() + ' ' + MONTHS[since.getMonth()] + ' ' + since.getFullYear()
+          : 'Stats fill in as Spooler books your prints to Spoolman.') + '</span></div>' +
+        '<div class="st-tiles"><div class="st-tile"><span>Filament Used</span><b>' + stW(d.grams) + '</b></div>' +
+        '<div class="st-tile"><span>Prints Booked</span><b>' + d.prints + '</b></div>' +
+        '<div class="st-tile"><span>Filament Cost</span><b>' + stMoney(d.cost) + '</b></div>' +
+        '<div class="st-tile' + (d.low ? ' low' : '') + '"><span>Low Stock</span><b>' + d.low + '</b></div></div>' +
+        '<div class="st-grid"><div class="st-card"><h3>Used per Week</h3>' + stWeeks(d) + '</div>' +
+        '<div class="st-card"><h3>Materials Used</h3>' + stDonut(d) + '</div>' +
+        '<div class="st-card"><h3>Most Used</h3>' + stTop(d) + '</div>' +
+        '<div class="st-card"><h3>Running Low</h3>' + stSoon(d) + '</div>' + stHistory(d) + '</div>';
+    }
+
+    statsEl.addEventListener("change", function (e) {
+      if (e.target.dataset.st !== "period") return;
+      stPeriod = e.target.value;
+      phShown = 7;
+      try { localStorage.setItem("spooler.period", stPeriod); } catch (err) {}
+      askStats();
+    });
+
+    statsEl.addEventListener("click", function (e) {
+      const el = e.target.closest("[data-st]");
+      if (!el || !stData) return;
+      if (el.dataset.st === "history") {
+        phOpen = !phOpen;
+        try { localStorage.setItem("spooler.history", phOpen ? "1" : "0"); } catch (err) {}
+      } else if (el.dataset.st === "more") {
+        phShown += 20;
+      } else {
+        return;
+      }
+      renderStats();
+    });
 
     tabsEl.addEventListener("click", function (e) {
       const b = e.target.closest("button");
@@ -5081,6 +5523,7 @@ MAIN_PAGE = """
       liveOn = payload.live_ok === true;
       if (payload.usage) setUsage(payload.usage);
       if (payload.progress) progress = payload.progress;
+      if (payload.stats) stats = payload.stats;
       if (liveOn) pollLive();
       populateFilterOptions();
       buildPrinters();
@@ -5098,6 +5541,9 @@ MAIN_PAGE = """
         setPlate(null);
       } else if (data && data.type === "usage") {
         setUsage(data.usage, true);
+        if (!statsEl.hidden) askStats();
+      } else if (data && data.type === "stats") {
+        if (data.stats.period === stPeriod) { stData = data.stats; renderStats(); }
       } else if (data && data.type === "sent") {
         statusEl.textContent = data.text;
         statusEl.className = data.ok ? "" : "error";
@@ -5285,6 +5731,17 @@ SETTINGS_PAGE = """
   #pp-slot .d { width: 10px; height: 10px; border-radius: 50%; background: #ae835b; border: 2px solid rgba(255, 255, 255, 0.18); }
   .pp-off { display: none; color: var(--orca-muted); font-style: italic; }
   .prog-off #prog-opts, .prog-off #pp-card { display: none; }
+  .cur-prev { display: flex; flex-direction: column; gap: 10px; max-width: 340px; }
+  .cur-tile, .cur-row { border: 1px solid var(--orca-border); border-radius: 10px; padding: 10px 14px; background: var(--orca-border); background: color-mix(in srgb, var(--orca-fg) 5%, var(--orca-bg) 95%); }
+  .cur-tile span { font-size: 12px; color: var(--orca-muted); }
+  .cur-tile b { display: block; font-size: 20px; margin-top: 3px; }
+  .cur-tile b .cur { font-size: inherit; color: inherit; }
+  .cur-row { display: flex; gap: 14px; font-size: 13px; }
+  .cur-row .nm { flex: 1; font-weight: 600; }
+  #cur-seg label { white-space: nowrap; padding: 6px 12px; }
+  .st-off { display: none; color: var(--orca-muted); font-style: italic; }
+  .stats-off #stats-opts, .stats-off #cur-prev { display: none; }
+  .stats-off #stats-off { display: block; }
   .prog-off .pp-off { display: block; }
   input[type="checkbox"] { width: 16px; height: 16px; padding: 0; margin: 0; accent-color: var(--orca-accent); }
   .status.ok { color: #3fb950; }
@@ -5403,6 +5860,27 @@ SETTINGS_PAGE = """
     <div class="ws-card"><div class="ws-swatch" style="background:#2850A8"></div><div class="ws-main"><div class="ws-top"><span class="ws-name">PETG HF - Cobalt Blue</span><span>770 g</span></div><div class="ws-bar"><i style="width:77%;background:#2850A8"></i></div></div></div>
     <div class="ws-card"><div class="ws-swatch" style="background:#3F8E43"></div><div class="ws-main"><div class="ws-top"><span class="ws-name">PLA Basic - Bambu Green</span><span>700 g</span></div><div class="ws-bar"><i style="width:70%;background:#3F8E43"></i></div></div></div>
   </div><!--/layout-preview-->
+
+  <div class="divider spaced"></div>
+
+  <!--stats--><h3><span class="emoji">📊</span>Configure Stats</h3>
+  <label class="check-row"><input id="show-stats" type="checkbox">Show the Stats Tab</label>
+  <div id="stats-opts">
+    <div class="field-label">Show filament costs in:</div>
+    <div class="seg" id="cur-seg">
+      <label><input type="radio" name="stats-cur" value="spoolman">From Spoolman (<span id="cur-code">__CUR_CODE__</span>)</label>
+      <label><input type="radio" name="stats-cur" value="gbp">£ GBP</label>
+      <label><input type="radio" name="stats-cur" value="eur">€ EUR</label>
+      <label><input type="radio" name="stats-cur" value="usd">$ USD</label>
+    </div>
+    <div class="hint">Costs come from the spool prices in Spoolman. From Spoolman uses the currency set in Spoolman's own settings. Picking another only changes the symbol, it doesn't convert prices.</div>
+  </div>
+  <div class="hint">Spooler keeps recording print history while the tab is hidden, so your stats are complete if you turn it on later.</div><!--/stats-->
+  <!--stats-preview--><div class="cur-prev" id="cur-prev">
+    <div class="cur-tile"><span>Filament Cost</span><b><span class="cur">£</span>24.10</b></div>
+    <div class="cur-row"><span class="nm">Headphone_Stand.3mf</span><span>94.3 g</span><span><span class="cur">£</span>2.08</span></div>
+  </div>
+  <div class="pp-card st-off" id="stats-off">The Stats tab is hidden. Print history is still recorded.</div><!--/stats-preview-->
 
   <div class="divider spaced"></div>
 
@@ -5648,6 +6126,27 @@ SETTINGS_PAGE = """
       document.querySelector('input[name="progress-idle"][value="' + p.idle + '"]').checked = true;
     })(__PROGRESS__);
     showProgress();
+    const statsOn = document.getElementById("show-stats");
+    const curRadios = document.querySelectorAll('input[name="stats-cur"]');
+    const CUR = { gbp: "£", eur: "€", usd: "$" };
+    function statsPick() {
+      const c = document.querySelector('input[name="stats-cur"]:checked');
+      return { on: statsOn.checked, cur: c ? c.value : "spoolman" };
+    }
+    function showStats() {
+      const st = statsPick();
+      (statsOn.closest(".srow") || document.body).classList.toggle("stats-off", !st.on);
+      curRadios.forEach(function (r) { r.parentNode.classList.toggle("on", r.checked); });
+      const code = st.cur === "spoolman" ? document.getElementById("cur-code").textContent : st.cur.toUpperCase();
+      const sign = CUR[code.toLowerCase()] || code + " ";
+      document.querySelectorAll("#cur-prev .cur").forEach(function (e) { e.textContent = sign; });
+    }
+    [statsOn].concat(Array.from(curRadios)).forEach(function (el) { el.addEventListener("change", showStats); });
+    (function (st) {
+      statsOn.checked = st.on;
+      document.querySelector('input[name="stats-cur"][value="' + st.cur + '"]').checked = true;
+    })(__STATS__);
+    showStats();
     const updateEl = document.getElementById("update-status");
     document.getElementById("check-update").addEventListener("click", function () {
       updateEl.textContent = "Checking...";
@@ -5732,6 +6231,7 @@ SETTINGS_PAGE = """
         show_cart: document.getElementById("show-cart").checked,
         spool_columns: cPick(),
         progress: progPick(),
+        stats: statsPick(),
       });
     });
     refreshSave();
@@ -5756,7 +6256,7 @@ def main_html() -> str:
 def settings_html(current_url: str, spoolman_info: dict, low_stock_grams: float,
                   plate_check: bool = True, plate_margin: int = DEFAULT_MARGIN,
                   weight: str = "both", cart: bool = False, source: str = "spoolman",
-                  progress: dict | None = None, columns: int = 1) -> str:
+                  progress: dict | None = None, columns: int = 1, stats: dict | None = None) -> str:
     """``spoolman_info`` describes the saved URL, not whatever is typed in the field."""
     verified_url = clean_url(current_url) if spoolman_info.get("ok") else ""
     if spoolman_info.get("ok"):
@@ -5784,6 +6284,8 @@ def settings_html(current_url: str, spoolman_info: dict, low_stock_grams: float,
         CART_CHECKED="checked" if cart else "",
         COLUMNS=parse_columns(columns),
         PROGRESS=json.dumps(parse_progress(progress)),
+        STATS=json.dumps(parse_stats(stats)),
+        CUR_CODE=_cur["code"] or "EUR",
         LOG_PATH=html.escape(str(LOG_FILE)),
         STATUS_TEXT=html.escape(status_text),
         STATUS_CLASS=status_class,
@@ -6060,6 +6562,13 @@ TAB_BRIDGE = """
     var progOn = document.getElementById("show-progress");
     progOn.checked = prog.on !== false;
     progOn.dispatchEvent(new Event("change"));
+    var st = data.stats || {};
+    if (data.cur_code) document.getElementById("cur-code").textContent = data.cur_code;
+    var cur = document.querySelector('input[name="stats-cur"][value="' + (st.cur || "spoolman") + '"]');
+    if (cur) cur.checked = true;
+    var stOn = document.getElementById("show-stats");
+    stOn.checked = st.on !== false;
+    stOn.dispatchEvent(new Event("change"));
     document.getElementById("update-status").textContent = "";
   });
 })();
@@ -6069,7 +6578,7 @@ TAB_BRIDGE = """
 def tab_html(initial_view: str, current_url: str, low_stock_grams: float,
              plate_check: bool = True, plate_margin: int = DEFAULT_MARGIN,
              weight: str = "both", cart: bool = False, source: str = "spoolman",
-             progress: dict | None = None, columns: int = 1) -> str:
+             progress: dict | None = None, columns: int = 1, stats: dict | None = None) -> str:
     """The spool list and Settings as two views of one page, under a shared header.
 
     Built from the standalone pages, which SpoolerWindow still shows as separate windows.
@@ -6077,7 +6586,7 @@ def tab_html(initial_view: str, current_url: str, low_stock_grams: float,
     main_css, main_body, main_js = _split_page(main_html())
     settings_css, settings_body, settings_js = _split_page(settings_html(
         current_url, {"ok": False, "pending": True}, low_stock_grams, plate_check, plate_margin,
-        weight, cart, source, progress, columns,
+        weight, cart, source, progress, columns, stats,
     ))
     main_body, main_header = _take_header(main_body)
     tabs_at = main_body.index('<div id="tabs"')
@@ -6090,7 +6599,7 @@ def tab_html(initial_view: str, current_url: str, low_stock_grams: float,
     feedback_button = _button(settings_header, "feedback")
     sec = {name: _section(settings_body, name) for name in (
         "steps", "reorder", "check", "check-hint", "server", "about", "weights", "weights-preview",
-        "layout", "layout-preview", "printer", "printer-preview", "footer")}
+        "layout", "layout-preview", "stats", "stats-preview", "printer", "printer-preview", "footer")}
     # The version, update check and log path sit beside the footer buttons.
     footer = sec["footer"]
     version_row = re.search(r'<div class="version-row">.*?</div>', footer, re.S).group(0)
@@ -6106,6 +6615,7 @@ def tab_html(initial_view: str, current_url: str, low_stock_grams: float,
         card(sec["reorder"], "Preview", TAB_PREVIEW_HTML),
         card(sec["weights"], "Preview", sec["weights-preview"]),
         card(sec["layout"], "Preview", sec["layout-preview"]),
+        card(sec["stats"], "Preview", sec["stats-preview"]),
         card(sec["check"], "Before You Start", sec["check-hint"]),
         card(sec["printer"], "Preview", sec["printer-preview"]),
         footer,
@@ -6166,7 +6676,7 @@ class SpoolerWindow(orca.script.ScriptPluginCapabilityBase):
 
     def _save_settings(self, url, low_stock, plate_check=True,
                        plate_margin=DEFAULT_MARGIN, weight="both", cart=False, src="spoolman",
-                       progress=None, columns=None):
+                       progress=None, columns=None, stats=None):
         settings = get_settings()
         settings["spool_source"] = parse_source(src)
         if settings["spool_source"] == "spoolman":
@@ -6180,6 +6690,8 @@ class SpoolerWindow(orca.script.ScriptPluginCapabilityBase):
             settings["spool_columns"] = parse_columns(columns)
         if progress is not None:
             settings["progress"] = parse_progress(progress)
+        if stats is not None:
+            settings["stats"] = parse_stats(stats)
         if save_settings(settings):
             log.info("Settings saved (url=%s, low stock=%s g, filament check=%s, margin=%s%%)",
                      url, settings["low_stock_grams"], settings["plate_check"],
@@ -6212,6 +6724,7 @@ class SpoolerWindow(orca.script.ScriptPluginCapabilityBase):
                 cart=cart_on(),
                 progress=progress_settings(),
                 columns=spool_columns(),
+                stats=stats_settings(),
             ),
             title=f"{PLUGIN_NAME} - Settings & About",
             width=SETTINGS_SIZE[0],
@@ -6278,7 +6791,7 @@ class SpoolerWindow(orca.script.ScriptPluginCapabilityBase):
             saved = self._save_settings(url, data.get("low_stock"), data.get("plate_check"),
                                         data.get("plate_margin"), data.get("weight_display"),
                                         data.get("show_cart"), src, data.get("progress"),
-                                        data.get("spool_columns"))
+                                        data.get("spool_columns"), data.get("stats"))
             if saved:
                 self._after_save()
                 if self._settings_window is not None:
@@ -6336,6 +6849,8 @@ class SpoolerWindow(orca.script.ScriptPluginCapabilityBase):
             save_printer_code(data.get("id"), data.get("code"))
         elif msg_type in ("usage_mode", "usage_book", "usage_undo"):
             threading.Thread(target=lambda: self._panel.post({"type": "usage", "usage": usage_action(data)}), daemon=True).start()
+        elif msg_type == "stats":
+            threading.Thread(target=lambda: self._panel.post({"type": "stats", "stats": stats_data(data.get("period"))}), daemon=True).start()
         elif msg_type == "send":
             start_send(self._panel.post)
         elif msg_type == "tick":
@@ -6473,6 +6988,7 @@ if _PAGES:
                     cart=cart_on(),
                     progress=progress_settings(),
                     columns=spool_columns(),
+                    stats=stats_settings(),
                 )
             except Exception:
                 log.exception("get_ui() raised")
@@ -6505,6 +7021,8 @@ if _PAGES:
                     save_printer_code(data.get("id"), data.get("code"))
                 elif msg_type in ("usage_mode", "usage_book", "usage_undo"):
                     threading.Thread(target=lambda: self.post_message({"type": "usage", "usage": usage_action(data)}), daemon=True).start()
+                elif msg_type == "stats":
+                    threading.Thread(target=lambda: self.post_message({"type": "stats", "stats": stats_data(data.get("period"))}), daemon=True).start()
                 elif msg_type == "plate_recheck":
                     threading.Thread(target=recheck, daemon=True).start()
                 elif msg_type == "plate_dismiss":
@@ -6548,7 +7066,7 @@ if _PAGES:
 
         def _save_settings(self, url, low_stock, plate_check=True,
                            plate_margin=DEFAULT_MARGIN, weight="both", cart=False, src="spoolman",
-                           progress=None, columns=None):
+                           progress=None, columns=None, stats=None):
             settings = get_settings()
             settings["spool_source"] = parse_source(src)
             if settings["spool_source"] == "spoolman":
@@ -6562,6 +7080,8 @@ if _PAGES:
                 settings["spool_columns"] = parse_columns(columns)
             if progress is not None:
                 settings["progress"] = parse_progress(progress)
+            if stats is not None:
+                settings["stats"] = parse_stats(stats)
             if save_settings(settings):
                 log.info("Settings saved (url=%s, low stock=%s g, filament check=%s, margin=%s%%)",
                          url, settings["low_stock_grams"], settings["plate_check"],
@@ -6591,6 +7111,8 @@ if _PAGES:
                 "show_cart": cart_on(),
                 "spool_columns": spool_columns(),
                 "progress": progress_settings(),
+                "stats": stats_settings(),
+                "cur_code": _cur["code"] or "EUR",
             })
             self._check_connection(saved_url, self._settings_window)
 
@@ -6647,7 +7169,7 @@ if _PAGES:
                 saved = self._save_settings(url, data.get("low_stock"), data.get("plate_check"),
                                             data.get("plate_margin"), data.get("weight_display"),
                                             data.get("show_cart"), src, data.get("progress"),
-                                            data.get("spool_columns"))
+                                            data.get("spool_columns"), data.get("stats"))
                 if saved:
                     self._after_save()
                     self._settings_window.close()
