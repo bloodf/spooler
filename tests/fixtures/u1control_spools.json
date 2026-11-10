@@ -1,0 +1,140 @@
+[
+ {
+  "id": 101,
+  "archived": false,
+  "remaining_weight": 800.0,
+  "initial_weight": 1000.0,
+  "location": "Snapmaker U1 T1",
+  "last_used": "2026-11-09T10:00:00Z",
+  "extra": {},
+  "filament": {
+   "id": 51,
+   "name": "PLA Basic Red",
+   "material": "PLA",
+   "color_hex": "E72F1D",
+   "settings_extruder_temp": 210,
+   "settings_bed_temp": 60,
+   "density": 1.24,
+   "diameter": 1.75,
+   "weight": 1000.0,
+   "vendor": {
+    "name": "Snapmaker"
+   }
+  }
+ },
+ {
+  "id": 102,
+  "archived": false,
+  "remaining_weight": 800.0,
+  "initial_weight": 1000.0,
+  "location": "  snapmaker u1   t1 ",
+  "last_used": "2026-11-01T10:00:00Z",
+  "extra": {},
+  "filament": {
+   "id": 51,
+   "name": "PLA Basic Red",
+   "material": "PLA",
+   "color_hex": "E72F1D",
+   "settings_extruder_temp": 210,
+   "settings_bed_temp": 60,
+   "density": 1.24,
+   "diameter": 1.75,
+   "weight": 1000.0,
+   "vendor": {
+    "name": "Snapmaker"
+   }
+  }
+ },
+ {
+  "id": 103,
+  "archived": false,
+  "remaining_weight": 800.0,
+  "initial_weight": 1000.0,
+  "location": "U1 T2",
+  "last_used": null,
+  "extra": {},
+  "filament": {
+   "id": 52,
+   "name": "PLA Matte Blue",
+   "material": "PLA",
+   "color_hex": "3E63DD",
+   "settings_extruder_temp": 210,
+   "settings_bed_temp": 60,
+   "density": 1.24,
+   "diameter": 1.75,
+   "weight": 1000.0,
+   "vendor": {
+    "name": "Snapmaker"
+   }
+  }
+ },
+ {
+  "id": 104,
+  "archived": true,
+  "remaining_weight": 800.0,
+  "initial_weight": 1000.0,
+  "location": "Snapmaker U1 T3",
+  "last_used": null,
+  "extra": {},
+  "filament": {
+   "id": 55,
+   "name": "PLA Basic White",
+   "material": "PLA",
+   "color_hex": "E2DEDB",
+   "settings_extruder_temp": 210,
+   "settings_bed_temp": 60,
+   "density": 1.24,
+   "diameter": 1.75,
+   "weight": 1000.0,
+   "vendor": {
+    "name": "Snapmaker"
+   }
+  }
+ },
+ {
+  "id": 105,
+  "archived": false,
+  "remaining_weight": 800.0,
+  "initial_weight": 1000.0,
+  "location": "Shelf A",
+  "last_used": null,
+  "extra": {},
+  "filament": {
+   "id": 53,
+   "name": "PLA Basic Black",
+   "material": "PLA",
+   "color_hex": "080A0D",
+   "settings_extruder_temp": 210,
+   "settings_bed_temp": 60,
+   "density": 1.24,
+   "diameter": 1.75,
+   "weight": 1000.0,
+   "vendor": {
+    "name": "Snapmaker"
+   }
+  }
+ },
+ {
+  "id": 106,
+  "archived": false,
+  "remaining_weight": 800.0,
+  "initial_weight": 1000.0,
+  "location": "Shelf B",
+  "last_used": null,
+  "extra": {},
+  "filament": {
+   "id": 54,
+   "name": "PLA Silk Black",
+   "material": "PLA",
+   "color_hex": "080A0D",
+   "settings_extruder_temp": 210,
+   "settings_bed_temp": 60,
+   "density": 1.24,
+   "diameter": 1.75,
+   "weight": 1000.0,
+   "vendor": {
+    "name": "Snapmaker"
+   }
+  }
+ }
+]
