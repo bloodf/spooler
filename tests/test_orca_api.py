@@ -178,6 +178,16 @@ class ConfigTest(unittest.TestCase):
         sp.sync_config(cap)
         self.assertEqual(sp.get_settings()["spoolman_url"], sp.clean_url("http://other:7912"))
 
+    def test_settings_page_save_wins_over_a_pending_plugin_manager_edit(self):
+        cap = Capability()
+        sp.sync_config(cap)
+        cap.stored = json.dumps({**json.loads(cap.stored), "spoolman_url": "http://edited:7912"})
+        window = sp.SpoolerWindow()
+        window.get_config, window.save_config = cap.get_config, cap.save_config
+        window._save_settings("http://page:7912", 90)
+        self.assertEqual(sp.get_settings()["spoolman_url"], sp.clean_url("http://page:7912"))
+        self.assertEqual(json.loads(cap.stored)["spoolman_url"], sp.clean_url("http://page:7912"))
+
     def test_builds_without_the_config_api_are_left_alone(self):
         sp.sync_config(object())
         sp.sync_config(Capability(accept=False))

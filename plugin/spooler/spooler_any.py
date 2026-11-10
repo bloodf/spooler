@@ -6971,6 +6971,7 @@ class SpoolerWindow(orca.script.ScriptPluginCapabilityBase):
     def _save_settings(self, url, low_stock, plate_check=True,
                        plate_margin=DEFAULT_MARGIN, weight="both", cart=False, src="spoolman",
                        progress=None, columns=None, stats=None):
+        sync_config(self)  # take a pending plugin-manager edit first, so this save wins over it
         settings = get_settings()
         settings["spool_source"] = parse_source(src)
         if settings["spool_source"] == "spoolman":
@@ -7368,6 +7369,7 @@ if _PAGES:
         def _save_settings(self, url, low_stock, plate_check=True,
                            plate_margin=DEFAULT_MARGIN, weight="both", cart=False, src="spoolman",
                            progress=None, columns=None, stats=None):
+            sync_config(self)  # take a pending plugin-manager edit first, so this save wins over it
             settings = get_settings()
             settings["spool_source"] = parse_source(src)
             if settings["spool_source"] == "spoolman":
