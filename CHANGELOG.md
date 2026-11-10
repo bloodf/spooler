@@ -3,7 +3,7 @@
 Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); entries before
 0.9.0 are Spoolio's.
 
-## [0.10.0] - Unreleased
+## [0.10.0] - 2026-11-10
 
 ### Added
 - Works with [u1control](https://github.com/bloodf/u1control) on the Snapmaker U1:
