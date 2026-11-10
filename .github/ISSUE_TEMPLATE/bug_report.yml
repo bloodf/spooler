@@ -1,26 +1,32 @@
 name: Bug report
-description: Somethings' not right
+description: Something in Spooler doesn't work as it should
 labels: [bug]
 body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. Please check the [open issues](https://github.com/bloodf/spooler/issues) first.
+        Remove printer access codes, serial numbers and tokens from anything you paste.
   - type: textarea
     id: what
     attributes:
       label: What happened?
-      description: What was the expected behavior?
+      description: What did you do, what did you expect, and what happened instead?
     validations:
       required: true
   - type: input
     id: plugin
     attributes:
       label: Spooler version
-      placeholder: "0.1.0"
+      description: Shown on Spooler's Settings page.
+      placeholder: "0.11.0"
     validations:
       required: true
   - type: input
     id: orca
     attributes:
       label: OrcaSlicer version
-      placeholder: "nightly 2026-09-28"
+      placeholder: "2.5.0"
     validations:
       required: true
   - type: dropdown
@@ -29,20 +35,34 @@ body:
       label: Operating system
       options:
         - Windows x86_64
+        - Windows arm64
         - Linux x86_64
         - Linux arm64
         - macOS arm64 (Apple silicon)
         - macOS x86_64 (Intel)
     validations:
       required: true
+  - type: dropdown
+    id: source
+    attributes:
+      label: Spool source
+      options:
+        - Spoolman
+        - Bambu Cloud
   - type: input
     id: spoolman
     attributes:
       label: Spoolman version
-      placeholder: "shown on the plugin's Settings page"
+      placeholder: "shown on Spooler's Settings page"
+  - type: input
+    id: printer
+    attributes:
+      label: Printer
+      description: Model and firmware, and any filament changer (AMS, AFC, Happy Hare...).
+      placeholder: "Snapmaker U1, stock firmware 1.0.0"
   - type: textarea
     id: logs
     attributes:
       label: Log output
-      description: Paste the end of spooler.log (its path is shown at the bottom of the plugin's Settings page). Also useful - the plugin's Diagnostics tab in OrcaSlicer.
+      description: The end of spooler.log. Its path is at the bottom of Spooler's Settings page.
       render: text

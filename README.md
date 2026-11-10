@@ -4,6 +4,12 @@
 
 # Spooler for OrcaSlicer
 
+<p align="center">
+  <a href="https://github.com/bloodf/spooler/actions/workflows/ci.yml"><img src="https://github.com/bloodf/spooler/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://github.com/bloodf/spooler/releases/latest"><img src="https://img.shields.io/github/v/release/bloodf/spooler" alt="Latest release"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/bloodf/spooler" alt="MIT license"></a>
+</p>
+
 Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer) by Dan J Moore that
 does the setup for you. Enter your [Spoolman](https://github.com/Donkie/Spoolman) address once;
 the rest is automatic.
@@ -206,12 +212,20 @@ Encounter a problem or have an idea? Please
 This is an independent project and is not affiliated with or endorsed by Spoolman, OrcaSlicer,
 Snapmaker, Sovol, Anycubic or Bambu Lab.
 
-## Development
+## Contributing
+
+Bug reports, printer data and pull requests are welcome. [CONTRIBUTING.md](CONTRIBUTING.md) covers
+the setup, the tests and how to try a build in OrcaSlicer, and
+[docs/how-it-works.md](docs/how-it-works.md) is a tour of the code.
 
 ```sh
 python -m unittest discover -s tests   # unit tests, with a stand-in for OrcaSlicer's orca module
-python scripts/build.py                # per-OS plugin files in dist/
+ruff check plugin scripts tests        # lint
+python scripts/build.py                # per-OS plugin files and an all-OS wheel in dist/
 ```
+
+Please report security problems privately, as [SECURITY.md](SECURITY.md) explains. Everyone taking
+part follows the [code of conduct](CODE_OF_CONDUCT.md).
 
 ## License
 
