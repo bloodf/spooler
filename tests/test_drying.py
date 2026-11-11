@@ -112,15 +112,17 @@ class FieldAndActionTest(Store):
             result = sp.spool_action({"action": action, "id": 7})
         return result, [c for c in calls if c[0] == "PATCH"]
 
-    def test_mark_dried_keeps_other_extra_fields(self):
+    # Spoolman merges a PATCH's extra into the spool's: only the keys sent change, and a key sent
+    # as null is removed. So each action sends its own field only, and never re-sends the others.
+    def test_mark_dried_sends_only_its_field(self):
         result, patches = self.act("dried", {"id": 7, "extra": {"tag": '"04A1"', "dried": '"2025-01-01T00:00:00+00:00"'}})
         self.assertTrue(result["ok"], result)
-        self.assertEqual(patches, [("PATCH", "spool/7", {"extra": {"tag": '"04A1"', "dried": '"2026-11-11T00:00:00+00:00"'}})])
+        self.assertEqual(patches, [("PATCH", "spool/7", {"extra": {"dried": '"2026-11-11T00:00:00+00:00"'}})])
 
-    def test_clear_dried_removes_only_its_field(self):
+    def test_clear_dried_sends_null_to_remove_the_field(self):
         result, patches = self.act("clear_dried", {"id": 7, "extra": {"tag": '"04A1"', "dried": '"2025-01-01"'}})
         self.assertTrue(result["ok"], result)
-        self.assertEqual(patches, [("PATCH", "spool/7", {"extra": {"tag": '"04A1"'}})])
+        self.assertEqual(patches, [("PATCH", "spool/7", {"extra": {"dried": None}})])
 
     def test_needs_spoolman_and_a_spool(self):
         self.assertFalse(sp.spool_action({"action": "dried"})["ok"])

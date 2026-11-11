@@ -3678,13 +3678,9 @@ def _spool_write(action: str, sid: int, data: dict) -> dict:
         return {"ok": True, "text": f"Spool #{sid} moved to {location}." if location else f"Spool #{sid} has no location now."}
     if action in ("dried", "clear_dried"):
         ensure_fields()
-        current = spoolman_call("GET", f"spool/{sid}")
-        extra = dict(current.get("extra") or {}) if isinstance(current, dict) else {}  # PATCH replaces extra whole
-        if action == "dried":
-            extra[DRIED_FIELD] = json.dumps(f"{today().isoformat()}T00:00:00+00:00")
-        else:
-            extra.pop(DRIED_FIELD, None)
-        spoolman_call("PATCH", f"spool/{sid}", {"extra": extra})
+        # Spoolman merges extra: only the keys sent change, and null removes one.
+        value = json.dumps(f"{today().isoformat()}T00:00:00+00:00") if action == "dried" else None
+        spoolman_call("PATCH", f"spool/{sid}", {"extra": {DRIED_FIELD: value}})
         return {"ok": True, "text": f"Spool #{sid} marked as dried today." if action == "dried"
                 else f"Spool #{sid} has no dried date now."}
     if action == "add":
