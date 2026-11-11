@@ -97,7 +97,8 @@ the rest is automatic.
   settings. Run it once per OrcaSlicer session; run it again to stop it.
 
 Everything Spoolio already did is still there: spool cards, the Bambu Cloud source, Bambu Live
-Link, filament usage booking and the after-slice filament check.
+Link, filament usage booking, the Stats tab with its estimate of filament lost to supports and
+purging, and the after-slice filament check.
 
 ### Limits
 
@@ -184,6 +185,7 @@ OrcaSlicer asks before a plugin does anything sensitive. Granting Spooler full a
 >
 > ### Live Link and Booking Limitations
 > - Live Link needs the printer on the same network with LAN mode on, and only connects while the Printer tab is open or usage booking is on.
+> - The Stats tab's wasted-filament estimate needs the job file from a Bambu printer, so it only covers prints booked that way, made after updating to 0.13.0.
 > - Booking assumes the slicer's filament slots follow the order of the printer's slots (AMS 1 slots 1 to 4, then the next AMS, and so on), so check the first few bookings if you use a different mapping.
 
 > [!TIP]

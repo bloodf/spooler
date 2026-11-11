@@ -6,7 +6,7 @@
 # name = "Spooler"
 # description = "Spoolman inventory for OrcaSlicer: auto-synced filament profiles and live printer slots"
 # author = "bloodf (fork of Spoolio by Dan J Moore)"
-# version = "0.12.2"
+# version = "0.13.0"
 # ///
 
 import asyncio
@@ -48,7 +48,7 @@ except (ImportError, AttributeError):
 _SLICING = hasattr(getattr(orca, "slicing", None), "SlicingPipelineCapabilityBase")
 
 PLUGIN_NAME = "Spooler"
-PLUGIN_VERSION = "0.12.2"
+PLUGIN_VERSION = "0.13.0"
 # Stamped per operating system by scripts/build.py.
 BUILD_TARGET = "any"
 
@@ -3053,6 +3053,83 @@ def parse_slice(data: bytes, file: str = "") -> list[dict] | None:
     return plates[0][1] if len(plates) == 1 else None
 
 
+WASTE_SUPPORT = ("support",)
+WASTE_PURGE = ("prime tower", "wipe tower", "flush", "purge")
+
+
+def parse_waste(lines) -> dict[int, tuple[float, float]]:
+    """Support and purge share of each filament (1-based), from the plate G-code."""
+    tool, kind, flush, rel, last = 0, "model", False, False, 0.0
+    sums: dict[int, list[float]] = {}
+    for raw in lines:
+        line = raw.decode("utf-8", "replace") if isinstance(raw, bytes) else raw
+        if line.startswith(";"):
+            low = line.lower()
+            if low.startswith((";type:", "; feature:")):
+                name = low.split(":", 1)[1].strip()
+                kind = ("support" if any(w in name for w in WASTE_SUPPORT)
+                        else "purge" if any(w in name for w in WASTE_PURGE) else "model")
+            elif "flush_start" in low:
+                flush = True
+            elif "flush_end" in low:
+                flush = False
+            continue
+        cmd = line.split(";", 1)[0].strip()
+        if not cmd:
+            continue
+        head = cmd.split(None, 1)[0].upper()
+        if head == "M83":
+            rel = True
+        elif head == "M82":
+            rel = False
+        elif re.fullmatch(r"T\d+", head) and int(head[1:]) < 255:
+            tool = int(head[1:])
+        elif head in ("G1", "G0", "G2", "G3", "G92"):
+            m = re.search(r"\bE(-?\d*\.?\d+)", cmd, re.I)
+            if not m:
+                continue
+            e = float(m.group(1))
+            if head == "G92":
+                last = e
+                continue
+            d = e if rel else e - last
+            last = last if rel else e
+            if d > 0:
+                k = "purge" if flush else kind
+                acc = sums.setdefault(tool + 1, [0.0, 0.0, 0.0])
+                acc[(k == "support") + 2 * (k == "purge")] += d
+    out = {}
+    for n, (model, sup, pur) in sums.items():
+        total = model + sup + pur
+        if total > 0:
+            out[n] = (round(sup / total, 4), round(pur / total, 4))
+    return out
+
+
+def _plate_gcode(box: zipfile.ZipFile, file: str) -> str | None:
+    names = [n for n in box.namelist() if re.fullmatch(r"Metadata/plate_\d+\.gcode", n)]
+    hint = re.search(r"plate_(\d+)", file)
+    if hint and f"Metadata/plate_{hint.group(1)}.gcode" in names:
+        return f"Metadata/plate_{hint.group(1)}.gcode"
+    return names[0] if len(names) == 1 else None
+
+
+def add_waste(items: list[dict], box: zipfile.ZipFile, file: str) -> None:
+    name = _plate_gcode(box, file)
+    if not name:
+        return
+    try:
+        with box.open(name) as fh:
+            waste = parse_waste(fh)
+    except (OSError, ValueError, zipfile.BadZipFile) as exc:
+        log.info("Could not read waste from the job G-code: %s", exc)
+        return
+    for item in items:
+        if item["n"] in waste:
+            item["ws"], item["wp"] = waste[item["n"]]
+    log.info("Waste from %s: %s", name, {n: waste[n] for n in sorted(waste)})
+
+
 def fetch_job(link: dict, job: dict) -> list[dict] | None:
     """Download the printing job's file over FTPS and read its filament use."""
     ftp = _ftp_open(link)
@@ -3070,13 +3147,15 @@ def fetch_job(link: dict, job: dict) -> list[dict] | None:
                 info = box.getinfo("Metadata/slice_info.config")
                 if info.file_size > 4 * 1024 * 1024:
                     return None
-                data = box.read(info)
+                items = parse_slice(box.read(info), job.get("file") or "")
+                if items:
+                    add_waste(items, box, job.get("file") or "")
     finally:
         try:
             ftp.quit()
         except (ftplib.Error, OSError):
             ftp.close()
-    return parse_slice(data, job.get("file") or "")
+    return items
 
 
 def _try_fetch(dev_id: str, job: dict) -> list[dict] | None:
@@ -3195,7 +3274,7 @@ def usage_finish(run: dict, dev_id: str = "") -> None:
         rows.append({"slot": item["n"], "grams": grams, "preset": item["preset"], "material": item["material"],
                      "colour": item["colour"], "spool": spool["id"] if spool else None,
                      "how": "rfid" if spool else "", "label": _spool_label(by_id[spool["id"]]) if spool else "",
-                     "state": "open", "error": ""})
+                     "state": "open", "error": "", **{k: item[k] for k in ("ws", "wp") if k in item}})
     late = bool(run.get("late")) or run["result"] == "unknown"
     entry = {"id": run["id"], "printer": run["printer"], "name": run["name"], "result": run["result"],
              "pct": run["pct"], "time": time.time(), "rows": rows, "late": late, "src": src, "state": "pending"}
@@ -3365,7 +3444,8 @@ def hist_note(entry: dict, by_id: dict) -> None:
                  "colour": _hex(sp) or _hex6(row.get("colour")), "cost": _cost(sp, row["grams"])}
         rows.append({"spool": row["spool"], "grams": row["grams"], "label": p.get("label") or row.get("label") or "",
                      "material": p.get("material") or row.get("material") or "",
-                     "colour": p.get("colour") or _hex6(row.get("colour")), "cost": p.get("cost")})
+                     "colour": p.get("colour") or _hex6(row.get("colour")), "cost": p.get("cost"),
+                     **{k: row[k] for k in ("ws", "wp") if isinstance(row.get(k), (int, float))}})
     hist = [e for e in hist if e.get("id") != entry["id"]]
     if rows:
         hist.append({"id": entry["id"], "time": entry.get("time") or time.time(), "name": entry.get("name") or "",
@@ -3459,11 +3539,36 @@ def stats_data(period: object) -> dict:
                         "weeks": round(wk, 1) if wk is not None else None,
                         "pct": max(0, min(100, left / full * 100)) if full else None})
     out.sort(key=lambda x: (not x["low"], x["weeks"] if x["weeks"] is not None else 99, x["left"]))
+    ws = {"model": 0.0, "support": 0.0, "purge": 0.0, "cost": 0.0, "mcost": 0.0, "scost": 0.0, "pcost": 0.0, "prints": 0}
+    worst = []
+    for e in sel:
+        rows = [r for r in e["rows"] if "ws" in r]
+        if not rows:
+            continue
+        ws["prints"] += 1
+        g = c = sg = pg = 0.0
+        for r in rows:
+            s_, p_ = r["grams"] * r["ws"], r["grams"] * r["wp"]
+            ws["support"] += s_
+            ws["purge"] += p_
+            ws["model"] += r["grams"] - s_ - p_
+            sg, pg = sg + s_, pg + p_
+            g += s_ + p_
+            if isinstance(r.get("cost"), (int, float)):
+                ws["scost"] += r["cost"] * r["ws"]
+                ws["pcost"] += r["cost"] * r["wp"]
+                ws["mcost"] += r["cost"] * (1 - r["ws"] - r["wp"])
+                c += r["cost"] * (r["ws"] + r["wp"])
+        if g > 0:
+            worst.append({"name": e["name"], "g": round(g, 1), "cost": round(c, 2), "kind": "support" if sg >= pg else "purge"})
+    ws["cost"] = ws["scost"] + ws["pcost"]
+    ws = {k: round(v, 2) if isinstance(v, float) else v for k, v in ws.items()}
     return {"period": str(period), "since": hist[0]["time"] if hist else None, "code": code,
             "sign": CUR_SIGNS.get(code, code + " "), "grams": round(total, 1), "prints": len(sel),
             "cost": round(sum(costs), 2) if costs else None, "low": nlow,
             "mats": sorted(({"name": k, "g": round(v, 1)} for k, v in mats.items()), key=lambda x: -x["g"]),
             "top": sorted(top.values(), key=lambda x: -x["g"])[:5], "weeks": weeks, "soon": out[:5],
+            "waste": ws if ws["prints"] else None, "worst": sorted(worst, key=lambda x: -x["g"])[:3],
             "history": [{"time": e["time"], "name": e["name"], "printer": e["printer"], "result": e["result"],
                          "pct": e.get("pct"), "rows": e["rows"]} for e in reversed(sel)]}
 
@@ -4221,11 +4326,24 @@ MAIN_PAGE = """
   .st-bar select { padding: 5px 8px; border: 1px solid var(--orca-border); border-radius: 4px; background: var(--orca-bg); color: var(--orca-fg); }
   .st-bar select option { background: var(--orca-bg); color: var(--orca-fg); }
   .st-note { color: var(--orca-muted); font-size: 12px; margin-left: auto; }
-  .st-tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-bottom: 10px; }
+  .st-tiles { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; margin-bottom: 10px; }
   .st-tile, .st-card { border: 1px solid var(--orca-border); border-radius: 8px; padding: 12px 14px; background: var(--orca-border); background: color-mix(in srgb, var(--orca-fg) 5%, var(--orca-bg) 95%); min-width: 0; }
   .st-tile span { font-size: 12px; color: var(--orca-muted); }
   .st-tile b { display: block; font-size: 22px; font-weight: 700; margin-top: 4px; color: var(--orca-fg); }
-  .st-tile.low b { color: #e0a030; }
+  .st-tile.low b, .st-tile.w b { color: #e0a030; }
+  .st-tile small { display: block; font-size: 11px; color: var(--orca-muted); margin-top: 2px; }
+  .wi { grid-column: 1 / -1; }
+  .wi-in { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 28px; align-items: start; }
+  .wi-bar { display: flex; height: 22px; border-radius: 6px; overflow: hidden; gap: 2px; margin: 4px 0 12px; }
+  .wi-bar i { display: block; }
+  .wi-leg div { display: flex; align-items: center; gap: 8px; font-size: 13px; margin: 7px 0; }
+  .wi-leg .k { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; }
+  .wi-leg .n { flex: 1; }
+  .wi-leg .v { color: var(--orca-muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .wi-note { font-size: 11px; color: var(--orca-muted); margin-top: 8px; }
+  .wi h4 { margin: 0 0 8px; font-size: 11px; letter-spacing: .06em; color: var(--orca-muted); font-weight: 700; }
+  .wi-top .st-row .v { width: 110px; }
+  .ph td.wst { color: #e0a030; }
   .st-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; }
   .st-card h3 { margin: 0 0 10px; font-size: 14px; color: var(--orca-fg); }
   .st-empty { color: var(--orca-muted); font-size: 12px; padding: 6px 0; }
@@ -4273,7 +4391,7 @@ MAIN_PAGE = """
   .ph .m i { width: 10px; height: 10px; border-radius: 50%; border: 1px solid var(--orca-border); }
   .ph .fail { font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 99px; background: rgba(217, 83, 79, .18); color: #ff8a85; margin-left: 6px; }
   .ph .more { display: block; margin: 10px auto 0; }
-  @media (max-width: 760px) { .st-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } .st-grid { grid-template-columns: minmax(0, 1fr); } }
+  @media (max-width: 760px) { .st-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } .st-grid, .wi-in { grid-template-columns: minmax(0, 1fr); } }
   .tabs button { background: transparent; color: var(--orca-fg); border: 0; border-right: 1px solid var(--orca-border); border-radius: 0; padding: 7px 20px; font-weight: 600; cursor: pointer; }
   .tabs button:last-child { border-right: 0; }
   .tabs button.on { background: var(--orca-accent); color: var(--orca-accent-fg); }
@@ -5223,20 +5341,52 @@ MAIN_PAGE = """
       }).join("");
     }
 
+    const W_COLS = { model: "var(--orca-accent)", support: "#e0a030", purge: "#d9534f" };
+
+    function stWaste(e) {
+      const rows = e.rows.filter(function (r) { return typeof r.ws === "number"; });
+      if (!rows.length) return null;
+      return rows.reduce(function (a, r) { return a + r.grams * (r.ws + r.wp); }, 0);
+    }
+
+    function stRatios(d) {
+      const w = d.waste;
+      if (!w) return '<div class="st-card wi"><h3>Usage Ratios</h3><div class="st-empty">Supports and purge show up for prints Spooler reads from the printer&#39;s job file.</div></div>';
+      const all = w.model + w.support + w.purge;
+      const pct = function (g) { return Math.round(g / all * 100) + '%'; };
+      const parts = [["model", "Model", w.model, w.mcost], ["support", "Supports", w.support, w.scost], ["purge", "Purge and Prime Tower", w.purge, w.pcost]];
+      const top = d.worst.length ? d.worst.map(function (x) {
+        return '<div class="st-row"><span class="st-sw" style="background:' + W_COLS[x.kind] + '"></span><span class="l">' + esc(x.name || "Print") + '</span>' +
+          '<span class="t"><i style="width:' + (x.g / d.worst[0].g * 100) + '%;background:' + W_COLS[x.kind] + '"></i></span><span class="v">' +
+          stW(x.g) + (x.cost ? ' &middot; ' + stMoney(x.cost) : '') + '</span></div>';
+      }).join("") : '<div class="st-empty">No waste in this period.</div>';
+      return '<div class="st-card wi"><h3>Usage Ratios</h3><div class="wi-in"><div><div class="wi-bar">' + parts.map(function (x) {
+        return x[2] > 0 ? '<i style="flex:' + x[2] + ';background:' + W_COLS[x[0]] + '" title="' + x[1] + ': ' + stW(x[2]) + '"></i>' : '';
+      }).join("") + '</div><div class="wi-leg">' + parts.map(function (x) {
+        return '<div><span class="k" style="background:' + W_COLS[x[0]] + '"></span><span class="n">' + x[1] + '</span><span class="v">' + stW(x[2]) +
+          ' &middot; ' + pct(x[2]) + (w.cost || w.mcost ? ' &middot; ' + stMoney(x[3]) : '') + '</span></div>';
+      }).join("") + '</div><div class="wi-note">An estimate from the print&#39;s .3mf job file on the printer. ' +
+        (w.prints < d.prints ? w.prints + ' of ' + d.prints + ' prints had a job file to read.' : 'Only prints made since the update are counted.') +
+        '</div></div><div class="wi-top"><h4>MOST WASTEFUL PRINTS</h4>' + top + '</div></div></div>';
+    }
+
     function stHistory(d) {
       const list = d.history.slice(0, phShown);
-      const sum = d.prints + (d.prints === 1 ? ' Print' : ' Prints') + ' &middot; ' + stW(d.grams) + (d.cost !== null ? ' &middot; ' + stMoney(d.cost) : '');
+      const sum = d.prints + (d.prints === 1 ? ' Print' : ' Prints') + ' &middot; ' + stW(d.grams) + (d.cost !== null ? ' &middot; ' + stMoney(d.cost) : '') +
+        (d.waste ? ' &middot; ' + stW(d.waste.support + d.waste.purge) + ' wasted' : '');
       const rows = list.map(function (e) {
         const g = e.rows.reduce(function (a, r) { return a + r.grams; }, 0);
         const costs = e.rows.filter(function (r) { return typeof r.cost === "number"; });
         const cost = costs.length ? costs.reduce(function (a, r) { return a + r.cost; }, 0) : null;
+        const wg = stWaste(e);
         const fail = e.result === "cancelled" ? '<span class="fail">Failed at ' + (e.pct || 0) + '%</span>' : '';
         return '<tr><td class="d">' + stDate(e.time) + '</td><td><span class="nm">' + esc(e.name || "Print") + '</span>' + fail +
           (e.printer ? '<br><span class="pr">' + esc(e.printer) + '</span>' : '') + '</td><td><div class="mats">' + e.rows.map(function (r) {
             return '<span class="m" title="' + esc(r.label) + '"><i style="background:' + stCol(r.colour) + '"></i>' + esc(r.material || "") + ' ' + r.grams.toFixed(1) + ' g</span>';
-          }).join("") + '</div></td><td class="r">' + g.toFixed(1) + ' g</td><td class="r">' + stMoney(cost) + '</td></tr>';
+          }).join("") + '</div></td><td class="r">' + g.toFixed(1) + ' g</td><td class="r wst">' + (wg === null ? '&ndash;' : wg.toFixed(1) + ' g') +
+          '</td><td class="r">' + stMoney(cost) + '</td></tr>';
       }).join("");
-      const body = list.length ? '<table><thead><tr><th>Date</th><th>Print</th><th>Material Used</th><th class="r">Weight</th><th class="r">Cost</th></tr></thead><tbody>' +
+      const body = list.length ? '<table><thead><tr><th>Date</th><th>Print</th><th>Material Used</th><th class="r">Weight</th><th class="r">Waste</th><th class="r">Cost</th></tr></thead><tbody>' +
         rows + '</tbody></table>' + (d.history.length > phShown ? '<button class="sbtn ghost more" data-st="more">Show More</button>' : '')
         : '<div class="st-empty">No prints booked in this period.</div>';
       return '<div class="st-card ph' + (phOpen ? ' open' : '') + '"><div class="ph-h" data-st="history"><h3>Print History</h3><span class="sum">' + sum +
@@ -5256,11 +5406,14 @@ MAIN_PAGE = """
         '<div class="st-tiles"><div class="st-tile"><span>Filament Used</span><b>' + stW(d.grams) + '</b></div>' +
         '<div class="st-tile"><span>Prints Booked</span><b>' + d.prints + '</b></div>' +
         '<div class="st-tile"><span>Filament Cost</span><b>' + stMoney(d.cost) + '</b></div>' +
-        '<div class="st-tile' + (d.low ? ' low' : '') + '"><span>Low Stock</span><b>' + d.low + '</b></div></div>' +
+        '<div class="st-tile' + (d.low ? ' low' : '') + '"><span>Low Stock</span><b>' + d.low + '</b></div>' +
+        '<div class="st-tile w"><span>Wasted Filament</span><b>' + (d.waste ? stW(d.waste.support + d.waste.purge) : '&ndash;') + '</b><small>' +
+        (d.waste ? (d.waste.cost ? stMoney(d.waste.cost) + ' &middot; ' : '') + Math.round((d.waste.support + d.waste.purge) / (d.waste.model + d.waste.support + d.waste.purge) * 100) + '% of all filament' : 'From job files on the printer') +
+        '</small></div></div>' +
         '<div class="st-grid"><div class="st-card"><h3>Used per Week</h3>' + stWeeks(d) + '</div>' +
         '<div class="st-card"><h3>Materials Used</h3>' + stDonut(d) + '</div>' +
         '<div class="st-card"><h3>Most Used</h3>' + stTop(d) + '</div>' +
-        '<div class="st-card"><h3>Running Low</h3>' + stSoon(d) + '</div>' + stHistory(d) + '</div>';
+        '<div class="st-card"><h3>Running Low</h3>' + stSoon(d) + '</div>' + stRatios(d) + stHistory(d) + '</div>';
     }
 
     statsEl.addEventListener("change", function (e) {
@@ -6309,27 +6462,6 @@ SETTINGS_PAGE = """
 
   <div class="divider spaced"></div>
 
-  <!--stats--><h3><span class="emoji">📊</span>Configure Stats</h3>
-  <label class="check-row"><input id="show-stats" type="checkbox">Show the Stats Tab</label>
-  <div id="stats-opts">
-    <div class="field-label">Show filament costs in:</div>
-    <div class="seg" id="cur-seg">
-      <label><input type="radio" name="stats-cur" value="spoolman">From Spoolman (<span id="cur-code">__CUR_CODE__</span>)</label>
-      <label><input type="radio" name="stats-cur" value="gbp">£ GBP</label>
-      <label><input type="radio" name="stats-cur" value="eur">€ EUR</label>
-      <label><input type="radio" name="stats-cur" value="usd">$ USD</label>
-    </div>
-    <div class="hint">Costs come from the spool prices in Spoolman. From Spoolman uses the currency set in Spoolman's own settings. Picking another only changes the symbol, it doesn't convert prices.</div>
-  </div>
-  <div class="hint">Spooler keeps recording print history while the tab is hidden, so your stats are complete if you turn it on later.</div><!--/stats-->
-  <!--stats-preview--><div class="cur-prev" id="cur-prev">
-    <div class="cur-tile"><span>Filament Cost</span><b><span class="cur">£</span>24.10</b></div>
-    <div class="cur-row"><span class="nm">Headphone_Stand.3mf</span><span>94.3 g</span><span><span class="cur">£</span>2.08</span></div>
-  </div>
-  <div class="pp-card st-off" id="stats-off">The Stats tab is hidden. Print history is still recorded.</div><!--/stats-preview-->
-
-  <div class="divider spaced"></div>
-
   <!--display--><h3><span class="emoji">👁️</span>Display</h3>
   <div class="hint">Choose what the Spools and Printer tabs show.</div>
   <div class="field-label">Spools tab</div>
@@ -6406,6 +6538,27 @@ SETTINGS_PAGE = """
     <div class="hint warn"><strong>!</strong> Experimental: this uses Bambu's unofficial cloud
     service, which Bambu can change at any time. Spooler never stores your password.</div>
   </div><!--/server-->
+
+  <div class="divider spaced"></div>
+
+  <!--stats--><h3><span class="emoji">📊</span>Configure Stats</h3>
+  <label class="check-row"><input id="show-stats" type="checkbox">Show the Stats Tab</label>
+  <div id="stats-opts">
+    <div class="field-label">Show filament costs in:</div>
+    <div class="seg" id="cur-seg">
+      <label><input type="radio" name="stats-cur" value="spoolman">From Spoolman (<span id="cur-code">__CUR_CODE__</span>)</label>
+      <label><input type="radio" name="stats-cur" value="gbp">£ GBP</label>
+      <label><input type="radio" name="stats-cur" value="eur">€ EUR</label>
+      <label><input type="radio" name="stats-cur" value="usd">$ USD</label>
+    </div>
+    <div class="hint">Costs come from the spool prices in Spoolman. From Spoolman uses the currency set in Spoolman's own settings. Picking another only changes the symbol, it doesn't convert prices.</div>
+  </div>
+  <div class="hint">Spooler keeps recording print history while the tab is hidden, so your stats are complete if you turn it on later.</div><!--/stats-->
+  <!--stats-preview--><div class="cur-prev" id="cur-prev">
+    <div class="cur-tile"><span>Filament Cost</span><b><span class="cur">£</span>24.10</b></div>
+    <div class="cur-row"><span class="nm">Headphone_Stand.3mf</span><span>94.3 g</span><span><span class="cur">£</span>2.08</span></div>
+  </div>
+  <div class="pp-card st-off" id="stats-off">The Stats tab is hidden. Print history is still recorded.</div><!--/stats-preview-->
 
   <!--about--><div class="about">
     <div class="logpath">Log file: __LOG_PATH__</div>
@@ -7111,10 +7264,10 @@ def tab_html(initial_view: str, current_url: str, low_stock_grams: float,
         card(sec["reorder"], "Preview", TAB_PREVIEW_HTML),
         card(sec["weights"], "Preview", sec["weights-preview"]),
         card(sec["layout"], "Preview", sec["layout-preview"]),
-        card(sec["stats"], "Preview", sec["stats-preview"]),
         card(sec["display"], "Note", sec["display-preview"]),
         card(sec["check"], "Before You Start", sec["check-hint"]),
         card(sec["printer"], "Preview", sec["printer-preview"]),
+        card(sec["stats"], "Preview", sec["stats-preview"]),
         footer,
     ])
     return f"""<!doctype html>

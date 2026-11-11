@@ -3,6 +3,18 @@
 Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); entries before
 0.9.0 are Spoolio's.
 
+## [0.13.0] - Unreleased
+
+### Added
+- The Stats tab estimates wasted filament (from Spoolio 0.9.6): how much of each print went into
+  supports and into purging and the prime tower. There is a new Wasted Filament tile, a Usage
+  Ratios card with the three most wasteful prints, and a Waste column in Print History. The
+  estimate is read from the plate G-code inside the job file on the printer, so it covers Bambu
+  prints booked from the job file, and only prints made after this update.
+
+### Changed
+- Configure Stats is now the last card in Settings (from Spoolio 0.9.6).
+
 ## [0.12.2] - Unreleased
 
 ### Fixed
