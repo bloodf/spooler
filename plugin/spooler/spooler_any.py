@@ -6,7 +6,7 @@
 # name = "Spooler"
 # description = "Spoolman inventory for OrcaSlicer: auto-synced filament profiles and live printer slots"
 # author = "bloodf (fork of Spoolio by Dan J Moore)"
-# version = "0.14.0"
+# version = "0.15.0"
 # ///
 
 import asyncio
@@ -49,7 +49,7 @@ except (ImportError, AttributeError):
 _SLICING = hasattr(getattr(orca, "slicing", None), "SlicingPipelineCapabilityBase")
 
 PLUGIN_NAME = "Spooler"
-PLUGIN_VERSION = "0.14.0"
+PLUGIN_VERSION = "0.15.0"
 # Stamped per operating system by scripts/build.py.
 BUILD_TARGET = "any"
 
@@ -274,6 +274,16 @@ def save_display(value: object) -> None:
     """Save Settings > Display on its own, so it never depends on the connection check."""
     if isinstance(value, dict):
         save_settings({**get_settings(), "display": parse_display(value)})
+
+
+def wizard_pending() -> bool:
+    """The first-run setup guide opens by itself until it is finished or skipped, and never for
+    someone who already has a source set up."""
+    return not get_settings().get("wizard_done") and not configured()
+
+
+def save_wizard_done() -> None:
+    save_settings({**get_settings(), "wizard_done": True})
 
 
 CURRENCIES = ("spoolman", "gbp", "eur", "usd")
@@ -6500,15 +6510,28 @@ SETTINGS_PAGE = """
   }
   .header img.logo { width: 52px; height: 52px; flex-shrink: 0; }
   h2 { margin: 0; font-size: 20px; font-weight: 700; color: var(--orca-fg); }
-  .step { display: flex; gap: 12px; margin-bottom: 16px; }
-  .step-num {
-    flex-shrink: 0; width: 22px; height: 22px; margin-top: 1px; border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    background: var(--orca-accent); color: var(--orca-accent-fg); font-size: 12px; font-weight: 700;
-  }
-  .step h4 { margin: 0 0 3px 0; font-size: 14px; font-weight: 700; color: var(--orca-accent); }
-  .step p { margin: 0; color: var(--orca-muted); text-align: justify; }
-  .step strong { color: var(--orca-fg); }
+  .wiz { position: fixed; top: 0; right: 0; bottom: 0; left: 0; z-index: 100; display: flex; align-items: center; justify-content: center; padding: 14px; box-sizing: border-box; background: rgba(0, 0, 0, 0.6); }
+  .wiz[hidden] { display: none; }
+  .wiz-card { width: 100%; max-width: 540px; max-height: 100%; overflow-y: auto; box-sizing: border-box; padding: 18px 22px 16px; border: 1px solid var(--orca-border); border-radius: 14px; background: var(--orca-bg); color: var(--orca-fg); box-shadow: 0 18px 50px rgba(0, 0, 0, 0.5); }
+  .wiz-count { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--orca-muted); }
+  .wiz-card h3 { margin: 4px 0 8px; font-size: 17px; }
+  .wiz-card p { margin: 0 0 10px; color: var(--orca-muted); }
+  .wiz-card p strong { color: var(--orca-fg); }
+  .wiz-ill { display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap; margin: 0 0 12px; padding: 12px; border: 1px solid var(--orca-border); border-radius: 10px; background: color-mix(in srgb, var(--orca-fg) 5%, var(--orca-bg) 95%); font-size: 12px; }
+  .wiz-ill .ws-card { padding: 7px 10px; min-width: 150px; gap: 8px; }
+  .wiz-ill .ws-swatch { width: 22px; height: 22px; }
+  .wiz-arrow { font-size: 20px; color: var(--orca-accent); }
+  .wiz-chip { padding: 5px 10px; border: 1px solid var(--orca-border); border-radius: 6px; background: var(--orca-bg); }
+  .wiz-chip.on { border-color: var(--orca-accent); color: var(--orca-accent); font-weight: 700; }
+  .wiz-chip.hot { background: var(--orca-accent); border-color: var(--orca-accent); color: var(--orca-accent-fg); font-weight: 700; }
+  .wiz-list { display: flex; flex-direction: column; gap: 4px; width: 100%; max-width: 330px; }
+  .wiz-list .wiz-chip { text-align: left; }
+  .wiz-dots { display: flex; gap: 6px; margin: 4px 0 0; }
+  .wiz-dots i { width: 7px; height: 7px; border-radius: 50%; background: var(--orca-border); }
+  .wiz-dots i.on { background: var(--orca-accent); }
+  .wiz-foot { display: flex; align-items: center; gap: 8px; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--orca-border); }
+  .wiz-foot .grow { flex: 1; }
+  .wiz-card ul { margin: 0 0 10px; padding-left: 18px; color: var(--orca-muted); }
   .divider { border-top: 1px solid var(--orca-border); margin: 4px 0 16px 0; }
   h3 { margin: 0 0 8px 0; font-size: 14px; font-weight: 700; color: var(--orca-accent); }
   h3 .emoji { margin-right: 6px; font-size: 22px; vertical-align: -3px; display: inline-block; }
@@ -6642,21 +6665,8 @@ SETTINGS_PAGE = """
     </button>
   </div><!--/header-->
 
-  <!--steps--><div class="step">
-    <div class="step-num">1</div>
-    <div>
-      <h4>Pick Your Source</h4>
-      <p>Use your self-hosted Spoolman server, or Bambu Cloud.</p>
-    </div>
-  </div>
-  <div class="step">
-    <div class="step-num">2</div>
-    <div>
-      <h4>Browse Your Spools</h4>
-      <p>Each card shows the filament color, remaining weight, and an RFID badge where a
-      tag is linked. Filter, sort, or group the list by material, manufacturer, or location.</p>
-    </div>
-  </div><!--/steps-->
+  <!--steps--><div class="hint">Spooler turns the spools in Spoolman into OrcaSlicer filament presets and shows what each printer slot holds.</div>
+  <div style="margin-top: 10px"><button class="test" id="setup-guide">Open the setup guide</button></div><!--/steps-->
   <div class="divider"></div>
 
   <!--reorder--><h3><span class="emoji">🛒</span>Configure Filament Reorder</h3>
@@ -6744,6 +6754,7 @@ SETTINGS_PAGE = """
   <div class="divider spaced"></div>
 
   <!--server--><h3><span class="emoji">\U0001F310</span>Choose Your Source</h3>
+  <div id="src-home"><div id="src-block">
   <div class="field-label">Where should Spooler read your spools from?</div>
   <div class="seg" id="src-seg">
     <label><input type="radio" name="spool-source" value="spoolman">Spoolman</label>
@@ -6787,7 +6798,8 @@ SETTINGS_PAGE = """
     <div class="status pending" id="bambu-status">__BAMBU_STATUS__</div>
     <div class="hint warn"><strong>!</strong> Experimental: this uses Bambu's unofficial cloud
     service, which Bambu can change at any time. Spooler never stores your password.</div>
-  </div><!--/server-->
+  </div>
+  </div></div><!--/server-->
 
   <div class="divider spaced"></div>
 
@@ -6823,6 +6835,60 @@ SETTINGS_PAGE = """
     <button id="cancel">Cancel</button>
     <button class="primary" id="save" disabled>Save &amp; Close</button>
   </div><!--/footer-->
+
+  <!--wizard--><div class="wiz" id="wiz" role="dialog" aria-modal="true" aria-labelledby="wiz-title" hidden>
+    <div class="wiz-card">
+      <div class="wiz-count" id="wiz-count"></div>
+      <div id="wiz-steps">
+        <div class="wiz-step" data-wiz="0">
+          <h3 id="wiz-title">Welcome to Spooler</h3>
+          <div class="wiz-ill">
+            <div class="ws-card"><div class="ws-swatch" style="background:#1a1a1a"></div><div class="ws-main"><div class="ws-top"><span class="ws-name">PLA Matte - Black</span><span>640 g</span></div><div class="ws-bar"><i style="width:64%;background:#1a1a1a"></i></div></div></div>
+            <span class="wiz-arrow">&rarr;</span>
+            <span class="wiz-chip on">Acme PLA Black @U1</span>
+          </div>
+          <p>Spooler turns the spools in <strong>Spoolman</strong> into <strong>OrcaSlicer filament presets</strong>, and shows what each printer slot holds. This guide takes about a minute.</p>
+        </div>
+        <div class="wiz-step" data-wiz="1" hidden>
+          <h3>Choose your source</h3>
+          <div id="wiz-slot"></div>
+          <p class="hint">Press <strong>Test</strong>. Next unlocks once the connection works. No Spoolman? Choose <strong>Bambu Cloud</strong> and sign in with your Bambu account (experimental).</p>
+        </div>
+        <div class="wiz-step" data-wiz="2" hidden>
+          <h3>Permissions</h3>
+          <div class="wiz-ill"><span class="wiz-chip">Spooler wants to reach 192.168.1.20</span><span class="wiz-chip">Allow</span><span class="wiz-chip hot">Allow full access</span></div>
+          <p>OrcaSlicer asks before Spooler reaches the network or writes presets. Granting <strong>full access</strong> once avoids repeated prompts. Otherwise approve each new address once.</p>
+        </div>
+        <div class="wiz-step" data-wiz="3" hidden>
+          <h3>Your presets</h3>
+          <div class="wiz-ill"><div class="wiz-list"><span class="wiz-chip">Filament &#9662; User presets</span><span class="wiz-chip on">Acme PLA Black @U1</span><span class="wiz-chip">Acme PETG Blue @U1</span></div></div>
+          <p>Pick them in the <strong>filament dropdown</strong> under <strong>User presets</strong>. There is one per filament and printer, and they follow Spoolman every minute.</p>
+        </div>
+        <div class="wiz-step" data-wiz="4" hidden>
+          <h3>Your printers</h3>
+          <div class="wiz-ill"><span class="wiz-chip">Plugins</span><span class="wiz-arrow">&rsaquo;</span><span class="wiz-chip">Run</span><span class="wiz-arrow">&rsaquo;</span><span class="wiz-chip hot">Spooler: Load Printer Filaments</span></div>
+          <p>Printers are found from the host address in your printer presets (Moonraker and Anycubic). Bambu printers connect with <strong>Live Link</strong> on the Printer tab.</p>
+          <p>The Plugins menu entry puts each slot's preset on the plate.</p>
+        </div>
+        <div class="wiz-step" data-wiz="5" hidden>
+          <h3>You're set</h3>
+          <ul>
+            <li>Usage booking: books what a print used to the spool in each slot.</li>
+            <li>Stats tab: history, costs and wasted filament.</li>
+            <li>Display: choose what each tab shows.</li>
+          </ul>
+          <p>All of these are further down in Settings. Reopen this guide any time with <strong>Open the setup guide</strong>.</p>
+        </div>
+      </div>
+      <div class="wiz-dots" id="wiz-dots"></div>
+      <div class="wiz-foot">
+        <button id="wiz-skip">Skip</button>
+        <span class="grow"></span>
+        <button id="wiz-back">Back</button>
+        <button class="primary" id="wiz-next">Next</button>
+      </div>
+    </div>
+  </div><!--/wizard-->
   <script>
     document.getElementById("cancel").addEventListener("click", function () {
       orca.postMessage({ type: "cancel" });
@@ -6850,10 +6916,11 @@ SETTINGS_PAGE = """
     function refreshSave() {
       if (srcPick() === "bambu") {
         saveEl.disabled = !verifiedBambu;
-        return;
+      } else {
+        const url = norm(urlEl.value);
+        saveEl.disabled = !(url && url === verifiedUrl);
       }
-      const url = norm(urlEl.value);
-      saveEl.disabled = !(url && url === verifiedUrl);
+      wizRefresh();
     }
 
     urlEl.addEventListener("input", function () {
@@ -7130,6 +7197,90 @@ SETTINGS_PAGE = """
       });
     });
     refreshSave();
+
+    // First-run setup guide. State lives in these variables, not the page, so the steps can be
+    // tested without a browser. It moves the real source controls into step 2 and back.
+    var wiz = null;
+    const WIZ_STEPS = 6;
+    function wizReady() {
+      if (srcPick() === "bambu") return verifiedBambu;
+      const url = norm(urlEl.value);
+      return !!url && url === verifiedUrl;
+    }
+    function wizShow() {
+      document.querySelectorAll("[data-wiz]").forEach(function (el) {
+        el.hidden = Number(el.dataset.wiz) !== wiz.step;
+      });
+      const home = document.getElementById("src-home");
+      const block = document.getElementById("src-block");
+      (wiz.step === 1 ? document.getElementById("wiz-slot") : home).appendChild(block);
+      document.getElementById("wiz-count").textContent = "Step " + (wiz.step + 1) + " of " + WIZ_STEPS;
+      document.getElementById("wiz-dots").innerHTML = Array.from({ length: WIZ_STEPS }, function (_, i) {
+        return '<i class="' + (i === wiz.step ? "on" : "") + '"></i>';
+      }).join("");
+      document.getElementById("wiz-back").disabled = wiz.step === 0;
+      const last = wiz.step === WIZ_STEPS - 1;
+      const nextEl = document.getElementById("wiz-next");
+      nextEl.textContent = last ? "Save & finish" : "Next";
+      wizRefresh();
+      document.getElementById("wiz-skip").hidden = last;
+    }
+    function wizRefresh() {
+      if (!wiz) return;
+      wiz.canNext = wiz.step !== 1 || wizReady();
+      document.getElementById("wiz-next").disabled = !wiz.canNext;
+    }
+    function wizClose(finish) {
+      if (!wiz) return;
+      const back = wiz.opener;
+      wiz = null;
+      document.getElementById("src-home").appendChild(document.getElementById("src-block"));
+      document.getElementById("wiz").hidden = true;
+      orca.postMessage({ type: "wizard", done: true });
+      (back && back.focus ? back : urlEl).focus();
+      if (finish && !saveEl.disabled) saveEl.click();
+    }
+    function wizOpen() {
+      if (wiz) return;
+      wiz = { step: 0, canNext: true, opener: document.activeElement };
+      document.getElementById("wiz").hidden = false;
+      wizShow();
+      document.getElementById("wiz-next").focus();
+    }
+    function wizNext() {
+      if (!wiz || !wiz.canNext) return;
+      if (wiz.step === WIZ_STEPS - 1) { wizClose(true); return; }
+      wiz.step += 1;
+      wizShow();
+    }
+    function wizBack() {
+      if (!wiz || wiz.step === 0) return;
+      wiz.step -= 1;
+      wizShow();
+    }
+    document.getElementById("wiz-next").addEventListener("click", wizNext);
+    document.getElementById("wiz-back").addEventListener("click", wizBack);
+    document.getElementById("wiz-skip").addEventListener("click", function () { wizClose(false); });
+    document.getElementById("setup-guide").addEventListener("click", wizOpen);
+    document.getElementById("wiz").addEventListener("keydown", function (e) {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        e.stopPropagation();
+        wizClose(false);
+      } else if (e.key === "Tab") {
+        const els = Array.from(document.querySelectorAll("#wiz button, #wiz input, #wiz select, #wiz a"))
+          .filter(function (el) { return !el.disabled && el.offsetParent !== null; });
+        if (!els.length) return;
+        const first = els[0], last = els[els.length - 1];
+        if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+        else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+      }
+    });
+    window.__spoolerWizard = {
+      open: wizOpen, next: wizNext, back: wizBack, skip: function () { wizClose(false); },
+      state: function () { return wiz && { step: wiz.step, canNext: wiz.canNext }; },
+    };
+    if (__WIZARD__) wizOpen();
   </script>
 </body>
 </html>
@@ -7152,7 +7303,8 @@ def main_html() -> str:
 def settings_html(current_url: str, spoolman_info: dict, low_stock_grams: float,
                   plate_check: bool = True, plate_margin: int = DEFAULT_MARGIN,
                   weight: str = "both", cart: bool = False, source: str = "spoolman",
-                  progress: dict | None = None, columns: int = 1, stats: dict | None = None) -> str:
+                  progress: dict | None = None, columns: int = 1, stats: dict | None = None,
+                  wizard: bool = False) -> str:
     """``spoolman_info`` describes the saved URL, not whatever is typed in the field."""
     verified_url = clean_url(current_url) if spoolman_info.get("ok") else ""
     if spoolman_info.get("ok"):
@@ -7189,6 +7341,7 @@ def settings_html(current_url: str, spoolman_info: dict, low_stock_grams: float,
         # "</" is escaped so a URL can't close the script tag.
         VERIFIED_URL=json.dumps(verified_url).replace("</", "<\\/"),
         SOURCE=json.dumps(parse_source(source)),
+        WIZARD="true" if wizard else "false",
         VERIFIED_BAMBU="false",
         BAMBU_ACCOUNT="",
         BAMBU_STATUS="",
@@ -7309,8 +7462,6 @@ TAB_SETTINGS_CSS = """
     color: var(--orca-muted);
   }
   #view-settings .srow-r > .hint { margin-top: 0; }
-  #view-settings .srow .step { margin-bottom: 10px; }
-  #view-settings .srow .step:last-child { margin-bottom: 0; }
   #view-settings .srow .seg:last-child { margin-bottom: 0; }
   #view-settings .srow .check-row:last-child { margin-bottom: 0; }
   #view-settings .footer { border-top: none; padding-top: 6px; }
@@ -7468,6 +7619,7 @@ TAB_BRIDGE = """
     stOn.checked = st.on !== false;
     stOn.dispatchEvent(new Event("change"));
     document.getElementById("update-status").textContent = "";
+    if (data.wizard && window.__spoolerWizard) window.__spoolerWizard.open();
   });
 })();
 """
@@ -7476,7 +7628,8 @@ TAB_BRIDGE = """
 def tab_html(initial_view: str, current_url: str, low_stock_grams: float,
              plate_check: bool = True, plate_margin: int = DEFAULT_MARGIN,
              weight: str = "both", cart: bool = False, source: str = "spoolman",
-             progress: dict | None = None, columns: int = 1, stats: dict | None = None) -> str:
+             progress: dict | None = None, columns: int = 1, stats: dict | None = None,
+             wizard: bool = False) -> str:
     """The spool list and Settings as two views of one page, under a shared header.
 
     Built from the standalone pages, which SpoolerWindow still shows as separate windows.
@@ -7484,7 +7637,7 @@ def tab_html(initial_view: str, current_url: str, low_stock_grams: float,
     main_css, main_body, main_js = _split_page(main_html())
     settings_css, settings_body, settings_js = _split_page(settings_html(
         current_url, {"ok": False, "pending": True}, low_stock_grams, plate_check, plate_margin,
-        weight, cart, source, progress, columns, stats,
+        weight, cart, source, progress, columns, stats, wizard,
     ))
     main_body, main_header = _take_header(main_body)
     tabs_at = main_body.index('<div id="tabs"')
@@ -7498,7 +7651,7 @@ def tab_html(initial_view: str, current_url: str, low_stock_grams: float,
     sec = {name: _section(settings_body, name) for name in (
         "steps", "reorder", "check", "check-hint", "server", "about", "weights", "weights-preview",
         "layout", "layout-preview", "stats", "stats-preview", "display", "display-preview", "printer",
-        "printer-preview", "footer")}
+        "printer-preview", "footer", "wizard")}
     # The version, update check and log path sit beside the footer buttons.
     footer = sec["footer"]
     version_row = re.search(r'<div class="version-row">.*?</div>', footer, re.S).group(0)
@@ -7510,7 +7663,7 @@ def tab_html(initial_view: str, current_url: str, low_stock_grams: float,
                 f'<div class="srow-r"><div class="label">{label}</div>{right}</div></div></div>')
 
     settings_view = "\n".join([
-        card(sec["server"], "How It Works", sec["steps"]),
+        card(sec["server"], "Setup Guide", sec["steps"]),
         card(sec["reorder"], "Preview", TAB_PREVIEW_HTML),
         card(sec["weights"], "Preview", sec["weights-preview"]),
         card(sec["layout"], "Preview", sec["layout-preview"]),
@@ -7519,6 +7672,7 @@ def tab_html(initial_view: str, current_url: str, low_stock_grams: float,
         card(sec["printer"], "Preview", sec["printer-preview"]),
         card(sec["stats"], "Preview", sec["stats-preview"]),
         footer,
+        sec["wizard"],
     ])
     return f"""<!doctype html>
 <html>
@@ -7627,6 +7781,7 @@ class SpoolerWindow(orca.script.ScriptPluginCapabilityBase):
                 progress=progress_settings(),
                 columns=spool_columns(),
                 stats=stats_settings(),
+                wizard=wizard_pending(),
             ),
             title=f"{PLUGIN_NAME} - Settings & About",
             width=SETTINGS_SIZE[0],
@@ -7699,6 +7854,9 @@ class SpoolerWindow(orca.script.ScriptPluginCapabilityBase):
                 self._after_save()
                 if self._settings_window is not None:
                     self._settings_window.close()
+        elif msg_type == "wizard":
+            if data.get("done"):
+                save_wizard_done()
         elif msg_type == "bambu_auth":
             if self._settings_window is not None:
                 self._bambu_sign_in(data, self._settings_window)
@@ -7899,6 +8057,7 @@ if _PAGES:
                     progress=progress_settings(),
                     columns=spool_columns(),
                     stats=stats_settings(),
+                    wizard=wizard_pending(),
                 )
             except Exception:
                 log.exception("get_ui() raised")
@@ -8029,6 +8188,7 @@ if _PAGES:
                 "progress": progress_settings(),
                 "stats": stats_settings(),
                 "cur_code": _cur["code"] or "EUR",
+                "wizard": wizard_pending(),
             })
             self._check_connection(saved_url, self._settings_window)
 
@@ -8090,6 +8250,9 @@ if _PAGES:
                 if saved:
                     self._after_save()
                     self._settings_window.close()
+            elif msg_type == "wizard":
+                if data.get("done"):
+                    save_wizard_done()
             elif msg_type == "bambu_auth":
                 if self._settings_window is not None:
                     self._bambu_sign_in(data, self._settings_window)

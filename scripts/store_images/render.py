@@ -81,6 +81,18 @@ SCREENS = [
         "height": 780,
     },
     {
+        "file": "spooler-store-image-wizard.png",
+        "title": 'Set up in a minute,<br><em>step by step</em>',
+        "points": [
+            "A short guide opens the first time you use Spooler",
+            "Connect Spoolman or Bambu Cloud and test it right there",
+            "Learn where presets appear and how printers are found",
+            "Skip any time, reopen it from Settings",
+        ],
+        "page": "wizard",
+        "height": 780,
+    },
+    {
         "file": "spooler-store-image-presets.png",
         "title": 'Pick a filament,<br><em>the colour comes with it</em>',
         "points": [
@@ -130,10 +142,11 @@ def demo_state(sp):
     return spools_msg, live_msg
 
 
-def plugin_page(sp, view: str, spools_msg: dict, live_msg: dict) -> str:
+def plugin_page(sp, view: str, spools_msg: dict, live_msg: dict, wizard_step: int | None = None) -> str:
+    """``wizard_step`` opens the setup guide on that step (0-5) over the Settings view."""
     page = sp.tab_html(initial_view="settings" if view == "settings" else "main",
                        current_url="http://spoolman.local:7912", low_stock_grams=100,
-                       columns=2, progress=sp.progress_settings())
+                       columns=2, progress=sp.progress_settings(), wizard=wizard_step is not None)
     bridge = f"""<style>{ORCA_THEME}</style><script>
 (function () {{
   var handlers = [];
@@ -158,6 +171,7 @@ def plugin_page(sp, view: str, spools_msg: dict, live_msg: dict) -> str:
     setTimeout(function () {{
       var tab = document.querySelector('[data-tab="{'printer' if view == 'printer' else 'spools'}"]');
       if (tab) tab.click();
+      for (var i = 0; i < {wizard_step or 0}; i++) window.__spoolerWizard.next();
     }}, 200);
   }});
 }})();
@@ -262,7 +276,8 @@ def main() -> None:
             if screen["page"] == "presets":
                 inner = presets_mock(sp, spools_msg)
             else:
-                inner = plugin_page(sp, screen["page"], spools_msg, live_msg)
+                inner = plugin_page(sp, "settings" if screen["page"] == "wizard" else screen["page"],
+                                    spools_msg, live_msg, 1 if screen["page"] == "wizard" else None)
             (work / f"{stem}-inner.html").write_text(inner, encoding="utf-8")
             (work / f"{stem}.html").write_text(frame(screen, f"{stem}-inner.html", height), encoding="utf-8")
             out = OUT / screen["file"]

@@ -3,6 +3,22 @@
 Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); entries before
 0.9.0 are Spoolio's.
 
+## [0.15.0] - Unreleased
+
+### Added
+- A setup guide for first use. The first time Settings opens, a six-step guide explains what
+  Spooler does, takes your Spoolman address and tests it right there, and covers permissions, where
+  the presets appear and how printers are found. Next unlocks once the connection test passes.
+  Back, Skip and Escape work as expected, and the guide never uses browser pop-ups. It opens by
+  itself only while no source is set up and it has not been finished or skipped, so existing
+  setups never see it. ***Open the setup guide*** in Settings brings it back.
+- Install pictures and a complete Orca Cloud listing text (docs/store-description.md), a store
+  image of the setup guide, and the README now shows the install steps.
+
+### Changed
+- The "How It Works" steps in Settings are replaced by a short note and the setup guide button.
+- The store images are redrawn for the spool card menu added in 0.14.0.
+
 ## [0.14.0] - Unreleased
 
 ### Added

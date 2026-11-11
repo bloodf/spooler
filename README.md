@@ -16,6 +16,10 @@ the rest is automatic.
 
 ## What the fork adds
 
+- **A setup guide for first use.** The first time you open Settings, a short step-by-step guide
+  explains what Spooler does, takes your Spoolman address and tests it right there, and covers
+  permissions, where the presets appear and how printers are found. Skip it any time, and reopen
+  it from ***Open the setup guide*** in Settings.
 - **Your Spoolman filaments become OrcaSlicer filament presets, one per printer.** For each of your
   printers, every Spoolman filament with a spool in stock shows up under ***User presets*** in the
   sidebar's filament dropdown, for example `3D Procer PLA Pérola @Snapmaker U1` and
@@ -104,9 +108,14 @@ the rest is automatic.
   OrcaSlicer's normal preset selection, so it can ask about unsaved changes in the filament
   settings. Run it once per OrcaSlicer session; run it again to stop it.
 
+- **Stats, with the filament you waste.** The Stats tab (from Spoolio) shows usage, cost and print
+  history, and estimates how much of each print went into supports and into purging and the prime
+  tower: a Wasted Filament tile, a Usage Ratios card with the three most wasteful prints, and a
+  Waste column in Print History. The estimate is read from the plate G-code in the job file on the
+  printer, so it covers Bambu prints booked after updating to 0.13.0.
+
 Everything Spoolio already did is still there: spool cards, the Bambu Cloud source, Bambu Live
-Link, filament usage booking, the Stats tab with its estimate of filament lost to supports and
-purging, and the after-slice filament check.
+Link, filament usage booking, the Stats tab and the after-slice filament check.
 
 ### Limits
 
@@ -141,6 +150,9 @@ Chrome or Chromium).
 **Spooler** and subscribe, then in OrcaSlicer open ***File > Plugins***, click ***Refresh*** and tick
 ***Activate***. Updates arrive the same way.
 
+<p align="center"><img src="assets/orca-cloud/install/01-plugin-hub.png" alt="Orca Cloud Plugin Hub card for Spooler with the Subscribe button highlighted" width="700"></p>
+<p align="center"><img src="assets/orca-cloud/install/02-plugins-dialog.png" alt="The Plugins dialog with Refresh and Activate highlighted" width="700"></p>
+
 **Manually:** download the file for your system from the [latest release](../../releases/latest):
 
 | System | File |
@@ -160,15 +172,32 @@ Place it in its own folder called `spooler` inside OrcaSlicer's plugin directory
 | macOS | `~/Library/Application Support/OrcaSlicer/orca_plugins/` |
 | Linux | `~/.config/OrcaSlicer/orca_plugins/` |
 
+<p align="center"><img src="assets/orca-cloud/install/05-manual-install.png" alt="The orca_plugins/spooler folder with the plugin file and the three plugin directories" width="700"></p>
+
 Restart OrcaSlicer, then tick ***Activate*** for Spooler. A **Spooler** tab appears in the top bar.
+
+The install pictures are drawn illustrations, simplified, not screenshots.
 
 ## Set Up
 
-The Spooler tab opens on its Settings page on first run. Enter your Spoolman server address (for example `http://raspberrypi.local:7912`), click ***Test***, once the connection is confirmed then ***Save & Close***, which takes you back to your spool list. You can also set the low-stock threshold, the cart button and how weights are shown here, and reopen the page any time with the ***Settings*** button.
+The Spooler tab opens on its Settings page on first run, with a setup guide over it:
+
+1. **What Spooler does.** Your Spoolman spools become OrcaSlicer filament presets, and your printers' slots are shown.
+2. **Choose your source.** Enter your Spoolman server address (for example `http://raspberrypi.local:7912`) and click ***Test***. ***Next*** unlocks once the connection is confirmed.
+3. **Permissions.** See below.
+4. **Presets.** Where they appear, and that they follow Spoolman every minute.
+5. **Printers.** How they are found, and what ***Plugins > Run > Spooler: Load Printer Filaments*** does.
+6. **Done.** Optional extras, then ***Save & finish*** saves the settings and takes you to your spool list.
+
+<p align="center"><img src="assets/orca-cloud/install/04-spooler-tab.png" alt="The Spooler tab in the top bar and the setup guide's address step with Test highlighted" width="700"></p>
+
+***Next*** and ***Back*** move between steps, ***Skip*** (or Escape) closes the guide, and ***Open the setup guide*** in Settings brings it back. The guide appears by itself only when no source is set up yet, so it never shows for an existing setup. You can also set the low-stock threshold, the cart button and how weights are shown on the Settings page, and reopen the page any time with the ***Settings*** button.
 
 Prefer Bambu Cloud? Choose ***Bambu Cloud*** under ***Choose Your Source***, enter your Bambu email and password, pick Global or China, and enter the verification code if Bambu asks for one. Spooler never stores your password, only the sign-in token Bambu returns, and ***Sign Out*** removes it.
 
 OrcaSlicer asks before a plugin does anything sensitive. Granting Spooler full access in the permission dialog avoids repeated prompts; otherwise each new address it reads (Spoolman and each printer) is approved once and remembered. Expect a prompt the first time the plugin connects to Spoolman, Bambu Cloud or a printer, the first time it writes the filament presets into OrcaSlicer's user folder, and the first time you click a reorder cart to open your browser.
+
+<p align="center"><img src="assets/orca-cloud/install/03-permission.png" alt="A permission prompt for a network address with Allow highlighted" width="700"></p>
 
 > [!TIP]
 > ### Printer Tab

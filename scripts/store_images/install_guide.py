@@ -14,7 +14,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from render import ORCA_THEME, ROOT, find_chrome  # noqa: E402
+from render import ORCA_THEME, ROOT, demo_state, find_chrome, load, plugin_page  # noqa: E402
 
 OUT = ROOT / "assets" / "orca-cloud" / "install"
 MONO = "font-family:ui-monospace,Menlo,monospace"
@@ -108,22 +108,20 @@ def tab(name: str, active: bool = False) -> str:
     return f'<span style="padding:10px 26px;font-size:26px;{style}">{name}</span>'
 
 
+WIZARD_PAGE = "wizard-address.html"  # the real setup guide, rendered by main() beside the shots
+
+
 def spooler_tab() -> str:
     return page(f"""<div class="cap">OrcaSlicer top bar<small>the Spooler tab sits next to the built-in tabs</small></div>
 <div class="win" style="top:130px;bottom:auto;height:120px;overflow:visible">
 <div style="display:flex;gap:22px;align-items:center;justify-content:center;height:100%">
 {tab("Prepare")}{tab("Preview")}{tab("Device")}
 <span class="hl">{tab("Spooler", True)}<span class="badge" style="right:-24px;top:-36px">1</span></span></div></div>
-<div style="position:absolute;left:120px;right:120px;top:320px;font-size:26px">
-<div class="muted" style="margin-bottom:18px">On first run the tab opens on Settings:</div>
-<div style="padding:30px;background:#34353a;border:1px solid #55575e;border-radius:12px">
-<div style="margin-bottom:16px">Spoolman server address</div>
-<div style="display:flex;gap:34px;align-items:center">
-<span class="input" style="flex:1;{MONO}">http://raspberrypi.local:7912</span>
-<span class="btn hl">Test<span class="badge" style="left:-30px;top:-30px">2</span></span>
-<span class="btn accent hl">Save &amp; Close<span class="badge" style="left:-30px;top:-30px">3</span></span>
-</div></div></div>
-<div class="note">Enter the address, click Test, then Save &amp; Close. Illustrative layout.</div>""")
+<div class="muted" style="position:absolute;left:120px;right:120px;top:286px;font-size:26px">On first run the setup guide opens. Enter your Spoolman address and click Test:</div>
+<div style="position:absolute;left:420px;top:336px;width:760px;height:470px;border:1px solid #55575e;border-radius:12px;overflow:hidden">
+<iframe src="{WIZARD_PAGE}" style="width:760px;height:470px;border:0;display:block"></iframe>
+<span class="badge" style="left:604px;top:200px">2</span></div>
+<div class="note">The guide is the real Spooler setup guide. Next unlocks once Test succeeds. The top bar is an illustration.</div>""")
 
 
 def manual_install() -> str:
@@ -158,14 +156,18 @@ def main() -> None:
     parser.add_argument("--chrome", help="path to Google Chrome or Chromium")
     chrome = find_chrome(parser.parse_args().chrome)
     OUT.mkdir(parents=True, exist_ok=True)
+    sp, _ = load()
+    spools_msg, live_msg = demo_state(sp)
     with tempfile.TemporaryDirectory() as tmp:
         work = Path(tmp)
+        (work / WIZARD_PAGE).write_text(plugin_page(sp, "settings", spools_msg, live_msg, wizard_step=1),
+                                        encoding="utf-8")
         for stem, make in SHOTS.items():
             src, out = work / f"{stem}.html", OUT / f"{stem}.png"
             src.write_text(make(), encoding="utf-8")
             run = subprocess.run([chrome, "--headless=new", "--disable-gpu", "--hide-scrollbars",
                                   f"--user-data-dir={work / 'profile'}", "--no-first-run",
-                                  "--force-device-scale-factor=1", "--window-size=1600,900", "--timeout=3000",
+                                  "--force-device-scale-factor=1", "--allow-file-access-from-files", "--window-size=1600,900", "--virtual-time-budget=3000",
                                   f"--screenshot={out}", src.as_uri()],
                                  capture_output=True, text=True, timeout=90)
             if not out.exists() or "bytes written" not in run.stdout + run.stderr:
