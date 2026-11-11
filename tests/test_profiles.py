@@ -171,6 +171,24 @@ class PresetTest(unittest.TestCase):
         self.assertEqual(p["filament_cost"], ["22.99"])
         self.assertEqual(p["filament_shrinkage_compensation_z"], ["99.5%"])
 
+    def test_orca_settings_temperature_range_and_cooling(self):
+        field = {"*": {"nozzle_temperature_range_low": "220", "nozzle_temperature_range_high": "250",
+                       "chamber_temperature": "40", "overhang_fan_speed": "60", "full_fan_speed_layer": "3"}}
+        f = filament(1, "x", "PETG", extra={"orca_settings": json.dumps(json.dumps(field))})
+        p = sp.profile_preset(f, "x", "Generic PETG @System", U1)
+        for key, value in field["*"].items():
+            self.assertEqual(p[key], [value])
+
+    def test_orca_settings_says_which_keys_it_ignores(self):
+        field = {"*": {"machine_start_gcode": "G28", "filament_flow_ratio": "0.98"}}
+        f = filament(7, "x", "PLA", extra={"orca_settings": json.dumps(json.dumps(field))})
+        sp._ignored_keys.clear()
+        with self.assertLogs(sp.log, "WARNING") as logs:
+            sp.orca_settings(f, U1)
+            sp.orca_settings(f, U1)  # said once, not on every refresh
+        self.assertEqual(len(logs.output), 1)
+        self.assertIn("machine_start_gcode", logs.output[0])
+
     def test_orca_settings_flat_and_broken(self):
         flat = filament(1, "x", "PLA", extra={"orca_settings": json.dumps('{"filament_flow_ratio": "0.98"}')})
         self.assertEqual(sp.orca_settings(flat, U1), {"filament_flow_ratio": ["0.98"]})

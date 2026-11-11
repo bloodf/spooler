@@ -6,7 +6,7 @@
 # name = "Spooler"
 # description = "Spoolman inventory for OrcaSlicer: auto-synced filament profiles and live printer slots"
 # author = "bloodf (fork of Spoolio by Dan J Moore)"
-# version = "0.20.0"
+# version = "0.20.1"
 # ///
 
 import asyncio
@@ -51,7 +51,7 @@ except (ImportError, AttributeError):
 _SLICING = hasattr(getattr(orca, "slicing", None), "SlicingPipelineCapabilityBase")
 
 PLUGIN_NAME = "Spooler"
-PLUGIN_VERSION = "0.20.0"
+PLUGIN_VERSION = "0.20.1"
 # Stamped per operating system by scripts/build.py.
 BUILD_TARGET = "any"
 
@@ -904,7 +904,11 @@ ORCA_SETTINGS_KEYS = frozenset({
     "fan_min_speed", "fan_max_speed", "slow_down_layer_time", "slow_down_min_speed",
     "filament_shrink", "temperature_vitrification", "filament_density", "filament_diameter",
     "filament_cost", "filament_shrinkage_compensation_z", "filament_notes",
+    "nozzle_temperature_range_low", "nozzle_temperature_range_high", "chamber_temperature",
+    "overhang_fan_speed", "close_fan_the_first_x_layers", "full_fan_speed_layer",
+    "additional_cooling_fan_speed", "filament_minimal_purge_on_wipe_tower",
 })
+_ignored_keys: set = set()  # orca_settings keys already reported as not used, so the log says it once
 # The one listed setting OrcaSlicer holds as text; every other is a number, a percentage or on/off.
 TEXT_KEYS = frozenset({"filament_notes"})
 # Spoolman extra fields Spooler adds to every filament for the calibration values people set most,
@@ -1166,6 +1170,10 @@ def orca_settings(filament: dict, target: str) -> dict:
             values = value if isinstance(value, list) else [value]
             if key in ORCA_SETTINGS_KEYS and values and all(_one_value(key, v) for v in values):
                 out[key] = [v if isinstance(v, str) else _fmt(v) for v in values]
+            elif key not in ORCA_SETTINGS_KEYS and key not in _ignored_keys:
+                _ignored_keys.add(key)
+                log.warning("orca_settings of filament %s: %s is not a setting Spooler applies; ignored",
+                            filament.get("id"), key)
     return out
 
 

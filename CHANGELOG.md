@@ -3,6 +3,15 @@
 Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); entries before
 0.9.0 are Spoolio's.
 
+## [0.20.1] - Unreleased
+
+### Fixed
+- Settings in a filament's orca_settings field in Spoolman that Spooler didn't know were dropped
+  without a word. The nozzle temperature range (nozzle_temperature_range_low and _high) is now
+  applied to the presets, along with chamber temperature, overhang fan speed, the layers with the
+  fan off, the layer with full fan speed, the auxiliary fan speed and the minimal purge on the wipe
+  tower. Any other key is still left out, and Spooler's log now names it once.
+
 ## [0.20.0] - 2026-11-11
 
 ### Added

@@ -58,10 +58,12 @@ the rest is automatic.
     all:
     `{"*": {"filament_flow_ratio": "0.98"}, "Snapmaker U1": {"filament_max_volumetric_speed": 20}}`.
     Supported: flow ratio, max volumetric speed, pressure advance, retraction length and speeds,
-    Z hop, ironing flow, speed, spacing and inset, nozzle and plate temperatures, fan speeds,
-    slow-down settings, shrinkage (also in Z), softening temperature, density, diameter, cost and
-    notes. Other keys are ignored, and so is text that isn't one number (say `"0,95"`) for a number
-    setting.
+    Z hop, ironing flow, speed, spacing and inset, nozzle and plate temperatures, the nozzle
+    temperature range, chamber temperature, fan speeds (also overhang and auxiliary fan, layers
+    with the fan off and the full-speed layer), slow-down settings, minimal purge on the wipe
+    tower, shrinkage (also in Z), softening temperature, density, diameter, cost and notes. Other
+    keys are ignored (Spooler's log names each one once), and so is text that isn't one number
+    (say `"0,95"`) for a number setting.
   - Spooler adds three number fields to Spoolman's filament form, ***Flow ratio***,
     ***Pressure advance*** and ***Max volumetric speed***, for the values people calibrate most.
     They apply to every printer; a value in `orca_settings` wins over them.
