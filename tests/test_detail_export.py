@@ -5,7 +5,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from test_display import PageScriptTest
+import test_display
 from test_stats import StatsBase, entry, row, sp
 
 
@@ -98,9 +98,10 @@ class TotalsTest(StatsBase):
         self.assertEqual(shelf["mats"], [{"name": "PLA", "g": 600.0, "value": 10.0}, {"name": "PETG", "g": 250.0, "value": 10.0}])
 
 
-class PageTest(PageScriptTest):
-    run_page = PageScriptTest.run_page
-    test_grouped_spools_show_full_totals_and_the_loaded_one_first = None
+# Borrows the page runner only; subclassing PageScriptTest would run all its tests again here.
+@unittest.skipUnless(test_display.NODE, "node is needed to run the page script")
+class PageTest(unittest.TestCase):
+    run_page = test_display.PageScriptTest.run_page
 
     def test_detail_render(self):
         d = {"id": 1, "sign": "£", "grams": 80.0, "cost": 2.5, "rate": 20.0, "weeks": 5.0,
