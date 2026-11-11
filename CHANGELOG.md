@@ -18,6 +18,11 @@ Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); 
   sends to its log once, with serial numbers, tokens, addresses and credentials removed, and asks
   the printer for its print status.
 
+### Fixed
+- Opening a group of spools in the two-column list no longer stretches it across both columns and
+  leaves a hole beside the card before it. The group stays in its own column, its spools are
+  listed under it as normal cards, and the other column keeps filling beside them.
+
 ### Not yet
 - Booking the filament used by Anycubic Kobra prints. How the printer reports a print in progress
   is not documented, so it needs a capture from one real print first; docs/kobra-booking.md says

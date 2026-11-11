@@ -159,6 +159,16 @@ console.log(JSON.stringify({{list, card}}));
         self.assertEqual(out.count('<span class="spool-vendor">Acme</span>'), 3)  # group and both spools
         self.assertIn('<span class="stack-count">2</span>', out)
 
+    def test_open_stack_stays_in_its_column(self):
+        # An opened stack takes one row per card (its head and each spool) in its own column,
+        # instead of spanning the whole width and leaving a hole in the other column.
+        out = self.run_page(self.scenario({}))["list"]
+        self.assertIn('style="--rows:3"', out)
+        page = (Path(__file__).resolve().parents[1] / "plugin" / "spooler" / "spooler_any.py").read_text(encoding="utf-8")
+        self.assertNotIn("#list.cols-2 .group.stack:not(.collapsed) { grid-column", page)
+        self.assertNotIn(", #list.cols-2 .group.stack:not(.collapsed) {", page)
+        self.assertIn("grid-row: span var(--rows", page)
+
     def test_slot_card_has_the_spools_details(self):
         card = self.run_page(self.scenario({}))["card"]
         for text in ("Acme", "PLA", "#111111", "980 g of 1,000 g left", "Spool #2", "Shelf B",

@@ -4943,14 +4943,15 @@ MAIN_PAGE = """
   .stack-arrow svg { width: 14px; height: 14px; }
   .group.stack:not(.collapsed) .stack-arrow { transform: rotate(90deg); color: var(--orca-accent); }
   .group.stack { margin-bottom: 0; }
-  .group.stack:not(.collapsed) {
-    margin-bottom: 9px; padding: 6px 6px 0; border-radius: 17px;
-    background: color-mix(in srgb, var(--orca-fg) 3%, var(--orca-bg) 97%);
-    border: 1px solid color-mix(in srgb, var(--orca-accent) 35%, var(--orca-border) 65%);
+  /* An open stack keeps the list's design: its head stays a normal card and each spool is a normal
+     card under it, indented on a thin rail, in the same column. */
+  .group.stack:not(.collapsed) > .stack-head { border-color: color-mix(in srgb, var(--orca-accent) 55%, var(--orca-border) 45%); }
+  .group.stack > .group-items { padding: 0; }
+  .group.stack > .group-items > .spool-card { margin-left: 14px; }
+  .group.stack > .group-items > .spool-card::before {
+    content: ""; position: absolute; left: -10px; top: -9px; bottom: 0; width: 2px; border-radius: 1px;
+    background: color-mix(in srgb, var(--orca-accent) 45%, var(--orca-border) 55%);
   }
-  .group.stack:not(.collapsed) > .stack-head { border-color: transparent; background: transparent; margin-bottom: 4px; }
-  .group.stack:not(.collapsed) > .stack-head:focus-visible { border-color: var(--orca-accent); }
-  .group.stack > .group-items { padding: 0 6px; }
   .spool-dup {
     margin-left: 8px; padding: 1px 8px; border-radius: 99px; vertical-align: middle;
     border: 1px solid var(--orca-border); color: var(--orca-muted);
@@ -5028,7 +5029,11 @@ MAIN_PAGE = """
   .group-items { padding-left: 4px; }
   .group.collapsed .group-items { display: none; }
   #list.cols-2, #list.cols-2 .group-items { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 10px; align-items: stretch; }
-  #list.cols-2 > .group:not(.stack), #list.cols-2 > .empty, #list.cols-2 .group.stack:not(.collapsed) { grid-column: 1 / -1; }
+  #list.cols-2 > .group:not(.stack), #list.cols-2 > .empty { grid-column: 1 / -1; }
+  /* Two columns: an open stack takes one row per card in its own column; the other column keeps
+     filling beside it, so no hole opens. */
+  #list.cols-2 .group.stack:not(.collapsed) { grid-row: span var(--rows, 1); display: grid; grid-template-rows: subgrid; }
+  #list.cols-2 .group.stack:not(.collapsed) > .group-items { display: contents; }
   #list.cols-2 .group.collapsed .group-items { display: none; }
   #list.cols-2 .group.stack.collapsed { display: flex; flex-direction: column; }
   #list.cols-2 .group.stack.collapsed > .stack-head { flex: 1; }
@@ -6937,7 +6942,8 @@ MAIN_PAGE = """
         : '<span class="spool-pct">' + percent + '% \u00b7</span>' + remainingLabel;
       const ring = swatchCols(f).length > 1 ? ";border-color:" + swatchMain(f) : "";
       return (
-        '<div class="group stack' + (collapsed ? " collapsed" : "") + '" data-key="' + esc(group.key) + '">' +
+        '<div class="group stack' + (collapsed ? " collapsed" : "") + '" data-key="' + esc(group.key) +
+          '" style="--rows:' + (group.items.length + 1) + '">' +
           '<div class="spool-card stack-head" role="button" tabindex="0" aria-expanded="' + !collapsed + '">' +
             '<div class="spool-body">' +
               '<div class="spool-swatch-col"><div class="spool-swatch" style="background:' + group.color + ring + '">' +
