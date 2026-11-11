@@ -6,11 +6,12 @@
 # name = "Spooler"
 # description = "Spoolman inventory for OrcaSlicer: auto-synced filament profiles and live printer slots"
 # author = "bloodf (fork of Spoolio by Dan J Moore)"
-# version = "0.18.0"
+# version = "0.19.0"
 # ///
 
 import asyncio
 import base64
+import csv
 import datetime
 import ftplib
 import hashlib
@@ -50,7 +51,7 @@ except (ImportError, AttributeError):
 _SLICING = hasattr(getattr(orca, "slicing", None), "SlicingPipelineCapabilityBase")
 
 PLUGIN_NAME = "Spooler"
-PLUGIN_VERSION = "0.18.0"
+PLUGIN_VERSION = "0.19.0"
 # Stamped per operating system by scripts/build.py.
 BUILD_TARGET = "any"
 
@@ -3901,6 +3902,86 @@ def stats_currency() -> str:
     return cfg["cur"].upper()
 
 
+def period_start(period: object, now: float) -> float:
+    days = PERIODS.get(str(period), 30)
+    if days > 0:
+        return now - days * 86400
+    if days == 0:
+        return time.mktime((time.localtime(now).tm_year, 1, 1, 0, 0, 0, 0, 0, -1))
+    return 0.0
+
+
+def weekly_rates(hist: list[dict], now: float) -> dict:
+    """Grams per week each spool used over the last 4 weeks, by spool id."""
+    rate: dict = {}
+    for e in hist:
+        if (e.get("time") or 0) >= now - 28 * 86400:
+            for r in e["rows"]:
+                rate[r["spool"]] = rate.get(r["spool"], 0) + r["grams"] / 4
+    return rate
+
+
+def spool_detail(spool_id: object) -> dict:
+    """Prints that used one spool, what they booked, the weekly rate and the weeks left."""
+    try:
+        sid = int(spool_id)
+    except (TypeError, ValueError):
+        return {"id": spool_id, "prints": [], "grams": 0.0, "cost": None, "rate": None, "weeks": None, "code": "", "sign": ""}
+    url = clean_url(get_settings().get("spoolman_url"))
+    code = stats_currency()
+    with _usage_lock:
+        hist = hist_load()
+    prints = []
+    for e in reversed(hist):
+        for r in e["rows"]:
+            if r["spool"] == sid:
+                prints.append({"time": e.get("time"), "name": e.get("name") or "", "grams": r["grams"], "cost": r.get("cost")})
+    costs = [p["cost"] for p in prints if isinstance(p["cost"], (int, float))]
+    rate = weekly_rates(hist, time.time()).get(sid)
+    left = next((sp.get("remaining_weight") for sp in (plate_spools(url) if url else None) or [] if sp.get("id") == sid), None)
+    weeks = left / rate if rate and isinstance(left, (int, float)) else None
+    return {"id": sid, "prints": prints, "grams": round(sum(p["grams"] for p in prints), 1),
+            "cost": round(sum(costs), 2) if costs else None, "rate": round(rate, 1) if rate else None,
+            "weeks": round(weeks, 1) if weeks is not None else None, "code": code, "sign": CUR_SIGNS.get(code, code + " ")}
+
+
+def csv_cell(value: object) -> object:
+    """Text that starts like a spreadsheet formula gets an apostrophe in front."""
+    return "'" + value if isinstance(value, str) and value[:1] in ("=", "+", "-", "@", "\t", "\r") else value
+
+
+def export_history(period: object) -> dict:
+    """Write the period's print history to DATA_DIR/exports and open that folder."""
+    now = time.time()
+    start = period_start(period, now)
+    with _usage_lock:
+        hist = [e for e in hist_load() if (e.get("time") or 0) >= start]
+    folder = DATA_DIR / "exports"
+    path = folder / time.strftime("history-%Y%m%d-%H%M.csv", time.localtime(now))
+    try:
+        folder.mkdir(parents=True, exist_ok=True)
+        with path.open("w", encoding="utf-8-sig", newline="") as fh:
+            out = csv.writer(fh)
+            out.writerow(["Date", "Print", "Printer", "Result", "Progress %", "Spool ID", "Spool", "Material", "Colour",
+                          "Grams", "Cost", "Waste Support g", "Waste Purge g"])
+            for e in hist:
+                when = time.strftime("%Y-%m-%dT%H:%M:%S", time.localtime(e.get("time") or 0))
+                for r in e["rows"]:
+                    ws, wp = r.get("ws"), r.get("wp")
+                    out.writerow([csv_cell(c) for c in (
+                        when, e.get("name") or "", e.get("printer") or "", e.get("result") or "",
+                        "" if e.get("pct") is None else e["pct"], r["spool"], r.get("label") or "",
+                        r.get("material") or "", r.get("colour") or "", r["grams"],
+                        "" if r.get("cost") is None else r["cost"],
+                        round(r["grams"] * ws, 2) if isinstance(ws, (int, float)) else "",
+                        round(r["grams"] * wp, 2) if isinstance(wp, (int, float)) else "")])
+    except OSError as exc:
+        log.exception("Could not write %s", path)
+        return {"ok": False, "text": f"Could not write the export: {exc}"}
+    open_url(folder.as_uri())
+    return {"ok": True, "text": f"Saved {path}", "path": str(path)}
+
+
 def stats_data(period: object) -> dict:
     url = clean_url(get_settings().get("spoolman_url"))
     code = stats_currency()
@@ -3908,14 +3989,7 @@ def stats_data(period: object) -> dict:
         hist = hist_load()
     now = time.time()
     lt = time.localtime(now)
-    days = PERIODS.get(str(period), 30)
-    if days > 0:
-        start = now - days * 86400
-    elif days == 0:
-        start = time.mktime((lt.tm_year, 1, 1, 0, 0, 0, 0, 0, -1))
-    else:
-        start = 0.0
-    sel = [e for e in hist if (e.get("time") or 0) >= start]
+    sel = [e for e in hist if (e.get("time") or 0) >= period_start(period, now)]
     total = sum(r["grams"] for e in sel for r in e["rows"])
     costs = [r["cost"] for e in sel for r in e["rows"] if isinstance(r.get("cost"), (int, float))]
     mats: dict = {}
@@ -3940,16 +4014,23 @@ def stats_data(period: object) -> dict:
         weeks.append({"start": a, "now": a == week0,
                       "parts": sorted(parts.values(), key=lambda x: -x["g"])})
     low = parse_low(get_settings().get("low_stock_grams"))
-    rate: dict = {}
-    for e in hist:
-        if (e.get("time") or 0) >= now - 28 * 86400:
-            for r in e["rows"]:
-                rate[r["spool"]] = rate.get(r["spool"], 0) + r["grams"] / 4
+    rate = weekly_rates(hist, now)
     out, nlow = [], 0
+    shelf = {"g": 0.0, "value": 0.0, "unpriced": 0, "mats": {}}
     for sp in (plate_spools(url) if url else None) or []:
         left = sp.get("remaining_weight")
         if sp.get("archived") or not isinstance(left, (int, float)):
             continue
+        worth = _cost(sp, left)
+        m = (str((sp.get("filament") or {}).get("material") or "").strip()) or "Other"
+        sm = shelf["mats"].setdefault(m, {"name": m, "g": 0.0, "value": 0.0})
+        shelf["g"] += left
+        sm["g"] += left
+        if worth is None:
+            shelf["unpriced"] += 1
+        else:
+            shelf["value"] += worth
+            sm["value"] += worth
         is_low = left < low
         nlow += is_low
         wk = left / rate[sp.get("id")] if rate.get(sp.get("id")) else None
@@ -3983,13 +4064,20 @@ def stats_data(period: object) -> dict:
         if g > 0:
             worst.append({"name": e["name"], "g": round(g, 1), "cost": round(c, 2), "kind": "support" if sg >= pg else "purge"})
     ws["cost"] = ws["scost"] + ws["pcost"]
+    lost = [e for e in sel if e.get("result") in ("cancelled", "failed")]
+    lost_costs = [r["cost"] for e in lost for r in e["rows"] if isinstance(r.get("cost"), (int, float))]
+    failed = {"prints": len(lost), "g": round(sum(r["grams"] for e in lost for r in e["rows"]), 1),
+              "cost": round(sum(lost_costs), 2) if lost_costs else None}
+    shelf_out = {"g": round(shelf["g"], 1), "value": round(shelf["value"], 2), "unpriced": shelf["unpriced"],
+                 "mats": sorted(({"name": k, "g": round(v["g"], 1), "value": round(v["value"], 2)} for k, v in shelf["mats"].items()),
+                                key=lambda x: -x["g"])} if shelf["mats"] else None
     ws = {k: round(v, 2) if isinstance(v, float) else v for k, v in ws.items()}
     return {"period": str(period), "since": hist[0]["time"] if hist else None, "code": code,
             "sign": CUR_SIGNS.get(code, code + " "), "grams": round(total, 1), "prints": len(sel),
             "cost": round(sum(costs), 2) if costs else None, "low": nlow,
             "mats": sorted(({"name": k, "g": round(v, 1)} for k, v in mats.items()), key=lambda x: -x["g"]),
             "top": sorted(top.values(), key=lambda x: -x["g"])[:5], "weeks": weeks, "soon": out[:5],
-            "waste": ws if ws["prints"] else None, "worst": sorted(worst, key=lambda x: -x["g"])[:3],
+            "waste": ws if ws["prints"] else None, "failed": failed, "shelf": shelf_out, "worst": sorted(worst, key=lambda x: -x["g"])[:3],
             "history": [{"time": e["time"], "name": e["name"], "printer": e["printer"], "result": e["result"],
                          "pct": e.get("pct"), "rows": e["rows"]} for e in reversed(sel)]}
 
@@ -4714,6 +4802,15 @@ MAIN_PAGE = """
     border: 1px solid var(--orca-border); background: var(--orca-bg); color: var(--orca-fg);
   }
   .spool-menu .sp-note { flex-basis: 100%; font-size: 11px; color: #d9534f; }
+  .sp-detail { flex-basis: 100%; font-size: 12px; }
+  .sp-detail .sp-note { color: var(--orca-muted); margin-bottom: 4px; }
+  .sp-detail table { width: 100%; border-collapse: collapse; margin-top: 4px; }
+  .sp-detail td { padding: 3px 6px 3px 0; border-top: 1px solid var(--orca-border); }
+  .sp-detail td.r { text-align: right; white-space: nowrap; }
+  .match-row { align-items: center; }
+  .match-row label { font-size: 12px; color: var(--orca-muted); }
+  .match-row input[type=color] { flex: 0 0 40px; width: 40px; height: 26px; padding: 0; border: 1px solid var(--orca-border); border-radius: 4px; background: none; cursor: pointer; }
+  .ph-b > .sbtn { margin-top: 10px; }
   .arch-toggle { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--orca-muted); cursor: pointer; }
   .spool-weight.low .spool-pct { color: inherit; opacity: 0.8; }
   .use-chip {
@@ -4832,7 +4929,7 @@ MAIN_PAGE = """
   .st-bar select { padding: 5px 8px; border: 1px solid var(--orca-border); border-radius: 4px; background: var(--orca-bg); color: var(--orca-fg); }
   .st-bar select option { background: var(--orca-bg); color: var(--orca-fg); }
   .st-note { color: var(--orca-muted); font-size: 12px; margin-left: auto; }
-  .st-tiles { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; margin-bottom: 10px; }
+  .st-tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-bottom: 10px; }
   .st-tile, .st-card { border: 1px solid var(--orca-border); border-radius: 8px; padding: 12px 14px; background: var(--orca-border); background: color-mix(in srgb, var(--orca-fg) 5%, var(--orca-bg) 95%); min-width: 0; }
   .st-tile span { font-size: 12px; color: var(--orca-muted); }
   .st-tile b { display: block; font-size: 22px; font-weight: 700; margin-top: 4px; color: var(--orca-fg); }
@@ -4858,6 +4955,7 @@ MAIN_PAGE = """
   .st-row .t { flex: 1; height: 10px; border-radius: 5px; background: color-mix(in srgb, var(--orca-fg) 10%, transparent); overflow: hidden; }
   .st-row .t i { display: block; height: 100%; background: var(--orca-accent); border-radius: 5px; }
   .st-row .t i.red { background: #d9534f; }
+  .st-shelf .st-row .v { width: 130px; }
   .st-row .v { width: 70px; text-align: right; color: var(--orca-muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
   .st-sw { width: 12px; height: 12px; border-radius: 50%; border: 1px solid var(--orca-border); flex-shrink: 0; }
   .st-weeks { display: flex; align-items: flex-end; gap: 8px; height: 150px; padding-top: 6px; }
@@ -5073,6 +5171,11 @@ MAIN_PAGE = """
     <button class="sort-dir" id="sort-dir" title="Toggle ascending/descending">&#9650;</button>
     <label class="arch-toggle" id="arch-row" hidden><input type="checkbox" id="show-archived">Show archived</label>
   </div>
+  <div class="filters match-row">
+    <label for="match-color">Closest colour</label>
+    <input type="color" id="match-color" value="#888888" aria-label="Show the spools closest to this colour">
+    <button type="button" class="sbtn ghost" id="match-clear" hidden>Clear</button>
+  </div>
   </div>
 
   <div id="plate" class="plate" hidden>
@@ -5112,6 +5215,10 @@ MAIN_PAGE = """
     const fToggle = document.getElementById("filters-toggle");
     const fPanel = document.getElementById("filters-panel");
     const colorBtn = document.getElementById("color-btn");
+    const matchEl = document.getElementById("match-color");
+    const matchClear = document.getElementById("match-clear");
+    let matchHex = "";
+    const MATCH_TOP = 12;
     const colorMenu = document.getElementById("color-menu");
     const colorDot = document.getElementById("color-dot");
     const colorLabel = document.getElementById("color-label");
@@ -5785,6 +5892,8 @@ MAIN_PAGE = """
       return g >= 1000 ? (g / 1000).toFixed(2) + " kg" : Math.round(g) + " g";
     }
 
+    let stNote = "";
+
     function stMoney(v) {
       return typeof v === "number" ? esc(stData.sign) + v.toFixed(2) : "&ndash;";
     }
@@ -5856,6 +5965,15 @@ MAIN_PAGE = """
       }).join("");
     }
 
+    function stShelf(d) {
+      if (!d.shelf || !d.shelf.mats.length) return '<div class="st-empty">Needs a Spoolman connection with spools in stock.</div>';
+      const max = d.shelf.mats[0].g || 1;
+      return d.shelf.mats.map(function (m, i) {
+        return '<div class="st-row"><span class="st-sw" style="background:' + ST_COLS[i % ST_COLS.length] + '"></span><span class="l">' + esc(m.name) + '</span>' +
+          '<span class="t"><i style="width:' + (m.g / max * 100) + '%"></i></span><span class="v">' + stW(m.g) + (m.value ? ' &middot; ' + stMoney(m.value) : '') + '</span></div>';
+      }).join("");
+    }
+
     const W_COLS = { model: "var(--orca-accent)", support: "#e0a030", purge: "#d9534f" };
 
     function stWaste(e) {
@@ -5894,7 +6012,8 @@ MAIN_PAGE = """
         const costs = e.rows.filter(function (r) { return typeof r.cost === "number"; });
         const cost = costs.length ? costs.reduce(function (a, r) { return a + r.cost; }, 0) : null;
         const wg = stWaste(e);
-        const fail = e.result === "cancelled" ? '<span class="fail">Failed at ' + (e.pct || 0) + '%</span>' : '';
+        const bad = e.result === "cancelled" || e.result === "failed";
+        const fail = bad ? '<span class="fail">Failed at ' + (e.pct || 0) + '% &middot; lost ' + g.toFixed(1) + ' g' + (cost !== null ? ' &middot; ' + stMoney(cost) : '') + '</span>' : '';
         return '<tr><td class="d">' + stDate(e.time) + '</td><td><span class="nm">' + esc(e.name || "Print") + '</span>' + fail +
           (e.printer ? '<br><span class="pr">' + esc(e.printer) + '</span>' : '') + '</td><td><div class="mats">' + e.rows.map(function (r) {
             return '<span class="m" title="' + esc(r.label) + '"><i style="background:' + stCol(r.colour) + '"></i>' + esc(r.material || "") + ' ' + r.grams.toFixed(1) + ' g</span>';
@@ -5905,7 +6024,8 @@ MAIN_PAGE = """
         rows + '</tbody></table>' + (d.history.length > phShown ? '<button class="sbtn ghost more" data-st="more">Show More</button>' : '')
         : '<div class="st-empty">No prints booked in this period.</div>';
       return '<div class="st-card ph' + (phOpen ? ' open' : '') + '"><div class="ph-h" data-st="history"><h3>Print History</h3><span class="sum">' + sum +
-        '</span><span class="chev">&#9662;</span></div><div class="ph-b">' + body + '</div></div>';
+        '</span><span class="chev">&#9662;</span></div><div class="ph-b">' + body +
+        (list.length ? '<button class="sbtn ghost" data-st="export">Export to CSV</button>' : '') + '</div></div>';
     }
 
     function renderStats() {
@@ -5917,18 +6037,23 @@ MAIN_PAGE = """
       }).join("");
       statsEl.innerHTML = '<div class="st-bar"><select data-st="period">' + opts + '</select><span class="st-note">' +
         (since ? 'From prints Spooler booked since ' + since.getDate() + ' ' + MONTHS[since.getMonth()] + ' ' + since.getFullYear()
-          : 'Stats fill in as Spooler books your prints to Spoolman.') + '</span></div>' +
+          : 'Stats fill in as Spooler books your prints to Spoolman.') + '</span>' + (stNote ? '<span class="st-note">' + esc(stNote) + '</span>' : '') + '</div>' +
         '<div class="st-tiles"><div class="st-tile"><span>Filament Used</span><b>' + stW(d.grams) + '</b></div>' +
         '<div class="st-tile"><span>Prints Booked</span><b>' + d.prints + '</b></div>' +
         '<div class="st-tile"><span>Filament Cost</span><b>' + stMoney(d.cost) + '</b></div>' +
         '<div class="st-tile' + (d.low ? ' low' : '') + '"><span>Low Stock</span><b>' + d.low + '</b></div>' +
         '<div class="st-tile w"><span>Wasted Filament</span><b>' + (d.waste ? stW(d.waste.support + d.waste.purge) : '&ndash;') + '</b><small>' +
         (d.waste ? (d.waste.cost ? stMoney(d.waste.cost) + ' &middot; ' : '') + Math.round((d.waste.support + d.waste.purge) / (d.waste.model + d.waste.support + d.waste.purge) * 100) + '% of all filament' : 'From job files on the printer') +
-        '</small></div></div>' +
+        '</small></div>' +
+        '<div class="st-tile"><span>On the Shelf</span><b>' + (d.shelf ? stW(d.shelf.g) : '&ndash;') + '</b><small>' +
+        (d.shelf ? stMoney(d.shelf.value) + (d.shelf.unpriced ? ' &middot; ' + d.shelf.unpriced + ' without a price' : '') : 'Needs Spoolman') + '</small></div>' +
+        '<div class="st-tile' + (d.failed.prints ? ' low' : '') + '"><span>Lost to Failed Prints</span><b>' + stW(d.failed.g) + '</b><small>' +
+        d.failed.prints + (d.failed.prints === 1 ? ' print' : ' prints') + (d.failed.cost !== null ? ' &middot; ' + stMoney(d.failed.cost) : '') + '</small></div></div>' +
         '<div class="st-grid"><div class="st-card"><h3>Used per Week</h3>' + stWeeks(d) + '</div>' +
         '<div class="st-card"><h3>Materials Used</h3>' + stDonut(d) + '</div>' +
         '<div class="st-card"><h3>Most Used</h3>' + stTop(d) + '</div>' +
-        '<div class="st-card"><h3>Running Low</h3>' + stSoon(d) + '</div>' + stRatios(d) + stHistory(d) + '</div>';
+        '<div class="st-card"><h3>Running Low</h3>' + stSoon(d) + '</div>' +
+        '<div class="st-card st-shelf"><h3>On the Shelf by Material</h3>' + stShelf(d) + '</div>' + stRatios(d) + stHistory(d) + '</div>';
     }
 
     statsEl.addEventListener("change", function (e) {
@@ -5947,6 +6072,9 @@ MAIN_PAGE = """
         try { localStorage.setItem("spooler.history", phOpen ? "1" : "0"); } catch (err) {}
       } else if (el.dataset.st === "more") {
         phShown += 20;
+      } else if (el.dataset.st === "export") {
+        stNote = "Exporting...";
+        orca.postMessage({ type: "stats_export", period: stPeriod });
       } else {
         return;
       }
@@ -6151,7 +6279,7 @@ MAIN_PAGE = """
 
     function filterLabel() {
       const active = (materialEl.value ? 1 : 0) + (vendorEl.value ? 1 : 0) +
-        (groupKeyEl.value !== "none" ? 1 : 0);
+        (groupKeyEl.value !== "none" ? 1 : 0) + (matchHex ? 1 : 0);
       fToggle.innerHTML = "Filters" + (active ? " (" + active + ")" : "") +
         (fPanel.hidden ? " &#9662;" : " &#9652;");
     }
@@ -6213,6 +6341,34 @@ MAIN_PAGE = """
       if (h < 255) return "blue";
       if (h < 290) return "purple";
       return "pink";
+    }
+
+    // Same metric as the plate check's colour_diff: straight-line distance in RGB.
+    function colourDiff(a, b) {
+      const x = swatchHex(a), y = swatchHex(b);
+      if (!x || !y) return null;
+      let sum = 0;
+      for (let i = 1; i < 7; i += 2) { const d = parseInt(x.slice(i, i + 2), 16) - parseInt(y.slice(i, i + 2), 16); sum += d * d; }
+      return Math.sqrt(sum);
+    }
+
+    // A multi-colour spool counts by its closest colour.
+    function spoolDistance(s, hex) {
+      const f = s.filament || {};
+      const cs = swatchCols(f);
+      let best = null;
+      (cs.length > 1 ? cs : [f.color_hex]).forEach(function (c) {
+        const d = colourDiff(c, hex);
+        if (d !== null && (best === null || d < best)) best = d;
+      });
+      return best;
+    }
+
+    function closestSpools(spools, hex) {
+      return spools.map(function (s) { return { s: s, d: spoolDistance(s, hex) }; })
+        .filter(function (x) { return x.d !== null; })
+        .sort(function (a, b) { return a.d - b.d; })
+        .slice(0, MATCH_TOP).map(function (x) { return x.s; });
     }
 
     function setColorButton() {
@@ -6471,6 +6627,22 @@ MAIN_PAGE = """
       );
     }
 
+    // The Details panel: what Python worked out from the print history for one spool.
+    function detailHtml(d) {
+      if (!d) return '<div class="sp-detail"><div class="sp-note">Loading...</div></div>';
+      if (!d.prints.length) return '<div class="sp-detail"><div class="sp-note">No prints booked to this spool yet.</div></div>';
+      const money = function (v) { return typeof v === "number" ? esc(d.sign) + v.toFixed(2) : "&ndash;"; };
+      const when = function (t) { const x = new Date(t * 1000); return x.getDate() + " " + MONTHS[x.getMonth()] + " " + x.getFullYear(); };
+      const rows = d.prints.slice(0, 20).map(function (p) {
+        return '<tr><td>' + when(p.time) + '</td><td>' + esc(p.name || "Print") + '</td><td class="r">' + p.grams.toFixed(1) + ' g</td><td class="r">' + money(p.cost) + '</td></tr>';
+      }).join("");
+      const rate = d.rate === null ? "No use in the last 4 weeks"
+        : Math.round(d.rate) + " g a week over the last 4 weeks" + (d.weeks === null ? "" : " &middot; about " + (d.weeks < 1 ? "less than a week" : Math.round(d.weeks) + (Math.round(d.weeks) === 1 ? " week" : " weeks")) + " left");
+      return '<div class="sp-detail"><div class="sp-note">' + d.prints.length + (d.prints.length === 1 ? " print" : " prints") + ' &middot; ' + d.grams.toFixed(1) + ' g &middot; ' + money(d.cost) + '</div>' +
+        '<div class="sp-note">' + rate + '</div><table>' + rows + '</table>' +
+        (d.prints.length > 20 ? '<div class="sp-note">Showing the latest 20 of ' + d.prints.length + '.</div>' : '') + '</div>';
+    }
+
     function spoolMenuHtml(s) {
       const id = ' data-id="' + esc(s.id) + '"';
       const btn = function (act, label, armedLabel) {
@@ -6479,7 +6651,9 @@ MAIN_PAGE = """
           (on ? armedLabel : label) + '</button>';
       };
       let body;
-      if (menu.mode) {
+      if (menu.mode === "detail") {
+        body = detailHtml(menu.detail) + btn("sp-back", "Close");
+      } else if (menu.mode) {
         const move = menu.mode === "move";
         const hint = move ? "Location" : menu.mode === "weigh" ? "Spool on the scale, in g" : "Grams used";
         const opts = [...new Set(locations.concat(allSpools.map(function (x) { return x.location; })))]
@@ -6491,7 +6665,7 @@ MAIN_PAGE = """
           (move && s.u1_bound ? '<div class="sp-note">' + esc(s.location) + ' links this spool to a U1 toolhead; moving it unlinks that toolhead.</div>' : '');
       } else {
         const fid = (s.filament || {}).id;
-        body = btn("sp-weigh", "Set Weight From Scale") + btn("sp-use", "Use Filament") + btn("sp-move", "Move") +
+        body = btn("sp-weigh", "Set Weight From Scale") + btn("sp-use", "Use Filament") + btn("sp-move", "Move") + btn("sp-detail", "Details") +
           (s.archived ? btn("sp-unarchive", "Unarchive") : btn("sp-archive", "Archive", "Click Again to Archive")) +
           (fid != null ? btn("sp-add", "Add Spool of This Filament", "Click Again to Add a Spool") : "") +
           btn("sp-dried", "Mark Dried Today") +
@@ -6520,6 +6694,9 @@ MAIN_PAGE = """
         menu = null;
       } else if (act === "sp-weigh" || act === "sp-use") {
         menu.mode = act.slice(3); menu.val = "";
+      } else if (act === "sp-detail") {
+        menu.mode = "detail"; menu.detail = null;
+        orca.postMessage({ type: "spool_detail", id: id });
       } else if (act === "sp-move") {
         menu.mode = "move"; menu.val = s.location || "";
         orca.postMessage({ type: "spool_action", action: "locations" });
@@ -6714,7 +6891,7 @@ MAIN_PAGE = """
       const query = searchEl.value.trim().toLowerCase();
       const material = materialEl.value;
       const vendor = vendorEl.value;
-      const filtered = allSpools.filter(function (s) {
+      let filtered = allSpools.filter(function (s) {
         const filament = s.filament || {};
         const vendorObj = filament.vendor || {};
         if (material && filament.material !== material) return false;
@@ -6722,12 +6899,13 @@ MAIN_PAGE = """
         if (colorSel && colorFamily(filament) !== colorSel) return false;
         return !query || spoolMatches(s, query);
       });
+      if (matchHex) filtered = closestSpools(filtered, matchHex);
       statusEl.className = (actionNote ? !actionNote.ok : profileNote.error) ? "error" : "";
       statusEl.textContent = actionNote ? actionNote.text : filtered.length + " of " + allSpools.length + " spool" +
         (allSpools.length === 1 ? "" : "s") + (profileNote.error
           ? " \u00b7 OrcaSlicer presets not updated: " + profileNote.error
           : profileNote.count ? " \u00b7 " + profileNote.count + " OrcaSlicer filament presets" : "");
-      filtered.sort(function (a, b) {
+      if (!matchHex) filtered.sort(function (a, b) {
         return compareSpools(a, b, sortKeyEl.value, sortDir) ||
           (sortKeyEl.value === "plate" ? compareSpools(a, b, "remaining", "asc") : 0);
       });
@@ -6735,7 +6913,7 @@ MAIN_PAGE = """
         listEl.innerHTML = '<div class="empty">No spools match this filter.</div>';
         return;
       }
-      const groupMode = groupKeyEl.value;
+      const groupMode = matchHex ? "none" : groupKeyEl.value;
       if (groupMode === "none") {
         listEl.innerHTML = listHtml(filtered);
       } else {
@@ -6787,6 +6965,11 @@ MAIN_PAGE = """
       } else if (data && data.type === "usage") {
         setUsage(data.usage, true);
         if (!statsEl.hidden) askStats();
+      } else if (data && data.type === "spool_detail") {
+        if (menu && menu.mode === "detail" && menu.id === data.detail.id) { menu.detail = data.detail; applyFilters(); }
+      } else if (data && data.type === "stats_export") {
+        stNote = data.text;
+        renderStats();
       } else if (data && data.type === "stats") {
         if (data.stats.period === stPeriod) { stData = data.stats; renderStats(); }
       } else if (data && data.type === "spool_changed") {
@@ -6838,6 +7021,8 @@ MAIN_PAGE = """
     });
 
     colorBtn.addEventListener("click", function () { openColorMenu(colorMenu.hidden); });
+    matchEl.addEventListener("input", function () { matchHex = matchEl.value; matchClear.hidden = false; applyFilters(); });
+    matchClear.addEventListener("click", function () { matchHex = ""; matchClear.hidden = true; applyFilters(); });
     colorMenu.addEventListener("click", function (e) {
       const opt = e.target.closest("[data-color]");
       if (!opt) return;
@@ -8407,6 +8592,10 @@ class SpoolerWindow(orca.script.ScriptPluginCapabilityBase):
             threading.Thread(target=lambda: self._panel.post({"type": "usage", "usage": usage_action(data)}), daemon=True).start()
         elif msg_type == "stats":
             threading.Thread(target=lambda: self._panel.post({"type": "stats", "stats": stats_data(data.get("period"))}), daemon=True).start()
+        elif msg_type == "stats_export":
+            threading.Thread(target=lambda: self._panel.post({"type": "stats_export", **export_history(data.get("period"))}), daemon=True).start()
+        elif msg_type == "spool_detail":
+            threading.Thread(target=lambda: self._panel.post({"type": "spool_detail", "detail": spool_detail(data.get("id"))}), daemon=True).start()
         elif msg_type == "send":
             start_send(self._panel.post)
         elif msg_type == "spool_action":
@@ -8589,6 +8778,10 @@ if _PAGES:
                     threading.Thread(target=lambda: self.post_message({"type": "usage", "usage": usage_action(data)}), daemon=True).start()
                 elif msg_type == "stats":
                     threading.Thread(target=lambda: self.post_message({"type": "stats", "stats": stats_data(data.get("period"))}), daemon=True).start()
+                elif msg_type == "stats_export":
+                    threading.Thread(target=lambda: self.post_message({"type": "stats_export", **export_history(data.get("period"))}), daemon=True).start()
+                elif msg_type == "spool_detail":
+                    threading.Thread(target=lambda: self.post_message({"type": "spool_detail", "detail": spool_detail(data.get("id"))}), daemon=True).start()
                 elif msg_type == "plate_recheck":
                     threading.Thread(target=recheck, daemon=True).start()
                 elif msg_type == "plate_dismiss":

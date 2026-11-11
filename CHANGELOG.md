@@ -3,6 +3,28 @@
 Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); entries before
 0.9.0 are Spoolio's.
 
+## [0.19.0] - Unreleased
+
+### Added
+- A Details item in a spool's menu opens a panel on the card: the prints that used the spool (date,
+  print name, grams, cost), the total grams and cost booked, how many grams a week it has used over
+  the last 4 weeks, and about how many weeks are left at that rate.
+- Export to CSV in the Stats tab's Print History card. It saves one row per spool of every print in
+  the selected period (date, print, printer, result, progress, spool, material, colour, grams, cost
+  and the support and purge grams) to a history-YYYYMMDD-HHMM.csv file in Spooler's exports folder,
+  opens that folder and shows the file path. The file opens cleanly in Excel, and cells that start
+  like a formula are stored as plain text.
+- A Stats tile "On the Shelf" with the grams and money left in your non-archived spools, and a card
+  that splits it by material. Spools without a price count toward the grams only.
+- A Stats tile "Lost to Failed Prints" with the grams and cost of cancelled or failed prints in the
+  period. Failed prints in Print History also show the amount they lost.
+- A "Closest colour" picker in the Filters panel. Pick a colour and the list shows the 12 spools
+  nearest to it, closest first, using the same colour distance as the plate check. A multi-colour
+  spool counts by its closest colour. Clear brings the normal list back.
+
+### Fixed
+- The store images' footer now also names Anycubic in the "Not affiliated with" line.
+
 ## [0.18.0] - Unreleased
 
 ### Added

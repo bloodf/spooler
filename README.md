@@ -29,6 +29,14 @@ the rest is automatic.
   by default; PLA, ABS and ASA off). The after-slice notice mentions a loaded spool of such a
   material that was dried too long ago or never. Spoolman only, and the notice checks the fullest
   matching spool of each slot.
+- **More from your spool data.** ***Details*** in a spool's menu lists the prints that used it, the
+  grams and cost booked, the weekly use over the last 4 weeks and the weeks left at that rate. The
+  Stats tab adds ***On the Shelf*** (grams and money in stock, by material too; spools without a
+  price count as grams only), ***Lost to Failed Prints*** and an ***Export to CSV*** button on Print
+  History, which saves the selected period to an `exports` folder next to Spooler's settings and
+  opens it. Filters has a ***Closest colour*** picker that lists the 12 nearest spools. Details,
+  stock value and failed-print totals come from what Spooler booked, so they start empty on a new
+  install.
 - **A setup guide for first use.** The first time you open Settings, a short step-by-step guide
   explains what Spooler does, takes your Spoolman address and tests it right there, and covers
   permissions, where the presets appear and how printers are found. Skip it any time, and reopen

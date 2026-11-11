@@ -248,7 +248,7 @@ footer {{ position: absolute; left: 90px; bottom: 54px; font-size: 19px; color: 
 <div class="left"><div class="brand"><svg viewBox="0 0 256 256">{SYMBOL}</svg><img src="{WORDMARK}" alt="Spooler"></div>
 <h1><span>{screen["title"]}</span></h1><ul>{points}</ul></div>
 <div class="window"><iframe src="{inner}"></iframe></div>
-<footer>Independent community project, based on Spoolio. Not affiliated with OrcaSlicer, Spoolman, Snapmaker, Sovol or Bambu Lab.</footer>
+<footer>Independent community project, based on Spoolio. Not affiliated with OrcaSlicer, Spoolman, Snapmaker, Sovol, Anycubic or Bambu Lab.</footer>
 </body></html>"""
 
 
