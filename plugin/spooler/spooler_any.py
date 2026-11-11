@@ -6,7 +6,7 @@
 # name = "Spooler"
 # description = "Spoolman inventory for OrcaSlicer: auto-synced filament profiles and live printer slots"
 # author = "bloodf (fork of Spoolio by Dan J Moore)"
-# version = "0.16.0"
+# version = "0.17.0"
 # ///
 
 import asyncio
@@ -49,7 +49,7 @@ except (ImportError, AttributeError):
 _SLICING = hasattr(getattr(orca, "slicing", None), "SlicingPipelineCapabilityBase")
 
 PLUGIN_NAME = "Spooler"
-PLUGIN_VERSION = "0.16.0"
+PLUGIN_VERSION = "0.17.0"
 # Stamped per operating system by scripts/build.py.
 BUILD_TARGET = "any"
 
@@ -252,6 +252,8 @@ DISPLAY_DEFAULTS = {
     "extra_fields": False,  # your own Spoolman extra fields, as name: value
     "exact_weight": True,   # 2,380 g instead of 2.38 kg
     "archived": False,      # also list archived spools (fetched only while this is on)
+    "use_first": True,      # "Use First" chip on the opened spool to finish before others of its filament
+    "low_notice": True,     # an OrcaSlicer notification when a spool drops below the low-stock grams
     # Printer tab: each slot's card
     "head_vendor": True,
     "head_material": True,
@@ -392,7 +394,45 @@ def get_spools(spoolman_url: str) -> dict:
     _report("Spool list", None)
     # Archived spools are only for the Spools tab: everything else reads the cache.
     _spool_cache.update(url=spoolman_url, time=time.monotonic(), spools=active_spools(data))
+    notices = low_stock_crossed(spoolman_url, _spool_cache["spools"])
+    if notices:
+        threading.Thread(target=lambda: [push_notice("warning", text) for text in notices], daemon=True).start()
     return {"ok": True, "spools": data}
+
+
+_low_seen: dict = {"url": None, "ids": set()}
+_low_lock = threading.Lock()
+
+
+def low_stock_crossed(url: str, spools: list[dict]) -> list[str]:
+    """Notice texts for spools that just dropped below the low-stock grams. The first list for an
+    address only seeds the set, so nothing fires at start-up; a refilled spool re-arms."""
+    limit = parse_low(get_settings().get("low_stock_grams"))
+    low = {str(s.get("id")): s for s in spools
+           if limit > 0 and isinstance(s.get("remaining_weight"), (int, float)) and s["remaining_weight"] < limit}
+    with _low_lock:
+        seeded = _low_seen["url"] == url
+        fresh = [s for key, s in low.items() if key not in _low_seen["ids"]]
+        _low_seen.update(url=url, ids=set(low))
+    if not seeded or not display_settings()["low_notice"]:
+        return []
+    return [f"Spooler: {_spool_label(s)} is down to {s['remaining_weight']:.0f} g" for s in fresh]
+
+
+def use_first_id(spools: list[dict]) -> dict:
+    """{filament id: spool id}: of 2+ live spools of a filament, the opened one to finish first,
+    by first used, else registered, else lowest id."""
+    groups: dict = {}
+    for s in spools:
+        fid = (s.get("filament") or {}).get("id")
+        if fid is not None and not s.get("archived"):
+            groups.setdefault(fid, []).append(s)
+    pick = {}
+    for fid, group in groups.items():
+        opened = [s for s in group if s.get("first_used") or (s.get("used_weight") or 0) > 0]
+        if len(group) > 1 and opened:
+            pick[fid] = min(opened, key=lambda s: (s.get("first_used") or s.get("registered") or "\uffff", s.get("id") or 0))["id"]
+    return pick
 
 
 def active_spools(spools: list) -> list:
@@ -762,6 +802,9 @@ def load_spools() -> dict:
     for sp in result.get("spools") or []:
         sp["rfid_tags"] = sorted(spool_tags(sp))
         sp["u1_bound"] = u1_bound(sp.get("location"))
+    first = use_first_id(result.get("spools") or [])
+    for sp in result.get("spools") or []:
+        sp["use_first"] = first.get((sp.get("filament") or {}).get("id")) == sp.get("id")
     return result
 
 # --- Filament profiles -------------------------------------------------------------------
@@ -3779,12 +3822,17 @@ def spoolman_currency(url: str) -> str:
     return code
 
 
-def stats_data(period: object) -> dict:
+def stats_currency() -> str:
     cfg = stats_settings()
     url = clean_url(get_settings().get("spoolman_url"))
-    code = spoolman_currency(url) if cfg["cur"] == "spoolman" and url else cfg["cur"].upper()
-    if cfg["cur"] == "spoolman" and not url:
-        code = "EUR"
+    if cfg["cur"] == "spoolman":
+        return spoolman_currency(url) if url else "EUR"
+    return cfg["cur"].upper()
+
+
+def stats_data(period: object) -> dict:
+    url = clean_url(get_settings().get("spoolman_url"))
+    code = stats_currency()
     with _usage_lock:
         hist = hist_load()
     now = time.time()
@@ -4090,8 +4138,35 @@ def check_group(group: dict, spools: list[dict], margin: int) -> dict:
     name = (fullest.get("filament") or {}).get("name") or ""
     total = sum(spool.get("initial_weight") or (spool.get("filament") or {}).get("weight") or 0
                 for spool in ranked[:pool])
-    return {**result, "status": status, "have": best, "worst": worst, "padded": padded,
-            "name": name, "total": total, "spool_colour": (fullest.get("filament") or {}).get("color_hex")}
+    result = {**result, "status": status, "have": best, "worst": worst, "padded": padded, "cost": _cost(fullest, need),
+              "name": name, "total": total, "spool_colour": (fullest.get("filament") or {}).get("color_hex")}
+    if status == "short":
+        result["swap"] = swap_spool(matches, spools, padded)
+    return result
+
+
+def loaded_spool_ids() -> set[str]:
+    """Spools sitting in a printer slot: the live trays and the slots saved in Settings."""
+    ids = {str(p_slot) for p in printers_cfg() for u in p["units"] for p_slot in u["slots"] if p_slot}
+    snap = live_snapshot()
+    for printer in snap["printers"]:
+        for tray in [t for u in printer["units"] for t in u["trays"]] + [printer["ext"] or {}]:
+            if tray.get("spool") is not None:
+                ids.add(str(tray["spool"]))
+    return ids
+
+
+def swap_spool(matches: list[dict], spools: list[dict], padded: float) -> dict | None:
+    """An unloaded spool of the same filament that covers the plate on its own: the use-first one,
+    else the one with the least left that still suffices."""
+    fids = {(m.get("filament") or {}).get("id") for m in matches} - {None}
+    loaded = loaded_spool_ids()
+    options = [s for s in spools if (s.get("filament") or {}).get("id") in fids and not s.get("archived")
+               and str(s.get("id")) not in loaded and isinstance(s.get("remaining_weight"), (int, float))
+               and s["remaining_weight"] >= padded]
+    first = use_first_id(spools)
+    return min(options, key=lambda s: (first.get((s.get("filament") or {}).get("id")) != s.get("id"),
+                                       s["remaining_weight"], s.get("id") or 0), default=None)
 
 
 def fmt_grams(grams: float) -> str:
@@ -4137,7 +4212,7 @@ def _tracked(result: dict) -> str:
     return f" (only {result['matches']} of {result['pool']} matching spools are in {source_name()})"
 
 
-def plate_notice(results: list[dict]) -> tuple[str, str] | None:
+def plate_notice(results: list[dict], cost: str = "") -> tuple[str, str] | None:
     """The one notification for a slice: ``("warning" | "info", text)``."""
     label, grams = slot_label, fmt_grams
     where = " in the AMS" if any(r["ams"] for r in results) else ""
@@ -4146,7 +4221,12 @@ def plate_notice(results: list[dict]) -> tuple[str, str] | None:
     barely = [r for r in results if r["status"] == "barely"]
 
     def short_part(r: dict) -> str:
-        return _sentence(f"{label(r)} {_need(r)} but {_supply(r)}{_tracked(r)}")
+        text = _sentence(f"{label(r)} {_need(r)} but {_supply(r)}{_tracked(r)}")
+        swap = r.get("swap")
+        if swap:
+            where = f"{swap['location']}, " if swap.get("location") else ""
+            text += f" Swap in spool #{swap['id']} ({where}{swap['remaining_weight']:.0f} g)."
+        return text
 
     def mixed_part(r: dict, prefix: str = "") -> str:
         count = min(r["pool"], r["matches"])
@@ -4192,7 +4272,17 @@ def plate_notice(results: list[dict]) -> tuple[str, str] | None:
             parts.append(sentence if parts else sentence[:1].lower() + sentence[1:])
         if not parts:
             return None
+    if cost:
+        parts.append(cost)  # last, so fit_text drops it first
     return kind, "Spooler: " + " ".join(parts)
+
+
+def cost_sentence(results: list[dict], code: str) -> str:
+    """"About €1.23 of filament." from the matched spools' prices, or "" when none is known."""
+    costs = [r["cost"] for r in results if isinstance(r.get("cost"), (int, float))]
+    if not costs:
+        return ""
+    return f"About {CUR_SIGNS.get(code, code + ' ')}{sum(costs):.2f} of filament."
 
 
 def fit_text(text: str, limit: int = NOTICE_MAX) -> str:
@@ -4339,7 +4429,8 @@ def check_plate(slots: list[dict], margin: int, fresh: bool = False) -> tuple[tu
     results = [check_group(group, spools, margin) for group in group_slots(slots)]
     log.info("Plate check: %s", ", ".join(
         f"slot {'+'.join(str(n) for n in r['slots'])} {r['status']}" for r in results))
-    return plate_notice(results), results
+    cost = cost_sentence(results, stats_currency()) if any(r.get("cost") for r in results) else ""
+    return plate_notice(results, cost), results
 
 
 def run_check(slots: list[dict], margin: int) -> None:
@@ -6209,7 +6300,8 @@ MAIN_PAGE = """
       const plateLabel = plateSlots.get(s.id);
       const where = shown("in_use") ? inUse.get(String(s.id)) : "";
       const chipHtml = (plateLabel ? '<span class="plate-chip">On This Plate \u00b7 ' + plateLabel + '</span>' : '') +
-        (where ? '<span class="use-chip" title="Loaded in ' + esc(where) + '">In Use \u00b7 ' + esc(where) + '</span>' : '');
+        (where ? '<span class="use-chip" title="Loaded in ' + esc(where) + '">In Use \u00b7 ' + esc(where) + '</span>' : '') +
+        (s.use_first && shown("use_first") && !s.archived ? '<span class="use-chip first-chip" title="Opened first: finish this one before the other spools of this filament">Use First</span>' : '');
       const percentTitle = percent === null ? "Remaining unknown" : percent + "% remaining";
       const tip = [name, vendorName, remainingLabel + (typeof original === "number" ? " of " + formatWeight(original) : "") + " left"].filter(Boolean).join(" \u00b7 ");
       const tint = lowTint(remaining);
@@ -7368,6 +7460,8 @@ SETTINGS_PAGE = """
         ["location", "Spoolman location"], ["spool_id", "Spool number"],
         ["comment", "Comment"], ["lot_nr", "Lot number"], ["extra_fields", "Extra fields from Spoolman"],
         ["exact_weight", "Exact weights (2,380 g, not 2.38 kg)"], ["archived", "Show archived spools"],
+        ["use_first", "Use First chip on the spool to finish first"],
+        ["low_notice", "Notify in OrcaSlicer when a spool runs low"],
       ],
       "disp-heads": [
         ["head_vendor", "Manufacturer"], ["head_material", "Material"], ["head_colour_code", "Colour code"],

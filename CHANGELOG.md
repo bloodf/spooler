@@ -3,6 +3,24 @@
 Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); entries before
 0.9.0 are Spoolio's.
 
+## [0.17.0] - Unreleased
+
+### Added
+- A notification in OrcaSlicer when a spool drops below your low-stock grams: "Spooler: <spool> is
+  down to 82 g". It fires once per spool as it crosses, never for the spools that are already low
+  when OrcaSlicer starts, and again if you refill the spool and it drops again. Archived spools are
+  ignored. Switch it off in Settings > Display.
+- The notice after slicing now ends with what the plate costs in filament, for example "About
+  €1.23 of filament.", when the matching spools have prices in Spoolman. It uses the currency
+  chosen for Stats, and is the first sentence dropped when the notice is too long.
+- When a slot is short of filament, the notice suggests a spool of the same filament that is not
+  loaded and has enough, with where it is kept: "Swap in spool #12 (Shelf A, 640 g)." It prefers
+  the spool you should finish first, otherwise the one with the least left that still covers the
+  print.
+- A "Use First" chip on the opened spool of a filament that has two or more spools, the one with the
+  earliest first use (else earliest registered), so you finish the oldest first. Switch it off in
+  Settings > Display.
+
 ## [0.16.0] - Unreleased
 
 ### Added

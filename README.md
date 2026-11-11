@@ -16,6 +16,13 @@ the rest is automatic.
 
 ## What the fork adds
 
+- **Notices that help you choose a spool.** A low-stock notification in OrcaSlicer when a spool
+  crosses your threshold (once per crossing, none at start-up). The after-slice notice adds what the
+  print costs in filament when prices are in Spoolman, and when a slot is short it suggests an
+  unloaded spool of the same filament with enough left and where it is. Opened spools of a filament
+  with several spools get a ***Use First*** chip on the oldest, to finish it first. Chip and
+  notification each switch off in Settings > Display. The swap suggestion only knows spools loaded in
+  your saved printers or reported live by them.
 - **A setup guide for first use.** The first time you open Settings, a short step-by-step guide
   explains what Spooler does, takes your Spoolman address and tests it right there, and covers
   permissions, where the presets appear and how printers are found. Skip it any time, and reopen
