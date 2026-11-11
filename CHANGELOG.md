@@ -3,7 +3,7 @@
 Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); entries before
 0.9.0 are Spoolio's.
 
-## [0.20.0] - Unreleased
+## [0.20.0] - 2026-11-11
 
 ### Added
 - Change Spool on the Printer tab for single-extruder Klipper printers such as the Sovol SV06.
@@ -31,7 +31,7 @@ Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); 
   is not documented, so it needs a capture from one real print first; docs/kobra-booking.md says
   how to make one and what happens next.
 
-## [0.19.0] - Unreleased
+## [0.19.0] - 2026-11-11
 
 ### Added
 - A Details item in a spool's menu opens a panel on the card: the prints that used the spool (date,
@@ -53,7 +53,7 @@ Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); 
 ### Fixed
 - The store images' footer now also names Anycubic in the "Not affiliated with" line.
 
-## [0.18.0] - Unreleased
+## [0.18.0] - 2026-11-11
 
 ### Added
 - A drying tracker. A spool's menu on the Spools tab has "Mark Dried Today" and "Clear Dried Date",
@@ -72,7 +72,7 @@ Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); 
 - Spooler now also adds a "Dried" field to the spools in Spoolman, next to its filament
   fields. Spoolman's own extra-fields line on the cards skips it.
 
-## [0.17.0] - Unreleased
+## [0.17.0] - 2026-11-11
 
 ### Added
 - A notification in OrcaSlicer when a spool drops below your low-stock grams: "Spooler: <spool> is
@@ -90,7 +90,7 @@ Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); 
   earliest first use (else earliest registered), so you finish the oldest first. Switch it off in
   Settings > Display.
 
-## [0.16.0] - Unreleased
+## [0.16.0] - 2026-11-11
 
 ### Added
 - The spool list updates by itself when spools change in Spoolman: add, edit, use or delete a spool
@@ -107,7 +107,7 @@ Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); 
 - The search box also finds spools by location, lot number and comment, and `#12` finds spool 12
   and only that one.
 
-## [0.15.0] - Unreleased
+## [0.15.0] - 2026-11-11
 
 ### Added
 - A setup guide for first use. The first time Settings opens, a six-step guide explains what
@@ -123,7 +123,7 @@ Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); 
 - The "How It Works" steps in Settings are replaced by a short note and the setup guide button.
 - The store images are redrawn for the spool card menu added in 0.14.0.
 
-## [0.14.0] - Unreleased
+## [0.14.0] - 2026-11-11
 
 ### Added
 - Each spool card has a ⋯ button with actions for that spool in Spoolman: set its weight from a
@@ -141,7 +141,7 @@ Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); 
 - Spooler now changes a spool's location in Spoolman when you move it from its card. It still
   never does so on its own.
 
-## [0.13.0] - Unreleased
+## [0.13.0] - 2026-11-11
 
 ### Added
 - The Stats tab estimates wasted filament (from Spoolio 0.9.6): how much of each print went into
@@ -153,7 +153,7 @@ Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); 
 ### Changed
 - Configure Stats is now the last card in Settings (from Spoolio 0.9.6).
 
-## [0.12.2] - Unreleased
+## [0.12.2] - 2026-11-11
 
 ### Fixed
 - With the list grouped by material, manufacturer or location, the weight on a group's header
