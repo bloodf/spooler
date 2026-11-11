@@ -294,6 +294,16 @@ class SyncTest(unittest.TestCase):
         self.assertEqual(sp.profile_for_spool(spools[0], U1), "_local/spooler/SUNLU PETG Black @Snapmaker U1")
         self.assertEqual(sp.profile_for_spool(spools[0], "Other"), "")
 
+    def test_forced_sync_reloads_even_when_unchanged_or_backing_off(self):
+        spools = [spool(1, filament(1, "Black", "PETG"))]
+        sp.profile_sync(spools, snapshot())
+        sp.profile_sync(spools, snapshot(), force=True)
+        self.assertEqual(orca.reloads, ["spooler", "spooler"])
+        sp._profiles["failed"] = (sp.profile_digest(sp.profile_files(spools, snapshot())[0]), sp.time.monotonic())
+        state = sp.profile_sync(spools, snapshot(), force=True)
+        self.assertEqual((orca.reloads[-1], state["error"]), ("spooler", ""))
+        self.assertEqual(len(orca.reloads), 3)
+
     def test_removes_stale_presets(self):
         sp.profile_sync([spool(1, filament(1, "Black", "PETG"))], snapshot((U1,)))
         sp.profile_sync([spool(2, filament(2, "White", "PLA"))], snapshot((U1,)))

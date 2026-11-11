@@ -17,6 +17,9 @@ Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); 
   "kx_capture": true in Spooler's settings file, Spooler writes each kind of message the printer
   sends to its log once, with serial numbers, tokens, addresses and credentials removed, and asks
   the printer for its print status.
+- A Sync Presets button in the Spools tab reads Spoolman at once and rebuilds every Spooler
+  filament preset in OrcaSlicer, even when nothing changed or a refused set was waiting to be
+  tried again, then says how many presets it synced or why it couldn't.
 
 ### Fixed
 - Opening a group of spools in the two-column list no longer stretches it across both columns and

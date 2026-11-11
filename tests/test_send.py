@@ -2,6 +2,7 @@ import json
 import threading
 import types
 import unittest
+from unittest import mock
 
 from fake_bundle import U1, Preset
 from plugin_loader import load
@@ -211,6 +212,50 @@ class StartTest(unittest.TestCase):
         self.assertEqual(posted, [{"type": "sent", "ok": True, "text": "X @Snapmaker U1: ['filament_flow_ratio'] True"}])
 
 
+class PresetSyncTest(unittest.TestCase):
+    """Sync Presets: rebuild every Spooler preset from Spoolman now, off the UI thread."""
+
+    def setUp(self):
+        self.patches = [mock.patch.object(sp, "source", lambda: "spoolman"),
+                        mock.patch.object(sp, "refresh_snapshot", lambda: {"snapshot": True})]
+        for patch in self.patches:
+            patch.start()
+
+    def tearDown(self):
+        for patch in self.patches:
+            patch.stop()
+
+    def run_sync(self, result):
+        calls, posted, done = [], [], threading.Event()
+
+        def synced(snapshot, force=False):
+            calls.append((snapshot, force))
+            return result
+
+        with mock.patch.object(sp, "load_spools_synced", synced):
+            sp.start_preset_sync(lambda data: (posted.append(data), done.set()))
+            self.assertTrue(done.wait(5))
+        return calls, posted
+
+    def test_rebuilds_with_force_and_reports_the_count(self):
+        calls, posted = self.run_sync({"ok": True, "spools": [], "profiles": {"count": 24, "error": ""}})
+        self.assertEqual(calls, [({"snapshot": True}, True)])
+        self.assertEqual(posted, [{"type": "sent", "ok": True, "text": "Synced 24 filament presets from Spoolman."}])
+
+    def test_reports_why_it_failed(self):
+        _, posted = self.run_sync({"ok": True, "spools": [], "profiles": {"count": 0, "error": "refused"}})
+        self.assertEqual(posted[0]["ok"], False)
+        self.assertIn("refused", posted[0]["text"])
+        _, posted = self.run_sync({"ok": False, "error": "Could not reach Spoolman"})
+        self.assertEqual(posted, [{"type": "sent", "ok": False, "text": "Could not reach Spoolman"}])
+
+    def test_needs_spoolman(self):
+        posted = []
+        with mock.patch.object(sp, "source", lambda: "bambu"):
+            sp.start_preset_sync(posted.append)
+        self.assertEqual(posted[0]["ok"], False)
+
+
 class ButtonTest(unittest.TestCase):
     def setUp(self):
         self.original = sp.start_send
@@ -231,6 +276,18 @@ class ButtonTest(unittest.TestCase):
     def test_the_tab_has_the_button(self):
         page = sp.tab_html("main", "", 100)
         self.assertTrue('id="send-btn"' in page and 'type: "send"' in page, "no Send to Spoolman button")
+
+    def test_sync_presets_button_in_tab_and_window(self):
+        page_html = sp.tab_html("main", "", 100)
+        self.assertTrue('id="sync-btn"' in page_html and 'type: "sync_presets"' in page_html)
+        synced = []
+        with mock.patch.object(sp, "start_preset_sync", synced.append):
+            page = sp.SpoolerPage()
+            page.on_message({"type": "sync_presets"})
+            window = sp.SpoolerWindow()
+            window._panel = types.SimpleNamespace(post=lambda data: None)
+            window.on_message({"type": "sync_presets"})
+        self.assertEqual(synced, [page.post_message, window._panel.post])
 
 
 

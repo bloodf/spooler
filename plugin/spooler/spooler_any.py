@@ -1363,12 +1363,12 @@ def offered_bundles() -> object:
         return None
 
 
-def _install_profiles(root: Path, snapshot: dict, files: dict, digest: str) -> None:
+def _install_profiles(root: Path, snapshot: dict, files: dict, digest: str, force: bool = False) -> None:
     """Write the bundle where OrcaSlicer reads it and reload it. Raises when it is refused."""
     last = None
     for folder in profile_folders(root, snapshot):
         target = root / "user" / folder / "_local" / PROFILE_BUNDLE
-        if synced_digest(target) == digest:
+        if not force and synced_digest(target) == digest:
             return
         fresh = not target.exists()
         write_profiles(target, files)
@@ -1454,8 +1454,9 @@ def location_names(target: str) -> tuple:
     return tuple(name for name in dict.fromkeys((printer.get("label"), printer.get("model"))) if name)
 
 
-def profile_sync(spools: list[dict], snapshot: dict | None) -> dict:
-    """Write and hot-reload the Spoolman filament presets. Never raises."""
+def profile_sync(spools: list[dict], snapshot: dict | None, force: bool = False) -> dict:
+    """Write and hot-reload the Spoolman filament presets. Never raises. force (Sync Presets)
+    rewrites and reloads them even when nothing changed or a refused set is backing off."""
     if not snapshot:
         return dict(_profiles)
     with _profile_lock:
@@ -1463,12 +1464,12 @@ def profile_sync(spools: list[dict], snapshot: dict | None) -> dict:
         files, by_key = profile_files(spools, snapshot)
         digest = profile_digest(files)
         failed, when = _profiles["failed"]
-        if digest == failed and time.monotonic() - when < PROFILE_RETRY:
+        if not force and digest == failed and time.monotonic() - when < PROFILE_RETRY:
             return dict(_profiles)
         try:
             if root is None:
                 raise RuntimeError("OrcaSlicer's data folder was not found")
-            _install_profiles(root, snapshot, files, digest)
+            _install_profiles(root, snapshot, files, digest, force)
             _profiles.update(names=by_key, count=len(files), error="", failed=("", 0.0))
             publish_profiles(by_key, snapshot.get("printers") or [])
             _report("Profile sync", None)
@@ -1478,13 +1479,38 @@ def profile_sync(spools: list[dict], snapshot: dict | None) -> dict:
         return dict(_profiles)
 
 
-def load_spools_synced(snapshot: dict | None) -> dict:
+def load_spools_synced(snapshot: dict | None, force: bool = False) -> dict:
     """The spool list, after syncing the filament profiles from it. For worker threads."""
     result = load_spools()
     if result.get("ok") and snapshot:
-        state = profile_sync(active_spools(result["spools"]), snapshot)
+        state = profile_sync(active_spools(result["spools"]), snapshot, force)
         result["profiles"] = {"count": state["count"], "error": state["error"]}
     return result
+
+
+def start_preset_sync(post) -> None:
+    """Sync Presets: read Spoolman now and rebuild every Spooler filament preset, even when nothing
+    changed. Call it on the UI thread; post() gets {"type": "sent", "ok": ..., "text": ...}."""
+    if source() != "spoolman":
+        post({"type": "sent", "ok": False, "text": "Syncing presets needs Spoolman as the source."})
+        return
+    snapshot = refresh_snapshot()
+    if snapshot is None:
+        post({"type": "sent", "ok": False, "text": "Could not read OrcaSlicer's presets."})
+        return
+
+    def worker():
+        result = load_spools_synced(snapshot, force=True)
+        state = result.get("profiles") or {}
+        if not result.get("ok"):
+            ok, text = False, result.get("error") or "Could not read Spoolman."
+        elif state.get("error"):
+            ok, text = False, "The filament presets were not rebuilt: " + state["error"]
+        else:
+            ok, text = True, f"Synced {state.get('count', 0)} filament presets from Spoolman."
+        post({"type": "sent", "ok": ok, "text": text})
+
+    threading.Thread(target=worker, daemon=True).start()
 
 
 def target_for_host(host: str) -> str:
@@ -4813,10 +4839,11 @@ MAIN_PAGE = """
     background: transparent; color: var(--orca-fg);
   }
   button:hover { border-color: var(--orca-accent); }
-  #settings-btn, #plate-recheck, #plate-dismiss, #filters-toggle, #send-btn {
-    padding: 7px 16px; border-radius: 6px; font-size: 13px; font-weight: 700;
+  #settings-btn, #plate-recheck, #plate-dismiss, #filters-toggle, #send-btn, #sync-btn {
+    padding: 7px 16px; border-radius: 6px; font-size: 13px; font-weight: 700; white-space: nowrap;
   }
-  #send-btn { margin-left: auto; }
+  #sync-btn { margin-left: auto; }
+  .listbar #sync-btn, .listbar #send-btn { padding: 7px 12px; }
   #settings-btn, .sort-dir { background: var(--orca-accent); color: var(--orca-accent-fg); border-color: var(--orca-accent); }
   .filters { display: flex; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; }
   .filters input, .filters select {
@@ -5000,7 +5027,8 @@ MAIN_PAGE = """
     position: absolute; top: 0; bottom: 0; left: 0;
     background: repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.38) 0, rgba(255, 255, 255, 0.38) 3px, rgba(0, 0, 0, 0.38) 3px, rgba(0, 0, 0, 0.38) 6px);
   }
-  .listbar { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+  .listbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+  .listbar #status { flex: 1 1 160px; min-width: 0; }
   .listbar #status { margin-bottom: 0; }
   .st-ok .plate-headline { color: #3fb950; }
   .st-barely .plate-headline, .st-mixed .plate-headline { color: #e0a030; }
@@ -5253,6 +5281,7 @@ MAIN_PAGE = """
   <div id="page-spools">
   <div class="listbar">
     <div id="status">Loading...</div>
+    <button id="sync-btn" title="Read Spoolman now and rebuild every Spooler filament preset in OrcaSlicer">Sync Presets</button>
     <button id="send-btn" title="Send the unsaved changes of the Spooler preset open in OrcaSlicer's filament settings to Spoolman">Send to Spoolman</button>
     <button id="filters-toggle" aria-expanded="false">Filters &#9662;</button>
   </div>
@@ -7233,6 +7262,11 @@ MAIN_PAGE = """
       statusEl.className = "";
       orca.postMessage({ type: "send" });
     });
+    document.getElementById("sync-btn").addEventListener("click", function () {
+      statusEl.textContent = "Syncing presets with Spoolman...";
+      statusEl.className = "";
+      orca.postMessage({ type: "sync_presets" });
+    });
     fToggle.addEventListener("click", function () { setFilters(fPanel.hidden); });
     try { setFilters(localStorage.getItem("spooler.filters") === "1"); } catch (err) { setFilters(false); }
     document.getElementById("plate-recheck").addEventListener("click", function () {
@@ -8755,6 +8789,8 @@ class SpoolerWindow(orca.script.ScriptPluginCapabilityBase):
             threading.Thread(target=lambda: self._panel.post({"type": "spool_detail", "detail": spool_detail(data.get("id"))}), daemon=True).start()
         elif msg_type == "send":
             start_send(self._panel.post)
+        elif msg_type == "sync_presets":
+            start_preset_sync(self._panel.post)
         elif msg_type == "spool_action":
             start_spool_action(data, self._panel.post)
         elif msg_type == "moon_spool":
@@ -8947,6 +8983,8 @@ if _PAGES:
                     _plate.update(payload=None, slots=[])
                 elif msg_type == "send":
                     start_send(self.post_message)
+                elif msg_type == "sync_presets":
+                    start_preset_sync(self.post_message)
                 elif msg_type == "spool_action":
                     start_spool_action(data, self.post_message)
                 elif msg_type == "moon_spool":

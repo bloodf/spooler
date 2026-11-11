@@ -67,7 +67,8 @@ the rest is automatic.
     They apply to every printer; a value in `orca_settings` wins over them.
   - The presets follow Spoolman: new filaments appear, filaments whose spools are all archived
     disappear, and changes are picked up on each refresh (every 60 seconds while the Spooler tab
-    is open).
+    is open). ***Sync Presets*** on the Spools tab does it at once and rebuilds every preset, even
+    when nothing changed.
   - "Your printers" are the printers behind every printer preset with a host address
     (Printer settings > Connection), plus the printer currently selected.
 - **Change a preset in OrcaSlicer and it reaches Spoolman.** Edit a Spooler preset in OrcaSlicer's
