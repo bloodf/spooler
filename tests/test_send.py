@@ -275,7 +275,8 @@ class NativeAndFieldsTest(SendTest):
         finally:
             sp.get_settings = settings
         posts = [path for method, path, _ in self.calls if method == "POST"]
-        self.assertEqual(posts, ["field/filament/orca_pressure_advance", "field/filament/orca_max_volumetric_speed"])
+        self.assertEqual(posts, ["field/filament/orca_pressure_advance", "field/filament/orca_max_volumetric_speed",
+                                 "field/spool/dried"])
 
 
 class AutoSendTest(unittest.TestCase):

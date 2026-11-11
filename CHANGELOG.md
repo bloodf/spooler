@@ -3,6 +3,25 @@
 Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); entries before
 0.9.0 are Spoolio's.
 
+## [0.18.0] - Unreleased
+
+### Added
+- A drying tracker. A spool's menu on the Spools tab has "Mark Dried Today" and "Clear Dried Date",
+  and the card shows a "Dried 12 d ago" chip. The date is kept in a Spoolman field Spooler adds
+  by itself, so it is also visible and editable in Spoolman. Switch the chip off in Settings >
+  Display.
+- A drying reminder after slicing. Settings has a new Drying Reminders table with the days each
+  material may go since it was dried (PETG 30, TPU 14, PA 7, PVA 7, PC 14; ABS, ASA and PLA are off;
+  set 0 for no reminder, and add your own materials). A material also covers its variants, so PA
+  covers PA-CF and PETG covers PETG HF. When a loaded spool of one of these materials was dried
+  longer ago than that, or never, the notice adds a sentence such as "PETG Black (slot 2) was last
+  dried 41 days ago." It comes after the filament-quantity sentences and before the cost, and it
+  never turns an all-clear notice into a warning. The chip turns amber past the same number of days.
+
+### Changed
+- Spooler now also adds a "Dried" field to the spools in Spoolman, next to its filament
+  fields. Spoolman's own extra-fields line on the cards skips it.
+
 ## [0.17.0] - Unreleased
 
 ### Added

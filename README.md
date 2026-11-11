@@ -23,6 +23,12 @@ the rest is automatic.
   with several spools get a ***Use First*** chip on the oldest, to finish it first. Chip and
   notification each switch off in Settings > Display. The swap suggestion only knows spools loaded in
   your saved printers or reported live by them.
+- **A drying tracker and reminder.** ***Mark Dried Today*** in a spool's menu stores the date in
+  a Spoolman field (added on demand) and the card shows ***Dried 12 d ago***, amber once it is past
+  the days set for that material in Settings > Drying Reminders (PETG 30, TPU 14, PA 7, PVA 7, PC 14
+  by default; PLA, ABS and ASA off). The after-slice notice mentions a loaded spool of such a
+  material that was dried too long ago or never. Spoolman only, and the notice checks the fullest
+  matching spool of each slot.
 - **A setup guide for first use.** The first time you open Settings, a short step-by-step guide
   explains what Spooler does, takes your Spoolman address and tests it right there, and covers
   permissions, where the presets appear and how printers are found. Skip it any time, and reopen

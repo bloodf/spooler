@@ -6,11 +6,12 @@
 # name = "Spooler"
 # description = "Spoolman inventory for OrcaSlicer: auto-synced filament profiles and live printer slots"
 # author = "bloodf (fork of Spoolio by Dan J Moore)"
-# version = "0.17.0"
+# version = "0.18.0"
 # ///
 
 import asyncio
 import base64
+import datetime
 import ftplib
 import hashlib
 import html
@@ -49,7 +50,7 @@ except (ImportError, AttributeError):
 _SLICING = hasattr(getattr(orca, "slicing", None), "SlicingPipelineCapabilityBase")
 
 PLUGIN_NAME = "Spooler"
-PLUGIN_VERSION = "0.17.0"
+PLUGIN_VERSION = "0.18.0"
 # Stamped per operating system by scripts/build.py.
 BUILD_TARGET = "any"
 
@@ -252,6 +253,7 @@ DISPLAY_DEFAULTS = {
     "extra_fields": False,  # your own Spoolman extra fields, as name: value
     "exact_weight": True,   # 2,380 g instead of 2.38 kg
     "archived": False,      # also list archived spools (fetched only while this is on)
+    "dried": True,          # "Dried 12 d ago" chip, amber once past the material's reminder days
     "use_first": True,      # "Use First" chip on the opened spool to finish before others of its filament
     "low_notice": True,     # an OrcaSlicer notification when a spool drops below the low-stock grams
     # Printer tab: each slot's card
@@ -279,6 +281,58 @@ def save_display(value: object) -> None:
     """Save Settings > Display on its own, so it never depends on the connection check."""
     if isinstance(value, dict):
         save_settings({**get_settings(), "display": parse_display(value)})
+
+
+# Drying reminders: days a spool of a material may go since it was dried, 0 = never remind.
+DRYING_DEFAULTS = {"PETG": 30, "TPU": 14, "PA": 7, "PVA": 7, "PC": 14, "ABS": 0, "ASA": 0, "PLA": 0}
+DRYING_MAX_DAYS = 3650
+DRIED_FIELD = "dried"  # Spoolman spool extra field (datetime) holding the day a spool was dried
+
+
+def parse_drying(value: object) -> dict:
+    """{MATERIAL: days}. Not a dict means the defaults; a dict is the whole table as saved."""
+    if not isinstance(value, dict):
+        return dict(DRYING_DEFAULTS)
+    table = {}
+    for key, days in value.items():
+        name = " ".join(str(key).split()).upper()[:24]
+        if not name or isinstance(days, bool):
+            continue
+        try:
+            number = int(float(days))
+        except (TypeError, ValueError):
+            number = 0
+        table[name] = min(max(number, 0), DRYING_MAX_DAYS)
+    return table
+
+
+def drying_settings() -> dict:
+    return parse_drying(get_settings().get("drying"))
+
+
+def save_drying(value: object) -> None:
+    """Save Settings > Drying on its own, like the display flags."""
+    if isinstance(value, dict):
+        save_settings({**get_settings(), "drying": parse_drying(value)})
+
+
+def drying_days(material: object, table: dict | None = None) -> int:
+    """Reminder days for a filament material; the longest table name it starts with wins
+    ("PA-CF" uses PA, "PETG HF" uses PETG), case-insensitively. 0 when none or switched off."""
+    table = drying_settings() if table is None else table
+    name = _norm(material)
+    best = max((k for k in table if name.startswith(_norm(k)) and _norm(k)), key=lambda k: len(_norm(k)), default=None)
+    return table[best] if best else 0
+
+
+def dried_date(spool: dict) -> datetime.date | None:
+    """The day a spool was marked dried (its extra field, stored as JSON text), or None."""
+    raw = (spool.get("extra") or {}).get(DRIED_FIELD) if isinstance(spool, dict) else None
+    try:
+        raw = json.loads(raw) if isinstance(raw, str) else raw
+        return datetime.date.fromisoformat(raw[:10]) if isinstance(raw, str) else None
+    except ValueError:
+        return None
 
 
 def wizard_pending() -> bool:
@@ -805,6 +859,9 @@ def load_spools() -> dict:
     first = use_first_id(result.get("spools") or [])
     for sp in result.get("spools") or []:
         sp["use_first"] = first.get((sp.get("filament") or {}).get("id")) == sp.get("id")
+    table = drying_settings()
+    for sp in result.get("spools") or []:
+        sp["dry_days"] = drying_days((sp.get("filament") or {}).get("material"), table)
     return result
 
 # --- Filament profiles -------------------------------------------------------------------
@@ -1054,6 +1111,9 @@ def ensure_fields() -> None:
                     body["unit"] = unit
                 spoolman_call("POST", f"field/filament/{field}", body)
                 log.info("Added the %s field to Spoolman", field)
+        if DRIED_FIELD not in {field.get("key") for field in spoolman_call("GET", "field/spool") or []}:
+            spoolman_call("POST", f"field/spool/{DRIED_FIELD}", {"name": "Dried", "field_type": "datetime", "order": 100})
+            log.info("Added the %s field to Spoolman", DRIED_FIELD)
         _fields_ready.add(url)
     except Exception as exc:
         log.warning("Could not add Spooler's fields to Spoolman: %s", exc)
@@ -3571,7 +3631,7 @@ def u1_bound(location: object) -> bool:
 # --- Card actions on the Spools tab --------------------------------------------------------
 # One message from either UI host: {"type": "spool_action", "action": ..., "id": ...}. The page is
 # untrusted input, so everything is checked here before it reaches Spoolman.
-SPOOL_ACTIONS = ("weigh", "use", "archive", "unarchive", "move", "add", "open")
+SPOOL_ACTIONS = ("weigh", "use", "archive", "unarchive", "move", "add", "open", "dried", "clear_dried")
 MAX_GRAMS = 100000.0
 LOCATION_MAX = 64  # Spoolman's own limit
 
@@ -3589,6 +3649,10 @@ def _grams(value: object) -> float | None:
 
 def _pos_int(value: object) -> int | None:
     return value if isinstance(value, int) and not isinstance(value, bool) and value > 0 else None
+
+
+def today() -> datetime.date:
+    return datetime.date.today()
 
 
 def _spool_write(action: str, sid: int, data: dict) -> dict:
@@ -3612,6 +3676,17 @@ def _spool_write(action: str, sid: int, data: dict) -> dict:
         location = " ".join(location.split())
         spoolman_call("PATCH", f"spool/{sid}", {"location": location or None})
         return {"ok": True, "text": f"Spool #{sid} moved to {location}." if location else f"Spool #{sid} has no location now."}
+    if action in ("dried", "clear_dried"):
+        ensure_fields()
+        current = spoolman_call("GET", f"spool/{sid}")
+        extra = dict(current.get("extra") or {}) if isinstance(current, dict) else {}  # PATCH replaces extra whole
+        if action == "dried":
+            extra[DRIED_FIELD] = json.dumps(f"{today().isoformat()}T00:00:00+00:00")
+        else:
+            extra.pop(DRIED_FIELD, None)
+        spoolman_call("PATCH", f"spool/{sid}", {"extra": extra})
+        return {"ok": True, "text": f"Spool #{sid} marked as dried today." if action == "dried"
+                else f"Spool #{sid} has no dried date now."}
     if action == "add":
         fid = _pos_int(data.get("filament"))
         if fid is None:
@@ -4142,7 +4217,18 @@ def check_group(group: dict, spools: list[dict], margin: int) -> dict:
               "name": name, "total": total, "spool_colour": (fullest.get("filament") or {}).get("color_hex")}
     if status == "short":
         result["swap"] = swap_spool(matches, spools, padded)
+    result["dry"] = dry_check(fullest)
     return result
+
+
+def dry_check(spool: dict) -> dict | None:
+    """Set when a moisture-sensitive spool was dried too long ago or never: {"days": age or None}."""
+    limit = drying_days((spool.get("filament") or {}).get("material"))
+    if limit <= 0:
+        return None
+    dried = dried_date(spool)
+    age = (today() - dried).days if dried else None
+    return {"days": age} if age is None or age > limit else None
 
 
 def loaded_spool_ids() -> set[str]:
@@ -4272,9 +4358,20 @@ def plate_notice(results: list[dict], cost: str = "") -> tuple[str, str] | None:
             parts.append(sentence if parts else sentence[:1].lower() + sentence[1:])
         if not parts:
             return None
+    parts += [dry_part(r) for r in results if r.get("dry")]  # after the stock sentences, before the cost
     if cost:
         parts.append(cost)  # last, so fit_text drops it first
     return kind, "Spooler: " + " ".join(parts)
+
+
+def dry_part(r: dict) -> str:
+    slot = r["slot"]
+    name = r.get("name") or " ".join(p for p in (slot["preset"].split("@")[0].strip() or slot["material"], slot["colour"]) if p)
+    which = f"slot {r['slots'][0]}" if len(r["slots"]) == 1 else f"slots {_join([str(n) for n in r['slots']])}"
+    days = r["dry"]["days"]
+    if days is None:
+        return f"{name} ({which}) has no drying date."
+    return f"{name} ({which}) was last dried {days} day{'' if days == 1 else 's'} ago."
 
 
 def cost_sentence(results: list[dict], code: str) -> str:
@@ -4627,6 +4724,8 @@ MAIN_PAGE = """
     margin-left: 6px; padding: 1px 7px; border-radius: 99px; white-space: nowrap;
     background: rgba(0, 150, 136, 0.18); color: var(--orca-accent); font-style: normal; font-size: 11px; font-weight: 700;
   }
+  .use-chip.dry-chip { background: color-mix(in srgb, var(--orca-fg) 10%, var(--orca-bg) 90%); color: var(--orca-muted); font-weight: 600; }
+  .use-chip.dry-chip.old { background: rgba(224, 160, 48, 0.22); color: color-mix(in srgb, #c07800 70%, var(--orca-fg) 30%); font-weight: 700; }
   .head-card .head-line { font-style: normal; margin-top: 2px; }
   .head-card .head-preset { opacity: 0.8; font-style: italic; }
   .stack-head { cursor: pointer; }
@@ -6264,6 +6363,28 @@ MAIN_PAGE = """
       return parts.join(" \\u00b7 ");
     }
 
+    // Whole days since the spool was marked dried (its extra field, JSON text holding an ISO date), or null.
+    function driedDays(s, now) {
+      let v = s.extra && typeof s.extra === "object" ? s.extra.dried : null;
+      if (v === null || v === undefined) return null;
+      try { v = JSON.parse(v); } catch (e) { /* stored as plain text */ }
+      const m = /^(\\d{4})-(\\d{2})-(\\d{2})/.exec(String(v));
+      if (!m) return null;
+      const t = new Date(now === undefined ? Date.now() : now);
+      const days = Math.round((Date.UTC(t.getFullYear(), t.getMonth(), t.getDate()) - Date.UTC(+m[1], +m[2] - 1, +m[3])) / 86400000);
+      return Math.max(0, days);
+    }
+
+    // "Dried 12 d ago", muted; amber once older than the material's reminder days (s.dry_days, 0 = no reminder).
+    function driedChip(s, now) {
+      const age = shown("dried") ? driedDays(s, now) : null;
+      if (age === null) return "";
+      const old = s.dry_days > 0 && age > s.dry_days;
+      return '<span class="use-chip dry-chip' + (old ? ' old' : '') + '" title="' +
+        (old ? 'Dried longer ago than the ' + s.dry_days + ' day reminder' : 'Last marked dried') + '">' +
+        (age === 0 ? 'Dried today' : 'Dried ' + age + ' d ago') + '</span>';
+    }
+
     function spoolRowHtml(s, inStack) {
       const filament = s.filament || {};
       const vendor = filament.vendor || {};
@@ -6301,7 +6422,8 @@ MAIN_PAGE = """
       const where = shown("in_use") ? inUse.get(String(s.id)) : "";
       const chipHtml = (plateLabel ? '<span class="plate-chip">On This Plate \u00b7 ' + plateLabel + '</span>' : '') +
         (where ? '<span class="use-chip" title="Loaded in ' + esc(where) + '">In Use \u00b7 ' + esc(where) + '</span>' : '') +
-        (s.use_first && shown("use_first") && !s.archived ? '<span class="use-chip first-chip" title="Opened first: finish this one before the other spools of this filament">Use First</span>' : '');
+        (s.use_first && shown("use_first") && !s.archived ? '<span class="use-chip first-chip" title="Opened first: finish this one before the other spools of this filament">Use First</span>' : '') +
+        driedChip(s);
       const percentTitle = percent === null ? "Remaining unknown" : percent + "% remaining";
       const tip = [name, vendorName, remainingLabel + (typeof original === "number" ? " of " + formatWeight(original) : "") + " left"].filter(Boolean).join(" \u00b7 ");
       const tint = lowTint(remaining);
@@ -6376,6 +6498,8 @@ MAIN_PAGE = """
         body = btn("sp-weigh", "Set Weight From Scale") + btn("sp-use", "Use Filament") + btn("sp-move", "Move") +
           (s.archived ? btn("sp-unarchive", "Unarchive") : btn("sp-archive", "Archive", "Click Again to Archive")) +
           (fid != null ? btn("sp-add", "Add Spool of This Filament", "Click Again to Add a Spool") : "") +
+          btn("sp-dried", "Mark Dried Today") +
+          (driedDays(s) !== null ? btn("sp-clear-dried", "Clear Dried Date") : "") +
           btn("sp-open", "Open in Spoolman");
       }
       return '<div class="spool-menu" role="menu" aria-label="Spool #' + esc(s.id) + ' actions">' + body + '</div>';
@@ -6409,6 +6533,8 @@ MAIN_PAGE = """
         if (before === act) sendAction(act.slice(3), { filament: (s.filament || {}).id }); else menu.armed = act;
       } else if (act === "sp-unarchive" || act === "sp-open") {
         sendAction(act.slice(3));
+      } else if (act === "sp-dried" || act === "sp-clear-dried") {
+        sendAction(act.slice(3).replace("-", "_"));
       } else if (act === "sp-go") {
         if (menu.mode !== "move") sendAction(menu.mode, { grams: menu.val });
         else if (s.u1_bound && before !== act) menu.armed = act;
@@ -6852,6 +6978,15 @@ SETTINGS_PAGE = """
   .check-row { display: flex; align-items: center; gap: 8px; margin: 0 0 12px 0; cursor: pointer; }
   .disp-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 12px; }
   .disp-list .check-row { margin-bottom: 8px; }
+  .dry-table { margin: 10px 0 8px; }
+  .dry-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+  .dry-name { flex: 1 1 auto; min-width: 0; font-weight: 600; overflow: hidden; text-overflow: ellipsis; }
+  .dry-days { width: 76px; }
+  .dry-unit { color: var(--orca-muted); font-size: 12px; width: 34px; }
+  .dry-x { background: none; border: 0; color: var(--orca-muted); cursor: pointer; padding: 2px 6px; }
+  .dry-x:hover { color: #d9534f; }
+  .dry-add { display: flex; gap: 8px; align-items: center; }
+  .dry-add input { flex: 1 1 auto; min-width: 0; }
   .check-row input {
     -webkit-appearance: none; appearance: none; flex: none; width: 17px; height: 17px; margin: 0;
     border: 1.5px solid var(--orca-muted); border-radius: 4px; background: transparent; cursor: pointer;
@@ -7033,6 +7168,17 @@ SETTINGS_PAGE = """
   <div class="field-label">Printer tab: each slot</div>
   <div id="disp-heads" class="disp-list"></div><!--/display-->
   <!--display-preview--><div class="hint">Changes apply when you save, and stay on this computer.</div><!--/display-preview-->
+
+  <div class="divider spaced"></div>
+
+  <!--drying--><h3><span class="emoji">&#x1F4A7;</span>Drying Reminders</h3>
+  <div class="hint">Days a spool may go after you mark it dried. Past that, or never marked, the notice after slicing says so, and the Dried chip turns amber. Leave a material at 0 for no reminder. A material also covers its variants: PA covers PA-CF.</div>
+  <div id="dry-body" class="dry-table"></div>
+  <div class="dry-add">
+    <input id="dry-new" type="text" maxlength="24" placeholder="Material, for example HIPS" aria-label="Material to add">
+    <button type="button" class="test" id="dry-add">Add Material</button>
+  </div><!--/drying-->
+  <!--drying-preview--><div class="hint">Mark a spool as dried from its menu on the Spools tab (Spoolman only).</div><!--/drying-preview-->
 
   <div class="divider spaced"></div>
 
@@ -7461,6 +7607,7 @@ SETTINGS_PAGE = """
         ["comment", "Comment"], ["lot_nr", "Lot number"], ["extra_fields", "Extra fields from Spoolman"],
         ["exact_weight", "Exact weights (2,380 g, not 2.38 kg)"], ["archived", "Show archived spools"],
         ["use_first", "Use First chip on the spool to finish first"],
+        ["dried", "Dried chip (days since the spool was dried)"],
         ["low_notice", "Notify in OrcaSlicer when a spool runs low"],
       ],
       "disp-heads": [
@@ -7488,6 +7635,43 @@ SETTINGS_PAGE = """
     setDisplay(__DISPLAY__);
     window.__spoolerSetDisplay = setDisplay;
 
+    // Settings > Drying: days per material, 0 or empty = no reminder.
+    const dryBody = document.getElementById("dry-body");
+    function dryRow(name, days) {
+      const row = document.createElement("div");
+      row.className = "dry-row";
+      row.innerHTML = '<span class="dry-name"></span><input class="dry-days" type="number" min="0" max="3650" step="1" inputmode="numeric">' +
+        '<span class="dry-unit">days</span><button type="button" class="dry-x" title="Remove" aria-label="Remove">\u2715</button>';
+      row.querySelector(".dry-name").textContent = name;
+      row.querySelector(".dry-days").value = days > 0 ? days : "";
+      row.querySelector(".dry-x").addEventListener("click", function () { row.remove(); });
+      return row;
+    }
+    function setDrying(values) {
+      dryBody.innerHTML = "";
+      Object.keys(values || {}).forEach(function (name) { dryBody.appendChild(dryRow(name, values[name])); });
+    }
+    function dryPick() {
+      const out = {};
+      dryBody.querySelectorAll(".dry-row").forEach(function (row) {
+        out[row.querySelector(".dry-name").textContent] = Number(row.querySelector(".dry-days").value) || 0;
+      });
+      return out;
+    }
+    document.getElementById("dry-add").addEventListener("click", function () {
+      const nameEl = document.getElementById("dry-new");
+      const name = nameEl.value.trim().replace(/\\s+/g, " ").toUpperCase();
+      if (!name) return;
+      const have = Array.prototype.find.call(dryBody.querySelectorAll(".dry-row"), function (r) {
+        return r.querySelector(".dry-name").textContent === name;
+      });
+      if (!have) dryBody.appendChild(dryRow(name, 0));
+      nameEl.value = "";
+      (have || dryBody.lastChild).querySelector(".dry-days").focus();
+    });
+    setDrying(__DRYING__);
+    window.__spoolerSetDrying = setDrying;
+
     saveEl.addEventListener("click", function () {
       const url = urlEl.value.trim();
       const lowStock = document.getElementById("low-stock").value;
@@ -7501,6 +7685,7 @@ SETTINGS_PAGE = """
         progress: progPick(),
         stats: statsPick(),
         display: dispPick(),
+        drying: dryPick(),
       });
     });
     refreshSave();
@@ -7604,7 +7789,7 @@ def main_html() -> str:
         LOW_STOCK_DEFAULT=LOW_DEFAULT,
         REFRESH_MS=REFRESH_SECS * 1000,
         DISPLAY_DEFAULTS=json.dumps(DISPLAY_DEFAULTS),
-        OWN_FIELDS=json.dumps(["tag", ORCA_SETTINGS_FIELD, *CALIBRATION_FIELDS]),
+        OWN_FIELDS=json.dumps(["tag", ORCA_SETTINGS_FIELD, DRIED_FIELD, *CALIBRATION_FIELDS]),
     )
 
 
@@ -7642,6 +7827,7 @@ def settings_html(current_url: str, spoolman_info: dict, low_stock_grams: float,
         PROGRESS=json.dumps(parse_progress(progress)),
         STATS=json.dumps(parse_stats(stats)),
         DISPLAY=json.dumps(display_settings()),
+        DRYING=json.dumps(drying_settings()),
         CUR_CODE=_cur["code"] or "EUR",
         LOG_PATH=html.escape(str(LOG_FILE)),
         STATUS_TEXT=html.escape(status_text),
@@ -7919,6 +8105,7 @@ TAB_BRIDGE = """
     progOn.checked = prog.on !== false;
     progOn.dispatchEvent(new Event("change"));
     if (data.display && window.__spoolerSetDisplay) window.__spoolerSetDisplay(data.display);
+    if (data.drying && window.__spoolerSetDrying) window.__spoolerSetDrying(data.drying);
     var st = data.stats || {};
     if (data.cur_code) document.getElementById("cur-code").textContent = data.cur_code;
     var cur = document.querySelector('input[name="stats-cur"][value="' + (st.cur || "spoolman") + '"]');
@@ -7958,7 +8145,7 @@ def tab_html(initial_view: str, current_url: str, low_stock_grams: float,
     feedback_button = _button(settings_header, "feedback")
     sec = {name: _section(settings_body, name) for name in (
         "steps", "reorder", "check", "check-hint", "server", "about", "weights", "weights-preview",
-        "layout", "layout-preview", "stats", "stats-preview", "display", "display-preview", "printer",
+        "layout", "layout-preview", "stats", "stats-preview", "display", "display-preview", "drying", "drying-preview", "printer",
         "printer-preview", "footer", "wizard")}
     # The version, update check and log path sit beside the footer buttons.
     footer = sec["footer"]
@@ -7976,6 +8163,7 @@ def tab_html(initial_view: str, current_url: str, low_stock_grams: float,
         card(sec["weights"], "Preview", sec["weights-preview"]),
         card(sec["layout"], "Preview", sec["layout-preview"]),
         card(sec["display"], "Note", sec["display-preview"]),
+        card(sec["drying"], "Note", sec["drying-preview"]),
         card(sec["check"], "Before You Start", sec["check-hint"]),
         card(sec["printer"], "Preview", sec["printer-preview"]),
         card(sec["stats"], "Preview", sec["stats-preview"]),
@@ -8140,6 +8328,7 @@ class SpoolerWindow(orca.script.ScriptPluginCapabilityBase):
                 self._check_connection(url, self._settings_window, data.get("source"))
         elif msg_type == "save":
             save_display(data.get("display"))
+            save_drying(data.get("drying"))
             # The page already gates Save; enforce it here too.
             url = (data.get("url") or "").strip()
             src = parse_source(data.get("source"))
@@ -8497,6 +8686,7 @@ if _PAGES:
                 "show_cart": cart_on(),
                 "spool_columns": spool_columns(),
                 "display": display_settings(),
+                "drying": drying_settings(),
                 "progress": progress_settings(),
                 "stats": stats_settings(),
                 "cur_code": _cur["code"] or "EUR",
@@ -8542,6 +8732,7 @@ if _PAGES:
                 self._check_connection(url, self._settings_window, data.get("source"))
             elif msg_type == "save":
                 save_display(data.get("display"))
+                save_drying(data.get("drying"))
                 url = (data.get("url") or "").strip()
                 src = parse_source(data.get("source"))
                 verified = (self._verified_bambu if src == "bambu"
