@@ -128,7 +128,8 @@ def demo_state(sp):
     for pid, name, doc in (("auto-u1", "Snapmaker U1", sp.moon_report(u1, None, spools, U1)),
                            ("auto-sv06", "Sovol SV06", sp.moon_report({}, 11, spools, SV06))):
         sp.live_apply(pid, name, doc[0], link=pid)
-        sp._live["printers"][pid]["heads"] = doc[1]
+        with sp._live_lock:
+            sp.moon_mark(pid, doc[0], doc[1])
         sp._live["links"][pid] = "live"
     cfg = [{"id": "auto-u1", "name": "Snapmaker U1", "units": [], "ip": "http://192.168.1.40", "serial": "",
             "kind": "moonraker", "auto": True, "has_code": True},

@@ -121,7 +121,9 @@ the rest is automatic.
     matched to your Spoolman spools by the spool id the lane reports, else by vendor, material and
     colour.
   - **Single-extruder Klipper printers (e.g. Sovol SV06 with Klipper):** the spool Moonraker's
-    Spoolman integration has marked as active.
+    Spoolman integration has marked as active. ***Change Spool*** on the card picks another
+    non-archived spool and ***Clear*** unsets it, so Moonraker books the next print to the right
+    spool. Not offered on the U1 or on filament changers, which manage their own spools.
   - **Anycubic Kobra X (and other Anycubic printers in LAN mode):** each slot of the multi-colour
     box (ACE) and the external spool, matched to your Spoolman spools by material and colour.
     Turn on LAN mode on the printer and put its IP address in the printer preset's host field.
@@ -162,6 +164,9 @@ Link, filament usage booking, the Stats tab and the after-slice filament check.
   Behind a reverse proxy, the proxy must pass the `Upgrade` and `Connection` headers (nginx:
   `proxy_set_header Upgrade $http_upgrade; proxy_set_header Connection "upgrade";`). Without it
   the list still refreshes every 60 seconds.
+- Filament used by Anycubic prints is not booked to Spoolman yet: the printer's print-status
+  messages must first be captured from a real print. See [docs/kobra-booking.md](docs/kobra-booking.md)
+  if you have a Kobra and want to help.
 - Filament usage on Klipper printers is best tracked by Moonraker's own
   [Spoolman integration](https://moonraker.readthedocs.io/en/latest/configuration/#spoolman).
 

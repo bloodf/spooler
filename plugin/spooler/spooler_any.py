@@ -6,7 +6,7 @@
 # name = "Spooler"
 # description = "Spoolman inventory for OrcaSlicer: auto-synced filament profiles and live printer slots"
 # author = "bloodf (fork of Spoolio by Dan J Moore)"
-# version = "0.19.0"
+# version = "0.20.0"
 # ///
 
 import asyncio
@@ -51,7 +51,7 @@ except (ImportError, AttributeError):
 _SLICING = hasattr(getattr(orca, "slicing", None), "SlicingPipelineCapabilityBase")
 
 PLUGIN_NAME = "Spooler"
-PLUGIN_VERSION = "0.19.0"
+PLUGIN_VERSION = "0.20.0"
 # Stamped per operating system by scripts/build.py.
 BUILD_TARGET = "any"
 
@@ -2241,7 +2241,8 @@ def live_snapshot() -> dict:
             ext = _live_tray(0, state["ext"]) if state["ext"] else None
             printers.append({"id": dev_id, "link": state.get("link", ""), "name": state["name"], "age": round(time.time() - state["time"]),
                              "units": units, "ext": ext, "job": _live_prog(state),
-                             "heads": bool(state.get("heads")), "unit_label": state.get("unit_label", "")})
+                             "heads": bool(state.get("heads")), "unit_label": state.get("unit_label", ""),
+                             "spool_set": bool(state.get("spool_set"))})
         return {"links": dict(_live["links"]), "printers": printers}
 
 
@@ -2514,6 +2515,14 @@ def _moon_get(base: str, path: str) -> dict:
     return data.get("result") or {} if isinstance(data, dict) else {}
 
 
+def _moon_post(base: str, path: str, body: dict) -> dict:
+    req = urllib.request.Request(base + path, data=json.dumps(body).encode("utf-8"), method="POST",
+                                 headers={"Content-Type": "application/json"})
+    with urllib.request.urlopen(req, timeout=TIMEOUT) as resp:
+        data = json.loads(resp.read().decode("utf-8"))
+    return data.get("result") or {} if isinstance(data, dict) else {}
+
+
 def _spool_remain(spool: dict) -> float | None:
     filament = spool.get("filament") or {}
     left = _grams(spool.get("remaining_weight"))
@@ -2685,6 +2694,65 @@ def moon_poll(base: str) -> tuple[dict, bool]:
     return moon_report(status, active, _spool_cache["spools"] or [], target_for_host(base), lanes)
 
 
+def moon_mark(pid: str, doc: dict, heads: bool) -> None:
+    """Note what a Moonraker poll found: toolheads (U1), and whether the card is the single-extruder
+    one fed by Moonraker's active spool, the only kind whose spool Spooler may change. Call it
+    with _live_lock held."""
+    if pid in _live["printers"]:
+        _live["printers"][pid]["heads"] = heads
+        _live["printers"][pid]["spool_set"] = "vt_tray" in doc["print"]
+
+
+def moon_set_spool(pid: object, spool_id: object) -> dict:
+    """Set the spool Moonraker books a single-extruder printer's usage to, or clear it (None).
+    Refused for the Snapmaker U1 (u1control binds its toolheads through Spoolman locations) and
+    for AFC / Happy Hare lanes (they manage their own spools), checked here against the printer
+    itself, not only hidden on the page."""
+    if source() != "spoolman":
+        return {"ok": False, "text": "Setting a printer's spool needs Spoolman as the spool source."}
+    if spool_id is not None:
+        number = spool_id if isinstance(spool_id, int) and not isinstance(spool_id, bool) else -1
+        if number <= 0 or _spool_by_id(number, _spool_cache["spools"] or []) is None:
+            return {"ok": False, "text": "That spool isn't in Spoolman, or it is archived."}
+    entry = _local.get(str(pid))
+    link = entry["link"] if entry else None
+    with _live_lock:
+        state = _live["printers"].get(str(pid)) or {}
+        single = bool(state.get("spool_set"))
+    if not link or link.get("kind") != "moonraker" or not single:
+        return {"ok": False, "text": "Spooler can only set the spool on a single-extruder Klipper printer."}
+    base = link["ip"]
+    try:
+        doc, heads = moon_poll(base)  # read again: the printer decides, not the page
+        if heads or "vt_tray" not in doc["print"]:
+            with _live_lock:
+                moon_mark(str(pid), doc, heads)
+            return {"ok": False, "text": f"{link['name']} manages its own spools; Spooler only reads them."}
+        # Body per https://moonraker.readthedocs.io/en/latest/external_api/integrations/#set-active-spool
+        # {"spool_id": <id>} sets the active spool; {"spool_id": null} clears it and stops tracking.
+        _moon_post(base, "/server/spoolman/spool_id", {"spool_id": spool_id})
+        doc, heads = moon_poll(base)
+    except (urllib.error.URLError, OSError, ValueError) as exc:
+        log.warning("Could not set the spool on %s: %s", link["name"], exc)
+        return {"ok": False, "text": f"Could not set the spool on {link['name']}: {exc}"}
+    live_apply(str(pid), link["name"], doc, link=str(pid))
+    with _live_lock:
+        moon_mark(str(pid), doc, heads)
+    if spool_id is None:
+        return {"ok": True, "text": f"{link['name']}: no active spool, Moonraker stopped booking usage."}
+    return {"ok": True, "text": f"{link['name']} now books its usage to spool #{spool_id}."}
+
+
+def start_moon_spool(data: object, post) -> None:
+    """Run moon_set_spool off the UI thread, then post the result and the refreshed live state."""
+    data = data if isinstance(data, dict) else {}
+
+    def work():
+        post({"type": "moon_spool", "id": data.get("id"), **moon_set_spool(data.get("id"), data.get("spool"))})
+        post({"type": "live", "live": live_snapshot(), "usage": usage_state()})
+    threading.Thread(target=work, daemon=True).start()
+
+
 def is_moonraker(base: str) -> bool:
     """True when the host answers like Moonraker. Raises URLError when it can't be reached."""
     try:
@@ -2843,6 +2911,40 @@ def kx_request(kind: str, action: str = "getInfo") -> str:
                        "msgid": os.urandom(16).hex(), "data": None})
 
 
+# Debug capture for booking Anycubic prints (docs/kobra-booking.md): with "kx_capture": true in
+# the settings file, each MQTT message type is logged once per session, with secrets stripped.
+KX_CAPTURE_CHARS = 3000
+_KX_SECRET_KEY = re.compile(r"(?i)serial|token|passw|pwd|secret|key|cert|crt|sign|auth|cookie|session|"
+                            r"user|email|url|host|addr|device_?id|(^|_)(sn|ip|mac|cn|did|uid|pk)$")
+_KX_IP = re.compile(r"\b\d{1,3}(?:\.\d{1,3}){3}\b")
+_KX_LONG_ID = re.compile(r"\b[A-Za-z0-9_-]{16,}\b")
+
+
+def kx_redact(value: object) -> object:
+    """A copy with anything that looks like a serial, token, address or credential replaced."""
+    if isinstance(value, dict):
+        return {k: "<redacted>" if _KX_SECRET_KEY.search(str(k)) else kx_redact(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [kx_redact(v) for v in value]
+    if isinstance(value, str):
+        return _KX_LONG_ID.sub("<id>", _KX_IP.sub("<ip>", value))
+    return value
+
+
+def kx_capture(doc: object, seen: set, topic: str = "") -> None:
+    """Log one MQTT message per type (once per session): its keys and a redacted sample."""
+    kind = str(doc.get("type") or "?") if isinstance(doc, dict) else "?"
+    if kind.lower() in seen:
+        return
+    seen.add(kind.lower())
+    data = doc.get("data") if isinstance(doc, dict) else None
+    # The topic ends in .../<model>/<device>/<kind>/report: keep only the parts after the device.
+    log.info("Kobra capture: type=%s topic=%s keys=%s data keys=%s sample=%s", kind,
+             "/".join(topic.split("/")[7:]), sorted(doc) if isinstance(doc, dict) else [],
+             sorted(data) if isinstance(data, dict) else type(data).__name__,
+             json.dumps(kx_redact(doc))[:KX_CAPTURE_CHARS])
+
+
 def _kx_colour(value: object) -> str:
     if isinstance(value, list) and len(value) >= 3 and all(isinstance(v, int) for v in value[:3]):
         return "".join(f"{max(0, min(255, v)):02X}" for v in value[:3])
@@ -2909,6 +3011,7 @@ def _kx_session(pid: str, link: dict, stop: threading.Event) -> None:
     files = (DATA_DIR / f".kx-{_slug(pid)}-1.pem", DATA_DIR / f".kx-{_slug(pid)}-2.pem")
     state = {"boxes": None, "external": None}
     command = f"{KX_TOPIC}/web/printer/{model}/{device}"
+    capture, seen = get_settings().get("kx_capture") is True, set()
     with _kx_socket(host, bundle, files) as sock:
         sock.settimeout(5)
         sock.sendall(_mqtt_connect(bundle["username"], bundle["password"]))
@@ -2927,6 +3030,11 @@ def _kx_session(pid: str, link: dict, stop: threading.Event) -> None:
             if now - asked > KX_REQUEST_SECS:
                 sock.sendall(_mqtt_publish(f"{command}/multiColorBox", kx_request("multiColorBox")))
                 sock.sendall(_mqtt_publish(f"{command}/extfilbox", kx_request("extfilbox")))
+                if capture:
+                    # A read-only status query ({"type": "info", "action": "query"}, answered with the
+                    # print "project" state and progress), as sent by
+                    # https://github.com/HughKantsime/runsodin backend/modules/printers/adapters/anycubic_lan.py
+                    sock.sendall(_mqtt_publish(f"{command}/info", kx_request("info", "query")))
                 asked = now
             if now - ping > LIVE_PING:
                 sock.sendall(b"\xc0\x00")
@@ -2944,6 +3052,8 @@ def _kx_session(pid: str, link: dict, stop: threading.Event) -> None:
                 doc = json.loads(body[2 + size:])
             except ValueError:
                 continue
+            if capture:
+                kx_capture(doc, seen, body[2:2 + size].decode("utf-8", "replace"))
             data = doc.get("data") if isinstance(doc, dict) else None
             kind = str(doc.get("type") or "").lower() if isinstance(doc, dict) else ""
             if kind == "multicolorbox" and isinstance(data, dict) and "multi_color_box" in data:
@@ -3005,8 +3115,8 @@ def _moon_run(pid: str, link: dict, stop: threading.Event) -> None:
                 if stop.is_set():
                     # Removed while this poll ran: don't leave it behind.
                     _live["printers"].pop(pid, None)
-                elif pid in _live["printers"]:
-                    _live["printers"][pid]["heads"] = heads
+                else:
+                    moon_mark(pid, doc, heads)
             _live["links"][pid] = "live"
             fails = 0
             _report(f"Printer {link['name']}", None)
@@ -5014,6 +5124,8 @@ MAIN_PAGE = """
   .sbtn.armed { border-color: #d9534f; color: #d9534f; }
   .sbtn.ghost { border-color: transparent; font-weight: 400; color: var(--orca-muted); }
   .ams-unit .sbtn { margin-left: auto; }
+  .ams-unit .ubar { display: flex; gap: 8px; margin-left: auto; }
+  .ams-unit .ubar .sbtn { margin-left: 0; }
   .pname { background: transparent; border: 0; padding: 0; color: var(--orca-fg); font: inherit; font-weight: 700; cursor: pointer; }
   .pname-in { background: var(--orca-bg); color: var(--orca-fg); border: 1px solid var(--orca-accent); border-radius: 6px; padding: 3px 8px; font: inherit; font-weight: 700; width: 180px; }
   .addp { margin-top: 2px; }
@@ -5032,6 +5144,7 @@ MAIN_PAGE = """
   .pi .m { margin-left: auto; color: var(--orca-muted); font-size: 12px; white-space: nowrap; }
   .pi small { display: block; color: var(--orca-muted); font-size: 11px; }
   .pnote { padding: 8px; font-size: 12px; color: var(--orca-muted); }
+  .pnote.error { color: #d9534f; }
   .ams-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 22px 10px; margin-top: 20px; }
   .ams-cell { position: relative; display: flex; }
   .ams-cell .spool-card { flex: 1; margin: 0; box-sizing: border-box; min-width: 0; }
@@ -5625,7 +5738,26 @@ MAIN_PAGE = """
       return progress.on && progress.slot && j && j.tray && PROG_LIVE.indexOf(j.state) >= 0 ? j.tray : null;
     }
 
+    // A single-extruder Klipper printer: Moonraker books usage to its active spool, which can be
+    // changed here. Not offered on the U1 (heads) or filament changers (lanes): lv.spool_set is false.
+    let moonNote = null;  // {id, ok, text}: the last Change Spool / Clear result, shown on that card
+
+    function moonUnit(lv) {
+      const note = moonNote && moonNote.id === lv.link
+        ? '<div class="pnote' + (moonNote.ok ? "" : " error") + '">' + esc(moonNote.text) + '</div>' : "";
+      const open = picking && picking.moon === lv.link;
+      const key = "m:" + lv.link;
+      const card = lv.ext ? liveCard(lv.ext)
+        : plainCard("No active spool", "Moonraker is not booking usage to a spool", "", "ams-empty");
+      const clear = lv.ext ? '<button class="sbtn ghost' + (armed === key ? " armed" : "") + '" data-act="moon-clear" data-p="' +
+        esc(lv.link) + '">' + (armed === key ? "Click Again to Clear" : "Clear") + '</button>' : "";
+      return '<div class="ams-unit"><span>Active Spool</span><span class="ubar">' + clear +
+        '<button class="sbtn" data-act="moon-pick" data-p="' + esc(lv.link) + '">Change Spool</button></span></div>' +
+        '<div class="ams-grid"><div class="ams-cell"><div class="ams-n">E</div>' + card + (open ? pickerHtml() : "") + '</div></div>' + note;
+    }
+
     function liveUnits(lv) {
+      if (lv.spool_set && spoolSource === "spoolman") return moonUnit(lv);
       let ams = 0;
       const act = activeTray(lv);
       const unitHtml = function (label, trays, ext, uid) {
@@ -6143,6 +6275,19 @@ MAIN_PAGE = """
         liveOn = liveOn || !!(p.ip && p.has_code);
         liveKey = "";
         setTimeout(pollLive, 300);
+      } else if (p && act === "moon-pick") {
+        picking = picking && picking.moon === p.id ? null : { moon: p.id };
+      } else if (p && act === "moon-clear") {
+        if (before === "m:" + p.id) {
+          orca.postMessage({ type: "moon_spool", id: p.id, spool: null });
+          moonNote = { id: p.id, ok: true, text: "Clearing the active spool..." };
+        } else {
+          armed = "m:" + p.id;
+        }
+      } else if (act === "pick" && picking && picking.moon) {
+        orca.postMessage({ type: "moon_spool", id: picking.moon, spool: Number(el.dataset.id) });
+        moonNote = { id: picking.moon, ok: true, text: "Setting spool #" + el.dataset.id + "..." };
+        picking = null;
       } else if (act === "pick" && picking) {
         const target = cfg.find(function (x) { return x.id === picking.p; });
         if (target) {
@@ -6181,7 +6326,7 @@ MAIN_PAGE = """
     });
 
     document.addEventListener("click", function (e) {
-      if (picking && !e.target.closest(".picker") && !e.target.closest('[data-act="assign"]')) {
+      if (picking && !e.target.closest(".picker") && !e.target.closest('[data-act="assign"], [data-act="moon-pick"]')) {
         picking = null;
         renderPrinters();
       }
@@ -6990,6 +7135,11 @@ MAIN_PAGE = """
         noteTimer = setTimeout(function () { actionNote = null; applyFilters(); }, 8000);
         applyFilters();
         orca.postMessage({ type: "refresh" });
+      } else if (data && data.type === "moon_spool") {
+        moonNote = { id: data.id, ok: !!data.ok, text: data.text || "" };
+        statusEl.textContent = moonNote.text;
+        statusEl.className = moonNote.ok ? "" : "error";
+        if (!picking) renderPrinters();
       } else if (data && data.type === "sent") {
         statusEl.textContent = data.text;
         statusEl.className = data.ok ? "" : "error";
@@ -8601,6 +8751,8 @@ class SpoolerWindow(orca.script.ScriptPluginCapabilityBase):
             start_send(self._panel.post)
         elif msg_type == "spool_action":
             start_spool_action(data, self._panel.post)
+        elif msg_type == "moon_spool":
+            start_moon_spool(data, self._panel.post)
         elif msg_type == "tick":
             auto_send(self._panel.post)
 
@@ -8791,6 +8943,8 @@ if _PAGES:
                     start_send(self.post_message)
                 elif msg_type == "spool_action":
                     start_spool_action(data, self.post_message)
+                elif msg_type == "moon_spool":
+                    start_moon_spool(data, self.post_message)
                 elif msg_type == "tick":
                     auto_send(self.post_message)
             except Exception:

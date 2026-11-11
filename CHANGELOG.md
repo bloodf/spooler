@@ -3,6 +3,26 @@
 Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); entries before
 0.9.0 are Spoolio's.
 
+## [0.20.0] - Unreleased
+
+### Added
+- Change Spool on the Printer tab for single-extruder Klipper printers such as the Sovol SV06.
+  It opens the spool picker, and the spool you pick becomes Moonraker's active spool, so Moonraker
+  books the next print's filament to it. Clear unsets the active spool (with a second click).
+  Archived spools are not offered, and the result shows under the card. It is not offered on the
+  Snapmaker U1 (u1control binds its toolheads) or on printers with AFC, Happy Hare or another
+  filament changer (they manage their own spools), and Spooler refuses it for those printers even
+  if asked directly.
+- A debug capture for Anycubic printers, the first step toward booking their prints. With
+  "kx_capture": true in Spooler's settings file, Spooler writes each kind of message the printer
+  sends to its log once, with serial numbers, tokens, addresses and credentials removed, and asks
+  the printer for its print status.
+
+### Not yet
+- Booking the filament used by Anycubic Kobra prints. How the printer reports a print in progress
+  is not documented, so it needs a capture from one real print first; docs/kobra-booking.md says
+  how to make one and what happens next.
+
 ## [0.19.0] - Unreleased
 
 ### Added

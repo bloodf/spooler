@@ -49,6 +49,19 @@ the ones added by hand for Bambu Live Link:
 Each slot is matched to a spool in the same order: the spool id the printer reports, the location
 u1control binds (U1 only), the RFID tag, then vendor, material and colour (`slot_tray()`).
 
+Single-extruder Klipper printers can have their active spool changed from the Printer tab
+(`moon_set_spool()`, which posts to Moonraker's `/server/spoolman/spool_id`). It checks the printer
+again first and refuses the U1 and lane printers.
+
+### Anycubic debug capture
+
+Booking Anycubic prints needs their print-status messages, which aren't documented. Add
+`"kx_capture": true` to Spooler's settings file (`spooler_settings.json` in Spooler's data folder; there
+is no switch for it in Settings) and restart OrcaSlicer. Each Anycubic session then logs every
+MQTT message type once (`kx_capture()`): its keys and a sample with serials, tokens, addresses and
+credentials replaced (`kx_redact()`), and asks for the `info` report every 20 seconds. Remove the
+key to stop. See [kobra-booking.md](kobra-booking.md).
+
 ## Working with u1control
 
 On the Snapmaker U1, [u1control](https://github.com/bloodf/u1control) can run next to Spooler. They
