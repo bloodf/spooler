@@ -74,6 +74,14 @@ class PagesTest(unittest.TestCase):
         self.assertIn(json.dumps(sp.DISPLAY_DEFAULTS), page)
         self.assertIn("window.__spoolerSetDisplay(data.display)", page)
 
+    def test_group_header_weight_is_never_squeezed_into_a_fixed_width(self):
+        # "1,871 g of 2,000 g · 94%" is far wider than the 90px the bar used to be given, so it
+        # wrapped onto two lines or ran out of the card.
+        rule = re.search(r"\.group-card \.group-bar \{([^}]*)\}", sp.main_html()).group(1)
+        self.assertNotRegex(rule, r"(?<!-)width:")
+        self.assertIn("min-width: 90px", rule)
+        self.assertIn("white-space: nowrap", rule)
+
 
 NODE = shutil.which("node")
 if os.environ.get("CI") and not NODE:

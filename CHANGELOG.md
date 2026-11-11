@@ -3,6 +3,13 @@
 Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); entries before
 0.9.0 are Spoolio's.
 
+## [0.12.2] - Unreleased
+
+### Fixed
+- With the list grouped by material, manufacturer or location, the weight on a group's header
+  ("1,871 g of 2,000 g · 94%") no longer wraps onto two lines or runs past the edge of the card.
+  It stays on one line with the bar underneath, and a long group name is shortened instead.
+
 ## [0.12.1] - 2026-11-10
 
 ### Changed

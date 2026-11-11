@@ -6,7 +6,7 @@
 # name = "Spooler"
 # description = "Spoolman inventory for OrcaSlicer: auto-synced filament profiles and live printer slots"
 # author = "bloodf (fork of Spoolio by Dan J Moore)"
-# version = "0.12.1"
+# version = "0.12.2"
 # ///
 
 import asyncio
@@ -48,7 +48,7 @@ except (ImportError, AttributeError):
 _SLICING = hasattr(getattr(orca, "slicing", None), "SlicingPipelineCapabilityBase")
 
 PLUGIN_NAME = "Spooler"
-PLUGIN_VERSION = "0.12.1"
+PLUGIN_VERSION = "0.12.2"
 # Stamped per operating system by scripts/build.py.
 BUILD_TARGET = "any"
 
@@ -4200,7 +4200,8 @@ MAIN_PAGE = """
   .group-card .group-info { flex: 1; min-width: 0; }
   .group-card .group-name { font-weight: 700; font-size: 13px; }
   .group-card .group-meta { color: var(--orca-muted); font-size: 11px; margin-top: 1px; }
-  .group-card .group-bar { width: 90px; flex-shrink: 0; }
+  .group-card .group-info > div { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .group-card .group-bar { min-width: 90px; flex-shrink: 0; white-space: nowrap; }
   .group-card .group-bar-track { height: 5px; border-radius: 3px; background: rgba(127, 127, 127, 0.25); overflow: hidden; }
   .group-card .group-bar-fill { height: 100%; border-radius: 3px; }
   .group-card .group-bar-fill.high { background: #3fb950; }
