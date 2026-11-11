@@ -3,6 +3,24 @@
 Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); entries before
 0.9.0 are Spoolio's.
 
+## [0.14.0] - Unreleased
+
+### Added
+- Each spool card has a ⋯ button with actions for that spool in Spoolman: set its weight from a
+  scale reading, subtract grams used by hand, move it to another location (Spoolman's locations
+  to pick from, or type a new one), archive or unarchive it, add another spool of the same
+  filament, and open it in Spoolman. Numbers are typed into the card itself. Archiving and adding
+  ask for a second click, and so does moving a spool off a U1 toolhead's location, which unlinks
+  it from that toolhead. The result shows in the status line above the list. Not offered for the
+  Bambu Cloud source.
+- Show archived (in the filters, and in Settings > Display) lists archived spools too, dimmed.
+  They still never count for the filament presets, the after-slice check, usage booking or the
+  printer slots.
+
+### Changed
+- Spooler now changes a spool's location in Spoolman when you move it from its card. It still
+  never does so on its own.
+
 ## [0.13.0] - Unreleased
 
 ### Added

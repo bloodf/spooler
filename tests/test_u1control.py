@@ -3,6 +3,7 @@ toolhead bindings through Spoolman locations, profiles.json, keep_slots.json, th
 tie-break, no U1 usage booking by Spooler, and no slot flip-flop between the two plugins."""
 
 import asyncio
+import inspect
 import json
 import re
 import tempfile
@@ -117,15 +118,19 @@ class LocationTest(Snapshot):
         self.assertEqual(sp._live_tray(0, self.trays(STOCK)[0])["linked"], "u1control")
         self.assertIn("Spool linked by u1control", sp.main_html())
 
-    def test_spooler_never_writes_a_spool_location(self):
-        source = PLUGIN.read_text(encoding="utf-8")
-        # Every Spoolman write is a filament PATCH or a spool use/unuse PUT.
+    def test_only_the_cards_move_action_writes_a_spool_location(self):
+        # Outside the Spools tab's card actions (which the user starts, with a second click when a
+        # move unlinks a toolhead), every Spoolman write is a filament PATCH, a spool use PUT or
+        # the used-weight PATCH of an undo.
+        action = inspect.getsource(sp._spool_write)
+        self.assertIn('"location"', action)
+        source = PLUGIN.read_text(encoding="utf-8").replace(action, "")
         writes = re.findall(r'"(PATCH|POST|PUT|DELETE)",\s*f?"([^"]+)"', source)
         self.assertTrue(writes)
         for method, path in writes:
             self.assertFalse(method == "PATCH" and path.startswith("spool"), (method, path))
         calls = [line for line in source.splitlines() if "spoolman_call(" in line or "urlopen(" in line]
-        self.assertFalse([line for line in calls if "location" in line])
+        self.assertFalse([line for line in calls if "location" in line and '"GET"' not in line])
 
 
 class SubTypeTest(unittest.TestCase):

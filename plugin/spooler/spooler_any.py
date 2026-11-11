@@ -6,7 +6,7 @@
 # name = "Spooler"
 # description = "Spoolman inventory for OrcaSlicer: auto-synced filament profiles and live printer slots"
 # author = "bloodf (fork of Spoolio by Dan J Moore)"
-# version = "0.13.0"
+# version = "0.14.0"
 # ///
 
 import asyncio
@@ -16,6 +16,7 @@ import hashlib
 import html
 import json
 import logging
+import math
 import os
 import platform
 import re
@@ -48,7 +49,7 @@ except (ImportError, AttributeError):
 _SLICING = hasattr(getattr(orca, "slicing", None), "SlicingPipelineCapabilityBase")
 
 PLUGIN_NAME = "Spooler"
-PLUGIN_VERSION = "0.13.0"
+PLUGIN_VERSION = "0.14.0"
 # Stamped per operating system by scripts/build.py.
 BUILD_TARGET = "any"
 
@@ -247,6 +248,7 @@ DISPLAY_DEFAULTS = {
     "location": True,       # the Spoolman location
     "spool_id": False,
     "exact_weight": True,   # 2,380 g instead of 2.38 kg
+    "archived": False,      # also list archived spools (fetched only while this is on)
     # Printer tab: each slot's card
     "head_vendor": True,
     "head_material": True,
@@ -364,10 +366,9 @@ def default_config() -> dict:
 
 def get_spools(spoolman_url: str) -> dict:
     """Return ``{"ok": True, "spools": [...]}`` or ``{"ok": False, "error": "..."}``."""
-    url = f"{spoolman_url.rstrip('/')}/api/v1/spool"
+    path = "spool?allow_archived=true" if display_settings()["archived"] else "spool"
     try:
-        with urllib.request.urlopen(url, timeout=TIMEOUT) as resp:
-            data = json.loads(resp.read().decode("utf-8"))
+        data = _spoolman_open(spoolman_url, path)
     except urllib.error.URLError as exc:
         error = f"Could not reach Spoolman at {spoolman_url} ({exc.reason})"
         _report("Spool list", error)
@@ -376,8 +377,22 @@ def get_spools(spoolman_url: str) -> dict:
         _report("Spool list", str(exc), exc_info=True)
         return {"ok": False, "error": str(exc)}
     _report("Spool list", None)
-    _spool_cache.update(url=spoolman_url, time=time.monotonic(), spools=data)
+    # Archived spools are only for the Spools tab: everything else reads the cache.
+    _spool_cache.update(url=spoolman_url, time=time.monotonic(), spools=active_spools(data))
     return {"ok": True, "spools": data}
+
+
+def active_spools(spools: list) -> list:
+    return [s for s in spools if isinstance(s, dict) and not s.get("archived")]
+
+
+def _spoolman_open(base: str, path: str, method: str = "GET", body: object = None) -> object:
+    """One Spoolman API request with a JSON body and answer; raises urllib's errors."""
+    data = None if body is None else json.dumps(body).encode("utf-8")
+    request = urllib.request.Request(f"{base.rstrip('/')}/api/v1/{path}", data=data, method=method,
+                                     headers={"Content-Type": "application/json"})
+    with urllib.request.urlopen(request, timeout=TIMEOUT) as resp:
+        return json.loads(resp.read().decode("utf-8") or "null")
 
 
 def clean_url(url: str | None) -> str:
@@ -391,10 +406,8 @@ def ping(spoolman_url: str) -> dict:
     """
     if not spoolman_url:
         return {"ok": False, "error": "No Spoolman URL configured yet"}
-    url = f"{spoolman_url.rstrip('/')}/api/v1/info"
     try:
-        with urllib.request.urlopen(url, timeout=TIMEOUT) as resp:
-            data = json.loads(resp.read().decode("utf-8"))
+        data = _spoolman_open(spoolman_url, "info")
     except urllib.error.URLError as exc:
         error = f"Could not reach Spoolman at {spoolman_url} ({exc.reason})"
         log.warning("Connection test failed: %s", error)
@@ -735,6 +748,7 @@ def load_spools() -> dict:
     result = get_bambu_spools() if source() == "bambu" else get_spools(get_settings().get("spoolman_url", ""))
     for sp in result.get("spools") or []:
         sp["rfid_tags"] = sorted(spool_tags(sp))
+        sp["u1_bound"] = u1_bound(sp.get("location"))
     return result
 
 # --- Filament profiles -------------------------------------------------------------------
@@ -1351,7 +1365,7 @@ def load_spools_synced(snapshot: dict | None) -> dict:
     """The spool list, after syncing the filament profiles from it. For worker threads."""
     result = load_spools()
     if result.get("ok") and snapshot:
-        state = profile_sync(result["spools"], snapshot)
+        state = profile_sync(active_spools(result["spools"]), snapshot)
         result["profiles"] = {"count": state["count"], "error": state["error"]}
     return result
 
@@ -1380,11 +1394,7 @@ def profile_for_spool(spool: dict | None, target: str) -> str:
 
 def spoolman_call(method: str, path: str, body: object = None) -> object:
     """One Spoolman API request with a JSON body and answer; raises urllib's errors."""
-    url = f"{clean_url(get_settings().get('spoolman_url'))}/api/v1/{path}"
-    data = None if body is None else json.dumps(body).encode("utf-8")
-    request = urllib.request.Request(url, data=data, method=method, headers={"Content-Type": "application/json"})
-    with urllib.request.urlopen(request, timeout=TIMEOUT) as resp:
-        return json.loads(resp.read().decode("utf-8") or "null")
+    return _spoolman_open(clean_url(get_settings().get("spoolman_url")), path, method, body)
 
 
 def orca_items(text: str, key: str) -> list[str]:
@@ -2262,8 +2272,8 @@ def _bound_here(location: object, names: tuple, number: int) -> int:
 
 def spool_at_location(spools: list[dict], printer: str | tuple, number: int) -> dict | None:
     """The spool u1control bound to toolhead T<number> on stock U1 firmware, where the binding is
-    the spool's Spoolman location "<printer name> T<n>". Spooler only reads locations, never
-    writes them. A location naming this printer exactly beats one that only ends in "U1"; two
+    the spool's Spoolman location "<printer name> T<n>". Spooler never writes locations on its
+    own; only the card's Move action does, after a second click when it unlinks a toolhead. A location naming this printer exactly beats one that only ends in "U1"; two
     spools equally sure: the last used wins. Limit: two U1s on one system preset share their
     names here, so a spool left at the other U1's location can still match."""
     names = (printer,) if isinstance(printer, str) else tuple(printer)
@@ -3295,22 +3305,14 @@ def usage_finish(run: dict, dev_id: str = "") -> None:
 
 
 def spoolman_use(spool_id: int, grams: float) -> None:
-    url = f"{clean_url(get_settings().get('spoolman_url'))}/api/v1/spool/{int(spool_id)}/use"
-    request = urllib.request.Request(url, data=json.dumps({"use_weight": round(grams, 1)}).encode("utf-8"),
-                                     method="PUT", headers={"Content-Type": "application/json"})
-    with urllib.request.urlopen(request, timeout=TIMEOUT):
-        pass
+    spoolman_call("PUT", f"spool/{int(spool_id)}/use", {"use_weight": round(grams, 1)})
     _spool_cache["time"] = 0.0
 
 
 def spoolman_unuse(spool_id: int, grams: float) -> None:
-    url = f"{clean_url(get_settings().get('spoolman_url'))}/api/v1/spool/{int(spool_id)}"
-    with urllib.request.urlopen(url, timeout=TIMEOUT) as resp:
-        used = float(json.loads(resp.read().decode("utf-8")).get("used_weight") or 0)
-    body = json.dumps({"used_weight": round(max(0.0, used - grams), 1)}).encode("utf-8")
-    request = urllib.request.Request(url, data=body, method="PATCH", headers={"Content-Type": "application/json"})
-    with urllib.request.urlopen(request, timeout=TIMEOUT):
-        pass
+    path = f"spool/{int(spool_id)}"
+    used = float(spoolman_call("GET", path).get("used_weight") or 0)
+    spoolman_call("PATCH", path, {"used_weight": round(max(0.0, used - grams), 1)})
     _spool_cache["time"] = 0.0
 
 
@@ -3320,6 +3322,115 @@ def _spoolman_error(exc: Exception) -> str:
     if isinstance(exc, urllib.error.URLError):
         return f"Could not reach Spoolman ({exc.reason})"
     return str(exc)
+
+
+def u1_bound(location: object) -> bool:
+    """Whether a Spoolman location is a u1control toolhead binding ("<printer name> T<n>")."""
+    found = re.search(r"\st(\d+)\s*$", str(location or ""), re.I)
+    if not found:
+        return False
+    names = tuple(n for p in _ui_snap.get("printers") or [] for n in location_names(p["target"]))
+    return _bound_here(location, names, int(found.group(1))) > 0
+
+
+# --- Card actions on the Spools tab --------------------------------------------------------
+# One message from either UI host: {"type": "spool_action", "action": ..., "id": ...}. The page is
+# untrusted input, so everything is checked here before it reaches Spoolman.
+SPOOL_ACTIONS = ("weigh", "use", "archive", "unarchive", "move", "add", "open")
+MAX_GRAMS = 100000.0
+LOCATION_MAX = 64  # Spoolman's own limit
+
+
+def _grams(value: object) -> float | None:
+    """A positive, finite gram count up to MAX_GRAMS, from a number or numeric text; else None."""
+    if isinstance(value, bool) or not isinstance(value, (int, float, str)):
+        return None
+    try:
+        grams = float(value)
+    except ValueError:
+        return None
+    return grams if math.isfinite(grams) and 0 < grams <= MAX_GRAMS else None
+
+
+def _pos_int(value: object) -> int | None:
+    return value if isinstance(value, int) and not isinstance(value, bool) and value > 0 else None
+
+
+def _spool_write(action: str, sid: int, data: dict) -> dict:
+    no = lambda text: {"ok": False, "text": text}  # noqa: E731
+    if action in ("weigh", "use"):
+        grams = _grams(data.get("grams"))
+        if grams is None:
+            return no(f"Enter a weight between 0 and {MAX_GRAMS:,.0f} g.")
+        if action == "use":
+            spoolman_use(sid, grams)
+            return {"ok": True, "text": f"Used {grams:,.1f} g of spool #{sid}."}
+        spoolman_call("PUT", f"spool/{sid}/measure", {"weight": round(grams, 1)})
+        return {"ok": True, "text": f"Spool #{sid} set from a scale weight of {grams:,.1f} g."}
+    if action in ("archive", "unarchive"):
+        spoolman_call("PATCH", f"spool/{sid}", {"archived": action == "archive"})
+        return {"ok": True, "text": f"Spool #{sid} {action}d."}
+    if action == "move":
+        location = data.get("location")
+        if not isinstance(location, str) or len(location.strip()) > LOCATION_MAX:
+            return no(f"A location is text of at most {LOCATION_MAX} characters.")
+        location = " ".join(location.split())
+        spoolman_call("PATCH", f"spool/{sid}", {"location": location or None})
+        return {"ok": True, "text": f"Spool #{sid} moved to {location}." if location else f"Spool #{sid} has no location now."}
+    if action == "add":
+        fid = _pos_int(data.get("filament"))
+        if fid is None:
+            return no("That spool has no filament to copy.")
+        made = spoolman_call("POST", "spool", {"filament_id": fid}) or {}
+        return {"ok": True, "text": f"Added spool #{made.get('id', '?')} of the same filament."}
+    url = clean_url(get_settings().get("spoolman_url"))
+    if open_url(f"{url}/spool/show/{sid}"):
+        return {"ok": True, "text": f"Opened spool #{sid} in Spoolman."}
+    return no(f"Could not open {url}/spool/show/{sid}.")
+
+
+def spool_action(data: object) -> dict:
+    """Run one card action; {"ok": bool, "text": str} (plus "locations" for that action). Never raises."""
+    data = data if isinstance(data, dict) else {}
+    action = data.get("action")
+    if action == "show_archived":
+        save_display({**display_settings(), "archived": data.get("on") is True})
+        return {"ok": True, "text": ""}
+    if action != "locations" and action not in SPOOL_ACTIONS:
+        return {"ok": False, "text": "Unknown spool action."}
+    if source() != "spoolman":
+        return {"ok": False, "text": "Spool actions need Spoolman as the source."}
+    sid = _pos_int(data.get("id"))
+    if sid is None and action != "locations":
+        return {"ok": False, "text": "No spool chosen."}
+    try:
+        if action == "locations":
+            found = spoolman_call("GET", "location")
+            return {"ok": True, "text": "",
+                    "locations": [x for x in found if isinstance(x, str)] if isinstance(found, list) else []}
+        return _spool_write(action, sid, data)
+    except Exception as exc:
+        detail = ""
+        if isinstance(exc, urllib.error.HTTPError):
+            try:
+                detail = json.loads(exc.read().decode("utf-8")).get("message") or ""
+            except Exception:
+                detail = ""
+        log.warning("Spool action %s on #%s failed: %s", action, sid, exc)
+        return {"ok": False, "text": _spoolman_error(exc) + (f": {detail}" if isinstance(detail, str) and detail else "")}
+
+
+def start_spool_action(data: object, post) -> None:
+    """Run a card action off the UI thread and post {"type": "action_result", ...}. The page asks
+    for a refresh when it gets it, so the list is re-read on the UI thread."""
+    action = data.get("action") if isinstance(data, dict) else None
+
+    def work():
+        result = spool_action(data)
+        if action != "locations":
+            _spool_cache["time"] = 0.0
+        post({"type": "action_result", "action": action, **result})
+    threading.Thread(target=work, daemon=True).start()
 
 
 def usage_book(entry_id: str, chosen: list | None) -> None:
@@ -3466,8 +3577,7 @@ def spoolman_currency(url: str) -> str:
         return _cur["code"]
     code = "EUR"
     try:
-        with urllib.request.urlopen(f"{url}/api/v1/setting/currency", timeout=TIMEOUT) as resp:
-            val = json.loads(resp.read().decode("utf-8")).get("value")
+        val = _spoolman_open(url, "setting/currency").get("value")
         val = json.loads(val) if isinstance(val, str) and val.startswith('"') else val
         if isinstance(val, str) and re.fullmatch(r"[A-Za-z]{3}", val.strip()):
             code = val.strip().upper()
@@ -3951,7 +4061,7 @@ def plate_spools(url: str) -> list[dict] | None:
     if _spool_cache["url"] == url and age < CACHE_SECS:
         return _spool_cache["spools"]
     result = load_spools()
-    return result["spools"] if result["ok"] else None
+    return active_spools(result["spools"]) if result["ok"] else None
 
 
 def plate_rows(results: list[dict]) -> list[dict]:
@@ -4215,6 +4325,20 @@ MAIN_PAGE = """
   }
   .spool-bar-fill { height: 100%; border-radius: 3px; }
   .spool-pct { font-size: 12px; color: var(--orca-muted); }
+  .spool-card.archived > .spool-body { opacity: 0.5; }
+  .spool-more {
+    background: transparent; color: var(--orca-muted); border: 1px solid transparent; border-radius: 5px;
+    padding: 0 5px; font-size: 15px; line-height: 18px; cursor: pointer; flex-shrink: 0;
+  }
+  .spool-more:hover, .spool-more[aria-expanded="true"] { color: var(--orca-fg); border-color: var(--orca-border); }
+  .spool-more:focus-visible, .spool-menu :focus-visible { outline: 2px solid var(--orca-accent); outline-offset: 1px; }
+  .spool-menu { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 9px; padding-top: 9px; border-top: 1px solid var(--orca-border); }
+  .spool-menu .sp-in {
+    flex: 1 1 140px; min-width: 0; padding: 5px 8px; font-size: 12px; border-radius: 6px;
+    border: 1px solid var(--orca-border); background: var(--orca-bg); color: var(--orca-fg);
+  }
+  .spool-menu .sp-note { flex-basis: 100%; font-size: 11px; color: #d9534f; }
+  .arch-toggle { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--orca-muted); cursor: pointer; }
   .spool-weight.low .spool-pct { color: inherit; opacity: 0.8; }
   .use-chip {
     margin-left: 6px; padding: 1px 7px; border-radius: 99px; white-space: nowrap;
@@ -4565,6 +4689,7 @@ MAIN_PAGE = """
       <option value="plate" disabled>Sort: On This Plate</option>
     </select>
     <button class="sort-dir" id="sort-dir" title="Toggle ascending/descending">&#9650;</button>
+    <label class="arch-toggle" id="arch-row" hidden><input type="checkbox" id="show-archived">Show archived</label>
   </div>
   </div>
 
@@ -4614,6 +4739,13 @@ MAIN_PAGE = """
     const plateSort = sortKeyEl.querySelector('option[value="plate"]');
 
     let allSpools = [];
+    // Card actions: the open menu {id, mode: "" | "weigh" | "use" | "move", armed, val}; only for Spoolman.
+    let spoolSource = "spoolman";
+    let menu = null;
+    let locations = [];
+    let actionNote = null;
+    let noteTimer = 0;
+    const archEl = document.getElementById("show-archived");
     let lowStockGrams = __LOW_STOCK_DEFAULT__;
     let wMode = "both";
     let cart = false;
@@ -4962,7 +5094,7 @@ MAIN_PAGE = """
       const color = t.colour ? "#" + t.colour : "#888";
       const pct = t.remain === null ? null : Math.round(t.remain);
       const profile = (t.profile || "").split("/").pop();
-      const spool = t.spool != null ? allSpools.find(function (s) { return String(s.id) === String(t.spool); }) : null;
+      const spool = t.spool != null ? allSpools.find(function (s) { return String(s.id) === String(t.spool) && !s.archived; }) : null;
       const f = (spool || {}).filament || {};
       const vendor = (f.vendor || {}).name || "";
       const sub = [shown("head_vendor") ? vendor : "", shown("head_material") ? t.type : "",
@@ -5223,7 +5355,7 @@ MAIN_PAGE = """
     function renderPrinters() {
       renderProgress();
       const byId = new Map();
-      allSpools.forEach(function (s) { byId.set(String(s.id), s); });
+      allSpools.forEach(function (s) { if (!s.archived) byId.set(String(s.id), s); });
       let html = cfg.map(function (p) { return manualPanel(p, byId); }).join("") + linked.map(linkedPanel).join("");
       if (!cfg.length && !linked.length) {
         html += '<div class="empty">No printers yet. Add your printer, then choose the spool in each slot.</div>';
@@ -5886,8 +6018,12 @@ MAIN_PAGE = """
             '</svg>' +
           '</div>'
         : '';
+      const actions = spoolSource === "spoolman" && s.id != null;
+      const open = actions && menu && menu.id === s.id;
+      const moreHtml = actions ? '<button type="button" class="spool-more" data-act="sp-menu" data-id="' + esc(s.id) +
+        '" aria-haspopup="menu" aria-expanded="' + !!open + '" aria-label="Actions for ' + esc(name) + '" title="Spool actions">&#8943;</button>' : '';
       return (
-        '<div class="spool-card" title="' + tip.replace(/"/g, "&quot;") + '">' +
+        '<div class="spool-card' + (s.archived ? ' archived' : '') + '" title="' + tip.replace(/"/g, "&quot;") + '">' +
           '<div class="spool-body">' +
             '<div class="spool-swatch-col">' +
               '<div class="spool-swatch" style="background:' + color + ring + '"></div>' +
@@ -5896,7 +6032,7 @@ MAIN_PAGE = """
             '<div class="spool-main">' +
               '<div class="spool-top">' +
                 '<div class="spool-title">' + esc(name) + dupeHtml + '</div>' +
-                '<div class="spool-weight' + (tint ? ' low" style="color:' + tint : '') + '">' + wHtml + cartHtml + '</div>' +
+                '<div class="spool-weight' + (tint ? ' low" style="color:' + tint : '') + '">' + wHtml + cartHtml + moreHtml + '</div>' +
               '</div>' +
               (shown("bar") ? '<div class="spool-bar-track" title="' + percentTitle + '">' +
                 '<div class="spool-bar-fill" style="width:' + (percent === null ? 0 : percent) + '%;background:' + main + '"></div>' +
@@ -5904,8 +6040,83 @@ MAIN_PAGE = """
               '<div class="spool-subtitle"><span class="sub-text">' + subtitle + '</span>' + chipHtml + '</div>' +
             '</div>' +
           '</div>' +
+          (open ? spoolMenuHtml(s) : '') +
         '</div>'
       );
+    }
+
+    function spoolMenuHtml(s) {
+      const id = ' data-id="' + esc(s.id) + '"';
+      const btn = function (act, label, armedLabel) {
+        const on = armedLabel && menu.armed === act;
+        return '<button type="button" role="menuitem" class="sbtn' + (on ? ' armed' : '') + '" data-act="' + act + '"' + id + '>' +
+          (on ? armedLabel : label) + '</button>';
+      };
+      let body;
+      if (menu.mode) {
+        const move = menu.mode === "move";
+        const hint = move ? "Location" : menu.mode === "weigh" ? "Spool on the scale, in g" : "Grams used";
+        const opts = [...new Set(locations.concat(allSpools.map(function (x) { return x.location; })))]
+          .filter(Boolean).sort().map(function (l) { return '<option value="' + esc(l) + '"></option>'; }).join("");
+        body = (move
+          ? '<input class="sp-in" type="text" maxlength="64" list="sp-locs" aria-label="' + hint + '" placeholder="' + hint + '" value="' + esc(menu.val) + '"><datalist id="sp-locs">' + opts + '</datalist>'
+          : '<input class="sp-in" type="number" min="0" step="0.1" inputmode="decimal" aria-label="' + hint + '" placeholder="' + hint + '" value="' + esc(menu.val) + '">') +
+          btn("sp-go", "Save", move && s.u1_bound ? "Click Again to Unlink" : "") + btn("sp-back", "Cancel") +
+          (move && s.u1_bound ? '<div class="sp-note">' + esc(s.location) + ' links this spool to a U1 toolhead; moving it unlinks that toolhead.</div>' : '');
+      } else {
+        const fid = (s.filament || {}).id;
+        body = btn("sp-weigh", "Set Weight From Scale") + btn("sp-use", "Use Filament") + btn("sp-move", "Move") +
+          (s.archived ? btn("sp-unarchive", "Unarchive") : btn("sp-archive", "Archive", "Click Again to Archive")) +
+          (fid != null ? btn("sp-add", "Add Spool of This Filament", "Click Again to Add a Spool") : "") +
+          btn("sp-open", "Open in Spoolman");
+      }
+      return '<div class="spool-menu" role="menu" aria-label="Spool #' + esc(s.id) + ' actions">' + body + '</div>';
+    }
+
+    function sendAction(action, extra) {
+      orca.postMessage(Object.assign({ type: "spool_action", action: action, id: menu.id }, extra || {}));
+      menu = null;
+      actionNote = { ok: true, text: "Sending to Spoolman..." };
+    }
+
+    // One click on a card action; the two-click "armed" confirm guards the ones that change stock.
+    function spoolAct(el) {
+      const act = el.dataset.act;
+      const id = Number(el.dataset.id);
+      const s = allSpools.find(function (x) { return x.id === id; });
+      const before = menu ? menu.armed : "";
+      if (menu) menu.armed = "";
+      if (act === "sp-menu") {
+        menu = menu && menu.id === id ? null : { id: id, mode: "", armed: "", val: "" };
+      } else if (!menu || !s) {
+        menu = null;
+      } else if (act === "sp-weigh" || act === "sp-use") {
+        menu.mode = act.slice(3); menu.val = "";
+      } else if (act === "sp-move") {
+        menu.mode = "move"; menu.val = s.location || "";
+        orca.postMessage({ type: "spool_action", action: "locations" });
+      } else if (act === "sp-back") {
+        menu.mode = "";
+      } else if (act === "sp-archive" || act === "sp-add") {
+        if (before === act) sendAction(act.slice(3), { filament: (s.filament || {}).id }); else menu.armed = act;
+      } else if (act === "sp-unarchive" || act === "sp-open") {
+        sendAction(act.slice(3));
+      } else if (act === "sp-go") {
+        if (menu.mode !== "move") sendAction(menu.mode, { grams: menu.val });
+        else if (s.u1_bound && before !== act) menu.armed = act;
+        else sendAction("move", { location: menu.val });
+      }
+      applyFilters();
+      focusMenu(id);
+    }
+
+    // Re-rendering the list replaces the menu, so put the keyboard back where it was.
+    function focusMenu(id) {
+      const card = listEl.querySelector('[data-act="sp-menu"][data-id="' + id + '"]');
+      if (!card) return;
+      const target = menu && menu.id === id
+        ? card.closest(".spool-card").querySelector(".sp-in, .spool-menu .sbtn") : card;
+      if (target) target.focus();
     }
 
     function groupKeyFor(s, mode) {
@@ -6077,8 +6288,8 @@ MAIN_PAGE = """
         }
         return true;
       });
-      statusEl.className = profileNote.error ? "error" : "";
-      statusEl.textContent = filtered.length + " of " + allSpools.length + " spool" +
+      statusEl.className = (actionNote ? !actionNote.ok : profileNote.error) ? "error" : "";
+      statusEl.textContent = actionNote ? actionNote.text : filtered.length + " of " + allSpools.length + " spool" +
         (allSpools.length === 1 ? "" : "s") + (profileNote.error
           ? " \u00b7 OrcaSlicer presets not updated: " + profileNote.error
           : profileNote.count ? " \u00b7 " + profileNote.count + " OrcaSlicer filament presets" : "");
@@ -6106,11 +6317,15 @@ MAIN_PAGE = """
         return;
       }
       allSpools = payload.spools || [];
+      if (typeof payload.source === "string") spoolSource = payload.source;
+      if (menu && !allSpools.some(function (x) { return x.id === menu.id; })) menu = null;
       if (payload.profiles) profileNote = payload.profiles;
       computeDupes();
       if (typeof payload.low_stock_grams === "number") lowStockGrams = payload.low_stock_grams;
       if (typeof payload.weight_display === "string") wMode = payload.weight_display;
       if (payload.display && typeof payload.display === "object") disp = Object.assign({}, DISPLAY_DEFAULTS, payload.display);
+      archEl.checked = disp.archived === true;
+      archEl.parentElement.hidden = spoolSource !== "spoolman";
       if (typeof payload.show_cart === "boolean") cart = payload.show_cart;
       if (payload.spool_columns) listEl.classList.toggle("cols-2", payload.spool_columns === 2);
       if (Array.isArray(payload.printers)) cfg = payload.printers;
@@ -6140,6 +6355,21 @@ MAIN_PAGE = """
         if (!statsEl.hidden) askStats();
       } else if (data && data.type === "stats") {
         if (data.stats.period === stPeriod) { stData = data.stats; renderStats(); }
+      } else if (data && data.type === "action_result") {
+        if (data.action === "locations") {
+          locations = data.ok ? data.locations || [] : [];
+          if (menu && menu.mode === "move") {
+            const keep = document.activeElement;
+            applyFilters();
+            if (keep && keep.classList && keep.classList.contains("sp-in")) focusMenu(menu.id);
+          }
+          return;
+        }
+        actionNote = data.text ? { ok: data.ok, text: data.text } : null;
+        clearTimeout(noteTimer);
+        noteTimer = setTimeout(function () { actionNote = null; applyFilters(); }, 8000);
+        applyFilters();
+        orca.postMessage({ type: "refresh" });
       } else if (data && data.type === "sent") {
         statusEl.textContent = data.text;
         statusEl.className = data.ok ? "" : "error";
@@ -6153,7 +6383,20 @@ MAIN_PAGE = """
       }
     });
 
+    listEl.addEventListener("input", function (e) {
+      if (menu && e.target.classList.contains("sp-in")) menu.val = e.target.value;
+    });
     listEl.addEventListener("keydown", function (e) {
+      if (menu && e.key === "Escape") {
+        const id = menu.id;
+        menu = null; applyFilters(); focusMenu(id); return;
+      }
+      if (menu && e.key === "Enter" && e.target.classList.contains("sp-in")) {
+        e.preventDefault();
+        const go = listEl.querySelector('.spool-menu [data-act="sp-go"]');
+        if (go) spoolAct(go);
+        return;
+      }
       const card = e.target.closest(".group-card, .stack-head");
       if (card && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); toggleGroup(card); }
     });
@@ -6169,12 +6412,19 @@ MAIN_PAGE = """
     });
     document.addEventListener("click", function (e) {
       if (!colorMenu.hidden && !e.target.closest(".cpick")) openColorMenu(false);
+      if (menu && !e.target.closest(".spool-card")) { menu = null; applyFilters(); }
+    });
+    archEl.addEventListener("change", function () {
+      orca.postMessage({ type: "spool_action", action: "show_archived", on: archEl.checked });
     });
     document.addEventListener("keydown", function (e) {
       if (e.key === "Escape" && !colorMenu.hidden) { openColorMenu(false); colorBtn.focus(); }
     });
 
     listEl.addEventListener("click", function (e) {
+      const action = e.target.closest('[data-act^="sp-"]');
+      if (action) { spoolAct(action); return; }
+      if (e.target.closest(".spool-menu")) return;
       const card = e.target.closest(".group-card, .stack-head");
       if (card) { toggleGroup(card); return; }
       const btn = e.target.closest(".spool-cart");
@@ -6837,7 +7087,7 @@ SETTINGS_PAGE = """
         ["vendor", "Manufacturer tag"], ["material", "Material"], ["colour_code", "Colour code"],
         ["diameter", "Diameter"], ["rfid", "RFID badge"], ["bar", "Remaining bar"],
         ["location", "Spoolman location"], ["spool_id", "Spool number"],
-        ["exact_weight", "Exact weights (2,380 g, not 2.38 kg)"],
+        ["exact_weight", "Exact weights (2,380 g, not 2.38 kg)"], ["archived", "Show archived spools"],
       ],
       "disp-heads": [
         ["head_vendor", "Manufacturer"], ["head_material", "Material"], ["head_colour_code", "Colour code"],
@@ -7507,6 +7757,8 @@ class SpoolerWindow(orca.script.ScriptPluginCapabilityBase):
             threading.Thread(target=lambda: self._panel.post({"type": "stats", "stats": stats_data(data.get("period"))}), daemon=True).start()
         elif msg_type == "send":
             start_send(self._panel.post)
+        elif msg_type == "spool_action":
+            start_spool_action(data, self._panel.post)
         elif msg_type == "tick":
             auto_send(self._panel.post)
 
@@ -7537,7 +7789,7 @@ class SpoolerWindow(orca.script.ScriptPluginCapabilityBase):
             if panel.is_open():
                 panel.post({"type": "spools", "low_stock_grams": low_stock_grams,
                             "weight_display": weight_mode(), "show_cart": cart_on(), "display": display_settings(),
-                            "spool_columns": spool_columns(), **printer_state(), **result})
+                            "spool_columns": spool_columns(), "source": source(), **printer_state(), **result})
 
         threading.Thread(target=worker, daemon=True).start()
 
@@ -7688,6 +7940,8 @@ if _PAGES:
                     _plate.update(payload=None, slots=[])
                 elif msg_type == "send":
                     start_send(self.post_message)
+                elif msg_type == "spool_action":
+                    start_spool_action(data, self.post_message)
                 elif msg_type == "tick":
                     auto_send(self.post_message)
             except Exception:
@@ -7719,7 +7973,7 @@ if _PAGES:
                 self._refreshing = False
                 self.post_message({"type": "spools", "low_stock_grams": low_stock_grams,
                                    "weight_display": weight_mode(), "show_cart": cart_on(), "display": display_settings(),
-                                   "spool_columns": spool_columns(), **printer_state(), **result})
+                                   "spool_columns": spool_columns(), "source": source(), **printer_state(), **result})
 
             threading.Thread(target=worker, daemon=True).start()
 

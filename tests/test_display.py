@@ -186,6 +186,38 @@ console.log(JSON.stringify({{list, card}}));
             self.assertNotIn(text, visible)
         self.assertLess(visible.index("400 g"), visible.index("980 g"))  # list order kept
 
+    def test_card_menu_only_for_spoolman(self):
+        spools = self.SPOOLS + [{**self.SPOOLS[0], "id": 3, "archived": True, "location": "Snapmaker U1 T0",
+                                 "u1_bound": True}]
+        out = self.run_page(f"""
+allSpools = {json.dumps(spools)};
+disp = Object.assign({{}}, DISPLAY_DEFAULTS, {{group_same: false}});
+const out = {{}};
+spoolSource = "spoolman";
+out.closed = listHtml(allSpools);
+menu = {{id: 3, mode: "", armed: "", val: ""}};
+out.menu = listHtml(allSpools);
+menu = {{id: 3, mode: "move", armed: "sp-go", val: "Shelf"}};
+out.move = listHtml(allSpools);
+menu = {{id: 1, mode: "", armed: "sp-archive", val: ""}};
+out.armed = listHtml(allSpools);
+spoolSource = "bambu"; menu = null;
+out.bambu = listHtml(allSpools);
+console.log(JSON.stringify(out));
+""")
+        self.assertEqual(out["closed"].count('data-act="sp-menu"'), 3)
+        self.assertNotIn("spool-menu", out["closed"])
+        self.assertNotIn("sp-menu", out["bambu"])
+        menu = out["menu"]
+        for text in ("Set Weight From Scale", "Use Filament", "Move", "Unarchive", "Add Spool of This Filament",
+                     "Open in Spoolman", 'aria-expanded="true"', 'class="spool-card archived"'):
+            self.assertIn(text, menu)
+        self.assertNotIn(">Archive<", menu)
+        self.assertIn("Click Again to Unlink", out["move"])
+        self.assertIn("unlinks that toolhead", out["move"])
+        self.assertIn('value="Shelf"', out["move"])
+        self.assertIn("Click Again to Archive", out["armed"])
+
     def test_slot_names_match_the_printer_panel(self):
         out = self.run_page("""
 const one = {name: "X1", unit_label: "AMS 2 Pro", units: [{id: 0, kind: "ams", trays: []}]};

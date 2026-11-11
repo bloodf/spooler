@@ -57,8 +57,9 @@ share files in `<OrcaSlicer data folder>/spooler/`:
 - `profiles.json`: every Spooler preset by filament and printer, so u1control picks the same one.
 - `keep_slots.json`: refreshed while Keep Slots Synced runs, so u1control leaves the slots alone.
 
-u1control binds a toolhead's spool as the Spoolman location `<printer name> T<n>`. Spooler only
-reads locations, and books no filament use on the U1: u1control does that.
+u1control binds a toolhead's spool as the Spoolman location `<printer name> T<n>`. Spooler reads
+locations and changes one only when you move a spool from its card (with a second click when
+that unlinks a toolhead), and books no filament use on the U1: u1control does that.
 
 ## Testing without OrcaSlicer
 
