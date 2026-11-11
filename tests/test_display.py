@@ -240,6 +240,60 @@ console.log(JSON.stringify(Object.fromEntries(inUse)));
         out = self.run_page(self.scenario({"exact_weight": False}))
         self.assertIn("1.38 kg of 2.00 kg", out["list"])
 
+    NOTED = [{"id": 7, "remaining_weight": 500, "initial_weight": 1000, "location": "Dry box", "lot_nr": "L-42",
+              "comment": "Opened in March, dried twice, prints best at 215 degrees with the textured plate " * 3,
+              "extra": {"tag": '"04a1b2c3"', "orca_flow_ratio": "0.95", "orca_settings": '"{}"',
+                        "dryer": '"Box 2"', "bought": "2026", "empty": '""'},
+              "filament": {"id": 9, "name": "Red", "material": "PETG", "vendor": {"name": "Acme"}}}]
+
+    def noted(self, display):
+        return self.run_page(f"""
+allSpools = {json.dumps(self.NOTED)};
+disp = Object.assign({{}}, DISPLAY_DEFAULTS, {json.dumps(display)});
+console.log(JSON.stringify({{list: listHtml(allSpools)}}));
+""")["list"]
+
+    def test_comment_on_by_default_lot_and_extra_fields_off(self):
+        out = self.noted({})
+        self.assertIn('class="spool-note"', out)
+        self.assertIn("Opened in March", out)
+        self.assertNotIn("L-42", out)
+        self.assertNotIn("dryer", out)
+        out = self.noted({"comment": False})
+        self.assertNotIn("Opened in March", out)
+        self.assertNotIn("spool-note", out)
+
+    def test_lot_and_extra_fields_skip_spoolers_own_fields(self):
+        out = self.noted({"lot_nr": True, "extra_fields": True})
+        note = re.search(r'<div class="spool-note" title="([^"]*)">([^<]*)</div>', out)
+        self.assertIsNotNone(note, out)
+        title = note.group(1)
+        for text in ("Lot L-42", "dryer: Box 2", "bought: 2026", "Opened in March"):
+            self.assertIn(text, title)
+        self.assertEqual(title.count("textured plate"), 3, title)  # the full comment in the tooltip
+        for own in ("tag", "04a1b2c3", "orca_flow_ratio", "orca_settings", "empty:"):
+            self.assertNotIn(own, title)
+
+    def test_search_covers_location_lot_comment_and_spool_number(self):
+        spools = self.SPOOLS + self.NOTED
+        out = self.run_page(f"""
+const spools = {json.dumps(spools)};
+const find = (q) => spools.filter(function (s) {{ return spoolMatches(s, q); }}).map(function (s) {{ return s.id; }});
+console.log(JSON.stringify({{shelf: find("shelf b"), lot: find("l-42"), comment: find("textured"),
+  id: find("#7"), idExact: find("#1"), name: find("black"), none: find("#70")}}));
+""")
+        self.assertEqual(out, {"shelf": [2], "lot": [7], "comment": [7], "id": [7], "idExact": [1],
+                               "name": [1, 2], "none": []})
+
+    def test_spoolman_change_asks_for_a_refresh(self):
+        out = self.run_page("""
+const sent = [];
+orca.postMessage = function (m) { sent.push(m); };
+handlers.forEach(function (h) { h({type: "spool_changed"}); });
+console.log(JSON.stringify(sent));
+""")
+        self.assertEqual(out, [{"type": "refresh"}])
+
 
 if __name__ == "__main__":
     unittest.main()

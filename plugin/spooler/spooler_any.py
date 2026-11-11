@@ -6,7 +6,7 @@
 # name = "Spooler"
 # description = "Spoolman inventory for OrcaSlicer: auto-synced filament profiles and live printer slots"
 # author = "bloodf (fork of Spoolio by Dan J Moore)"
-# version = "0.15.0"
+# version = "0.16.0"
 # ///
 
 import asyncio
@@ -49,7 +49,7 @@ except (ImportError, AttributeError):
 _SLICING = hasattr(getattr(orca, "slicing", None), "SlicingPipelineCapabilityBase")
 
 PLUGIN_NAME = "Spooler"
-PLUGIN_VERSION = "0.15.0"
+PLUGIN_VERSION = "0.16.0"
 # Stamped per operating system by scripts/build.py.
 BUILD_TARGET = "any"
 
@@ -247,6 +247,9 @@ DISPLAY_DEFAULTS = {
     "bar": True,            # the remaining-weight bar
     "location": True,       # the Spoolman location
     "spool_id": False,
+    "comment": True,        # the spool's Spoolman comment, on a muted line under the details
+    "lot_nr": False,
+    "extra_fields": False,  # your own Spoolman extra fields, as name: value
     "exact_weight": True,   # 2,380 g instead of 2.38 kg
     "archived": False,      # also list archived spools (fetched only while this is on)
     # Printer tab: each slot's card
@@ -1763,7 +1766,7 @@ def _mqtt_publish(topic: str, payload: str) -> bytes:
     return _mqtt_packet(0x30, _mqtt_str(topic) + payload.encode("utf-8"))
 
 
-def _mqtt_exact(sock, size: int) -> bytes:
+def _mqtt_exact(sock, size: int, who: str = "The printer") -> bytes:
     data = b""
     deadline = time.monotonic() + 15
     while len(data) < size:
@@ -1774,7 +1777,7 @@ def _mqtt_exact(sock, size: int) -> bytes:
                 raise
             continue
         if not chunk:
-            raise ConnectionError("The printer closed the connection")
+            raise ConnectionError(f"{who} closed the connection")
         data += chunk
     return data
 
@@ -1795,6 +1798,185 @@ def _mqtt_read(sock) -> tuple[int, bytes] | None:
         if not digit & 128 or shift > 21:
             break
     return first[0], _mqtt_exact(sock, size) if size else b""
+
+
+# --- Live spool updates -------------------------------------------------------------------
+# Spoolman pushes every spool change over a WebSocket. A small RFC 6455 client listens on one
+# daemon thread and tells the open page to refresh, so a change made in Spoolman shows within a
+# second. The 60 s poll stays for when the socket can't connect (some reverse proxies drop the
+# upgrade headers).
+
+WS_GUID = b"258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
+WS_MAX = 1 << 20     # largest frame or message accepted, in bytes
+WS_KEEP = 30.0       # seconds between keepalive frames; Spoolman answers each one
+WS_DEAD = 75.0       # silence after which the socket is taken as dead
+WS_DEBOUNCE = 1.0    # a burst of changes within this many seconds refreshes once
+WS_KEY = "Live spool updates"
+_ws: dict = {"url": "", "stop": None, "post": None}
+
+
+def ws_url(spoolman_url: object) -> str:
+    """ws(s)://host[:port][/prefix]/api/v1/spool for a Spoolman address, or '' when unusable."""
+    parts = urllib.parse.urlsplit(clean_url(str(spoolman_url or "")))
+    if parts.scheme not in ("http", "https") or not parts.hostname:
+        return ""
+    scheme = "wss" if parts.scheme == "https" else "ws"
+    return urllib.parse.urlunsplit((scheme, parts.netloc, parts.path.rstrip("/") + "/api/v1/spool", "", ""))
+
+
+def _ws_frame(opcode: int, payload: bytes) -> bytes:
+    """One final client frame, masked as the protocol requires."""
+    size = len(payload)
+    if size < 126:
+        head = bytes([0x80 | opcode, 0x80 | size])
+    elif size < 65536:
+        head = bytes([0x80 | opcode, 0xFE]) + struct.pack("!H", size)
+    else:
+        head = bytes([0x80 | opcode, 0xFF]) + struct.pack("!Q", size)
+    mask = os.urandom(4)
+    return head + mask + bytes(b ^ mask[i % 4] for i, b in enumerate(payload))
+
+
+def _ws_read(sock) -> tuple[bool, int, bytes] | None:
+    """Next frame as (final, opcode, payload), or None on timeout."""
+    try:
+        first = sock.recv(1)
+    except socket.timeout:
+        return None
+    if not first:
+        raise ConnectionError("Spoolman closed the connection")
+    second = _mqtt_exact(sock, 1, "Spoolman")[0]
+    size = second & 127
+    if size == 126:
+        size = struct.unpack("!H", _mqtt_exact(sock, 2, "Spoolman"))[0]
+    elif size == 127:
+        size = struct.unpack("!Q", _mqtt_exact(sock, 8, "Spoolman"))[0]
+    if size > WS_MAX:
+        raise ConnectionError(f"Spoolman sent a {size} byte frame")
+    mask = _mqtt_exact(sock, 4, "Spoolman") if second & 128 else b""
+    data = _mqtt_exact(sock, size, "Spoolman") if size else b""
+    if mask:
+        data = bytes(b ^ mask[i % 4] for i, b in enumerate(data))
+    return bool(first[0] & 0x80), first[0] & 15, data
+
+
+def _ws_handshake(sock, url: str) -> None:
+    """Ask for the upgrade and check Spoolman's Sec-WebSocket-Accept; raises ConnectionError."""
+    parts = urllib.parse.urlsplit(url)
+    key = base64.b64encode(os.urandom(16)).decode("ascii")
+    sock.sendall((f"GET {parts.path or '/'} HTTP/1.1\r\nHost: {parts.netloc.rpartition('@')[2]}\r\n"
+                  "Upgrade: websocket\r\nConnection: Upgrade\r\n"
+                  f"Sec-WebSocket-Key: {key}\r\nSec-WebSocket-Version: 13\r\n"
+                  f"User-Agent: {PLUGIN_NAME}/{PLUGIN_VERSION}\r\n\r\n").encode("ascii"))
+    head = b""
+    while not head.endswith(b"\r\n\r\n"):  # byte by byte, so no frame is read with the headers
+        head += _mqtt_exact(sock, 1, "Spoolman")
+        if len(head) > 16384:
+            raise ConnectionError("Spoolman's upgrade answer is too long")
+    lines = head.decode("latin-1").split("\r\n")
+    if lines[0].split(" ")[1:2] != ["101"]:
+        raise ConnectionError(f"Spoolman refused the WebSocket ({lines[0].strip()})")
+    headers = {k.strip().lower(): v.strip() for k, _, v in (line.partition(":") for line in lines[1:]) if k}
+    want = base64.b64encode(hashlib.sha1(key.encode("ascii") + WS_GUID).digest()).decode("ascii")
+    if headers.get("sec-websocket-accept") != want:
+        raise ConnectionError("Spoolman's WebSocket answer has the wrong key")
+
+
+def _ws_change(text: bytes) -> bool:
+    """True for a spool added, updated or deleted event."""
+    try:
+        doc = json.loads(text.decode("utf-8"))
+    except ValueError:
+        return False
+    return (isinstance(doc, dict) and doc.get("resource") == "spool"
+            and doc.get("type") in ("added", "updated", "deleted"))
+
+
+def _ws_notify() -> None:
+    post = _ws["post"]
+    if post is None:
+        return
+    try:
+        post({"type": "spool_changed"})
+    except Exception as exc:  # the window was closed meanwhile
+        log.debug("Could not tell the page about a spool change: %s", exc)
+
+
+def _ws_listen(sock, stop: threading.Event) -> None:
+    """Read frames until stop, a close frame or silence. Expects a 1 s socket timeout."""
+    heard = sent = time.monotonic()
+    due = 0.0
+    parts: list[bytes] = []
+    while not stop.is_set():
+        now = time.monotonic()
+        if due and now >= due:
+            due = 0.0
+            _ws_notify()
+        if now - heard > WS_DEAD:
+            raise ConnectionError("Spoolman stopped answering")
+        if now - sent >= WS_KEEP:
+            sock.sendall(_ws_frame(1, b"ping"))
+            sent = now
+        frame = _ws_read(sock)
+        if frame is None:
+            continue
+        heard = time.monotonic()
+        final, opcode, data = frame
+        if opcode == 9:
+            sock.sendall(_ws_frame(10, data))
+        elif opcode == 8:
+            sock.sendall(_ws_frame(8, data[:2]))
+            return
+        elif opcode in (0, 1, 2):
+            parts = [data] if opcode else parts + [data]
+            if sum(map(len, parts)) > WS_MAX:
+                raise ConnectionError("Spoolman sent a message too large")
+            if final:
+                text, parts = b"".join(parts), []
+                if _ws_change(text):
+                    _spool_cache["time"] = 0.0
+                    due = due or time.monotonic() + WS_DEBOUNCE
+
+
+def _ws_session(url: str, stop: threading.Event) -> None:
+    parts = urllib.parse.urlsplit(url)
+    secure = parts.scheme == "wss"
+    with socket.create_connection((parts.hostname, parts.port or (443 if secure else 80)), timeout=8) as raw:
+        sock = ssl.create_default_context().wrap_socket(raw, server_hostname=parts.hostname) if secure else raw
+        with sock:
+            _ws_handshake(sock, url)
+            _report(WS_KEY, None)
+            sock.settimeout(1.0)
+            _ws_listen(sock, stop)
+
+
+def _ws_run(url: str, stop: threading.Event) -> None:
+    """Keep the socket open until stop, reconnecting with backoff; each failure is logged once."""
+    fails = 0
+    while not stop.is_set():
+        start = time.monotonic()
+        try:
+            _ws_session(url, stop)
+        except Exception as exc:
+            _report(WS_KEY, str(exc) or type(exc).__name__)
+        fails = 0 if time.monotonic() - start > WS_DEAD else fails + 1
+        stop.wait(LIVE_RETRY[min(fails, len(LIVE_RETRY) - 1)])
+
+
+def ws_sync(post) -> None:
+    """Match the live-updates socket to the settings; post tells the open page about changes.
+    None stops it (the window closed). Called on the UI thread with every refresh."""
+    _ws["post"] = post
+    url = ws_url(get_settings().get("spoolman_url")) if post is not None and source() == "spoolman" else ""
+    if url == _ws["url"]:
+        return
+    if _ws["stop"] is not None:
+        _ws["stop"].set()
+    _ws.update(url=url, stop=None)
+    if url:
+        stop = threading.Event()
+        _ws["stop"] = stop
+        threading.Thread(target=_ws_run, args=(url, stop), daemon=True).start()
 
 
 def _int(value: object, default: int = -1) -> int:
@@ -4386,6 +4568,10 @@ MAIN_PAGE = """
     font-size: 12px; color: var(--orca-muted); font-style: italic;
   }
   .sub-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .spool-note {
+    margin-top: 1px; font-size: 11.5px; color: var(--orca-muted);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
   .plate-chip {
     flex: none; margin: 5px 0 4px; padding: 3px 11px; border-radius: 99px;
     border: 1px solid var(--orca-accent); font-size: 11px; font-weight: 700; font-style: normal;
@@ -4668,7 +4854,7 @@ MAIN_PAGE = """
     <button id="filters-toggle" aria-expanded="false">Filters &#9662;</button>
   </div>
   <div class="filters">
-    <input id="search" type="search" placeholder="Filter by name..." aria-label="Filter by name">
+    <input id="search" type="search" placeholder="Filter by name, location, lot, comment or #number..." aria-label="Filter spools">
     <div class="cpick">
       <button id="color-btn" type="button" aria-haspopup="listbox" aria-expanded="false" aria-label="Filter by colour">
         <span class="cdot" id="color-dot"></span><span id="color-label">All Colours</span><span class="caret">&#9662;</span>
@@ -4760,6 +4946,7 @@ MAIN_PAGE = """
     let wMode = "both";
     let cart = false;
     const DISPLAY_DEFAULTS = __DISPLAY_DEFAULTS__;
+    const OWN_FIELDS = __OWN_FIELDS__;  // extra fields Spooler keeps for itself, never shown
     let disp = Object.assign({}, DISPLAY_DEFAULTS);
     // Settings > Display: is this part shown?
     function shown(key) { return disp[key] !== false; }
@@ -5969,6 +6156,23 @@ MAIN_PAGE = """
         ? s.initial_weight : filament.weight;
     }
 
+    // Lot number, comment and your own extra fields, as one muted line (full text on hover).
+    function noteText(s) {
+      const parts = [];
+      if (s.lot_nr && shown("lot_nr")) parts.push("Lot " + s.lot_nr);
+      if (s.comment && shown("comment")) parts.push(String(s.comment).replace(/\\s+/g, " ").trim());
+      if (s.extra && typeof s.extra === "object" && shown("extra_fields")) {
+        Object.keys(s.extra).forEach(function (key) {
+          if (OWN_FIELDS.indexOf(key) >= 0) return;
+          let value = s.extra[key];
+          try { value = JSON.parse(value); } catch (e) { /* stored as plain text */ }
+          if (value === null || value === "" || typeof value === "object") return;
+          parts.push(key + ": " + value);
+        });
+      }
+      return parts.join(" \\u00b7 ");
+    }
+
     function spoolRowHtml(s, inStack) {
       const filament = s.filament || {};
       const vendor = filament.vendor || {};
@@ -5986,6 +6190,7 @@ MAIN_PAGE = """
       if (s.location && shown("location")) subtitleParts.push(esc(s.location));
       if (shown("spool_id") && s.id != null) subtitleParts.push("#" + esc(s.id));
       const subtitle = subtitleParts.join(" \\u00b7 ");
+      const note = noteText(s);
       const tags = tagUids(s);
       const original = originalWeight(s);
       const remaining = s.remaining_weight;
@@ -6048,6 +6253,7 @@ MAIN_PAGE = """
                 '<div class="spool-bar-fill" style="width:' + (percent === null ? 0 : percent) + '%;background:' + main + '"></div>' +
               '</div>' : '') +
               '<div class="spool-subtitle"><span class="sub-text">' + subtitle + '</span>' + chipHtml + '</div>' +
+              (note ? '<div class="spool-note" title="' + esc(note) + '">' + esc(note) + '</div>' : '') +
             '</div>' +
           '</div>' +
           (open ? spoolMenuHtml(s) : '') +
@@ -6280,6 +6486,15 @@ MAIN_PAGE = """
       }).join("");
     }
 
+    // "#12" finds spool 12 only; other text looks in the name, material, manufacturer, location,
+    // lot number and comment.
+    function spoolMatches(s, query) {
+      if (/^#\\d+$/.test(query)) return String(s.id) === query.slice(1);
+      const filament = s.filament || {};
+      return [filament.name, filament.material, (filament.vendor || {}).name, s.location, s.lot_nr, s.comment]
+        .filter(Boolean).join(" ").toLowerCase().includes(query);
+    }
+
     function applyFilters() {
       filterLabel();
       const query = searchEl.value.trim().toLowerCase();
@@ -6291,12 +6506,7 @@ MAIN_PAGE = """
         if (material && filament.material !== material) return false;
         if (vendor && vendorObj.name !== vendor) return false;
         if (colorSel && colorFamily(filament) !== colorSel) return false;
-        if (query) {
-          const haystack = [filament.name, filament.material, vendorObj.name]
-            .filter(Boolean).join(" ").toLowerCase();
-          if (!haystack.includes(query)) return false;
-        }
-        return true;
+        return !query || spoolMatches(s, query);
       });
       statusEl.className = (actionNote ? !actionNote.ok : profileNote.error) ? "error" : "";
       statusEl.textContent = actionNote ? actionNote.text : filtered.length + " of " + allSpools.length + " spool" +
@@ -6365,6 +6575,8 @@ MAIN_PAGE = """
         if (!statsEl.hidden) askStats();
       } else if (data && data.type === "stats") {
         if (data.stats.period === stPeriod) { stData = data.stats; renderStats(); }
+      } else if (data && data.type === "spool_changed") {
+        orca.postMessage({ type: "refresh" });  // re-read on the UI thread, as after a card action
       } else if (data && data.type === "action_result") {
         if (data.action === "locations") {
           locations = data.ok ? data.locations || [] : [];
@@ -7154,6 +7366,7 @@ SETTINGS_PAGE = """
         ["vendor", "Manufacturer tag"], ["material", "Material"], ["colour_code", "Colour code"],
         ["diameter", "Diameter"], ["rfid", "RFID badge"], ["bar", "Remaining bar"],
         ["location", "Spoolman location"], ["spool_id", "Spool number"],
+        ["comment", "Comment"], ["lot_nr", "Lot number"], ["extra_fields", "Extra fields from Spoolman"],
         ["exact_weight", "Exact weights (2,380 g, not 2.38 kg)"], ["archived", "Show archived spools"],
       ],
       "disp-heads": [
@@ -7297,6 +7510,7 @@ def main_html() -> str:
         LOW_STOCK_DEFAULT=LOW_DEFAULT,
         REFRESH_MS=REFRESH_SECS * 1000,
         DISPLAY_DEFAULTS=json.dumps(DISPLAY_DEFAULTS),
+        OWN_FIELDS=json.dumps(["tag", ORCA_SETTINGS_FIELD, *CALIBRATION_FIELDS]),
     )
 
 
@@ -7889,6 +8103,7 @@ class SpoolerWindow(orca.script.ScriptPluginCapabilityBase):
     def on_unload(self):
         # Without this, open windows would outlive OrcaSlicer's shutdown.
         log.info("Unloading")
+        ws_sync(None)
         if self._panel is not None and self._panel.is_open():
             self._panel.close()
         if self._settings_window is not None and self._settings_window.is_open():
@@ -7923,6 +8138,7 @@ class SpoolerWindow(orca.script.ScriptPluginCapabilityBase):
     def _push_data(self):
         if self._panel is None or not self._panel.is_open():
             return
+        ws_sync(self._panel.post)
         url = self._spoolman_url()
         if source() == "spoolman" and not url:
             self._panel.post({
@@ -7953,6 +8169,7 @@ class SpoolerWindow(orca.script.ScriptPluginCapabilityBase):
 
     def _on_panel_close(self):
         self._panel = None
+        ws_sync(None)
 
     def _open_panel(self):
         if self._panel is not None and self._panel.is_open():
@@ -8110,6 +8327,7 @@ if _PAGES:
             return get_settings().get("spoolman_url", "")
 
         def _push_data(self):
+            ws_sync(self.post_message)
             url = self._spoolman_url()
             if source() == "spoolman" and not url:
                 self.post_message({
@@ -8293,6 +8511,7 @@ if _PAGES:
 
         def on_unload(self):
             log.info("Unloading")
+            ws_sync(None)
 
 
 if _SLICING:

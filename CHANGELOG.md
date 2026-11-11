@@ -3,6 +3,23 @@
 Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); entries before
 0.9.0 are Spoolio's.
 
+## [0.16.0] - Unreleased
+
+### Added
+- The spool list updates by itself when spools change in Spoolman: add, edit, use or delete a spool
+  there (or have a printer book filament to it) and the Spools tab shows it within a second or two,
+  instead of at the next 60 second refresh. Several changes in a row refresh the list once. When
+  Spoolman can't be reached this way (some reverse proxies block it), the list keeps refreshing
+  every 60 seconds as before, and the log says so once.
+- Spool cards can show the spool's comment, lot number and your own Spoolman extra fields, on a
+  muted line under the details. Long text is cut short on the card; hover it to read it all. The
+  comment is shown by default; lot number and extra fields are switched on in Settings > Display.
+  Spooler's own fields (the RFID tag and its calibration fields) are never listed.
+
+### Changed
+- The search box also finds spools by location, lot number and comment, and `#12` finds spool 12
+  and only that one.
+
 ## [0.15.0] - Unreleased
 
 ### Added

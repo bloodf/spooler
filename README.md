@@ -70,6 +70,12 @@ the rest is automatic.
   toolhead's location, since that unlinks it in u1control. ***Show archived*** in the filters
   lists archived spools, dimmed; they still never count for presets, the filament check or the
   printer slots.
+- **The list follows Spoolman live.** A spool added, changed, used or deleted in Spoolman shows on
+  the Spools tab within a second or two, over Spoolman's WebSocket; the 60 second refresh stays as
+  the fallback.
+- **Comment, lot number and extra fields on the card.** Each spool card can show its Spoolman
+  comment, lot number and your own extra fields on a muted line (hover for the full text). Search
+  also matches location, lot number and comment, and `#12` finds spool 12.
 - **You choose what's shown.** Settings > Display switches each part of the spool list and of the
   printer slots on or off; printer slots can show the loaded spool in full (manufacturer, grams
   left, spool number, location, preset).
@@ -131,6 +137,10 @@ Link, filament usage booking, the Stats tab and the after-slice filament check.
   Spoolman*** instead.
 - Card actions need Spoolman as the source; Bambu Cloud spools have none. Set Weight From Scale
   needs the spool's empty weight (or the filament's) in Spoolman.
+- Live list updates need Spoolman's WebSocket (`/api/v1/spool`) to be reachable from OrcaSlicer.
+  Behind a reverse proxy, the proxy must pass the `Upgrade` and `Connection` headers (nginx:
+  `proxy_set_header Upgrade $http_upgrade; proxy_set_header Connection "upgrade";`). Without it
+  the list still refreshes every 60 seconds.
 - Filament usage on Klipper printers is best tracked by Moonraker's own
   [Spoolman integration](https://moonraker.readthedocs.io/en/latest/configuration/#spoolman).
 
