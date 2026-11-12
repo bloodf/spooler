@@ -4,7 +4,7 @@
 The plugin's real page is rendered with demo data (demo_spools.json, a Snapmaker U1 and a
 Sovol SV06), framed in the brand layout and captured with headless Google Chrome:
 
-    python scripts/store_images/render.py [--chrome PATH]
+    python scripts/store_images/render.py [--chrome PATH] [--out PATH]
 
 Re-run it after changing the plugin's interface so the images stay true to it.
 """
@@ -12,6 +12,7 @@ Re-run it after changing the plugin's interface so the images stay true to it.
 import argparse
 import html
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -136,6 +137,7 @@ def demo_state(sp):
            {"id": "auto-sv06", "name": "Sovol SV06", "units": [], "ip": "http://192.168.1.41", "serial": "",
             "kind": "moonraker", "auto": True, "has_code": True}]
     spools_msg = {"type": "spools", "ok": True, "spools": spools, "low_stock_grams": 100,
+                  "show_printer_tab": True,
                   "weight_display": "both", "show_cart": False, "spool_columns": 2,
                   "printers": cfg, "live_ok": True, "usage": {"mode": "off", "runs": []},
                   "progress": sp.progress_settings(), "profiles": {"count": 24, "error": ""}}
@@ -150,6 +152,8 @@ def plugin_page(sp, view: str, spools_msg: dict, live_msg: dict, wizard_step: in
                        columns=2, progress=sp.progress_settings(), wizard=wizard_step is not None)
     bridge = f"""<style>{ORCA_THEME}</style><script>
 (function () {{
+  window.addEventListener('error', function(e) {{ document.documentElement.dataset.renderError = e.message; }});
+  window.addEventListener('unhandledrejection', function(e) {{ document.documentElement.dataset.renderError = String(e.reason); }});
   var handlers = [];
   var spools = {json.dumps(spools_msg)};
   var live = {json.dumps(live_msg)};
@@ -171,9 +175,25 @@ def plugin_page(sp, view: str, spools_msg: dict, live_msg: dict, wizard_step: in
   window.addEventListener("load", function () {{
     setTimeout(function () {{
       var tab = document.querySelector('[data-tab="{'printer' if view == 'printer' else 'spools'}"]');
-      if (tab) tab.click();
-      for (var i = 0; i < {wizard_step or 0}; i++) window.__spoolerWizard.next();
+      if ({json.dumps(view != 'settings')}) {{
+        if (!tab) throw Error('Requested tab is not available');
+        tab.click();
+      }}
+      if ({json.dumps(wizard_step is not None)}) {{
+        var remaining = {wizard_step or 0};
+        function advance() {{
+          if (!remaining) return;
+          var next = document.querySelector('[data-test="wiz-next"]');
+          if (!next || next.disabled) throw Error('Wizard step is not available');
+          next.click(); remaining--; setTimeout(advance, 100);
+        }}
+        advance();
+      }}
     }}, 200);
+    setTimeout(function () {{
+      if (!document.querySelector('#app .p-button')) throw Error('Vue did not mount');
+      document.documentElement.dataset.renderReady = 'true';
+    }}, 1200);
   }});
 }})();
 </script>"""
@@ -222,7 +242,6 @@ h3 {{ margin: 0 0 16px; font-size: 16px; font-weight: 600; }}
 def frame(screen: dict, inner: str, inner_height: int) -> str:
     points = "".join(f"<li>{html.escape(p)}</li>" for p in screen["points"])
     return f"""<!doctype html><html><head><meta charset="utf-8">
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 * {{ box-sizing: border-box; }}
 html, body {{ margin: 0; width: 1920px; height: 1080px; overflow: hidden; }}
@@ -249,7 +268,16 @@ footer {{ position: absolute; left: 90px; bottom: 54px; font-size: 19px; color: 
 <div class="left"><div class="brand"><svg viewBox="0 0 256 256">{SYMBOL}</svg><img src="{WORDMARK}" alt="Spooler"></div>
 <h1><span>{screen["title"]}</span></h1><ul>{points}</ul></div>
 <div class="window"><iframe src="{inner}"></iframe></div>
-<footer>Independent community project, based on Spoolio. Not affiliated with OrcaSlicer, Spoolman, Snapmaker, Sovol, Anycubic or Bambu Lab.</footer>
+<footer>MOCK preview · Independent community project, based on Spoolio. Not affiliated with OrcaSlicer or printer manufacturers.</footer>
+<script>
+setTimeout(function () {{
+  const inner = document.querySelector('iframe').contentDocument;
+  const ok = inner && !inner.documentElement.dataset.renderError &&
+    ({str(screen['page'] == 'presets').lower()} || inner.documentElement.dataset.renderReady === 'true');
+  document.documentElement.dataset.renderReady = String(!!ok);
+  if (!ok) document.documentElement.dataset.renderError = inner?.documentElement.dataset.renderError || 'Vue preview did not finish';
+}}, 2500);
+</script>
 </body></html>"""
 
 
@@ -264,11 +292,12 @@ def find_chrome(given: str | None) -> str:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument("--chrome", help="path to Google Chrome or Chromium")
+    parser.add_argument("--out", type=Path, default=OUT, help="output folder (use a temporary folder to preserve published artwork)")
     args = parser.parse_args()
     chrome = find_chrome(args.chrome)
     sp, _ = load()
     spools_msg, live_msg = demo_state(sp)
-    OUT.mkdir(parents=True, exist_ok=True)
+    args.out.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory() as tmp:
         work = Path(tmp)
         for screen in SCREENS:
@@ -281,17 +310,12 @@ def main() -> None:
                                     spools_msg, live_msg, 1 if screen["page"] == "wizard" else None)
             (work / f"{stem}-inner.html").write_text(inner, encoding="utf-8")
             (work / f"{stem}.html").write_text(frame(screen, f"{stem}-inner.html", height), encoding="utf-8")
-            out = OUT / screen["file"]
-            run = subprocess.run([chrome, "--headless=new", "--disable-gpu", "--hide-scrollbars",
-                                  f"--user-data-dir={work / 'chrome-profile'}", "--no-first-run",
-                                  "--no-default-browser-check",
-                                  "--allow-file-access-from-files", "--force-device-scale-factor=1",
-                                  "--window-size=1920,1080", "--timeout=5000",
-                                  f"--screenshot={out}", (work / f"{stem}.html").as_uri()],
-                                 capture_output=True, text=True, timeout=90)
-            if not out.exists() or "bytes written" not in run.stdout + run.stderr:
-                sys.exit(f"Chrome could not render {out.name}:\n{run.stderr[-2000:]}")
-            print("rendered", out.relative_to(ROOT))
+            out = args.out.resolve() / screen["file"]
+            # The test launcher supplies --use-mock-keychain --password-store=basic.
+            subprocess.run(["node", str(ROOT / "scripts/render_page.mjs"), (work / f"{stem}.html").as_uri(),
+                            str(out), "1920", "1080", "1", "true", str(args.out.resolve())],
+                           env={**os.environ, "CHROME": chrome}, check=True, timeout=90)
+            print("rendered MOCK", out)
 
 
 if __name__ == "__main__":

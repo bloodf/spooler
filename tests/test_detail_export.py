@@ -1,11 +1,9 @@
 import csv
-import json
 import time
 import unittest
 from pathlib import Path
 from unittest import mock
 
-import test_display
 from test_stats import StatsBase, entry, row, sp
 
 
@@ -99,49 +97,6 @@ class TotalsTest(StatsBase):
 
 
 # Borrows the page runner only; subclassing PageScriptTest would run all its tests again here.
-@unittest.skipUnless(test_display.NODE, "node is needed to run the page script")
-class PageTest(unittest.TestCase):
-    run_page = test_display.PageScriptTest.run_page
-
-    def test_detail_render(self):
-        d = {"id": 1, "sign": "£", "grams": 80.0, "cost": 2.5, "rate": 20.0, "weeks": 5.0,
-             "prints": [{"time": 1700000000, "name": "<b>Benchy</b>", "grams": 40.0, "cost": 1.0}]}
-        out = self.run_page(f"console.log(JSON.stringify({{full: detailHtml({json.dumps(d)}), empty: detailHtml({{prints: []}}), wait: detailHtml(null)}}));")
-        self.assertIn("1 print", out["full"])
-        self.assertIn("20 g a week", out["full"])
-        self.assertIn("about 5 weeks left", out["full"])
-        self.assertIn("£2.50", out["full"])
-        self.assertIn("&lt;b&gt;Benchy", out["full"])
-        self.assertIn("No prints booked", out["empty"])
-
-    def test_stats_tiles_and_failed_marker(self):
-        d = {"period": "30", "since": 1700000000, "code": "GBP", "sign": "£", "grams": 10, "prints": 1, "cost": 0.5, "low": 0,
-             "mats": [], "top": [], "weeks": [], "soon": [], "waste": None, "worst": [],
-             "failed": {"prints": 1, "g": 10.0, "cost": 0.5}, "shelf": {"g": 850.0, "value": 20.0, "unpriced": 1, "mats": [{"name": "PLA", "g": 600.0, "value": 10.0}]},
-             "history": [{"time": 1700000000, "name": "x", "printer": "P", "result": "cancelled", "pct": 40,
-                          "rows": [{"spool": 1, "grams": 10.0, "label": "a", "material": "PLA", "colour": "ff0000", "cost": 0.5}]}]}
-        out = self.run_page(f"stData = {json.dumps(d)}; phOpen = true; renderStats(); console.log(JSON.stringify({{html: statsEl.innerHTML, shelf: stShelf(stData)}}));")
-        self.assertIn("On the Shelf", out["html"])
-        self.assertIn("Lost to Failed Prints", out["html"])
-        self.assertIn("lost 10.0 g", out["html"])
-        self.assertIn("Export to CSV", out["html"])
-        self.assertIn("PLA", out["shelf"])
-
-    def test_colour_ranking_matches_python(self):
-        target = "#c8501e"
-        cols = ["c85032", "ff0000", "00ff00", "112233", "c8501e", "zzzzzz"]
-        py = sorted((c for c in cols if sp.colour_diff(c, target) is not None), key=lambda c: sp.colour_diff(c, target))
-        spools = [{"id": i, "filament": {"color_hex": c}} for i, c in enumerate(cols)]
-        spools.append({"id": 9, "filament": {"color_hex": "000000", "multi_color_hexes": "ffffff,c85033"}})
-        out = self.run_page(f"console.log(JSON.stringify({{r: closestSpools({json.dumps(spools)}, '{target}').map(s => s.id),"
-                            f" d: {json.dumps(cols)}.map(c => colourDiff(c, '{target}'))}}));")
-        ids = [cols.index(c) for c in py]
-        order = [i for i in out["r"] if i != 9]
-        self.assertEqual(order, ids)
-        self.assertLess(out["r"].index(9), out["r"].index(1))
-        for c, d in zip(cols, out["d"]):
-            py_d = sp.colour_diff(c, target)
-            self.assertTrue((py_d is None and d is None) or abs(py_d - d) < 1e-9)
 
 
 if __name__ == "__main__":

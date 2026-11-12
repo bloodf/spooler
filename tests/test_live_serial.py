@@ -45,7 +45,7 @@ class TopicRefusedTest(unittest.TestCase):
     def run_session(self, suback: bytes):
         packets = iter([(2, b"\x00\x00"), (9, suback)])
         original = sp._mqtt_read
-        sp._mqtt_read = lambda sock: (lambda p: (p[0] << 4, p[1]))(next(packets))
+        sp._mqtt_read = lambda sock, alive=None: (lambda p: (p[0] << 4, p[1]))(next(packets))
         try:
             sp._mqtt_run(FakeSock(b""), "bblp", "code", ["device/+/report"], [], lambda *a: None, lambda: True)
         finally:

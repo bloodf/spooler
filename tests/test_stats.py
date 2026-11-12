@@ -188,18 +188,7 @@ class WasteTest(StatsBase):
         self.assertIsNone(data["waste"])
         self.assertEqual(data["worst"], [])
 
-    def test_stats_page_shows_the_waste(self):
-        page = sp.main_html()
-        for text in ("Wasted Filament", "Usage Ratios", "MOST WASTEFUL PRINTS", '<th class="r">Waste</th>'):
-            self.assertIn(text, page)
-        self.assertNotIn("Spoolio reads", page)
 
-    def test_stats_settings_come_last(self):
-        tab = sp.tab_html("settings", "http://x", 100.0)
-        self.assertGreater(tab.index("Configure Stats"), tab.index("Configure Printer"))
-        page = sp.settings_html("http://x", {"ok": False}, 100.0)
-        self.assertGreater(page.index("Configure Stats"), page.index("Configure Printer"))
-        self.assertGreater(page.index("Configure Stats"), page.index('id="bambu-status"'))
 
 
 if __name__ == "__main__":

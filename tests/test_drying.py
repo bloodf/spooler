@@ -9,7 +9,6 @@ from pathlib import Path
 from unittest import mock
 
 from plugin_loader import load
-from test_display import PageScriptTest as DisplayPage
 
 sp, orca = load()
 TODAY = datetime.date(2026, 11, 11)
@@ -66,10 +65,8 @@ class MaterialTest(Store):
         page._check_connection = lambda *a, **k: None
         page._open_settings()
         self.assertEqual(page.posted[-1]["drying"], {"HIPS": 9})
-        tab = sp.tab_html("main", "http://x", 100.0)
-        self.assertIn("window.__spoolerSetDrying(data.drying)", tab)
-        self.assertIn('id="dry-body"', tab)
-        self.assertIn("drying: dryPick()", sp.settings_html("http://x", {"ok": False}, 100.0))
+        # The page reseeding its table from show_view, and sending drying with save, is a page scenario now
+        # (ui/tests/page/run.mjs, "settings: one switch per Display option, drying table…").
 
     def test_spools_carry_their_reminder_days(self):
         with mock.patch.object(sp, "get_spools", return_value={"ok": True, "spools": [spool(1), spool(2, "PLA")]}), \
@@ -101,19 +98,21 @@ class FieldAndActionTest(Store):
             sp.ensure_fields()
         self.assertEqual([c for c in calls if c[0] == "POST"], [])
 
-    def act(self, action, current):
+    def act(self, action, current, version=(0, 26, 0)):
         calls = []
 
         def fake(method, path, body=None):
             calls.append((method, path, body))
             return current if (method, path) == ("GET", "spool/7") else {}
 
-        with mock.patch.object(sp, "spoolman_call", fake), mock.patch.object(sp, "ensure_fields"):
+        with mock.patch.object(sp, "spoolman_call", fake), mock.patch.object(sp, "ensure_fields"), \
+                mock.patch.object(sp, "spoolman_version", lambda: version), \
+                mock.patch.object(sp, "today", lambda: datetime.date(2026, 11, 11)):
             result = sp.spool_action({"action": action, "id": 7})
         return result, [c for c in calls if c[0] == "PATCH"]
 
-    # Spoolman merges a PATCH's extra into the spool's: only the keys sent change, and a key sent
-    # as null is removed. So each action sends its own field only, and never re-sends the others.
+    # From Spoolman 0.26.0 a PATCH's extra is merged into the spool's: only the keys sent change, and
+    # a key sent as null is removed. So each action sends its own field only, and never re-sends the others.
     def test_mark_dried_sends_only_its_field(self):
         result, patches = self.act("dried", {"id": 7, "extra": {"tag": '"04A1"', "dried": '"2025-01-01T00:00:00+00:00"'}})
         self.assertTrue(result["ok"], result)
@@ -123,6 +122,25 @@ class FieldAndActionTest(Store):
         result, patches = self.act("clear_dried", {"id": 7, "extra": {"tag": '"04A1"', "dried": '"2025-01-01"'}})
         self.assertTrue(result["ok"], result)
         self.assertEqual(patches, [("PATCH", "spool/7", {"extra": {"dried": None}})])
+
+    # Before 0.26.0 a PATCH's extra replaced the whole map: the other fields are read again and sent back.
+    def test_older_spoolman_keeps_the_other_extra_fields(self):
+        current = {"id": 7, "extra": {"tag": '"04A1"', "orca_flow_ratio": "0.98", "dried": '"2025-01-01T00:00:00+00:00"'}}
+        result, patches = self.act("dried", current, version=(0, 25, 0))
+        self.assertTrue(result["ok"], result)
+        self.assertEqual(patches, [("PATCH", "spool/7", {"extra": {
+            "tag": '"04A1"', "orca_flow_ratio": "0.98", "dried": '"2026-11-11T00:00:00+00:00"'}})])
+        result, patches = self.act("clear_dried", current, version=(0, 23, 1))
+        self.assertTrue(result["ok"], result)
+        self.assertEqual(patches, [("PATCH", "spool/7", {"extra": {"tag": '"04A1"', "orca_flow_ratio": "0.98"}})])
+
+    def test_unknown_version_or_unreadable_extras_write_nothing(self):
+        result, patches = self.act("dried", {"id": 7, "extra": {"tag": '"04A1"'}}, version=None)
+        self.assertEqual((result["ok"], patches), (False, []))
+        self.assertIn("Nothing was written", result["text"])
+        for bad in ({"id": 7}, {"id": 7, "extra": ["x"]}, {"id": 7, "extra": {"tag": 5}}, None):
+            result, patches = self.act("clear_dried", bad, version=(0, 25, 0))
+            self.assertEqual((result["ok"], patches), (False, []), bad)
 
     def test_needs_spoolman_and_a_spool(self):
         self.assertFalse(sp.spool_action({"action": "dried"})["ok"])
@@ -173,77 +191,6 @@ class PlateNoticeTest(Store):
         self.assertIn("quantity OK", text)
 
 
-class ChipTest(DisplayPage):
-    """The card chip and menu, run in node. 2026-11-11 is the page's "today" (noon, local time)."""
-    NOW = "new Date(2026, 10, 11, 12).getTime()"
-    run_page = DisplayPage.run_page
-
-    def chips(self, spools, flags="{}"):
-        return self.run_page(f"""
-disp = Object.assign({{}}, DISPLAY_DEFAULTS, {flags});
-const now = {self.NOW};
-const out = {{ chips: {json.dumps(spools)}.map(function (s) {{ return driedChip(s, now); }}) }};
-console.log(JSON.stringify(out));
-""")["chips"]
-
-    def test_age_text_and_colour_threshold(self):
-        rows = [
-            {"extra": {"dried": '"2026-11-11T00:00:00+00:00"'}, "dry_days": 30},   # today
-            {"extra": {"dried": '"2026-11-10T00:00:00+00:00"'}, "dry_days": 30},   # 1 d
-            {"extra": {"dried": '"2026-10-30T00:00:00+00:00"'}, "dry_days": 30},   # 12 d, fresh
-            {"extra": {"dried": '"2026-10-12T00:00:00+00:00"'}, "dry_days": 30},   # 30 d, exactly at the limit
-            {"extra": {"dried": '"2026-10-11T00:00:00+00:00"'}, "dry_days": 30},   # 31 d, over
-            {"extra": {"dried": '"2025-01-01"'}, "dry_days": 0},                    # old but no reminder
-            {"extra": {"dried": '"2026-12-01"'}, "dry_days": 7},                    # future date
-            {"extra": {}, "dry_days": 30}, {"dry_days": 30}, {"extra": {"dried": "garbage"}},
-        ]
-        chips = self.chips(rows)
-        self.assertIn("Dried today", chips[0])
-        self.assertIn("Dried 1 d ago", chips[1])
-        self.assertIn("Dried 12 d ago", chips[2])
-        self.assertNotIn(" old", chips[2])
-        self.assertNotIn(" old", chips[3])
-        self.assertIn(" old", chips[4])
-        self.assertNotIn(" old", chips[5])
-        self.assertIn("Dried today", chips[6])
-        self.assertEqual(chips[7:], ["", "", ""])
-
-    def test_flag_hides_it_and_the_card_shows_it(self):
-        self.assertEqual(self.chips([{"extra": {"dried": '"2026-11-10"'}}], "{dried: false}"), [""])
-        out = self.run_page(f"""
-allSpools = {json.dumps([{**spool(1), "extra": {"dried": '"2026-11-10"', "dryer": '"Box 2"'}, "dry_days": 30}])};
-disp = Object.assign({{}}, DISPLAY_DEFAULTS, {{group_same: false, extra_fields: true}});
-spoolSource = "spoolman";
-const out = {{ card: listHtml(allSpools) }};
-console.log(JSON.stringify(out));
-""")["card"]
-        self.assertIn("dry-chip", out)
-        self.assertNotIn("dried:", out)  # Spooler's own field never shows in the extra-fields line
-        self.assertIn("dryer: Box 2", out)
-
-    def test_menu_has_mark_and_only_then_clear(self):
-        out = self.run_page(f"""
-const marked = Object.assign({json.dumps(spool(1))}, {{ extra: {{ dried: '"2026-11-10"' }} }});
-disp = Object.assign({{}}, DISPLAY_DEFAULTS, {{group_same: false}});
-spoolSource = "spoolman";
-allSpools = [marked, {json.dumps(spool(2))}];
-const sent = [];
-orca.postMessage = function (m) {{ sent.push(m); }};
-menu = {{id: 1, mode: "", armed: "", val: ""}};
-const a = spoolMenuHtml(marked);
-menu = {{id: 2, mode: "", armed: "", val: ""}};
-const b = spoolMenuHtml(allSpools[1]);
-menu = {{id: 1, mode: "", armed: "", val: ""}};
-spoolAct({{dataset: {{act: "sp-dried", id: "1"}}}});
-menu = {{id: 1, mode: "", armed: "", val: ""}};
-spoolAct({{dataset: {{act: "sp-clear-dried", id: "1"}}}});
-console.log(JSON.stringify({{a: a, b: b, sent: sent.map(function (m) {{ return m.action; }})}}));
-""")
-        self.assertIn("Mark Dried Today", out["a"])
-        self.assertIn("Clear Dried Date", out["a"])
-        self.assertIn("Mark Dried Today", out["b"])
-        self.assertNotIn("Clear Dried Date", out["b"])
-        self.assertEqual(out["sent"], ["dried", "clear_dried"])
 
 
 if __name__ == "__main__":

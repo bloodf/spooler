@@ -14,6 +14,40 @@ Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer) b
 does the setup for you. Enter your [Spoolman](https://github.com/Donkie/Spoolman) address once;
 the rest is automatic.
 
+<!-- related-plugins:start -->
+## Explore the other plugins
+
+Complete your OrcaSlicer workflow: arrange, price, manage filament and print. Click an image, icon or name to open its repository.
+
+<table>
+  <tr>
+    <td width="33%" valign="top">
+      <a href="https://github.com/bloodf/orca_organizer"><img src="docs/related-plugins/orca_organizer-icon.png" width="40" height="40" alt="Organizer"></a>
+      <h3><a href="https://github.com/bloodf/orca_organizer">Organizer</a></h3>
+      <a href="https://github.com/bloodf/orca_organizer"><img src="docs/related-plugins/orca_organizer-preview.jpg" width="280" alt="Organizer: promotional artwork"></a>
+      <p>Arrange objects using their actual footprints and fill a build plate with more copies.</p>
+      <p><a href="https://github.com/bloodf/orca_organizer">View repository →</a></p>
+    </td>
+    <td width="33%" valign="top">
+      <a href="https://github.com/bloodf/orca_print_calculator"><img src="docs/related-plugins/orca_print_calculator-icon.png" width="40" height="40" alt="Orca Print Calculator"></a>
+      <h3><a href="https://github.com/bloodf/orca_print_calculator">Orca Print Calculator</a></h3>
+      <a href="https://github.com/bloodf/orca_print_calculator"><img src="docs/related-plugins/orca_print_calculator-preview.png" width="280" alt="Orca Print Calculator: promotional artwork"></a>
+      <p>Calculate plate costs and selling prices, including extras such as keychain rings and magnets.</p>
+      <p><a href="https://github.com/bloodf/orca_print_calculator">View repository →</a></p>
+    </td>
+    <td width="33%" valign="top">
+      <a href="https://github.com/bloodf/u1control"><img src="docs/related-plugins/u1control-icon.png" width="40" height="40" alt="U1 Control"></a>
+      <h3><a href="https://github.com/bloodf/u1control">U1 Control</a></h3>
+      <a href="https://github.com/bloodf/u1control"><img src="docs/related-plugins/u1control-preview.png" width="280" alt="U1 Control: promotional artwork"></a>
+      <p>Prepare and monitor Snapmaker U1 prints, with toolhead mapping, temperatures, camera and files.</p>
+      <p><a href="https://github.com/bloodf/u1control">View repository →</a></p>
+    </td>
+  </tr>
+</table>
+
+Illustrative project artwork. [Credits and licenses](docs/related-plugins/README.md).
+<!-- related-plugins:end -->
+
 ## What the fork adds
 
 - **Notices that help you choose a spool.** A low-stock notification in OrcaSlicer when a spool
@@ -180,8 +214,8 @@ Link, filament usage booking, the Stats tab and the after-slice filament check.
 <p align="center"><img src="assets/orca-cloud/spooler-store-image-printer.png" alt="Spooler Printer tab with Snapmaker U1 toolheads" width="800"></p>
 <p align="center"><img src="assets/orca-cloud/spooler-store-image-settings.png" alt="Spooler Settings" width="800"></p>
 
-Regenerate them after interface changes with `python scripts/store_images/render.py` (needs Google
-Chrome or Chromium).
+Regenerate them after building the Vue interface with `python scripts/store_images/render.py` (needs Node 24+
+and Google Chrome or Chromium). These use mock data. Pass `--out /tmp/spooler-artwork` to preview changes without replacing existing images.
 
 ## Install
 

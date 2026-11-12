@@ -1,0 +1,14 @@
+{
+  "light": {
+    "background": "#f5f6f8", "surface": "#ffffff", "text": "#202731", "muted": "#526171",
+    "border": "#ccd3dc", "controlBorder": "#7a899a", "primary": "#00675b", "primaryHover": "#004f46", "onPrimary": "#ffffff",
+    "danger": "#b42318", "dangerHover": "#8f1b13", "onDanger": "#ffffff", "dangerBg": "#fff0ee",
+    "warning": "#805300", "warningBg": "#fff6d9", "success": "#0b6b3a", "successBg": "#e9f6ee"
+  },
+  "dark": {
+    "background": "#181c22", "surface": "#222831", "text": "#edf1f5", "muted": "#b6c0cd",
+    "border": "#566273", "controlBorder": "#8998a8", "primary": "#79d8c7", "primaryHover": "#a2e7db", "onPrimary": "#112923",
+    "danger": "#ffaaa4", "dangerHover": "#ffc5c1", "onDanger": "#351512", "dangerBg": "#402823",
+    "warning": "#f3cc70", "warningBg": "#382e1d", "success": "#7fdbab", "successBg": "#1d382c"
+  }
+}

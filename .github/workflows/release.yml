@@ -16,16 +16,32 @@ permissions:
 jobs:
   draft-release:
     runs-on: ubuntu-latest
+    env:
+      WORKERS: "1"
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+      - uses: browser-actions/setup-chrome@v2
+        id: chrome
+        with:
+          chrome-version: stable
+      - name: Rebuild and verify the embedded Vue page
+        working-directory: ui
+        run: npm ci --ignore-scripts && npm run build
+      - name: Committed page matches the build
+        run: git diff --exit-code -- plugin/spooler/spooler_any.py ui/build.json
 
       - name: Check the tag matches the plugin version
         run: python scripts/check_version.py "$GITHUB_REF_NAME"
 
       - name: Unit tests
+        env:
+          CHROME: ${{ steps.chrome.outputs.chrome-path }}
         run: python -m unittest discover -s tests
 
       - name: Build the plugin for every OS
@@ -60,7 +76,7 @@ jobs:
             flags+=(--prerelease)
           fi
           gh release create "$GITHUB_REF_NAME" \
-            dist/*.py \
+            dist/*.py dist/*.whl \
             spooler-store-image.png \
             --draft "${flags[@]}" \
             --title "Spooler ${GITHUB_REF_NAME}" \

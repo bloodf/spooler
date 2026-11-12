@@ -273,21 +273,7 @@ class ButtonTest(unittest.TestCase):
         window.on_message({"type": "send"})
         self.assertEqual(self.started, [page.post_message, window._panel.post])
 
-    def test_the_tab_has_the_button(self):
-        page = sp.tab_html("main", "", 100)
-        self.assertTrue('id="send-btn"' in page and 'type: "send"' in page, "no Send to Spoolman button")
 
-    def test_sync_presets_button_in_tab_and_window(self):
-        page_html = sp.tab_html("main", "", 100)
-        self.assertTrue('id="sync-btn"' in page_html and 'type: "sync_presets"' in page_html)
-        synced = []
-        with mock.patch.object(sp, "start_preset_sync", synced.append):
-            page = sp.SpoolerPage()
-            page.on_message({"type": "sync_presets"})
-            window = sp.SpoolerWindow()
-            window._panel = types.SimpleNamespace(post=lambda data: None)
-            window.on_message({"type": "sync_presets"})
-        self.assertEqual(synced, [page.post_message, window._panel.post])
 
 
 

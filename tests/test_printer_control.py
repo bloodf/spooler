@@ -5,7 +5,6 @@ import unittest
 import urllib.error
 from unittest import mock
 
-import test_display
 from plugin_loader import load
 from test_kobra import FakeSocket
 
@@ -217,52 +216,6 @@ class CaptureSessionTest(unittest.TestCase):
         self.assertIn(b"/web/printer/20030/X1/info", sent)
 
 
-@unittest.skipUnless(test_display.NODE, "node is needed to run the page script")
-class PrinterCardTest(unittest.TestCase):
-    def render(self, printer, source="spoolman", before=""):
-        runner = test_display.PageScriptTest("run_page")
-        cfg = [{"id": printer["id"], "name": printer["name"], "auto": True, "ip": BASE, "units": [], "kind": "moonraker"}]
-        live = {"links": {printer["id"]: "live"}, "printers": [printer]}
-        return runner.run_page(f"""
-allSpools = {json.dumps(SPOOLS)};
-spoolSource = {json.dumps(source)};
-cfg = {json.dumps(cfg)};
-liveData = {json.dumps(live)};
-{before}
-console.log(JSON.stringify(autoPanel(cfg[0])));
-""")
-
-    TRAY = {"slot": 0, "empty": False, "type": "PLA", "name": "Black", "colour": "111111", "remain": 50,
-            "rfid": False, "spool": 7, "profile": ""}
-
-    def test_single_extruder_card_has_change_spool(self):
-        html = self.render({"id": "auto-sv", "link": "auto-sv", "name": "SV06", "heads": False, "units": [],
-                            "ext": self.TRAY, "spool_set": True, "age": 0})
-        self.assertIn("Change Spool", html)
-        self.assertIn('data-act="moon-clear"', html)
-
-    def test_no_active_spool_still_offers_change(self):
-        html = self.render({"id": "auto-sv", "link": "auto-sv", "name": "SV06", "heads": False, "units": [],
-                            "ext": None, "spool_set": True, "age": 0})
-        self.assertIn("Change Spool", html)
-        self.assertNotIn('data-act="moon-clear"', html)
-
-    def test_result_shows_on_the_card(self):
-        sv = {"id": "auto-sv", "link": "auto-sv", "name": "SV06", "heads": False, "units": [],
-              "ext": self.TRAY, "spool_set": True, "age": 0}
-        reply = {"type": "moon_spool", "id": "auto-sv", "ok": False, "text": "SV06 refused <x>"}
-        html = self.render(sv, before=f"handlers.forEach(function (h) {{ h({json.dumps(reply)}); }});")
-        self.assertIn('pnote error">SV06 refused &lt;x&gt;', html)
-
-    def test_hidden_for_u1_lanes_and_bambu_source(self):
-        u1 = {"id": "auto-u1", "link": "auto-u1", "name": "U1", "heads": True, "ext": None, "spool_set": False,
-              "age": 0, "units": [{"id": 0, "kind": "ams", "trays": [self.TRAY]}]}
-        lanes = dict(u1, id="auto-afc", link="auto-afc", heads=False)
-        self.assertNotIn("Change Spool", self.render(u1))
-        self.assertNotIn("Change Spool", self.render(lanes))
-        sv = {"id": "auto-sv", "link": "auto-sv", "name": "SV06", "heads": False, "units": [],
-              "ext": self.TRAY, "spool_set": True, "age": 0}
-        self.assertNotIn("Change Spool", self.render(sv, source="bambu"))
 
 
 if __name__ == "__main__":

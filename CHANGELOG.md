@@ -3,9 +3,74 @@
 Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); entries before
 0.9.0 are Spoolio's.
 
-## [0.20.1] - Unreleased
+## [0.21.0] - 2026-11-12
+
+- Browser tests disable Chrome extensions that could leave child processes holding the runner open. `WORKERS=1` runs scenarios sequentially; CI uses this mode.
+
+### Changed
+- The Spooler tab, the spool window and the Settings window are one Vue 3 + PrimeVue 4 page (shared Orca UI
+  foundation 2.0.2), built from `ui/` and embedded in the single plugin file (`scripts/embed_ui.py`); no CDN,
+  no remote font, no eval. English and Brazilian Portuguese, following OrcaSlicer's language unless you pick
+  one in Settings. Every flow stays: spool list, filters, groups, card actions, plate check, printers, Live
+  Link, Moonraker active spool, usage booking and undo, drying, statistics, Settings and the setup guide.
+- An empty Spoolman, a missing address, a failed read and filters that match nothing each say so, with the
+  next step (Settings, Try again, Clear filters); Sync and Send are off, with the reason, until the spool
+  source works. "Send to Spoolman" is now "Send Preset Edits to Spoolman" and explains what it sends.
+- Results and errors are announced; errors stay until dismissed instead of disappearing after 8 s, and an
+  action without an answer after 30 s says its outcome is unknown.
+- Archive, Add a spool, moving a spool linked to a U1 toolhead, removing a printer or unit and clearing the
+  active spool ask in a dialog that names both answers. Leaving Settings with unsaved changes asks first.
+- Low stock uses the theme's warning and danger colours (the previous amber text measured 2.05:1); colour
+  code and diameter are off by default on spool rows (Settings > Display turns them back on).
+- With U1 Control running, the Spools and Printer tabs say the U1 lives in the U1 Control tab and why there
+  are two tabs (OrcaSlicer offers no way to hide one).
+
+### Added
+- u1control can show Spooler's stock in its U1 Control tab. Spooler writes a presence file in
+  OrcaSlicer's data folder while it is loaded, and the live spool list only while u1control's tab
+  asks for it. Nothing extra is written to Spoolman or a printer for it.
+- The spool list message tells the page whether U1 Control runs in this OrcaSlicer (`peers`) and gives
+  failed reads a stable `error_code` (`no_url`, `read_failed`), so the page can explain the state in its
+  own language. Read from presence files only.
 
 ### Fixed
+- Mark Dried Today and Clear Dried Date on Spoolman older than 0.26 replaced the spool's whole
+  extra map, dropping its other extra fields (for example the RFID tag). Spooler now reads the
+  fields again and sends them back with only the dried date changed; when it can't read Spoolman's
+  version or the fields, it writes nothing and says why.
+- Changing the Spoolman address (or the spool source) while a send, a card action, a booking or a
+  refresh was running could write data and spool ids read from the old server to the new one.
+  Each operation now stays on the server it started with and stops when Settings change; card
+  actions and bookings from a list read before the change are refused until you refresh.
+- Sending a preset to Spoolman could undo a change made in Spoolman meanwhile to another extra
+  field or to orca_settings. Spooler now reads the filament again just before writing, merges your
+  edit with what changed there, keeps Spoolman's value where both changed, and on Spoolman 0.26 or
+  newer sends only orca_settings.
+- A booking whose answer was lost, or whose state couldn't be saved, could be booked twice. Each
+  row's state is now saved before it is sent; when Spooler can't tell whether Spoolman applied it,
+  the row is marked for you to check in Spoolman and is never sent again by itself. Undo adds the
+  grams back in one step on Spoolman's side (Spoolman 0.18 or newer), so use booked meanwhile is no
+  longer lost, and usage and history files are written in one step.
+- Cancelling Keep Slots Synced while it read the printer still changed slots afterwards; it now
+  stops before touching a slot, also when the printer or project changed, and an old run no longer
+  clears a newer run's marker. Unloading the plugin stops its live printer links.
+- Empty spools (0 g) disappeared from the Bambu Cloud list and showed no percentage on Klipper
+  printers.
+- An error while handling a page message could write a Bambu password or code to spooler.log.
+  Messages are no longer logged whole, and passwords in addresses and secret-looking values are
+  masked in every log line.
+- A printer could make Spooler read a huge MQTT message or trickle one in forever; an Anycubic
+  printer that never sent a report after connecting kept the link waiting. Both now end the session
+  and reconnect with the usual backoff.
+- When OrcaSlicer refused a new preset bundle, the last accepted one was already overwritten on
+  disk; it is now put back.
+- A filament box or lane removed from a Klipper or Anycubic printer kept showing.
+- Filtering the spool list after a failed refresh showed the old list as current. The error stays,
+  and the old list is marked with the time it was read.
+- Assign Spool and the spool picker on the Printer tab work with the keyboard (Tab, Enter, Space,
+  Down, Escape), and focus returns to the slot.
+- The Printer tab no longer redraws every card when only a printer's age changed.
+- SECURITY.md now lists every write Spooler makes to Spoolman and printers.
 - Settings in a filament's orca_settings field in Spoolman that Spooler didn't know were dropped
   without a word. The nozzle temperature range (nozzle_temperature_range_low and _high) is now
   applied to the presets, along with chamber temperature, overhang fan speed, the layers with the

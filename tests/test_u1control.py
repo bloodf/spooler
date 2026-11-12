@@ -116,7 +116,7 @@ class LocationTest(Snapshot):
 
     def test_tooltip_says_linked_by_u1control(self):
         self.assertEqual(sp._live_tray(0, self.trays(STOCK)[0])["linked"], "u1control")
-        self.assertIn("Spool linked by u1control", sp.main_html())
+        # The page's wording ("Spool linked by U1 Control", review X05) is a page scenario now (ui/tests/page/run.mjs).
 
     def test_only_the_cards_move_action_writes_a_spool_location(self):
         # Outside the Spools tab's card actions (which the user starts, with a second click when a

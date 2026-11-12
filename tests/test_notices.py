@@ -125,22 +125,6 @@ class PlateNoticeTest(unittest.TestCase):
         self.assertIn("About €7.50 of filament.", notice[1])
 
 
-class PageChipTest(unittest.TestCase):
-    def test_chip_follows_payload_and_flag(self):
-        from test_display import PageScriptTest
-        t = PageScriptTest("run_page")
-        scenario = """
-const base = %s;
-disp = Object.assign({}, DISPLAY_DEFAULTS);
-const on = listHtml([base[0], base[1]]);
-disp = Object.assign({}, DISPLAY_DEFAULTS, {use_first: false, group_same: false});
-const off = listHtml([base[0], base[1]]);
-console.log(JSON.stringify({on, off, flag: DISPLAY_DEFAULTS.use_first}));
-""" % __import__("json").dumps([{**spool(1, 400), "use_first": True}, {**spool(2, 900), "use_first": False}])
-        out = t.run_page(scenario)
-        self.assertEqual(out["on"].count("Use First"), 1)
-        self.assertNotIn("Use First", out["off"])
-        self.assertTrue(out["flag"])
 
 
 if __name__ == "__main__":
