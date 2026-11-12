@@ -532,6 +532,7 @@ try {
   await Promise.all(Array.from({ length: Math.min(workers, chosen.length) }, async (_, worker) => {
     for (let k = worker; k < chosen.length; k += workers) {
       const sc = chosen[k];
+      console.log(`START ${sc.name}`);
       const mode = sc.mode || 'tab';
       const boot = { mode, view: mode === 'settings' ? 'settings' : 'main', version: 'test', lang: sc.lang ?? 'en', pref: sc.pref ?? 'auto',
         low_stock_default: 100, refresh_ms: 600000, display_defaults: DISPLAY_DEFAULTS, own_fields: ['tag', 'orca_settings', 'dried', 'orca_flow_ratio'],
@@ -564,7 +565,9 @@ try {
     }
   }));
 } finally {
+  console.log('Closing page-test browser');
   await browser.close();
+  console.log('Page-test browser closed');
   await rm(dir, { recursive: true, force: true });
 }
 if (process.env.RESULTS) await writeFile(process.env.RESULTS, JSON.stringify(results, null, 2));

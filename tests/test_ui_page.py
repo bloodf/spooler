@@ -172,8 +172,13 @@ class BuiltPage(unittest.TestCase):
             page = Path(tmp) / "spooler-ui.html"
             page.write_text(sp.ui_page(), encoding="utf-8")   # exactly what the plugin serves
             results = Path(tmp) / "results.json"
-            proc = subprocess.run([NODE, str(UI / "tests" / "page" / "run.mjs")], capture_output=True, text=True, timeout=900,
-                                  env={**os.environ, "PAGE": str(page), "RESULTS": str(results)}, cwd=str(UI))
+            try:
+                proc = subprocess.run([NODE, str(UI / "tests" / "page" / "run.mjs")], capture_output=True, text=True, timeout=900,
+                                      env={**os.environ, "PAGE": str(page), "RESULTS": str(results)}, cwd=str(UI))
+            except subprocess.TimeoutExpired as exc:
+                def output(value):
+                    return value.decode("utf-8", errors="replace") if isinstance(value, bytes) else (value or "")
+                self.fail(f"Page runner timed out after {exc.timeout}s\n{output(exc.stdout)}\n{output(exc.stderr)}")
             self.assertEqual(proc.returncode, 0, proc.stdout[-6000:] + proc.stderr)
             done = json.loads(results.read_text(encoding="utf-8"))
             self.assertGreaterEqual(len(done), 37)
