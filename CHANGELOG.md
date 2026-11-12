@@ -3,6 +3,13 @@
 Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); entries before
 0.9.0 are Spoolio's.
 
+## [Unreleased]
+
+### Fixed
+- A filament preset now gets its cost from the spool prices in Spoolman when the filament itself
+  has no price, as is usual in Spoolman: the mean price per kg of the filament's spools in stock.
+  A price on the filament still wins.
+
 ## [0.12.1] - 2026-11-10
 
 ### Changed
