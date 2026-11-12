@@ -35,7 +35,7 @@ export async function launch() {
   for (let i = 0; i < 300 && !port; i++) {
     try { port = (await readFile(join(profile, 'DevToolsActivePort'), 'utf8')).split('\n')[0]; } catch { await delay(20); }
   }
-  if (!port) { proc.kill('SIGKILL'); throw new Error('headless Chrome did not start: ' + log.slice(-500)); }
+  if (!port) { proc.kill('SIGKILL'); throw new Error('headless Chrome did not start:\n' + log); }
   return {
     port,
     async newPage() { return openPage(port); },

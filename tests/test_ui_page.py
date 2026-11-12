@@ -174,7 +174,7 @@ class BuiltPage(unittest.TestCase):
             results = Path(tmp) / "results.json"
             proc = subprocess.run([NODE, str(UI / "tests" / "page" / "run.mjs")], capture_output=True, text=True, timeout=900,
                                   env={**os.environ, "PAGE": str(page), "RESULTS": str(results)}, cwd=str(UI))
-            self.assertEqual(proc.returncode, 0, proc.stdout[-6000:] + proc.stderr[-3000:])
+            self.assertEqual(proc.returncode, 0, proc.stdout[-6000:] + proc.stderr)
             done = json.loads(results.read_text(encoding="utf-8"))
             self.assertGreaterEqual(len(done), 37)
             self.assertTrue(all(r["ok"] for r in done))
