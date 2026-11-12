@@ -15,6 +15,8 @@ concurrency:
 jobs:
   check:
     name: Check (${{ matrix.os }})
+    env:
+      WORKERS: "1"
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -25,12 +27,57 @@ jobs:
       - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
+      # Node runs the UI build, the page logic tests and the page test driver; provision it rather than rely on the runner image.
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+      # The page tests drive the built Vue page in headless Chrome (always --use-mock-keychain --password-store=basic).
+      - uses: browser-actions/setup-chrome@v2
+        id: chrome
+        with:
+          chrome-version: stable
+      # macOS needs a .app path; setup-chrome installs the bundle in a bare arch directory.
+      - name: Restore the macOS Chrome application path
+        if: runner.os == 'macOS'
+        id: mac-chrome
+        shell: bash
+        env:
+          CHROME: ${{ steps.chrome.outputs.chrome-path }}
+        run: |
+          bundle="${CHROME%/Contents/MacOS/*}"
+          ln -s "$bundle" "$RUNNER_TEMP/OrcaTestChrome.app"
+          echo "chrome-path=$RUNNER_TEMP/OrcaTestChrome.app/Contents/MacOS/${CHROME##*/}" >> "$GITHUB_OUTPUT"
+      - name: Allow Chrome sandbox on Ubuntu
+        if: runner.os == 'Linux'
+        env:
+          CHROME: ${{ steps.chrome.outputs.chrome-path }}
+        run: bash scripts/ci_chrome_sandbox.sh
       - name: Check version numbers agree
         run: python scripts/check_version.py
       - name: Build the per-OS plugin files
         run: python scripts/build.py
       - name: Unit tests
+        env:
+          CHROME: ${{ steps.mac-chrome.outputs.chrome-path || steps.chrome.outputs.chrome-path }}
         run: python -m unittest discover -s tests
+
+  ui-build:
+    name: UI build is reproducible
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+      # Vue 3 + PrimeVue from ui/ (exact versions, lockfile); the committed page must be exactly what this builds.
+      - name: Build the page from ui/
+        working-directory: ui
+        run: npm ci --ignore-scripts && npm run build
+      - name: Committed page matches the build
+        run: git diff --exit-code -- plugin/spooler/spooler_any.py ui/build.json
 
   lint:
     name: Lint

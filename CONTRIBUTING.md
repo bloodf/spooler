@@ -15,8 +15,8 @@ make a real difference.
 
 ## The code
 
-- `plugin/spooler/spooler_any.py` is the whole plugin: one Python file with its HTML, CSS and
-  JavaScript as string constants. It stays one file on purpose: OrcaSlicer installs a single file,
+- `plugin/spooler/spooler_any.py` is the whole plugin: one Python file with the
+  compiled Vue page embedded as a compressed string. It stays one file on purpose: OrcaSlicer installs a single file,
   and it keeps merges from [Spoolio](https://github.com/danm1989/spoolio-orcaslicer) possible.
 - `tests/` runs it outside OrcaSlicer, with a stand-in for OrcaSlicer's `orca` module
   (`tests/plugin_loader.py`) and a fake preset bundle (`tests/fake_bundle.py`). Fixtures in
@@ -28,11 +28,12 @@ make a real difference.
 
 ## Setting up
 
-You need Python 3.12 or newer. There are no runtime dependencies; [ruff](https://docs.astral.sh/ruff/)
-is the only tool.
+You need Python 3.12 or newer. There are no runtime dependencies. Development also needs Node.js 24, npm and Chrome/Chromium
+for the offline Vue build and browser tests, plus [ruff](https://docs.astral.sh/ruff/) for Python lint.
 
 ```sh
-python -m unittest discover -s tests   # every test
+WORKERS=1 python -m unittest discover -s tests   # every test (page tests need Node.js 22.6+ and Chrome or Chromium)
+npm --prefix ui ci && npm --prefix ui run build       # after changing the page: rebuilds and embeds it in spooler_any.py
 ruff check plugin scripts tests        # lint
 python scripts/check_version.py        # the two version numbers agree
 python scripts/build.py                # dist/: the per-OS files and the wheel
@@ -56,13 +57,17 @@ Spooler's Settings page.
 - Write commits as [Conventional Commits](https://www.conventionalcommits.org/)
   (`feat:`, `fix:`, `docs:` ...).
 - If the page changes, re-render the images with `python scripts/store_images/render.py`.
+  Build the Vue page with `npm --prefix ui run build` first. The renderer needs Node 24+ and Chrome;
+  use `--out /tmp/spooler-artwork` to preserve existing artwork. Captures use mock data with network
+  access blocked and fail if the page cannot render. Failure evidence is saved beside the output.
 - OrcaSlicer refuses a whole preset bundle when one preset has a key it doesn't know, so only add
   preset keys that exist in OrcaSlicer's `PrintConfig.cpp` (`tests/test_profiles.py` checks the list).
 
 ## Releases
 
 Maintainers release by bumping the version in both places at the top of `spooler_any.py`, dating
-the CHANGELOG section and pushing a `v<version>` tag. The release workflow tests, builds and opens a
+the CHANGELOG section, matching the `ui/package.json` and lockfile versions, rebuilding the embedded
+page, and pushing a `v<version>` tag. The release workflow tests, builds and opens a
 draft GitHub release; publishing it uploads the build to Orca Cloud.
 
 ## Conduct

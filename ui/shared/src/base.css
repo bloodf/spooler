@@ -1,0 +1,40 @@
+html { font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 14px; }
+body.orca-ui { margin: 0; color: var(--oui-text, #202731); background: var(--oui-background, #f5f6f8); }
+.orca-ui { font-family: inherit; font-size: 14px; line-height: 1.45; accent-color: var(--p-primary-color); caret-color: var(--p-text-color); text-underline-offset: .2em; }
+.orca-ui *, .orca-ui *::before, .orca-ui *::after { box-sizing: border-box; }
+.orca-ui [hidden] { display: none !important; }
+.orca-ui :where(button, input, select, textarea) { font: inherit; }
+.orca-ui :where(h1, h2, h3, p) { margin-block-start: 0; }
+.orca-ui h1 { font-size: 20px; line-height: 1.25; font-weight: 650; }
+.orca-ui h2, .orca-ui h3 { font-size: 16px; line-height: 1.35; font-weight: 600; }
+.orca-ui a { color: var(--p-primary-color); }
+.orca-ui ::selection { color: var(--p-primary-contrast-color); background: var(--p-primary-color); }
+.orca-ui :where(table, output, .oui-number) { font-variant-numeric: tabular-nums; }
+.orca-ui :where(button, a, input, select, textarea, summary, [tabindex]):focus-visible { outline: 2px solid var(--p-primary-color); outline-offset: 3px; }
+.orca-ui :where(input, select, textarea) { scroll-margin-block: 80px; }
+.oui-header { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; padding: 12px 16px; background: var(--oui-surface); border-bottom: 1px solid var(--oui-border); }
+.oui-header h1 { margin: 0; }
+.oui-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.oui-panel { padding: 16px; background: var(--oui-surface); border: 1px solid var(--oui-border); border-radius: 12px; }
+.oui-field { display: grid; gap: 6px; min-width: 0; }
+.oui-field > label { font-weight: 600; }
+.oui-meta { color: var(--oui-muted); font-size: 12px; }
+.oui-muted { color: var(--oui-muted); }
+.oui-result { font-size: 28px; line-height: 1.2; font-weight: 650; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.oui-result[data-incomplete='true'] { color: var(--oui-muted); }
+.oui-section { margin-block: 24px; }
+.oui-empty { padding: 24px; display: grid; gap: 12px; justify-items: start; }
+.oui-empty > * { margin: 0; }
+.oui-table-wrap { max-width: 100%; overflow: auto; }
+.oui-error-detail { white-space: pre-wrap; overflow-wrap: anywhere; font-family: ui-monospace, monospace; font-size: 12px; }
+@media (max-width: 720px) { .oui-header, .oui-panel { padding: 12px; } .oui-toolbar { row-gap: 12px; } }
+/* Accessibility preferences must win over PrimeVue's runtime-injected component styles. */
+@media (prefers-reduced-motion: reduce) {
+  .orca-ui *, .orca-ui *::before, .orca-ui *::after {
+    transition: none !important;
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+  }
+}
+@media (forced-colors: active) { .orca-ui :where(button, a, input, select, textarea, summary, [tabindex]):focus-visible { outline: 2px solid Highlight; } }

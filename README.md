@@ -14,8 +14,67 @@ Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer) b
 does the setup for you. Enter your [Spoolman](https://github.com/Donkie/Spoolman) address once;
 the rest is automatic.
 
+<!-- related-plugins:start -->
+## Explore the other plugins
+
+Complete your OrcaSlicer workflow: arrange, price, manage filament and print. Click an image, icon or name to open its repository.
+
+<table>
+  <tr>
+    <td width="33%" valign="top">
+      <a href="https://github.com/bloodf/orca_organizer"><img src="docs/related-plugins/orca_organizer-icon.png" width="40" height="40" alt="Organizer"></a>
+      <h3><a href="https://github.com/bloodf/orca_organizer">Organizer</a></h3>
+      <a href="https://github.com/bloodf/orca_organizer"><img src="docs/related-plugins/orca_organizer-preview.jpg" width="280" alt="Organizer: promotional artwork"></a>
+      <p>Arrange objects using their actual footprints and fill a build plate with more copies.</p>
+      <p><a href="https://github.com/bloodf/orca_organizer">View repository →</a></p>
+    </td>
+    <td width="33%" valign="top">
+      <a href="https://github.com/bloodf/orca_print_calculator"><img src="docs/related-plugins/orca_print_calculator-icon.png" width="40" height="40" alt="Orca Print Calculator"></a>
+      <h3><a href="https://github.com/bloodf/orca_print_calculator">Orca Print Calculator</a></h3>
+      <a href="https://github.com/bloodf/orca_print_calculator"><img src="docs/related-plugins/orca_print_calculator-preview.png" width="280" alt="Orca Print Calculator: promotional artwork"></a>
+      <p>Calculate plate costs and selling prices, including extras such as keychain rings and magnets.</p>
+      <p><a href="https://github.com/bloodf/orca_print_calculator">View repository →</a></p>
+    </td>
+    <td width="33%" valign="top">
+      <a href="https://github.com/bloodf/u1control"><img src="docs/related-plugins/u1control-icon.png" width="40" height="40" alt="U1 Control"></a>
+      <h3><a href="https://github.com/bloodf/u1control">U1 Control</a></h3>
+      <a href="https://github.com/bloodf/u1control"><img src="docs/related-plugins/u1control-preview.png" width="280" alt="U1 Control: promotional artwork"></a>
+      <p>Prepare and monitor Snapmaker U1 prints, with toolhead mapping, temperatures, camera and files.</p>
+      <p><a href="https://github.com/bloodf/u1control">View repository →</a></p>
+    </td>
+  </tr>
+</table>
+
+Illustrative project artwork. [Credits and licenses](docs/related-plugins/README.md).
+<!-- related-plugins:end -->
+
 ## What the fork adds
 
+- **Notices that help you choose a spool.** A low-stock notification in OrcaSlicer when a spool
+  crosses your threshold (once per crossing, none at start-up). The after-slice notice adds what the
+  print costs in filament when prices are in Spoolman, and when a slot is short it suggests an
+  unloaded spool of the same filament with enough left and where it is. Opened spools of a filament
+  with several spools get a ***Use First*** chip on the oldest, to finish it first. Chip and
+  notification each switch off in Settings > Display. The swap suggestion only knows spools loaded in
+  your saved printers or reported live by them.
+- **A drying tracker and reminder.** ***Mark Dried Today*** in a spool's menu stores the date in
+  a Spoolman field (added on demand) and the card shows ***Dried 12 d ago***, amber once it is past
+  the days set for that material in Settings > Drying Reminders (PETG 30, TPU 14, PA 7, PVA 7, PC 14
+  by default; PLA, ABS and ASA off). The after-slice notice mentions a loaded spool of such a
+  material that was dried too long ago or never. Spoolman only, and the notice checks the fullest
+  matching spool of each slot.
+- **More from your spool data.** ***Details*** in a spool's menu lists the prints that used it, the
+  grams and cost booked, the weekly use over the last 4 weeks and the weeks left at that rate. The
+  Stats tab adds ***On the Shelf*** (grams and money in stock, by material too; spools without a
+  price count as grams only), ***Lost to Failed Prints*** and an ***Export to CSV*** button on Print
+  History, which saves the selected period to an `exports` folder next to Spooler's settings and
+  opens it. Filters has a ***Closest colour*** picker that lists the 12 nearest spools. Details,
+  stock value and failed-print totals come from what Spooler booked, so they start empty on a new
+  install.
+- **A setup guide for first use.** The first time you open Settings, a short step-by-step guide
+  explains what Spooler does, takes your Spoolman address and tests it right there, and covers
+  permissions, where the presets appear and how printers are found. Skip it any time, and reopen
+  it from ***Open the setup guide*** in Settings.
 - **Your Spoolman filaments become OrcaSlicer filament presets, one per printer.** For each of your
   printers, every Spoolman filament with a spool in stock shows up under ***User presets*** in the
   sidebar's filament dropdown, for example `3D Procer PLA Pérola @Snapmaker U1` and
@@ -34,16 +93,19 @@ the rest is automatic.
     all:
     `{"*": {"filament_flow_ratio": "0.98"}, "Snapmaker U1": {"filament_max_volumetric_speed": 20}}`.
     Supported: flow ratio, max volumetric speed, pressure advance, retraction length and speeds,
-    Z hop, ironing flow, speed, spacing and inset, nozzle and plate temperatures, fan speeds,
-    slow-down settings, shrinkage (also in Z), softening temperature, density, diameter, cost and
-    notes. Other keys are ignored, and so is text that isn't one number (say `"0,95"`) for a number
-    setting.
+    Z hop, ironing flow, speed, spacing and inset, nozzle and plate temperatures, the nozzle
+    temperature range, chamber temperature, fan speeds (also overhang and auxiliary fan, layers
+    with the fan off and the full-speed layer), slow-down settings, minimal purge on the wipe
+    tower, shrinkage (also in Z), softening temperature, density, diameter, cost and notes. Other
+    keys are ignored (Spooler's log names each one once), and so is text that isn't one number
+    (say `"0,95"`) for a number setting.
   - Spooler adds three number fields to Spoolman's filament form, ***Flow ratio***,
     ***Pressure advance*** and ***Max volumetric speed***, for the values people calibrate most.
     They apply to every printer; a value in `orca_settings` wins over them.
   - The presets follow Spoolman: new filaments appear, filaments whose spools are all archived
     disappear, and changes are picked up on each refresh (every 60 seconds while the Spooler tab
-    is open).
+    is open). ***Sync Presets*** on the Spools tab does it at once and rebuilds every preset, even
+    when nothing changed.
   - "Your printers" are the printers behind every printer preset with a host address
     (Printer settings > Connection), plus the printer currently selected.
 - **Change a preset in OrcaSlicer and it reaches Spoolman.** Edit a Spooler preset in OrcaSlicer's
@@ -59,6 +121,20 @@ the rest is automatic.
 - **Spool list:** spools of the same filament (vendor, name and colour) fold into one row with
   their total; click it to see each spool. The name filter and a colour filter, which picks a
   colour family from swatches, sit above the list.
+- **Act on a spool from its card (Spoolman).** The ***⋯*** button on each spool card opens its
+  actions: ***Set Weight From Scale*** (weigh the spool and enter the gross weight), ***Use
+  Filament*** (subtract grams by hand), ***Move*** (pick one of Spoolman's locations or type a new
+  one), ***Archive*** / ***Unarchive***, ***Add Spool of This Filament*** and ***Open in
+  Spoolman***. Archiving and adding ask for a second click; so does moving a spool off a U1
+  toolhead's location, since that unlinks it in u1control. ***Show archived*** in the filters
+  lists archived spools, dimmed; they still never count for presets, the filament check or the
+  printer slots.
+- **The list follows Spoolman live.** A spool added, changed, used or deleted in Spoolman shows on
+  the Spools tab within a second or two, over Spoolman's WebSocket; the 60 second refresh stays as
+  the fallback.
+- **Comment, lot number and extra fields on the card.** Each spool card can show its Spoolman
+  comment, lot number and your own extra fields on a muted line (hover for the full text). Search
+  also matches location, lot number and comment, and `#12` finds spool 12.
 - **You choose what's shown.** Settings > Display switches each part of the spool list and of the
   printer slots on or off; printer slots can show the loaded spool in full (manufacturer, grams
   left, spool number, location, preset).
@@ -83,7 +159,9 @@ the rest is automatic.
     matched to your Spoolman spools by the spool id the lane reports, else by vendor, material and
     colour.
   - **Single-extruder Klipper printers (e.g. Sovol SV06 with Klipper):** the spool Moonraker's
-    Spoolman integration has marked as active.
+    Spoolman integration has marked as active. ***Change Spool*** on the card picks another
+    non-archived spool and ***Clear*** unsets it, so Moonraker books the next print to the right
+    spool. Not offered on the U1 or on filament changers, which manage their own spools.
   - **Anycubic Kobra X (and other Anycubic printers in LAN mode):** each slot of the multi-colour
     box (ACE) and the external spool, matched to your Spoolman spools by material and colour.
     Turn on LAN mode on the printer and put its IP address in the printer preset's host field.
@@ -97,8 +175,14 @@ the rest is automatic.
   OrcaSlicer's normal preset selection, so it can ask about unsaved changes in the filament
   settings. Run it once per OrcaSlicer session; run it again to stop it.
 
+- **Stats, with the filament you waste.** The Stats tab (from Spoolio) shows usage, cost and print
+  history, and estimates how much of each print went into supports and into purging and the prime
+  tower: a Wasted Filament tile, a Usage Ratios card with the three most wasteful prints, and a
+  Waste column in Print History. The estimate is read from the plate G-code in the job file on the
+  printer, so it covers Bambu prints booked after updating to 0.13.0.
+
 Everything Spoolio already did is still there: spool cards, the Bambu Cloud source, Bambu Live
-Link, filament usage booking and the after-slice filament check.
+Link, filament usage booking, the Stats tab and the after-slice filament check.
 
 ### Limits
 
@@ -112,6 +196,15 @@ Link, filament usage booking and the after-slice filament check.
 - Generated presets are owned by Spooler and are rewritten from Spoolman. OrcaSlicer can't save
   over them: Save makes a separate user preset that no longer follows Spoolman. Use ***Send to
   Spoolman*** instead.
+- Card actions need Spoolman as the source; Bambu Cloud spools have none. Set Weight From Scale
+  needs the spool's empty weight (or the filament's) in Spoolman.
+- Live list updates need Spoolman's WebSocket (`/api/v1/spool`) to be reachable from OrcaSlicer.
+  Behind a reverse proxy, the proxy must pass the `Upgrade` and `Connection` headers (nginx:
+  `proxy_set_header Upgrade $http_upgrade; proxy_set_header Connection "upgrade";`). Without it
+  the list still refreshes every 60 seconds.
+- Filament used by Anycubic prints is not booked to Spoolman yet: the printer's print-status
+  messages must first be captured from a real print. See [docs/kobra-booking.md](docs/kobra-booking.md)
+  if you have a Kobra and want to help.
 - Filament usage on Klipper printers is best tracked by Moonraker's own
   [Spoolman integration](https://moonraker.readthedocs.io/en/latest/configuration/#spoolman).
 
@@ -122,14 +215,17 @@ Link, filament usage booking and the after-slice filament check.
 <p align="center"><img src="assets/orca-cloud/spooler-store-image-printer.png" alt="Spooler Printer tab with Snapmaker U1 toolheads" width="800"></p>
 <p align="center"><img src="assets/orca-cloud/spooler-store-image-settings.png" alt="Spooler Settings" width="800"></p>
 
-Regenerate them after interface changes with `python scripts/store_images/render.py` (needs Google
-Chrome or Chromium).
+Regenerate them after building the Vue interface with `python scripts/store_images/render.py` (needs Node 24+
+and Google Chrome or Chromium). These use mock data. Pass `--out /tmp/spooler-artwork` to preview changes without replacing existing images.
 
 ## Install
 
 **From Orca Cloud:** open the [Plugin Hub](https://cloud.orcaslicer.com/app/plugins/plugin-hub), find
 **Spooler** and subscribe, then in OrcaSlicer open ***File > Plugins***, click ***Refresh*** and tick
 ***Activate***. Updates arrive the same way.
+
+<p align="center"><img src="assets/orca-cloud/install/01-plugin-hub.png" alt="Orca Cloud Plugin Hub card for Spooler with the Subscribe button highlighted" width="700"></p>
+<p align="center"><img src="assets/orca-cloud/install/02-plugins-dialog.png" alt="The Plugins dialog with Refresh and Activate highlighted" width="700"></p>
 
 **Manually:** download the file for your system from the [latest release](../../releases/latest):
 
@@ -150,15 +246,32 @@ Place it in its own folder called `spooler` inside OrcaSlicer's plugin directory
 | macOS | `~/Library/Application Support/OrcaSlicer/orca_plugins/` |
 | Linux | `~/.config/OrcaSlicer/orca_plugins/` |
 
+<p align="center"><img src="assets/orca-cloud/install/05-manual-install.png" alt="The orca_plugins/spooler folder with the plugin file and the three plugin directories" width="700"></p>
+
 Restart OrcaSlicer, then tick ***Activate*** for Spooler. A **Spooler** tab appears in the top bar.
+
+The install pictures are drawn illustrations, simplified, not screenshots.
 
 ## Set Up
 
-The Spooler tab opens on its Settings page on first run. Enter your Spoolman server address (for example `http://raspberrypi.local:7912`), click ***Test***, once the connection is confirmed then ***Save & Close***, which takes you back to your spool list. You can also set the low-stock threshold, the cart button and how weights are shown here, and reopen the page any time with the ***Settings*** button.
+The Spooler tab opens on its Settings page on first run, with a setup guide over it:
+
+1. **What Spooler does.** Your Spoolman spools become OrcaSlicer filament presets, and your printers' slots are shown.
+2. **Choose your source.** Enter your Spoolman server address (for example `http://raspberrypi.local:7912`) and click ***Test***. ***Next*** unlocks once the connection is confirmed.
+3. **Permissions.** See below.
+4. **Presets.** Where they appear, and that they follow Spoolman every minute.
+5. **Printers.** How they are found, and what ***Plugins > Run > Spooler: Load Printer Filaments*** does.
+6. **Done.** Optional extras, then ***Save & finish*** saves the settings and takes you to your spool list.
+
+<p align="center"><img src="assets/orca-cloud/install/04-spooler-tab.png" alt="The Spooler tab in the top bar and the setup guide's address step with Test highlighted" width="700"></p>
+
+***Next*** and ***Back*** move between steps, ***Skip*** (or Escape) closes the guide, and ***Open the setup guide*** in Settings brings it back. The guide appears by itself only when no source is set up yet, so it never shows for an existing setup. You can also set the low-stock threshold, the cart button and how weights are shown on the Settings page, and reopen the page any time with the ***Settings*** button.
 
 Prefer Bambu Cloud? Choose ***Bambu Cloud*** under ***Choose Your Source***, enter your Bambu email and password, pick Global or China, and enter the verification code if Bambu asks for one. Spooler never stores your password, only the sign-in token Bambu returns, and ***Sign Out*** removes it.
 
 OrcaSlicer asks before a plugin does anything sensitive. Granting Spooler full access in the permission dialog avoids repeated prompts; otherwise each new address it reads (Spoolman and each printer) is approved once and remembered. Expect a prompt the first time the plugin connects to Spoolman, Bambu Cloud or a printer, the first time it writes the filament presets into OrcaSlicer's user folder, and the first time you click a reorder cart to open your browser.
+
+<p align="center"><img src="assets/orca-cloud/install/03-permission.png" alt="A permission prompt for a network address with Allow highlighted" width="700"></p>
 
 > [!TIP]
 > ### Printer Tab
@@ -185,6 +298,7 @@ OrcaSlicer asks before a plugin does anything sensitive. Granting Spooler full a
 >
 > ### Live Link and Booking Limitations
 > - Live Link needs the printer on the same network with LAN mode on, and only connects while the Printer tab is open or usage booking is on.
+> - The Stats tab's wasted-filament estimate needs the job file from a Bambu printer, so it only covers prints booked that way, made after updating to 0.13.0.
 > - Booking assumes the slicer's filament slots follow the order of the printer's slots (AMS 1 slots 1 to 4, then the next AMS, and so on), so check the first few bookings if you use a different mapping.
 
 > [!TIP]

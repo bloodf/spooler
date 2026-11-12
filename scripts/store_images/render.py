@@ -4,7 +4,7 @@
 The plugin's real page is rendered with demo data (demo_spools.json, a Snapmaker U1 and a
 Sovol SV06), framed in the brand layout and captured with headless Google Chrome:
 
-    python scripts/store_images/render.py [--chrome PATH]
+    python scripts/store_images/render.py [--chrome PATH] [--out PATH]
 
 Re-run it after changing the plugin's interface so the images stay true to it.
 """
@@ -12,6 +12,7 @@ Re-run it after changing the plugin's interface so the images stay true to it.
 import argparse
 import html
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -81,6 +82,18 @@ SCREENS = [
         "height": 780,
     },
     {
+        "file": "spooler-store-image-wizard.png",
+        "title": 'Set up in a minute,<br><em>step by step</em>',
+        "points": [
+            "A short guide opens the first time you use Spooler",
+            "Connect Spoolman or Bambu Cloud and test it right there",
+            "Learn where presets appear and how printers are found",
+            "Skip any time, reopen it from Settings",
+        ],
+        "page": "wizard",
+        "height": 780,
+    },
+    {
         "file": "spooler-store-image-presets.png",
         "title": 'Pick a filament,<br><em>the colour comes with it</em>',
         "points": [
@@ -116,13 +129,15 @@ def demo_state(sp):
     for pid, name, doc in (("auto-u1", "Snapmaker U1", sp.moon_report(u1, None, spools, U1)),
                            ("auto-sv06", "Sovol SV06", sp.moon_report({}, 11, spools, SV06))):
         sp.live_apply(pid, name, doc[0], link=pid)
-        sp._live["printers"][pid]["heads"] = doc[1]
+        with sp._live_lock:
+            sp.moon_mark(pid, doc[0], doc[1])
         sp._live["links"][pid] = "live"
     cfg = [{"id": "auto-u1", "name": "Snapmaker U1", "units": [], "ip": "http://192.168.1.40", "serial": "",
             "kind": "moonraker", "auto": True, "has_code": True},
            {"id": "auto-sv06", "name": "Sovol SV06", "units": [], "ip": "http://192.168.1.41", "serial": "",
             "kind": "moonraker", "auto": True, "has_code": True}]
     spools_msg = {"type": "spools", "ok": True, "spools": spools, "low_stock_grams": 100,
+                  "show_printer_tab": True,
                   "weight_display": "both", "show_cart": False, "spool_columns": 2,
                   "printers": cfg, "live_ok": True, "usage": {"mode": "off", "runs": []},
                   "progress": sp.progress_settings(), "profiles": {"count": 24, "error": ""}}
@@ -130,12 +145,15 @@ def demo_state(sp):
     return spools_msg, live_msg
 
 
-def plugin_page(sp, view: str, spools_msg: dict, live_msg: dict) -> str:
+def plugin_page(sp, view: str, spools_msg: dict, live_msg: dict, wizard_step: int | None = None) -> str:
+    """``wizard_step`` opens the setup guide on that step (0-5) over the Settings view."""
     page = sp.tab_html(initial_view="settings" if view == "settings" else "main",
                        current_url="http://spoolman.local:7912", low_stock_grams=100,
-                       columns=2, progress=sp.progress_settings())
+                       columns=2, progress=sp.progress_settings(), wizard=wizard_step is not None)
     bridge = f"""<style>{ORCA_THEME}</style><script>
 (function () {{
+  window.addEventListener('error', function(e) {{ document.documentElement.dataset.renderError = e.message; }});
+  window.addEventListener('unhandledrejection', function(e) {{ document.documentElement.dataset.renderError = String(e.reason); }});
   var handlers = [];
   var spools = {json.dumps(spools_msg)};
   var live = {json.dumps(live_msg)};
@@ -157,8 +175,25 @@ def plugin_page(sp, view: str, spools_msg: dict, live_msg: dict) -> str:
   window.addEventListener("load", function () {{
     setTimeout(function () {{
       var tab = document.querySelector('[data-tab="{'printer' if view == 'printer' else 'spools'}"]');
-      if (tab) tab.click();
+      if ({json.dumps(view != 'settings')}) {{
+        if (!tab) throw Error('Requested tab is not available');
+        tab.click();
+      }}
+      if ({json.dumps(wizard_step is not None)}) {{
+        var remaining = {wizard_step or 0};
+        function advance() {{
+          if (!remaining) return;
+          var next = document.querySelector('[data-test="wiz-next"]');
+          if (!next || next.disabled) throw Error('Wizard step is not available');
+          next.click(); remaining--; setTimeout(advance, 100);
+        }}
+        advance();
+      }}
     }}, 200);
+    setTimeout(function () {{
+      if (!document.querySelector('#app .p-button')) throw Error('Vue did not mount');
+      document.documentElement.dataset.renderReady = 'true';
+    }}, 1200);
   }});
 }})();
 </script>"""
@@ -207,7 +242,6 @@ h3 {{ margin: 0 0 16px; font-size: 16px; font-weight: 600; }}
 def frame(screen: dict, inner: str, inner_height: int) -> str:
     points = "".join(f"<li>{html.escape(p)}</li>" for p in screen["points"])
     return f"""<!doctype html><html><head><meta charset="utf-8">
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 * {{ box-sizing: border-box; }}
 html, body {{ margin: 0; width: 1920px; height: 1080px; overflow: hidden; }}
@@ -234,7 +268,16 @@ footer {{ position: absolute; left: 90px; bottom: 54px; font-size: 19px; color: 
 <div class="left"><div class="brand"><svg viewBox="0 0 256 256">{SYMBOL}</svg><img src="{WORDMARK}" alt="Spooler"></div>
 <h1><span>{screen["title"]}</span></h1><ul>{points}</ul></div>
 <div class="window"><iframe src="{inner}"></iframe></div>
-<footer>Independent community project, based on Spoolio. Not affiliated with OrcaSlicer, Spoolman, Snapmaker, Sovol or Bambu Lab.</footer>
+<footer>MOCK preview · Independent community project, based on Spoolio. Not affiliated with OrcaSlicer or printer manufacturers.</footer>
+<script>
+setTimeout(function () {{
+  const inner = document.querySelector('iframe').contentDocument;
+  const ok = inner && !inner.documentElement.dataset.renderError &&
+    ({str(screen['page'] == 'presets').lower()} || inner.documentElement.dataset.renderReady === 'true');
+  document.documentElement.dataset.renderReady = String(!!ok);
+  if (!ok) document.documentElement.dataset.renderError = inner?.documentElement.dataset.renderError || 'Vue preview did not finish';
+}}, 2500);
+</script>
 </body></html>"""
 
 
@@ -249,11 +292,12 @@ def find_chrome(given: str | None) -> str:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument("--chrome", help="path to Google Chrome or Chromium")
+    parser.add_argument("--out", type=Path, default=OUT, help="output folder (use a temporary folder to preserve published artwork)")
     args = parser.parse_args()
     chrome = find_chrome(args.chrome)
     sp, _ = load()
     spools_msg, live_msg = demo_state(sp)
-    OUT.mkdir(parents=True, exist_ok=True)
+    args.out.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory() as tmp:
         work = Path(tmp)
         for screen in SCREENS:
@@ -262,20 +306,16 @@ def main() -> None:
             if screen["page"] == "presets":
                 inner = presets_mock(sp, spools_msg)
             else:
-                inner = plugin_page(sp, screen["page"], spools_msg, live_msg)
+                inner = plugin_page(sp, "settings" if screen["page"] == "wizard" else screen["page"],
+                                    spools_msg, live_msg, 1 if screen["page"] == "wizard" else None)
             (work / f"{stem}-inner.html").write_text(inner, encoding="utf-8")
             (work / f"{stem}.html").write_text(frame(screen, f"{stem}-inner.html", height), encoding="utf-8")
-            out = OUT / screen["file"]
-            run = subprocess.run([chrome, "--headless=new", "--disable-gpu", "--hide-scrollbars",
-                                  f"--user-data-dir={work / 'chrome-profile'}", "--no-first-run",
-                                  "--no-default-browser-check",
-                                  "--allow-file-access-from-files", "--force-device-scale-factor=1",
-                                  "--window-size=1920,1080", "--timeout=5000",
-                                  f"--screenshot={out}", (work / f"{stem}.html").as_uri()],
-                                 capture_output=True, text=True, timeout=90)
-            if not out.exists() or "bytes written" not in run.stdout + run.stderr:
-                sys.exit(f"Chrome could not render {out.name}:\n{run.stderr[-2000:]}")
-            print("rendered", out.relative_to(ROOT))
+            out = args.out.resolve() / screen["file"]
+            # The test launcher supplies --use-mock-keychain --password-store=basic.
+            subprocess.run(["node", str(ROOT / "scripts/render_page.mjs"), (work / f"{stem}.html").as_uri(),
+                            str(out), "1920", "1080", "1", "true", str(args.out.resolve())],
+                           env={**os.environ, "CHROME": chrome}, check=True, timeout=90)
+            print("rendered MOCK", out)
 
 
 if __name__ == "__main__":

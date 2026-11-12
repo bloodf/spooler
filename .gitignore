@@ -17,3 +17,5 @@ spooler_settings.json
 # Tool caches and local agent state
 .ruff_cache/
 .claude/scheduled_tasks.lock
+ui/node_modules/
+ui/dist/

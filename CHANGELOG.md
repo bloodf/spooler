@@ -3,12 +3,239 @@
 Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); entries before
 0.9.0 are Spoolio's.
 
-## [Unreleased]
+## [0.21.0] - 2026-11-12
+
+- Browser tests disable Chrome extensions that could leave child processes holding the runner open. `WORKERS=1` runs scenarios sequentially; CI uses this mode.
+
+### Changed
+- The Spooler tab, the spool window and the Settings window are one Vue 3 + PrimeVue 4 page (shared Orca UI
+  foundation 2.0.2), built from `ui/` and embedded in the single plugin file (`scripts/embed_ui.py`); no CDN,
+  no remote font, no eval. English and Brazilian Portuguese, following OrcaSlicer's language unless you pick
+  one in Settings. Every flow stays: spool list, filters, groups, card actions, plate check, printers, Live
+  Link, Moonraker active spool, usage booking and undo, drying, statistics, Settings and the setup guide.
+- An empty Spoolman, a missing address, a failed read and filters that match nothing each say so, with the
+  next step (Settings, Try again, Clear filters); Sync and Send are off, with the reason, until the spool
+  source works. "Send to Spoolman" is now "Send Preset Edits to Spoolman" and explains what it sends.
+- Results and errors are announced; errors stay until dismissed instead of disappearing after 8 s, and an
+  action without an answer after 30 s says its outcome is unknown.
+- Archive, Add a spool, moving a spool linked to a U1 toolhead, removing a printer or unit and clearing the
+  active spool ask in a dialog that names both answers. Leaving Settings with unsaved changes asks first.
+- Low stock uses the theme's warning and danger colours (the previous amber text measured 2.05:1); colour
+  code and diameter are off by default on spool rows (Settings > Display turns them back on).
+- With U1 Control running, the Spools and Printer tabs say the U1 lives in the U1 Control tab and why there
+  are two tabs (OrcaSlicer offers no way to hide one).
+
+### Added
+- u1control can show Spooler's stock in its U1 Control tab. Spooler writes a presence file in
+  OrcaSlicer's data folder while it is loaded, and the live spool list only while u1control's tab
+  asks for it. Nothing extra is written to Spoolman or a printer for it.
+- The spool list message tells the page whether U1 Control runs in this OrcaSlicer (`peers`) and gives
+  failed reads a stable `error_code` (`no_url`, `read_failed`), so the page can explain the state in its
+  own language. Read from presence files only.
 
 ### Fixed
-- A filament preset now gets its cost from the spool prices in Spoolman when the filament itself
-  has no price, as is usual in Spoolman: the mean price per kg of the filament's spools in stock.
-  A price on the filament still wins.
+- Filament presets fall back to the mean price per kg of their non-archived spools when the
+  filament has no usable price. A usable filament price still takes precedence. Thanks to
+  @jeffersonraimon for the contribution in #20.
+- Mark Dried Today and Clear Dried Date on Spoolman older than 0.26 replaced the spool's whole
+  extra map, dropping its other extra fields (for example the RFID tag). Spooler now reads the
+  fields again and sends them back with only the dried date changed; when it can't read Spoolman's
+  version or the fields, it writes nothing and says why.
+- Changing the Spoolman address (or the spool source) while a send, a card action, a booking or a
+  refresh was running could write data and spool ids read from the old server to the new one.
+  Each operation now stays on the server it started with and stops when Settings change; card
+  actions and bookings from a list read before the change are refused until you refresh.
+- Sending a preset to Spoolman could undo a change made in Spoolman meanwhile to another extra
+  field or to orca_settings. Spooler now reads the filament again just before writing, merges your
+  edit with what changed there, keeps Spoolman's value where both changed, and on Spoolman 0.26 or
+  newer sends only orca_settings.
+- A booking whose answer was lost, or whose state couldn't be saved, could be booked twice. Each
+  row's state is now saved before it is sent; when Spooler can't tell whether Spoolman applied it,
+  the row is marked for you to check in Spoolman and is never sent again by itself. Undo adds the
+  grams back in one step on Spoolman's side (Spoolman 0.18 or newer), so use booked meanwhile is no
+  longer lost, and usage and history files are written in one step.
+- Cancelling Keep Slots Synced while it read the printer still changed slots afterwards; it now
+  stops before touching a slot, also when the printer or project changed, and an old run no longer
+  clears a newer run's marker. Unloading the plugin stops its live printer links.
+- Empty spools (0 g) disappeared from the Bambu Cloud list and showed no percentage on Klipper
+  printers.
+- An error while handling a page message could write a Bambu password or code to spooler.log.
+  Messages are no longer logged whole, and passwords in addresses and secret-looking values are
+  masked in every log line.
+- A printer could make Spooler read a huge MQTT message or trickle one in forever; an Anycubic
+  printer that never sent a report after connecting kept the link waiting. Both now end the session
+  and reconnect with the usual backoff.
+- When OrcaSlicer refused a new preset bundle, the last accepted one was already overwritten on
+  disk; it is now put back.
+- A filament box or lane removed from a Klipper or Anycubic printer kept showing.
+- Filtering the spool list after a failed refresh showed the old list as current. The error stays,
+  and the old list is marked with the time it was read.
+- Assign Spool and the spool picker on the Printer tab work with the keyboard (Tab, Enter, Space,
+  Down, Escape), and focus returns to the slot.
+- The Printer tab no longer redraws every card when only a printer's age changed.
+- SECURITY.md now lists every write Spooler makes to Spoolman and printers.
+- Settings in a filament's orca_settings field in Spoolman that Spooler didn't know were dropped
+  without a word. The nozzle temperature range (nozzle_temperature_range_low and _high) is now
+  applied to the presets, along with chamber temperature, overhang fan speed, the layers with the
+  fan off, the layer with full fan speed, the auxiliary fan speed and the minimal purge on the wipe
+  tower. Any other key is still left out, and Spooler's log now names it once.
+
+## [0.20.0] - 2026-11-11
+
+### Added
+- Change Spool on the Printer tab for single-extruder Klipper printers such as the Sovol SV06.
+  It opens the spool picker, and the spool you pick becomes Moonraker's active spool, so Moonraker
+  books the next print's filament to it. Clear unsets the active spool (with a second click).
+  Archived spools are not offered, and the result shows under the card. It is not offered on the
+  Snapmaker U1 (u1control binds its toolheads) or on printers with AFC, Happy Hare or another
+  filament changer (they manage their own spools), and Spooler refuses it for those printers even
+  if asked directly.
+- A debug capture for Anycubic printers, the first step toward booking their prints. With
+  "kx_capture": true in Spooler's settings file, Spooler writes each kind of message the printer
+  sends to its log once, with serial numbers, tokens, addresses and credentials removed, and asks
+  the printer for its print status.
+- A Sync Presets button in the Spools tab reads Spoolman at once and rebuilds every Spooler
+  filament preset in OrcaSlicer, even when nothing changed or a refused set was waiting to be
+  tried again, then says how many presets it synced or why it couldn't.
+
+### Fixed
+- Opening a group of spools in the two-column list no longer stretches it across both columns and
+  leaves a hole beside the card before it. The group stays in its own column, its spools are
+  listed under it as normal cards, and the other column keeps filling beside them.
+
+### Not yet
+- Booking the filament used by Anycubic Kobra prints. How the printer reports a print in progress
+  is not documented, so it needs a capture from one real print first; docs/kobra-booking.md says
+  how to make one and what happens next.
+
+## [0.19.0] - 2026-11-11
+
+### Added
+- A Details item in a spool's menu opens a panel on the card: the prints that used the spool (date,
+  print name, grams, cost), the total grams and cost booked, how many grams a week it has used over
+  the last 4 weeks, and about how many weeks are left at that rate.
+- Export to CSV in the Stats tab's Print History card. It saves one row per spool of every print in
+  the selected period (date, print, printer, result, progress, spool, material, colour, grams, cost
+  and the support and purge grams) to a history-YYYYMMDD-HHMM.csv file in Spooler's exports folder,
+  opens that folder and shows the file path. The file opens cleanly in Excel, and cells that start
+  like a formula are stored as plain text.
+- A Stats tile "On the Shelf" with the grams and money left in your non-archived spools, and a card
+  that splits it by material. Spools without a price count toward the grams only.
+- A Stats tile "Lost to Failed Prints" with the grams and cost of cancelled or failed prints in the
+  period. Failed prints in Print History also show the amount they lost.
+- A "Closest colour" picker in the Filters panel. Pick a colour and the list shows the 12 spools
+  nearest to it, closest first, using the same colour distance as the plate check. A multi-colour
+  spool counts by its closest colour. Clear brings the normal list back.
+
+### Fixed
+- The store images' footer now also names Anycubic in the "Not affiliated with" line.
+
+## [0.18.0] - 2026-11-11
+
+### Added
+- A drying tracker. A spool's menu on the Spools tab has "Mark Dried Today" and "Clear Dried Date",
+  and the card shows a "Dried 12 d ago" chip. The date is kept in a Spoolman field Spooler adds
+  by itself, so it is also visible and editable in Spoolman. Switch the chip off in Settings >
+  Display.
+- A drying reminder after slicing. Settings has a new Drying Reminders table with the days each
+  material may go since it was dried (PETG 30, TPU 14, PA 7, PVA 7, PC 14; ABS, ASA and PLA are off;
+  set 0 for no reminder, and add your own materials). A material also covers its variants, so PA
+  covers PA-CF and PETG covers PETG HF. When a loaded spool of one of these materials was dried
+  longer ago than that, or never, the notice adds a sentence such as "PETG Black (slot 2) was last
+  dried 41 days ago." It comes after the filament-quantity sentences and before the cost, and it
+  never turns an all-clear notice into a warning. The chip turns amber past the same number of days.
+
+### Changed
+- Spooler now also adds a "Dried" field to the spools in Spoolman, next to its filament
+  fields. Spoolman's own extra-fields line on the cards skips it.
+
+## [0.17.0] - 2026-11-11
+
+### Added
+- A notification in OrcaSlicer when a spool drops below your low-stock grams: "Spooler: <spool> is
+  down to 82 g". It fires once per spool as it crosses, never for the spools that are already low
+  when OrcaSlicer starts, and again if you refill the spool and it drops again. Archived spools are
+  ignored. Switch it off in Settings > Display.
+- The notice after slicing now ends with what the plate costs in filament, for example "About
+  €1.23 of filament.", when the matching spools have prices in Spoolman. It uses the currency
+  chosen for Stats, and is the first sentence dropped when the notice is too long.
+- When a slot is short of filament, the notice suggests a spool of the same filament that is not
+  loaded and has enough, with where it is kept: "Swap in spool #12 (Shelf A, 640 g)." It prefers
+  the spool you should finish first, otherwise the one with the least left that still covers the
+  print.
+- A "Use First" chip on the opened spool of a filament that has two or more spools, the one with the
+  earliest first use (else earliest registered), so you finish the oldest first. Switch it off in
+  Settings > Display.
+
+## [0.16.0] - 2026-11-11
+
+### Added
+- The spool list updates by itself when spools change in Spoolman: add, edit, use or delete a spool
+  there (or have a printer book filament to it) and the Spools tab shows it within a second or two,
+  instead of at the next 60 second refresh. Several changes in a row refresh the list once. When
+  Spoolman can't be reached this way (some reverse proxies block it), the list keeps refreshing
+  every 60 seconds as before, and the log says so once.
+- Spool cards can show the spool's comment, lot number and your own Spoolman extra fields, on a
+  muted line under the details. Long text is cut short on the card; hover it to read it all. The
+  comment is shown by default; lot number and extra fields are switched on in Settings > Display.
+  Spooler's own fields (the RFID tag and its calibration fields) are never listed.
+
+### Changed
+- The search box also finds spools by location, lot number and comment, and `#12` finds spool 12
+  and only that one.
+
+## [0.15.0] - 2026-11-11
+
+### Added
+- A setup guide for first use. The first time Settings opens, a six-step guide explains what
+  Spooler does, takes your Spoolman address and tests it right there, and covers permissions, where
+  the presets appear and how printers are found. Next unlocks once the connection test passes.
+  Back, Skip and Escape work as expected, and the guide never uses browser pop-ups. It opens by
+  itself only while no source is set up and it has not been finished or skipped, so existing
+  setups never see it. ***Open the setup guide*** in Settings brings it back.
+- Install pictures and a complete Orca Cloud listing text (docs/store-description.md), a store
+  image of the setup guide, and the README now shows the install steps.
+
+### Changed
+- The "How It Works" steps in Settings are replaced by a short note and the setup guide button.
+- The store images are redrawn for the spool card menu added in 0.14.0.
+
+## [0.14.0] - 2026-11-11
+
+### Added
+- Each spool card has a ⋯ button with actions for that spool in Spoolman: set its weight from a
+  scale reading, subtract grams used by hand, move it to another location (Spoolman's locations
+  to pick from, or type a new one), archive or unarchive it, add another spool of the same
+  filament, and open it in Spoolman. Numbers are typed into the card itself. Archiving and adding
+  ask for a second click, and so does moving a spool off a U1 toolhead's location, which unlinks
+  it from that toolhead. The result shows in the status line above the list. Not offered for the
+  Bambu Cloud source.
+- Show archived (in the filters, and in Settings > Display) lists archived spools too, dimmed.
+  They still never count for the filament presets, the after-slice check, usage booking or the
+  printer slots.
+
+### Changed
+- Spooler now changes a spool's location in Spoolman when you move it from its card. It still
+  never does so on its own.
+
+## [0.13.0] - 2026-11-11
+
+### Added
+- The Stats tab estimates wasted filament (from Spoolio 0.9.6): how much of each print went into
+  supports and into purging and the prime tower. There is a new Wasted Filament tile, a Usage
+  Ratios card with the three most wasteful prints, and a Waste column in Print History. The
+  estimate is read from the plate G-code inside the job file on the printer, so it covers Bambu
+  prints booked from the job file, and only prints made after this update.
+
+### Changed
+- Configure Stats is now the last card in Settings (from Spoolio 0.9.6).
+
+## [0.12.2] - 2026-11-11
+
+### Fixed
+- With the list grouped by material, manufacturer or location, the weight on a group's header
+  ("1,871 g of 2,000 g · 94%") no longer wraps onto two lines or runs past the edge of the card.
+  It stays on one line with the bar underneath, and a long group name is shortened instead.
 
 ## [0.12.1] - 2026-11-10
 

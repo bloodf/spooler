@@ -192,6 +192,24 @@ class PresetTest(unittest.TestCase):
         self.assertEqual(p["filament_cost"], ["22.99"])
         self.assertEqual(p["filament_shrinkage_compensation_z"], ["99.5%"])
 
+    def test_orca_settings_temperature_range_and_cooling(self):
+        field = {"*": {"nozzle_temperature_range_low": "220", "nozzle_temperature_range_high": "250",
+                       "chamber_temperature": "40", "overhang_fan_speed": "60", "full_fan_speed_layer": "3"}}
+        f = filament(1, "x", "PETG", extra={"orca_settings": json.dumps(json.dumps(field))})
+        p = sp.profile_preset(f, "x", "Generic PETG @System", U1)
+        for key, value in field["*"].items():
+            self.assertEqual(p[key], [value])
+
+    def test_orca_settings_says_which_keys_it_ignores(self):
+        field = {"*": {"machine_start_gcode": "G28", "filament_flow_ratio": "0.98"}}
+        f = filament(7, "x", "PLA", extra={"orca_settings": json.dumps(json.dumps(field))})
+        sp._ignored_keys.clear()
+        with self.assertLogs(sp.log, "WARNING") as logs:
+            sp.orca_settings(f, U1)
+            sp.orca_settings(f, U1)  # said once, not on every refresh
+        self.assertEqual(len(logs.output), 1)
+        self.assertIn("machine_start_gcode", logs.output[0])
+
     def test_orca_settings_flat_and_broken(self):
         flat = filament(1, "x", "PLA", extra={"orca_settings": json.dumps('{"filament_flow_ratio": "0.98"}')})
         self.assertEqual(sp.orca_settings(flat, U1), {"filament_flow_ratio": ["0.98"]})
@@ -320,6 +338,16 @@ class SyncTest(unittest.TestCase):
         self.assertEqual(orca.reloads, ["spooler"])
         self.assertEqual(sp.profile_for_spool(spools[0], U1), "_local/spooler/SUNLU PETG Black @Snapmaker U1")
         self.assertEqual(sp.profile_for_spool(spools[0], "Other"), "")
+
+    def test_forced_sync_reloads_even_when_unchanged_or_backing_off(self):
+        spools = [spool(1, filament(1, "Black", "PETG"))]
+        sp.profile_sync(spools, snapshot())
+        sp.profile_sync(spools, snapshot(), force=True)
+        self.assertEqual(orca.reloads, ["spooler", "spooler"])
+        sp._profiles["failed"] = (sp.profile_digest(sp.profile_files(spools, snapshot())[0]), sp.time.monotonic())
+        state = sp.profile_sync(spools, snapshot(), force=True)
+        self.assertEqual((orca.reloads[-1], state["error"]), ("spooler", ""))
+        self.assertEqual(len(orca.reloads), 3)
 
     def test_removes_stale_presets(self):
         sp.profile_sync([spool(1, filament(1, "Black", "PETG"))], snapshot((U1,)))
