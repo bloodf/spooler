@@ -519,6 +519,15 @@ test('B-21/B-24: focus ring on group heads is visible; reduced motion honoured',
 `);
 
 // ------------------------------------------------------------------ runner
+async function bounded(work, stage, ms = 30000) {
+  let timer;
+  try {
+    return await Promise.race([work, new Promise((_, reject) => {
+      timer = setTimeout(() => reject(Object.assign(new Error(`Page runner stalled: ${stage} (${ms}ms)`), { code: 'PAGE_TIMEOUT' })), ms);
+    })]);
+  } finally { clearTimeout(timer); }
+}
+
 const workers = Number(process.env.WORKERS ?? 4);
 if (!Number.isSafeInteger(workers) || workers < 1) throw new Error('WORKERS must be a positive integer');
 const filter = process.argv[2];
@@ -539,19 +548,19 @@ try {
         settings: { ...SETTINGS, wizard: !!sc.wizard } };
       const file = join(dir, `p${k}.html`);
       await writeFile(file, preparePage(page, boot));
-      const p = await browser.newPage();
+      const p = await bounded(browser.newPage(), 'open page / initialize DevTools');
       const started = Date.now();
       try {
-        await p.size(1280, 900);
-        await p.init(MOCK_HOST + 'try { localStorage.clear(); } catch {}');
-        await p.goto(pathToFileURL(file).href);
+        await bounded(p.size(1280, 900), 'set viewport');
+        await bounded(p.init(MOCK_HOST + 'try { localStorage.clear(); } catch {}'), 'install mock host');
+        await bounded(p.goto(pathToFileURL(file).href), 'navigate / load event');
         const body = `(async () => { ${HELPERS} ${PRELUDE}
           await until(() => document.querySelector('#app > *'), 'app mounted');
           ${sc.body}
           await settle();
           return { violations: __t.violations, rejections: __t.rejections, errors: __t.errors };
         })()`;
-        const probe = await p.evaluate(body);
+        const probe = await bounded(p.evaluate(body), `evaluate ${sc.name}`);
         if (probe.violations.length || probe.rejections.length || probe.errors.length) throw new Error('page problems: ' + JSON.stringify(probe));
         results.push({ name: sc.name, ok: true, ms: Date.now() - started });
         console.log(`ok   ${sc.name}`);
@@ -559,8 +568,16 @@ try {
         failed++;
         results.push({ name: sc.name, ok: false, error: String(e.message || e) });
         console.log(`FAIL ${sc.name}\n     ${String(e.message || e).split('\n')[0]}`);
+        if (e.code === 'PAGE_TIMEOUT') {
+          try {
+            console.log('Page at timeout:', await bounded(p.evaluate(`({ ready: document.readyState, visibility: document.visibilityState,
+              focus: document.hasFocus(), mounted: !!document.querySelector('#app > *'),
+              messages: window.__t?.sent, errors: window.__t?.errors, rejections: window.__t?.rejections })`), 'timeout diagnostics', 2000));
+          } catch (diagnostic) { console.log(String(diagnostic)); }
+          throw e;
+        }
       } finally {
-        await p.close();
+        await bounded(p.close(), 'close page');
       }
     }
   }));
