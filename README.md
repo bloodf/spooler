@@ -26,7 +26,8 @@ the rest is automatic.
     `Snapmaker PLA SnapSpeed @U1`, other PLA gets `Generic PLA @U1 0.4 nozzle`, silk gets the silk
     preset, and so on. The vendor's own preset wins when OrcaSlicer has one.
   - On top of that it carries the filament's colour, vendor, nozzle and bed temperatures (the bed
-    temperature on every plate type), density, diameter and cost from Spoolman.
+    temperature on every plate type), density, diameter and cost from Spoolman (the
+    filament's price, else the mean price per kg of its spools in stock).
   - Calibrated settings come along too: add a text extra field `orca_settings` to filaments in
     Spoolman (Settings > Extra Fields) and put a JSON object of OrcaSlicer filament settings in it,
     either for every printer or in sections named after part of a printer preset's name, `*` for
