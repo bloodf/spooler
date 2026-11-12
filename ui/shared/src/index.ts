@@ -5,7 +5,7 @@ import './base.css';
 
 export type OrcaLocale = 'en' | 'pt-BR';
 export type OrcaTheme = 'light' | 'dark';
-export const UI_VERSION = '2.0.2';
+export const UI_VERSION = '2.0.3';
 export { OrcaPreset };
 
 export function primeVueOptions(locale: OrcaLocale): PrimeVueConfiguration {

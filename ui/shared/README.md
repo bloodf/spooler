@@ -1,4 +1,6 @@
-# Orca UI foundation 2.0.2 — Vue and PrimeVue
+# Orca UI foundation 2.0.3 — Vue and PrimeVue
+
+Version 2.0.3 updates the build tools only (Vite 8.3.8, @vitejs/plugin-vue 6.0.11); the runtime, preset and palette are unchanged.
 
 Version 2.0.2 omits the locale option for English so PrimeVue retains its built-in labels. Passing an explicit undefined locale erased those defaults and broke Tabs. Consumers should use installOrcaUI directly instead of filtering this option locally.
 
