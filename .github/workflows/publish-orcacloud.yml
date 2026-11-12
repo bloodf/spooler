@@ -39,6 +39,11 @@ jobs:
         id: chrome
         with:
           chrome-version: stable
+      - name: Allow Chrome sandbox on Ubuntu
+        if: runner.os == 'Linux'
+        env:
+          CHROME: ${{ steps.chrome.outputs.chrome-path }}
+        run: bash scripts/ci_chrome_sandbox.sh
       - name: Rebuild and verify the embedded Vue page
         working-directory: ui
         run: npm ci --ignore-scripts && npm run build
