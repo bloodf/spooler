@@ -134,6 +134,27 @@ class PresetTest(unittest.TestCase):
         self.assertNotIn("filament_cost", p)
         self.assertEqual(p["default_filament_colour"], ["#FFFFFF"])
 
+    def test_cost_from_spools_when_filament_has_no_price(self):
+        f = filament(1, "x", "PLA", weight=1000)
+        spools = [{**spool(1, f), "price": 80, "initial_weight": 1000},
+                  {**spool(2, f), "price": 50, "initial_weight": 500},
+                  {**spool(3, f), "price": 999, "initial_weight": 1000, "archived": True},
+                  {**spool(4, f)},
+                  {**spool(5, filament(2, "y", "PLA")), "price": 999, "initial_weight": 1000}]
+        self.assertEqual(sp.spool_cost_per_kg(1, spools), 90)
+        self.assertIsNone(sp.spool_cost_per_kg(2, spools[:4]))
+        p = sp.profile_preset(f, "x", "Generic PLA @System", U1, sp.spool_cost_per_kg(1, spools))
+        self.assertEqual(p["filament_cost"], ["90"])
+
+    def test_spool_price_uses_filament_weight_without_initial_weight(self):
+        f = filament(1, "x", "PLA", weight=750)
+        self.assertEqual(sp.spool_cost_per_kg(1, [{**spool(1, f), "price": 30}]), 40)
+
+    def test_filament_price_wins_over_spools(self):
+        f = filament(1, "x", "PLA", price=20, weight=1000)
+        p = sp.profile_preset(f, "x", "Generic PLA @System", U1, 90)
+        self.assertEqual(p["filament_cost"], ["20"])
+
     def test_bed_temperature_on_every_plate(self):
         p = sp.profile_preset(filament(1, "x", "PLA", settings_bed_temp=65), "x", "Generic PLA @System", U1)
         self.assertEqual({k: v for k, v in p.items() if k in PLATE_KEYS}, {k: ["65"] for k in PLATE_KEYS})
@@ -223,6 +244,12 @@ class FilesTest(unittest.TestCase):
         self.assertEqual(len(files), filaments * 2)
         self.assertEqual(by_key[(13, U1)], "3D Procer PLA Pérola @Snapmaker U1")
         self.assertEqual(by_key[(13, SV06)], "3D Procer PLA Pérola @Sovol SV06")
+
+    def test_spool_price_reaches_the_preset(self):
+        f = filament(1, "Preto", "PLA", vendor="3D Procer", weight=1000)
+        files, by_key = sp.profile_files([{**spool(1, f), "price": 89.9, "initial_weight": 1000}],
+                                         snapshot((U1,)))
+        self.assertEqual(files[by_key[(1, U1)] + ".json"]["filament_cost"], ["89.9"])
 
     def test_archived_spools_drop_their_filament(self):
         spools = [spool(1, filament(1, "Gone", "PLA"), archived=True)]

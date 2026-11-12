@@ -34,6 +34,9 @@ Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); 
   own language. Read from presence files only.
 
 ### Fixed
+- Filament presets fall back to the mean price per kg of their non-archived spools when the
+  filament has no usable price. A usable filament price still takes precedence. Thanks to
+  @jeffersonraimon for the contribution in #20.
 - Mark Dried Today and Clear Dried Date on Spoolman older than 0.26 replaced the spool's whole
   extra map, dropping its other extra fields (for example the RFID tag). Spooler now reads the
   fields again and sends them back with only the dried date changed; when it can't read Spoolman's

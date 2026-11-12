@@ -927,8 +927,9 @@ def load_spools() -> dict:
 # For each of your printers, one OrcaSlicer filament preset per Spoolman filament, written as a
 # local preset bundle and hot-reloaded. Each one inherits the closest preset OrcaSlicer already
 # has for that printer (so the printer's own tuning is kept), is limited to that printer, and
-# carries the filament's colour, vendor, temperatures, density, diameter and cost. It shows up
-# under "User presets" in the sidebar's filament dropdown.
+# carries the filament's colour, vendor, temperatures, density, diameter and cost (the filament's
+# price, else its spools' prices). It shows up under "User presets" in the sidebar's filament
+# dropdown.
 #
 # OrcaSlicer refuses the whole bundle when any preset in it has an unknown key or a parent it
 # can't find, so only keys checked against PrintConfig.cpp are written, and only parents read
@@ -1105,9 +1106,25 @@ def profile_colour(filament: dict) -> str:
     return _hex6(filament.get("color_hex")) or _hex6(multi[0].strip()) or "FFFFFF"
 
 
-def profile_preset(filament: dict, name: str, parent: str, target: str) -> dict:
+def spool_cost_per_kg(filament_id: object, spools: list[dict]) -> float | None:
+    """The mean price per kg of a filament's spools not archived that have a price, each spool's
+    price over its initial weight (else the filament's weight); None when none has one."""
+    rates = []
+    for spool in spools or []:
+        filament = spool.get("filament") if isinstance(spool, dict) else None
+        if spool.get("archived") or not isinstance(filament, dict) or filament.get("id") != filament_id:
+            continue
+        price, weight = _num(spool.get("price")), _num(spool.get("initial_weight")) or _num(filament.get("weight"))
+        if price and weight:
+            rates.append(price / weight * 1000)
+    return sum(rates) / len(rates) if rates else None
+
+
+def profile_preset(filament: dict, name: str, parent: str, target: str,
+                   spool_cost: float | None = None) -> dict:
     """The preset JSON for one Spoolman filament on one printer. Values are lists of strings,
-    as OrcaSlicer stores them; one value applies to every nozzle variant of the parent."""
+    as OrcaSlicer stores them; one value applies to every nozzle variant of the parent.
+    spool_cost is the price per kg from the filament's spools, used when the filament has none."""
     vendor = str((filament.get("vendor") or {}).get("name") or "").strip()
     preset = {
         "type": "filament", "name": name, "from": "User", "instantiation": "true",
@@ -1133,6 +1150,8 @@ def profile_preset(filament: dict, name: str, parent: str, target: str) -> dict:
     price, weight = _num(filament.get("price")), _num(filament.get("weight"))
     if price and weight:
         preset["filament_cost"] = [_fmt(round(price / weight * 1000, 2))]
+    elif spool_cost:
+        preset["filament_cost"] = [_fmt(round(spool_cost, 2))]
     for field, (key, _label, _unit) in CALIBRATION_FIELDS.items():
         value = extra_number(filament, field)
         if value is not None:
@@ -1273,7 +1292,8 @@ def profile_files(spools: list[dict], snapshot: dict) -> tuple[dict, dict]:
         parent = best_parent(filaments[fid], target, snapshot.get("parents") or [])
         if not parent:
             continue
-        files[f"{name}.json"] = profile_preset(filaments[fid], name, parent, target)
+        files[f"{name}.json"] = profile_preset(filaments[fid], name, parent, target,
+                                               spool_cost_per_kg(fid, spools))
         by_key[(fid, target)] = name
     return files, by_key
 
