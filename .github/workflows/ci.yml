@@ -36,6 +36,17 @@ jobs:
         id: chrome
         with:
           chrome-version: stable
+      # macOS needs a .app path; setup-chrome installs the bundle in a bare arch directory.
+      - name: Restore the macOS Chrome application path
+        if: runner.os == 'macOS'
+        id: mac-chrome
+        shell: bash
+        env:
+          CHROME: ${{ steps.chrome.outputs.chrome-path }}
+        run: |
+          bundle="${CHROME%/Contents/MacOS/*}"
+          ln -s "$bundle" "$RUNNER_TEMP/OrcaTestChrome.app"
+          echo "chrome-path=$RUNNER_TEMP/OrcaTestChrome.app/Contents/MacOS/${CHROME##*/}" >> "$GITHUB_OUTPUT"
       - name: Allow Chrome sandbox on Ubuntu
         if: runner.os == 'Linux'
         env:
@@ -47,7 +58,7 @@ jobs:
         run: python scripts/build.py
       - name: Unit tests
         env:
-          CHROME: ${{ steps.chrome.outputs.chrome-path }}
+          CHROME: ${{ steps.mac-chrome.outputs.chrome-path || steps.chrome.outputs.chrome-path }}
         run: python -m unittest discover -s tests
 
   ui-build:
