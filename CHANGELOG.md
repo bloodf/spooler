@@ -3,6 +3,28 @@
 Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); entries before
 0.9.0 are Spoolio's.
 
+## [0.23.0] - 2026-11-13
+
+### Added
+- PrusaLink and OctoPrint printers on the Printer tab: pick the printer type when linking it (PrusaLink takes the username and password from the printer's PrusaLink settings, OctoPrint an application key). Spooler shows live print progress and the spools on each toolhead, and books the grams from the job's G-code to Spoolman. These printers don't report their spools, so you assign one to each toolhead ("Add toolhead").
+- Klipper (Moonraker) printers show live print progress. Their prints are booked too when the printer is not a Snapmaker U1 (U1 Control books those) and Moonraker's own Spoolman integration is not connected, so nothing is counted twice. Grams come from Moonraker's file metadata.
+- After a slice for a PrusaLink or OctoPrint printer, each filament that matches exactly one spool is put on its toolhead (and taken off any other slot). Several matches leave the toolhead as it was. Can be switched off per printer.
+- Stats: calibration prints (flow rate, pressure advance, temperature and retraction towers, max volumetric speed, VFA, input shaping) are their own Calibration slice in Usage Ratios, with a chip in the history and a column in the CSV export. They no longer count as wasted filament or "most wasteful prints".
+
+### Changed
+- PrusaLink, OctoPrint and Klipper prints are always asked before booking, even with Book Automatically on.
+
+### Fixed
+- OrcaSlicer could freeze while a booking waited on a slow or offline Spoolman: the Printer tab's refresh waited for the booking. It now answers at once.
+- After Spoolman answered the spool list with an error, the list could stop refreshing until OrcaSlicer was restarted.
+- Errors in background tasks are written to `spooler.log`.
+- Two refreshes at once could open two live connections to the same printer (two Bambu sessions knock each other off).
+- The spool list is read from Spoolman once when several parts of Spooler ask for it at the same moment (after a slice).
+
+### Known limitations
+- PrusaLink, OctoPrint and the Klipper booking were built from the printers' API documentation and tested against simulated answers, not real printers yet. Reports welcome.
+- Prusa binary G-code (`.bgcode`) is not read; those prints are booked from the last slice's grams.
+
 ## [0.22.2] - 2026-11-13
 
 ### Fixed

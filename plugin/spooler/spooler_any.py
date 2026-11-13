@@ -6,7 +6,7 @@
 # name = "Spooler"
 # description = "Spoolman inventory for OrcaSlicer: auto-synced filament profiles and live printer slots"
 # author = "bloodf (fork of Spoolio by Dan J Moore)"
-# version = "0.22.2"
+# version = "0.23.0"
 # ///
 
 import asyncio
@@ -51,7 +51,7 @@ except (ImportError, AttributeError):
 _SLICING = hasattr(getattr(orca, "slicing", None), "SlicingPipelineCapabilityBase")
 
 PLUGIN_NAME = "Spooler"
-PLUGIN_VERSION = "0.22.2"
+PLUGIN_VERSION = "0.23.0"
 # Stamped per operating system by scripts/build.py.
 BUILD_TARGET = "any"
 
@@ -3997,7 +3997,11 @@ def octoprint_state(text: object, completion: float | None, has_file: bool) -> s
         return "FAILED"
     if s.startswith("operational") and has_file and completion is not None and completion >= 100:
         return "FINISH"
-    return "IDLE"
+    if s.startswith("operational"):
+        return "IDLE"
+    # Offline, Closed, Opening serial connection, Connecting...: OctoPrint lost the printer's serial link.
+    # That says nothing about the print, so it is not read as the print ending (it would book as cancelled).
+    return ""
 
 
 def octoprint_job(answer: dict) -> dict:
@@ -4009,7 +4013,7 @@ def octoprint_job(answer: dict) -> dict:
     pct = _pos_num(prog.get("completion"))
     state = octoprint_state(answer.get("state"), pct, bool(path))
     name = str(file.get("display") or file.get("name") or "")
-    out = {"gcode_state": state, "mc_percent": round(min(pct, 100)) if pct is not None else 0,
+    out = {**({"gcode_state": state} if state else {}), "mc_percent": round(min(pct, 100)) if pct is not None else 0,
            "subtask_name": Path(name).stem if name else "", "gcode_file": path,
            # The file's upload time tells two uploads of one name apart, and stays the same for a whole print.
            "task_id": f"{path}@{file.get('date')}" if path and file.get("date") else path}

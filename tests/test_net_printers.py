@@ -74,9 +74,13 @@ class StateMappingTest(unittest.TestCase):
                  ("Pausing", 5, True, "PAUSE"), ("Paused", 5, True, "PAUSE"), ("Cancelling", 5, True, "FAILED"),
                  ("Error: thermal runaway", 5, True, "FAILED"), ("Offline after error", None, False, "FAILED"),
                  ("Operational", 100.0, True, "FINISH"), ("Operational", 40.0, True, "IDLE"), ("Operational", None, False, "IDLE"),
-                 ("Offline", None, False, "IDLE")]
+                 ("Offline", None, False, ""), ("Closed", None, True, ""), ("Opening serial connection", 30, True, "")]
         for text, pct, has, want in cases:
             self.assertEqual(sp.octoprint_state(text, pct, has), want, text)
+
+    def test_octoprint_offline_mid_print_is_not_an_end(self):
+        out = sp.octoprint_job({"state": "Offline", "progress": {"completion": 40}, "job": {"file": {"path": "a.gcode", "date": 1}}})
+        self.assertNotIn("gcode_state", out)
 
     def test_octoprint_job(self):
         out = sp.octoprint_job({"state": "Printing", "progress": {"completion": 12.4, "printTimeLeft": 3600},
