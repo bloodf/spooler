@@ -229,3 +229,31 @@ export function lowLevel(grams: unknown, low: number): '' | 'low' | 'out' {
   if (typeof grams !== 'number' || low <= 0 || grams >= low) return '';
   return grams <= low * 0.2 ? 'out' : 'low';
 }
+
+/**
+ * The spool picture: eight renders of the same spool, from full (1) to an empty reel (8), tinted with the
+ * filament colour on the page. These are how much each render shows wound on the reel.
+ */
+export const SPOOL_LEVEL_FILL = [1, 0.85, 0.7, 0.55, 0.4, 0.25, 0.08, 0] as const;
+export type SpoolLevel = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
+
+/**
+ * The render closest to `fraction` (0..1). Any filament left, however little, is still level 7 ("almost
+ * empty"): the bare reel (8) is only for a spool with nothing on it or an unknown amount, because drawing an
+ * empty reel for a spool that still has filament would be wrong.
+ */
+export function spoolLevel(fraction: number | null | undefined): SpoolLevel {
+  if (fraction == null || !Number.isFinite(fraction) || fraction <= 0) return 8;
+  const f = Math.min(1, fraction);
+  let best = 0;
+  for (let n = 1; n < 7; n++) if (Math.abs(SPOOL_LEVEL_FILL[n] - f) < Math.abs(SPOOL_LEVEL_FILL[best] - f)) best = n;
+  return (best + 1) as SpoolLevel;
+}
+
+/** The bar's fill as CSS: the filament's own colours, side by side for multi-colour spools. */
+export function barFill(f: Filament): string {
+  const cs = swatchCols(f);
+  if (cs.length < 2) return swatchMain(f);
+  const step = 100 / cs.length;
+  return 'linear-gradient(90deg, ' + cs.map((c, i) => `${c} ${i * step}% ${(i + 1) * step}%`).join(', ') + ')';
+}

@@ -125,6 +125,15 @@ class Logic(unittest.TestCase):
             py_d = sp.colour_diff(c, target)
             self.assertTrue((py_d is None and d is None) or abs(py_d - d) < 1e-9)
 
+    def test_spool_picture_level(self):
+        out = run_logic(self, "console.log(JSON.stringify([1, 0.9, 0.6, 0.36, 0.2, 0.05, 0.001, 0, -1, null, 2, NaN].map(L.spoolLevel)));")
+        # full, nearest render in between; any filament left is never the bare reel; nothing or unknown is the bare reel
+        self.assertEqual(out, [1, 2, 4, 5, 6, 7, 7, 8, 8, 8, 1, 8])
+
+    def test_bar_fill_uses_every_colour(self):
+        out = run_logic(self, "console.log(JSON.stringify([L.barFill({color_hex: 'c8501e'}), L.barFill({multi_color_hexes: '#ff0000,00ff00'}), L.barFill({})]));")
+        self.assertEqual(out, ["#c8501e", "linear-gradient(90deg, #ff0000 0% 50%, #00ff00 50% 100%)", "#888"])
+
     W = "const w = {ams: 'AMS', ht: 'AMS HT', ext: 'External spool', externalShort: 'External', slot: (u, n) => u + ' Slot ' + n, head: n => 'T' + n};\n"
 
     def test_slot_names_match_the_printer_panel(self):

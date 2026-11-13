@@ -3,6 +3,15 @@
 Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); entries before
 0.9.0 are Spoolio's.
 
+## [0.22.0] - 2026-11-13
+
+- Spool cards show the spool itself: a render of the reel with the filament wound on it in the spool's own colour (multi-colour spools too), drawn fuller or emptier in eight steps from what is left. The colour dot stays next to the name.
+- The weight left is the headline of the card ("530 g of 1,000 g", percentage on the right); below the low-stock threshold the number turns warning/danger and says "Low stock" or "Almost empty" in words.
+- The level bar is thicker, uses the filament's colours, keeps a light edge for white or black filament in either theme, and marks the low-stock threshold with a notch.
+- A stack of identical spools shows two reels with the count; printer slots (AMS, toolheads, external) show the loaded spool the same way.
+- In narrow places (a printer slot, two columns on a small window) the reel and the number shrink instead of squeezing the name.
+- The stock list U1 Control reads now gives each spool's full weight from the filament when the spool has none, so U1 Control can draw its fill.
+
 ## [0.21.2] - 2026-11-12
 
 - Fix Spooler failing to load in OrcaSlicer 2.5 ("Plugin on_load failed: PermissionError … audited operation open"). The load log line called `platform.platform()`, which on macOS reads `/System/Library/CoreServices/SystemVersion.plist` and opens `/dev/null`; the host's audit blocks both. The log now uses `sys.platform` and `platform.machine()`, which read no files. A test loads the tab and the window with file access outside the data folder blocked.

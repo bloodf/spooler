@@ -3,13 +3,15 @@ import { computed, nextTick, ref, watch } from 'vue';
 import Button from 'primevue/button';
 import InputText from 'primevue/inputtext';
 import SpoolDetail from './SpoolDetail.vue';
+import SpoolFigure from './SpoolFigure.vue';
+import LevelBar from './LevelBar.vue';
 import * as bridge from '../core/bridge';
 import { boot } from '../core/boot';
 import { m, inUse, dupes, plateSlots, pending } from '../state/main';
 import { menu, openMenu, closeMenu, setMode, sendAction } from '../state/menu';
 import { ask } from '../core/dialog';
 import { t, locale } from '../core/i18n';
-import { driedDays, driedOld, formatWeight, lowLevel, noteText, originalWeight, percentLeft, shown, swatch, swatchCols, swatchMain,
+import { barFill, driedDays, driedOld, formatWeight, lowLevel, noteText, originalWeight, percentLeft, shown, swatch, swatchCols, swatchMain,
   tagUids, type Spool } from '../logic/spools';
 
 const props = defineProps<{ spool: Spool; inStack?: boolean }>();
@@ -22,7 +24,6 @@ const name = computed(() => f.value.name || t('spool.numbered', { id: s.value.id
 const vendor = computed(() => f.value.vendor?.name || '');
 const pct = computed(() => percentLeft(s.value));
 const remaining = computed(() => w(s.value.remaining_weight));
-const weightLabel = computed(() => pct.value === null || m.wMode === 'grams' ? remaining.value : m.wMode === 'percent' ? `${pct.value}%` : `${pct.value}% · ${remaining.value}`);
 const original = computed(() => originalWeight(s.value));
 const level = computed(() => lowLevel(s.value.remaining_weight, m.low));
 const subtitle = computed(() => [
@@ -40,6 +41,10 @@ const where = computed(() => (shown(disp.value, 'in_use') ? inUse.value.get(Stri
 const plateLabel = computed(() => plateSlots.value.slots.get(s.value.id));
 const dried = computed(() => (shown(disp.value, 'dried') ? driedDays(s.value) : null));
 const ring = computed(() => (swatchCols(f.value).length > 1 ? swatchMain(f.value) : undefined));
+const lowPct = computed(() => (typeof original.value === 'number' && original.value > 0 && m.low > 0 ? (m.low / original.value) * 100 : null));
+const big = computed(() => (pct.value !== null && m.wMode === 'percent' ? `${pct.value}%` : remaining.value));
+const ofTotal = computed(() => (m.wMode !== 'percent' && typeof original.value === 'number' ? t('weight.of', { total: w(original.value) }) : ''));
+const pctSide = computed(() => (pct.value !== null && m.wMode === 'both' ? `${pct.value}%` : ''));
 const actions = computed(() => m.source === 'spoolman' && s.value.id != null);
 const open = computed(() => actions.value && menu.id === s.value.id);
 const cartQuery = computed(() => [vendor.value, s.value.lot_nr || name.value].filter(Boolean).join(' '));
@@ -82,21 +87,24 @@ function onKey(e: KeyboardEvent) {
   <article class="sc" :class="{ archived: s.archived }" :title="tip" :data-spool="s.id">
     <div class="sc-body">
       <div class="sc-swcol">
-        <span class="sc-sw" :style="{ background: swatch(f), borderColor: ring }" />
+        <SpoolFigure :paint="swatch(f)" :fraction="pct === null ? null : pct / 100" :size="84" />
         <span v-if="tags.length && shown(disp, 'rfid')" class="sp-chip sc-rfid" :title="t('spool.rfid', { tags: tags.join(', ') })">RFID</span>
       </div>
       <div class="sc-main">
         <div class="sc-top">
-          <h3 class="sc-title">{{ name }}<span v-if="dupe" class="oui-meta sc-dup">{{ t('spool.together', { n: dupe.count, w: w(dupe.total) }) }}</span></h3>
-          <span class="sc-weight sp-num" :class="level" data-test="weight">{{ weightLabel }}<span v-if="level" class="sp-sr"> · {{ t(level === 'out' ? 'spool.out' : 'spool.low') }}</span></span>
+          <h3 class="sc-title"><span class="sc-dot" :style="{ background: swatch(f), borderColor: ring }" aria-hidden="true" />{{ name }}<span v-if="dupe" class="oui-meta sc-dup">{{ t('spool.together', { n: dupe.count, w: w(dupe.total) }) }}</span></h3>
           <Button v-if="showCart" text size="small" class="sc-icon" :aria-label="t('spool.reorder', { q: cartQuery })" :title="t('spool.reorder', { q: cartQuery })"
                   data-test="cart" @click="bridge.postMain({ type: 'order', query: cartQuery })">
             <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="9" cy="20" r="1.4"/><circle cx="18" cy="20" r="1.4"/><path d="M2 3h3l2.4 12.2a1.5 1.5 0 0 0 1.5 1.2h8.6a1.5 1.5 0 0 0 1.5-1.1L21 8H6"/></svg></Button>
           <Button v-if="actions" ref="more" text size="small" class="sc-icon" :aria-expanded="open" :aria-controls="`sc-panel-${s.id}`"
                   :aria-label="t('spool.actionsFor', { name })" data-act="sp-menu" @click="openMenu(s.id)">⋯</Button>
         </div>
-        <div v-if="shown(disp, 'bar')" class="sc-track" :title="pct === null ? t('spool.unknownLeft') : t('spool.pctLeft', { pct })">
-          <i :style="{ width: (pct ?? 0) + '%', background: swatchMain(f) }" /></div>
+        <div class="sc-weight sp-num" :class="level" data-test="weight">
+          <strong class="sc-big">{{ big }}</strong> <span v-if="ofTotal" class="sc-of">{{ ofTotal }}</span> <span v-if="pctSide" class="sc-pct">{{ pctSide }}</span>
+          <span v-if="level" class="sc-flag">{{ t(level === 'out' ? 'spool.out' : 'spool.low') }}</span>
+        </div>
+        <LevelBar v-if="shown(disp, 'bar')" class="sc-track" :pct="pct" :paint="barFill(f)" :low-pct="lowPct" :level="level"
+                  :title="pct === null ? t('spool.unknownLeft') : t('spool.pctLeft', { pct })" />
         <div class="sc-sub">
           <span class="sc-subtext">{{ subtitle.join(' · ') }}</span>
           <span v-if="plateLabel" class="sp-chip accent">{{ t('spool.onPlate', { slots: plateLabel }) }}</span>
@@ -144,21 +152,37 @@ function onKey(e: KeyboardEvent) {
 </template>
 
 <style scoped>
-.sc { border: 1px solid var(--oui-border); border-radius: 12px; background: var(--oui-surface); padding: 10px 12px; min-width: 0; }
+.sc { container: sc / inline-size; border: 1px solid var(--oui-border); border-radius: 14px; background: var(--oui-surface); padding: 10px 14px 10px 8px; min-width: 0;
+  transition: border-color 140ms ease, box-shadow 140ms ease; }
+.sc:hover { border-color: color-mix(in srgb, var(--oui-text) 22%, var(--oui-border)); box-shadow: 0 2px 10px rgb(0 0 0 / 0.06); }
 .sc.archived { opacity: 1; border-style: dashed; }
-.sc-body { display: flex; gap: 12px; min-width: 0; }
-.sc-swcol { display: grid; gap: 4px; justify-items: center; align-content: start; }
-.sc-sw { width: 36px; height: 36px; border-radius: 50%; border: 2px solid var(--oui-control-border, var(--oui-border)); }
+.sc-body { display: flex; gap: 10px; min-width: 0; align-items: center; }
+.sc-swcol { display: grid; gap: 4px; justify-items: center; align-content: center; }
+.sc-swcol :deep(.sf) { transition: transform 180ms ease; transform-origin: 50% 92%; }
+.sc:hover .sc-swcol :deep(.sf) { transform: rotate(-4deg) scale(1.04); }
+.sc-dot { display: inline-block; width: 10px; height: 10px; margin-right: 6px; border-radius: 50%; vertical-align: 0;
+  border: 1px solid color-mix(in srgb, var(--oui-text) 25%, transparent); }
 .sc-rfid { font-size: 12px; padding: 0 4px; line-height: 16px; }
-.sc-main { flex: 1; min-width: 0; display: grid; gap: 4px; }
+.sc-main { flex: 1; min-width: 0; display: grid; gap: 5px; }
 .sc-top { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .sc-title { flex: 1; margin: 0; font-size: 14px; font-weight: 600; min-width: 0; overflow-wrap: anywhere; }
 .sc-dup { margin-left: 6px; font-weight: 400; }
-.sc-weight.low { color: var(--oui-warning); font-weight: 600; }
-.sc-weight.out { color: var(--oui-danger); font-weight: 600; }
+.sc-weight { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 6px; }
+.sc-big { font-size: 20px; font-weight: 700; line-height: 1.1; letter-spacing: -0.01em; }
+.sc-of, .sc-pct { color: var(--oui-muted); font-size: 12px; }
+.sc-pct { margin-left: auto; font-weight: 600; }
+.sc-flag { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; padding: 1px 6px; border-radius: 999px;
+  background: color-mix(in srgb, currentColor 14%, transparent); }
+.sc-weight.low .sc-big, .sc-weight.low .sc-flag { color: var(--oui-warning); }
+.sc-weight.out .sc-big, .sc-weight.out .sc-flag { color: var(--oui-danger); }
 .sc-icon { width: 32px; height: 32px; padding: 0; justify-content: center; }
-.sc-track { height: 6px; border-radius: 3px; background: var(--oui-border); overflow: hidden; }
-.sc-track i { display: block; height: 100%; }
+/* narrow places (a printer slot, two columns on a small window): smaller spool, number on its own line */
+@container sc (max-width: 360px) {
+  .sc-swcol { --sf-w: 52px; }
+  .sc-big { font-size: 17px; }
+  .sc-pct { margin-left: 0; }
+}
+@media (prefers-reduced-motion: reduce) { .sc, .sc-swcol :deep(.sf) { transition: none; } .sc:hover .sc-swcol :deep(.sf) { transform: none; } }
 .sc-sub { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; color: var(--oui-muted); font-size: 12px; min-width: 0; }
 .sc-subtext { overflow-wrap: anywhere; }
 .sc-note { margin: 0; color: var(--oui-muted); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
