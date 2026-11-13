@@ -49,8 +49,6 @@ const actions = computed(() => m.source === 'spoolman' && s.value.id != null);
 const open = computed(() => actions.value && menu.id === s.value.id);
 const cartQuery = computed(() => [vendor.value, s.value.lot_nr || name.value].filter(Boolean).join(' '));
 const showCart = computed(() => m.cart && typeof s.value.remaining_weight === 'number' && s.value.remaining_weight < m.low);
-const tip = computed(() => [name.value, vendor.value, t('weight.left', { w: remaining.value + (typeof original.value === 'number' ? ' ' + t('weight.of', { total: w(original.value) }) : '') })]
-  .filter(Boolean).join(' · '));
 
 const panel = ref<HTMLElement | null>(null);
 const more = ref<{ $el: HTMLElement } | null>(null);
@@ -84,7 +82,7 @@ function onKey(e: KeyboardEvent) {
 </script>
 
 <template>
-  <article class="sc" :class="{ archived: s.archived }" :title="tip" :data-spool="s.id">
+  <article class="sc" :class="{ archived: s.archived }" :data-spool="s.id">
     <div class="sc-body">
       <div class="sc-swcol">
         <SpoolFigure :paint="swatch(f)" :fraction="pct === null ? null : pct / 100" :size="84" />
@@ -156,8 +154,8 @@ function onKey(e: KeyboardEvent) {
   transition: border-color 140ms ease, box-shadow 140ms ease; }
 .sc:hover { border-color: color-mix(in srgb, var(--oui-text) 22%, var(--oui-border)); box-shadow: 0 2px 10px rgb(0 0 0 / 0.06); }
 .sc.archived { opacity: 1; border-style: dashed; }
-.sc-body { display: flex; gap: 10px; min-width: 0; align-items: center; }
-.sc-swcol { display: grid; gap: 4px; justify-items: center; align-content: center; }
+.sc-body { display: flex; gap: 10px; min-width: 0; align-items: center; height: 100%; }
+.sc-swcol { width: 84px; flex: none; display: grid; gap: 4px; justify-items: center; align-content: center; }
 .sc-swcol :deep(.sf) { transition: transform 180ms ease; transform-origin: 50% 92%; }
 .sc:hover .sc-swcol :deep(.sf) { transform: rotate(-4deg) scale(1.04); }
 .sc-dot { display: inline-block; width: 10px; height: 10px; margin-right: 6px; border-radius: 50%; vertical-align: 0;
@@ -178,7 +176,7 @@ function onKey(e: KeyboardEvent) {
 .sc-icon { width: 32px; height: 32px; padding: 0; justify-content: center; }
 /* narrow places (a printer slot, two columns on a small window): smaller spool, number on its own line */
 @container sc (max-width: 360px) {
-  .sc-swcol { --sf-w: 52px; }
+  .sc-swcol { --sf-w: 52px; width: 52px; }
   .sc-big { font-size: 17px; }
   .sc-pct { margin-left: 0; }
 }

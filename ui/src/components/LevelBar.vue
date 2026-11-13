@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
+import { paintTone } from '../logic/spools';
 
 /*
  * How much filament is left, as a bar in the filament's own colour.
@@ -20,11 +21,12 @@ const props = defineProps<{
   title?: string;
 }>();
 const width = computed(() => Math.max(0, Math.min(100, props.pct ?? 0)));
+const tone = computed(() => paintTone(props.paint));
 const notch = computed(() => (props.lowPct != null && props.lowPct > 0 && props.lowPct < 100 ? props.lowPct : null));
 </script>
 
 <template>
-  <span class="lb" :class="[level, { unknown: pct === null }]" :title="title" role="presentation">
+  <span class="lb" :class="[level, tone && `tone-${tone}`, { unknown: pct === null }]" :title="title" role="presentation">
     <i class="lb-fill" :style="{ width: width + '%', background: paint }" />
     <b v-if="notch !== null" class="lb-notch" :style="{ left: notch + '%' }" />
   </span>
@@ -41,6 +43,12 @@ const notch = computed(() => (props.lowPct != null && props.lowPct > 0 && props.
   box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.18), inset 0 2px 2px -1px rgb(255 255 255 / 0.45); transition: width 240ms ease; }
 .lb-notch { position: absolute; top: 1px; bottom: 1px; width: 2px; margin-left: -1px; border-radius: 1px; background: var(--oui-text); opacity: 0.35; }
 /* dark theme: a dark filament (black, navy) keeps a light edge so it does not merge into the track */
-:global(.orca-dark) .lb-fill { box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.28), inset 0 2px 2px -1px rgb(255 255 255 / 0.35); }
+.orca-dark .lb-fill { box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.28), inset 0 2px 2px -1px rgb(255 255 255 / 0.35); }
+/* near-black filament on the dark theme (and near-white on the light one) sinks into the track: a clear
+   edge and a lighter (darker) track keep the fill readable, so 100 % never looks like an empty bar */
+.orca-dark .lb.tone-dark:not(.low, .out) { background: color-mix(in srgb, var(--oui-text) 24%, transparent); }
+.orca-dark .lb.tone-dark .lb-fill { box-shadow: inset 0 0 0 1.5px rgb(255 255 255 / 0.6); }
+:root:not(.orca-dark) .lb.tone-light:not(.low, .out) { background: color-mix(in srgb, var(--oui-text) 22%, transparent); }
+:root:not(.orca-dark) .lb.tone-light .lb-fill { box-shadow: inset 0 0 0 1.5px rgb(0 0 0 / 0.45); }
 @media (prefers-reduced-motion: reduce) { .lb-fill { transition: none; } }
 </style>
