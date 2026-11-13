@@ -227,16 +227,7 @@ and Google Chrome or Chromium). These use mock data. Pass `--out /tmp/spooler-ar
 <p align="center"><img src="assets/orca-cloud/install/01-plugin-hub.png" alt="Orca Cloud Plugin Hub card for Spooler with the Subscribe button highlighted" width="700"></p>
 <p align="center"><img src="assets/orca-cloud/install/02-plugins-dialog.png" alt="The Plugins dialog with Refresh and Activate highlighted" width="700"></p>
 
-**Manually:** download the file for your system from the [latest release](../../releases/latest):
-
-| System | File |
-|---|---|
-| Windows (x86_64) | `spooler_win_x86_64.py` |
-| Windows (arm64) | `spooler_win_arm64.py` |
-| Linux (x86_64) | `spooler_linux_x86_64.py` |
-| Linux (arm64) | `spooler_linux_arm64.py` |
-| macOS (Apple silicon) | `spooler_macosx_arm64.py` |
-| macOS (Intel) | `spooler_macosx_x86_64.py` |
+**Manually:** download `spooler_any.py` from the [latest release](../../releases/latest). It is the same file on Windows, macOS and Linux.
 
 Place it in its own folder called `spooler` inside OrcaSlicer's plugin directory (one Spooler file per folder):
 

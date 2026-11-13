@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
-"""Build the per-OS plugin files that Orca Cloud expects into dist/.
+"""Build the plugin file Orca Cloud publishes into dist/.
 
-The plugin is a single source file. Each build differs only in its filename suffix,
-which Orca Cloud uses to tell platform builds apart, and in the BUILD_TARGET it
-reports in the log.
+The plugin is a single pure-Python source file that runs on every OS, so the release is one
+universal file, spooler_any.py ("any" is Orca Cloud's suffix for every platform). Uploading six
+identical per-OS copies made Orca Cloud's automated permission review fail with
+SECURITY_SCAN_UNAVAILABLE; one file is what the other plugins publish. A per-OS copy can still be
+built by hand; it differs only in its filename suffix and the BUILD_TARGET it reports in the log.
 
-    python scripts/build.py                        # every target
-    python scripts/build.py --target linux_arm64   # one target
+    python scripts/build.py                        # spooler_any.py and the wheel
+    python scripts/build.py --target linux_arm64   # one per-OS copy instead
 """
 
 import argparse
@@ -23,7 +25,9 @@ import check_version
 ROOT = Path(__file__).resolve().parent.parent
 DIST = ROOT / "dist"
 MARKER = 'BUILD_TARGET = "any"\n'
+DEFAULT_TARGETS = ("any",)
 TARGETS = (
+    "any",
     "win_x86_64",
     "win_arm64",
     "linux_x86_64",
@@ -98,7 +102,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument("--target", action="append", choices=TARGETS, help="build only this target")
     args = parser.parse_args()
-    build(tuple(args.target) if args.target else TARGETS)
+    build(tuple(args.target) if args.target else DEFAULT_TARGETS)
 
 
 if __name__ == "__main__":

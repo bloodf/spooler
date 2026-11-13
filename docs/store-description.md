@@ -26,16 +26,7 @@ The install pictures are drawn illustrations, simplified, not screenshots. The s
 
 ## Manual install
 
-Download the file for your system from the latest release on GitHub:
-
-| System | File |
-|---|---|
-| Windows (x86_64) | `spooler_win_x86_64.py` |
-| Windows (arm64) | `spooler_win_arm64.py` |
-| Linux (x86_64) | `spooler_linux_x86_64.py` |
-| Linux (arm64) | `spooler_linux_arm64.py` |
-| macOS (Apple silicon) | `spooler_macosx_arm64.py` |
-| macOS (Intel) | `spooler_macosx_x86_64.py` |
+Download `spooler_any.py` from the latest release on GitHub. It is the same file on Windows, macOS and Linux.
 
 Place it in its own folder called `spooler` inside OrcaSlicer's plugin directory (one Spooler file per folder):
 

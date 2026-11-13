@@ -54,7 +54,7 @@ jobs:
         run: bash scripts/ci_chrome_sandbox.sh
       - name: Check version numbers agree
         run: python scripts/check_version.py
-      - name: Build the per-OS plugin files
+      - name: Build the plugin file (spooler_any.py) and wheel
         run: python scripts/build.py
       - name: Unit tests
         env:
