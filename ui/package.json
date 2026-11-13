@@ -1,6 +1,6 @@
 {
   "name": "spooler-ui",
-  "version": "0.22.0",
+  "version": "0.22.1",
   "private": true,
   "type": "module",
   "description": "Spooler pages (Vue 3 + PrimeVue 4, shared Orca UI foundation), built into one offline HTML file embedded in plugin/spooler/spooler_any.py",

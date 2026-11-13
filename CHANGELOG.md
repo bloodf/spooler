@@ -3,6 +3,11 @@
 Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); entries before
 0.9.0 are Spoolio's.
 
+## [0.22.1] - 2026-11-13
+
+- Releases ship one file, `spooler_any.py`, for every OS instead of six identical per-OS copies (they differed only in the name and a log label). Orca Cloud's automated permission review kept failing on the six-file upload with SECURITY_SCAN_UNAVAILABLE; the other plugins publish one file and go through. Manual install: download `spooler_any.py`.
+- Same plugin as 0.22.0 otherwise.
+
 ## [0.22.0] - 2026-11-13
 
 - Spool cards show the spool itself: a render of the reel with the filament wound on it in the spool's own colour (multi-colour spools too), drawn fuller or emptier in eight steps from what is left. The colour dot stays next to the name.

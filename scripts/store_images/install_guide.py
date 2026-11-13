@@ -138,9 +138,9 @@ def manual_install() -> str:
 <div style="padding:6px 0">&#128193; orca_plugins</div>
 <div class="hl" style="margin:8px 0 8px 76px;padding:2px 12px;width:max-content">&#128193; spooler
 <span class="badge" style="left:-66px;top:-4px">1</span></div>
-<div class="hl" style="margin:8px 0 0 116px;padding:2px 12px;width:max-content">&#128196; spooler_&lt;os&gt;.py
+<div class="hl" style="margin:8px 0 0 116px;padding:2px 12px;width:max-content">&#128196; spooler_any.py
 <span class="badge" style="left:-66px;top:-4px">2</span></div>
-<div class="muted" style="margin:14px 0 0 116px;font-size:20px">for example spooler_win_x86_64.py or spooler_macosx_arm64.py</div>
+<div class="muted" style="margin:14px 0 0 116px;font-size:20px">the same file on Windows, macOS and Linux</div>
 </div></div>
 <div style="position:absolute;left:120px;right:120px;top:540px;font-size:24px">
 <div style="font-weight:600;margin-bottom:10px">Plugin directory</div>{rows}</div>
