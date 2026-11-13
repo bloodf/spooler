@@ -128,7 +128,8 @@ class StockTest(PeerCase):
 
     def test_stock_row_full_weight_falls_back_to_the_filament(self):
         # U1 Control draws each spool's fill from remaining / full: the spool's initial weight, else the filament's.
-        row = lambda spool: sp.stock_row(spool, 100, {})
+        def row(spool):
+            return sp.stock_row(spool, 100, {})
         self.assertEqual(row({"id": 1, "remaining_weight": 300, "initial_weight": 750, "filament": {"weight": 1000}})["initial"], 750)
         self.assertEqual(row({"id": 1, "remaining_weight": 300, "filament": {"weight": 1000}})["initial"], 1000)
         self.assertIsNone(row({"id": 1, "remaining_weight": 300, "filament": {}})["initial"])
