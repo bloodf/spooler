@@ -87,7 +87,7 @@ try {
     console.log(name, JSON.stringify({ overflowX: m.overflowX, over: m.overflowing, dom: m.dom, lang: m.lang, dark: m.dark }));
     await p.close();
   }
-} finally { await browser.close(); await rm(dir, { recursive: true, force: true }); }
+} finally { await browser.close(); await rm(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 }); }
 await writeFile(join(OUT, 'metrics-spooler.json'), JSON.stringify(metrics, null, 2));
 if (metrics.some(m => m.overflowX || m.violations.length || m.errors.length || m.rejections.length)) { console.log('PROBLEMS'); process.exit(1); }
 console.log('OK');

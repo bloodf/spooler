@@ -32,7 +32,10 @@ export async function launch() {
   let log = '';
   proc.stderr.on('data', c => { log += c; });
   let port;
-  for (let i = 0; i < 300 && !port; i++) {
+  // A fresh macOS runner verifies Chrome on first launch, which can take well over 6 s; give it 30 s but stop
+  // waiting as soon as the process has exited.
+  const deadline = Date.now() + 30_000;
+  while (!port && Date.now() < deadline && proc.exitCode === null && proc.signalCode === null) {
     try { port = (await readFile(join(profile, 'DevToolsActivePort'), 'utf8')).split('\n')[0]; } catch { await delay(20); }
   }
   if (!port) { proc.kill('SIGKILL'); throw new Error('headless Chrome did not start:\n' + log); }
@@ -42,7 +45,7 @@ export async function launch() {
     async close() {
       proc.kill('SIGTERM');
       await new Promise(r => (proc.exitCode !== null ? r() : proc.once('exit', r)));
-      await rm(profile, { recursive: true, force: true });
+      await rm(profile, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
     },
   };
 }
