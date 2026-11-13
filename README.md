@@ -17,30 +17,30 @@ the rest is automatic.
 <!-- related-plugins:start -->
 ## Explore the other plugins
 
-Complete your OrcaSlicer workflow: arrange, price, manage filament and print. Click an image, icon or name to open its repository.
+Complete your OrcaSlicer workflow: arrange, price, manage filament and print. Each plugin works on its own; installed together they share data where it helps.
 
 <table>
   <tr>
     <td width="33%" valign="top">
-      <a href="https://github.com/bloodf/orca_organizer"><img src="docs/related-plugins/orca_organizer-icon.png" width="40" height="40" alt="Organizer"></a>
-      <h3><a href="https://github.com/bloodf/orca_organizer">Organizer</a></h3>
-      <a href="https://github.com/bloodf/orca_organizer"><img src="docs/related-plugins/orca_organizer-preview.jpg" width="280" alt="Organizer: promotional artwork"></a>
-      <p>Arrange objects using their actual footprints and fill a build plate with more copies.</p>
-      <p><a href="https://github.com/bloodf/orca_organizer">View repository →</a></p>
+      <a href="https://cloud.orcaslicer.com/app/plugins/shared-plugins/5bae3da1-7fcc-4cbd-ae25-53678e392d54"><img src="docs/related-plugins/orca_organizer-icon.png" width="40" height="40" alt="Organizer"></a>
+      <h3><a href="https://cloud.orcaslicer.com/app/plugins/shared-plugins/5bae3da1-7fcc-4cbd-ae25-53678e392d54">Organizer</a></h3>
+      <a href="https://cloud.orcaslicer.com/app/plugins/shared-plugins/5bae3da1-7fcc-4cbd-ae25-53678e392d54"><img src="docs/related-plugins/orca_organizer-preview.jpg" width="280" alt="Organizer: preview"></a>
+      <p>Arrange objects by their real outline and fill a build plate with more copies, from a tab next to Prepare.</p>
+      <p><a href="https://cloud.orcaslicer.com/app/plugins/shared-plugins/5bae3da1-7fcc-4cbd-ae25-53678e392d54">Install from Orca Cloud →</a><br><a href="https://github.com/bloodf/orca_organizer">Source on GitHub →</a></p>
     </td>
     <td width="33%" valign="top">
-      <a href="https://github.com/bloodf/orca_print_calculator"><img src="docs/related-plugins/orca_print_calculator-icon.png" width="40" height="40" alt="Orca Print Calculator"></a>
-      <h3><a href="https://github.com/bloodf/orca_print_calculator">Orca Print Calculator</a></h3>
-      <a href="https://github.com/bloodf/orca_print_calculator"><img src="docs/related-plugins/orca_print_calculator-preview.png" width="280" alt="Orca Print Calculator: promotional artwork"></a>
-      <p>Calculate plate costs and selling prices, including extras such as keychain rings and magnets.</p>
-      <p><a href="https://github.com/bloodf/orca_print_calculator">View repository →</a></p>
+      <a href="https://cloud.orcaslicer.com/app/plugins/shared-plugins/5f807b01-bfb8-4ad4-a77d-e85e337e4c7f"><img src="docs/related-plugins/orca_print_calculator-icon.png" width="40" height="40" alt="Orca Print Calculator"></a>
+      <h3><a href="https://cloud.orcaslicer.com/app/plugins/shared-plugins/5f807b01-bfb8-4ad4-a77d-e85e337e4c7f">Orca Print Calculator</a></h3>
+      <a href="https://cloud.orcaslicer.com/app/plugins/shared-plugins/5f807b01-bfb8-4ad4-a77d-e85e337e4c7f"><img src="docs/related-plugins/orca_print_calculator-preview.png" width="280" alt="Orca Print Calculator: preview"></a>
+      <p>Price every build plate: Spoolman filament cost, energy, labor, fees and a suggested selling price.</p>
+      <p><a href="https://cloud.orcaslicer.com/app/plugins/shared-plugins/5f807b01-bfb8-4ad4-a77d-e85e337e4c7f">Install from Orca Cloud →</a><br><a href="https://github.com/bloodf/orca_print_calculator">Source on GitHub →</a></p>
     </td>
     <td width="33%" valign="top">
-      <a href="https://github.com/bloodf/u1control"><img src="docs/related-plugins/u1control-icon.png" width="40" height="40" alt="U1 Control"></a>
-      <h3><a href="https://github.com/bloodf/u1control">U1 Control</a></h3>
-      <a href="https://github.com/bloodf/u1control"><img src="docs/related-plugins/u1control-preview.png" width="280" alt="U1 Control: promotional artwork"></a>
-      <p>Prepare and monitor Snapmaker U1 prints, with toolhead mapping, temperatures, camera and files.</p>
-      <p><a href="https://github.com/bloodf/u1control">View repository →</a></p>
+      <a href="https://cloud.orcaslicer.com/app/plugins/shared-plugins/544a836a-bcbe-4517-ae33-90f33930682f"><img src="docs/related-plugins/u1control-icon.png" width="40" height="40" alt="U1 Control"></a>
+      <h3><a href="https://cloud.orcaslicer.com/app/plugins/shared-plugins/544a836a-bcbe-4517-ae33-90f33930682f">U1 Control</a></h3>
+      <a href="https://cloud.orcaslicer.com/app/plugins/shared-plugins/544a836a-bcbe-4517-ae33-90f33930682f"><img src="docs/related-plugins/u1control-preview.png" width="280" alt="U1 Control: preview"></a>
+      <p>Prepare and monitor Snapmaker U1 prints: toolhead mapping, temperatures, camera, files and Spoolman.</p>
+      <p><a href="https://cloud.orcaslicer.com/app/plugins/shared-plugins/544a836a-bcbe-4517-ae33-90f33930682f">Install from Orca Cloud →</a><br><a href="https://github.com/bloodf/u1control">Source on GitHub →</a></p>
     </td>
   </tr>
 </table>
