@@ -174,6 +174,10 @@ Illustrative project artwork. [Credits and licenses](docs/related-plugins/README
   one of your own presets stays until the lane's spool changes. Each change goes through
   OrcaSlicer's normal preset selection, so it can ask about unsaved changes in the filament
   settings. Run it once per OrcaSlicer session; run it again to stop it.
+  New and off by default: Settings > Printer > **Keep the plate's filament slots synced
+  automatically** (`auto_keep_slots`, also in Plugins > Spooler > Config) starts the same sync by
+  itself once OrcaSlicer has opened, so you don't run it every session. Running the action while
+  it is on stops it until OrcaSlicer restarts; untick the setting to turn it off for good.
 
 - **Stats, with the filament you waste.** The Stats tab (from Spoolio) shows usage, cost and print
   history, and estimates how much of each print went into supports and into purging and the prime
@@ -189,10 +193,14 @@ Link, filament usage booking, the Stats tab and the after-slice filament check.
 - Needs a current OrcaSlicer with the plugin preset APIs
   (`orca.host.preset.bundles.reload_local` and `orca.host.preset.filament.begin_update`);
   tested against OrcaSlicer 2.5.0.
-- OrcaSlicer only lets a plugin assign presets to the plate's slots from a ***Plugins > Run***
-  action, and gives plugins no way to change a slot's colour. "Load Printer Filaments" and "Keep
-  Slots Synced" therefore set the right presets but leave the slot colours as they were; picking
-  the filament in the slot's dropdown, or OrcaSlicer's own Sync filaments, sets the colour.
+- OrcaSlicer documents assigning presets to the plate's slots as something a ***Plugins > Run***
+  action does, and gives plugins no way to change a slot's colour. "Load Printer Filaments" and
+  "Keep Slots Synced" therefore set the right presets but leave the slot colours as they were;
+  picking the filament in the slot's dropdown, or OrcaSlicer's own Sync filaments, sets the colour.
+  The automatic Keep Slots Synced changes the slots from Spooler's own background thread instead;
+  OrcaSlicer 2.5.0 accepts that in its code, but it is new and not yet confirmed in daily use. If
+  OrcaSlicer refuses it, Spooler turns it off for the session, says so, and the Plugins > Run
+  action still works.
 - Generated presets are owned by Spooler and are rewritten from Spoolman. OrcaSlicer can't save
   over them: Save makes a separate user preset that no longer follows Spoolman. Use ***Send to
   Spoolman*** instead.

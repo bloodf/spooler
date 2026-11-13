@@ -7,7 +7,7 @@ export interface SettingsBoot {
   url: string; verified_url: string; default_url: string; source: 'spoolman' | 'bambu'; low_stock: number;
   plate_check: boolean; plate_margin: number; weight_display: 'grams' | 'percent' | 'both'; show_cart: boolean;
   spool_columns: 1 | 2; progress: ProgressSettings; stats: StatsSettings; display: Record<string, boolean>;
-  drying: Record<string, number>; cur_code: string; wizard: boolean; log_path: string;
+  drying: Record<string, number>; cur_code: string; wizard: boolean; log_path: string; auto_keep_slots: boolean;
 }
 export interface Boot {
   mode: 'tab' | 'main' | 'settings';
@@ -45,7 +45,7 @@ export const boot: Boot = {
     url: '', verified_url: '', default_url: 'http://localhost:7912', source: 'spoolman', low_stock: 100, plate_check: true,
     plate_margin: 10, weight_display: 'both', show_cart: false, spool_columns: 1,
     progress: { on: true, finish: true, slot: true, idle: 'line' }, stats: { on: true, cur: 'spoolman' },
-    display: { ...DEFAULT_DISPLAY }, drying: {}, cur_code: 'EUR', wizard: false, log_path: '',
+    display: { ...DEFAULT_DISPLAY }, drying: {}, cur_code: 'EUR', wizard: false, log_path: '', auto_keep_slots: false,
     ...(raw.settings ?? {}),
   },
 };

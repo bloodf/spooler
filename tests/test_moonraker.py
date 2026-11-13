@@ -1,7 +1,12 @@
 import asyncio
 import json
+import tempfile
+import threading
+import time
 import types
 import unittest
+from pathlib import Path
+from unittest import mock
 
 from fake_bundle import FIXTURES, SV06, U1
 from plugin_loader import load
@@ -396,6 +401,163 @@ class KeepRunTest(unittest.TestCase):
         result = asyncio.run(sp.SpoolerKeepSlots().execute())
         self.assertEqual(result[0], "failure")
         self.assertIsNone(sp._keep["run"])
+
+
+def wait_for(check, limit=2.0):
+    """Poll a condition the keep thread sets; the loop itself waits sp.MOON_POLL (0.01 s here)."""
+    end = time.monotonic() + limit
+    while not check():
+        if time.monotonic() > end:
+            raise AssertionError("timed out")
+        time.sleep(0.005)
+
+
+class AutoKeepTest(unittest.TestCase):
+    """Settings > Keep slots synced automatically: the same loop on Spooler's own thread."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.settings = {"auto_keep_slots": True}
+        self.calls, self.reads, self.fail = [], [], None
+        test = self
+
+        class Tx:
+            def __init__(self, slot, name):
+                test.calls.append((slot, name))
+                if test.fail:
+                    raise test.fail
+
+            def commit(self):
+                pass
+
+        def trays(base):
+            test.reads.append(base)
+            return TRAYS
+
+        self.patches = [mock.patch.object(sp, "get_settings", lambda: dict(self.settings)),
+                        mock.patch.object(sp, "sync_for", lambda snap: NAMES),
+                        mock.patch.object(sp, "printer_trays", trays),
+                        mock.patch.object(sp, "MOON_POLL", 0.01),
+                        mock.patch.object(sp, "_orca_data_dir", lambda: Path(self.tmp.name)),
+                        mock.patch.object(orca.host.preset, "filament", types.SimpleNamespace(begin_update=Tx),
+                                          create=True)]
+        for patch in self.patches:
+            patch.start()
+        sp._keep.update(run=None, auto_off=False, unloaded=False)
+        sp._ui_snap.clear()
+
+    def tearDown(self):
+        sp.stop_keep_slots()
+        for thread in threading.enumerate():
+            if thread.name == "spooler-keep-slots":
+                thread.join(1)  # the next test counts these threads
+        sp._keep.update(auto_off=False, unloaded=False)
+        for patch in self.patches:
+            patch.stop()
+        sp._ui_snap.clear()
+        sp._reported.clear()
+        self.tmp.cleanup()
+
+    def snapshot(self):
+        """refresh_snapshot as a lifecycle event runs it, with this snapshot from OrcaSlicer."""
+        def read():
+            sp._ui_snap.update(host="http://cc", slots=4, names=set(), current=[GENERIC] * 4, gen=1)
+            return dict(sp._ui_snap)
+
+        with mock.patch.object(sp, "profile_snapshot", read):
+            sp.refresh_snapshot()
+
+    def running(self):
+        run = sp._keep["run"]
+        return run is not None and run.auto
+
+    def test_off_starts_nothing(self):
+        self.settings["auto_keep_slots"] = False
+        self.snapshot()
+        self.assertIsNone(sp._keep["run"])
+
+    def test_starts_after_the_first_snapshot_and_assigns_the_plan(self):
+        sp.auto_keep_check()  # loaded, no snapshot yet: nothing to plan from
+        self.assertIsNone(sp._keep["run"])
+        self.snapshot()
+        self.assertTrue(self.running())
+        wait_for(lambda: len(self.reads) >= 3)
+        self.assertEqual(self.calls, [(1, "_local/spooler/A"), (2, "_local/spooler/B"), (4, "_local/spooler/C")])
+        self.snapshot()  # later snapshots never start a second loop
+        self.assertEqual(sum(t.name == "spooler-keep-slots" for t in threading.enumerate()), 1)
+
+    def test_idles_without_a_printer_host(self):
+        sp._ui_snap.update(names=set(), gen=1)  # a snapshot, but no printer with a host selected
+        sp.auto_keep_check()
+        self.assertTrue(self.running())
+        time.sleep(0.05)
+        self.assertEqual((self.reads, self.calls, [k for k in sp._reported if k.startswith("Keep")]), ([], [], []))
+
+    def test_manual_action_stops_it_for_the_session(self):
+        self.snapshot()
+        run = sp._keep["run"]
+        result = asyncio.run(sp.SpoolerKeepSlots().execute())
+        self.assertEqual(result[0], "success")
+        self.assertIn("automatically", result[1][0])
+        self.assertIsNone(sp._keep["run"])
+        self.assertTrue(run.wake.is_set())
+        self.snapshot()
+        self.assertIsNone(sp._keep["run"])
+
+    def test_turning_the_setting_off_stops_it_and_on_starts_it(self):
+        self.snapshot()
+        thread = next(t for t in threading.enumerate() if t.name == "spooler-keep-slots")
+        self.settings["auto_keep_slots"] = False
+        sp.auto_keep_check()
+        thread.join(1)
+        self.assertFalse(thread.is_alive())
+        self.assertIsNone(sp._keep["run"])
+        self.settings["auto_keep_slots"] = True
+        sp.auto_keep_check()
+        self.assertTrue(self.running())
+
+    def test_settings_save_applies_it(self):
+        self.snapshot()
+        self.settings["auto_keep_slots"] = True
+        with mock.patch.object(sp, "save_settings", lambda s: self.settings.update(s) or True):
+            sp.save_auto_keep(False)
+        self.assertIsNone(sp._keep["run"])
+
+    def test_a_failed_slot_change_is_logged_once_and_the_loop_goes_on(self):
+        self.fail = ValueError("preset not found")
+        with self.assertLogs(sp.log, "WARNING") as logs:
+            self.snapshot()
+            wait_for(lambda: len(self.reads) >= 4)
+        self.assertTrue(self.running())
+        failures = [line for line in logs.output if "preset not found" in line]
+        self.assertEqual(len(failures), 3)  # one per slot, not one per pass
+        self.assertIn("Keep Slots Synced slot 1", sp._reported)
+
+    def test_a_refusal_off_the_script_worker_stops_it_with_one_message(self):
+        self.fail = RuntimeError("begin_update is only valid on the Script worker thread")
+        with mock.patch.object(sp, "push_notice") as notice:
+            self.snapshot()
+            wait_for(lambda: sp._keep["run"] is None)
+        notice.assert_called_once_with("warning", sp.AUTO_KEEP_REFUSED)
+        self.assertEqual(len(self.calls), 1)
+        self.snapshot()
+        self.assertIsNone(sp._keep["run"])
+
+    def test_unload_stops_it(self):
+        self.snapshot()
+        capability = sp.SpoolerKeepSlots()
+        capability.on_unload()
+        self.assertIsNone(sp._keep["run"])
+        self.assertFalse(json.loads((Path(self.tmp.name) / "spooler" / "keep_slots.json").read_text())["active"])
+        self.snapshot()
+        self.assertIsNone(sp._keep["run"])
+        capability.on_load()
+        self.snapshot()
+        self.assertTrue(self.running())
+
+    def test_plugin_manager_config_and_defaults(self):
+        self.assertIs(sp.CONFIG_KEYS["auto_keep_slots"]("true"), True)
+        self.assertIs(sp.default_config()["auto_keep_slots"], False)
 
 
 class PlanTest(unittest.TestCase):

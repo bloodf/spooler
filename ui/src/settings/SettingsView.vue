@@ -150,7 +150,9 @@ async function leave() {
             <div class="sp-row" role="radiogroup" aria-labelledby="idle-l"><span v-for="v in ['line', 'hide'] as const" :key="v" class="sp-row">
               <RadioButton v-model="form.progress.idle" :input-id="`idle-${v}`" name="progress-idle" :value="v" :disabled="!form.progress.on" /><label :for="`idle-${v}`">{{ t(`set.idle.${v}`) }}</label></span></div>
           </fieldset>
-          <p class="oui-meta">{{ t('set.liveNeeded') }}</p></div>
+          <p class="oui-meta">{{ t('set.liveNeeded') }}</p>
+          <span class="sp-row"><Checkbox v-model="form.auto_keep_slots" input-id="auto-keep" binary aria-describedby="auto-keep-help" /><label for="auto-keep">{{ t('set.autoKeep') }}</label></span>
+          <p id="auto-keep-help" class="oui-meta">{{ t('set.autoKeepHelp') }}</p></div>
         <aside class="set-aside"><h3>{{ t('set.preview') }}</h3>
           <p v-if="!form.progress.on" class="oui-meta">{{ t('set.progressHidden') }}</p>
           <div v-else class="set-pp"><strong>Desk_Organiser_Plate_1</strong> <span class="sp-chip">{{ t('progress.state.RUNNING') }}</span> <span class="sp-num">37%</span>

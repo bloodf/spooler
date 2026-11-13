@@ -62,7 +62,7 @@ export function save(): void {
   bridge.postSettings({
     type: 'save', source: form.source, url: form.url.trim(), low_stock: form.low_stock, plate_check: form.plate_check, plate_margin: form.plate_margin,
     weight_display: form.weight_display, show_cart: form.show_cart, spool_columns: form.spool_columns, progress: { ...form.progress },
-    stats: { ...form.stats }, display: { ...form.display }, drying: { ...form.drying },
+    stats: { ...form.stats }, display: { ...form.display }, drying: { ...form.drying }, auto_keep_slots: form.auto_keep_slots,
   });
   // The plugin answers by closing Settings (show_view main / window close) or with a test_result refusal.
   window.setTimeout(() => { saving.value = false; }, 4000);
@@ -77,7 +77,7 @@ function onMessage(d: any): void {
       ...(d.plate_margin !== undefined ? { plate_margin: d.plate_margin } : {}), weight_display: d.weight_display || 'both', show_cart: d.show_cart === true,
       spool_columns: d.spool_columns === 2 ? 2 : 1, progress: { on: true, finish: true, slot: true, idle: 'line', ...(d.progress || {}) },
       stats: { on: true, cur: 'spoolman', ...(d.stats || {}) }, ...(d.display ? { display: d.display } : {}), ...(d.drying ? { drying: d.drying } : {}),
-      ...(d.cur_code ? { cur_code: d.cur_code } : {}), wizard: !!d.wizard });
+      ...(d.cur_code ? { cur_code: d.cur_code } : {}), wizard: !!d.wizard, auto_keep_slots: d.auto_keep_slots === true });
     if (d.wizard) openWizard();
     return;
   }
