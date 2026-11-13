@@ -2372,7 +2372,29 @@ def start_send(post, edits: tuple | None = None, auto: bool = False) -> None:
     spawn(worker)
 
 
-PRINTER_SLOTS = {"ams": 4, "ht": 1, "ext": 1}
+PRINTER_SLOTS = {"ams": 4, "ht": 1, "ext": 1, "tool": 1}
+# Manual printers: Bambu (Live Link over MQTT, the default) or a network printer read over HTTP.
+NET_KINDS = ("prusalink", "octoprint")
+PRINTER_TYPES = ("bambu",) + NET_KINDS
+# Printers whose prints are always asked before booking, never booked automatically: their report
+# can't say which toolhead printed, and some already book to Spoolman themselves.
+ASK_ONLY = NET_KINDS + ("moonraker",)
+
+
+def clean_host(value: object, port: bool = False) -> str:
+    """A printer address as typed: host, or host:port (and an https:// prefix kept) when port is
+    allowed; '' when it isn't a usable address. http:// is dropped, it is the default."""
+    text = str(value or "").strip()[:96]
+    if not port:
+        return text[:64] if re.fullmatch(r"[A-Za-z0-9.\-]+", text[:64]) else ""
+    scheme = ""
+    low = text.lower()
+    if low.startswith("https://"):
+        scheme, text = "https://", text[8:]
+    elif low.startswith("http://"):
+        text = text[7:]
+    text = text.rstrip("/")
+    return scheme + text if re.fullmatch(r"[A-Za-z0-9.\-]+(:\d{1,5})?", text) else ""
 
 
 def parse_printers(value: object) -> list[dict]:
@@ -2400,10 +2422,13 @@ def parse_printers(value: object) -> list[dict]:
                 slots.append(spool)
             units.append({"kind": kind, "slots": slots})
         name = str(item.get("name") or "").strip()[:40] or "Printer"
-        ip = str(item.get("ip") or "").strip()[:64]
-        serial = re.sub(r"[^A-Za-z0-9]", "", str(item.get("serial") or ""))[:32]
+        kind = item.get("type") if item.get("type") in PRINTER_TYPES else "bambu"
+        net = kind in NET_KINDS
+        serial = "" if net else re.sub(r"[^A-Za-z0-9]", "", str(item.get("serial") or ""))[:32]
+        user = re.sub(r"[\x00-\x1f]", "", str(item.get("user") or "")).strip()[:64] if kind == "prusalink" else ""
         printers.append({"id": str(item.get("id") or f"p{len(printers) + 1}")[:32], "name": name, "units": units,
-                         "ip": ip if re.fullmatch(r"[A-Za-z0-9.\-]+", ip) else "", "serial": serial})
+                         "ip": clean_host(item.get("ip"), port=net), "serial": serial, "type": kind, "user": user,
+                         "slice_fill": item.get("slice_fill") is not False})
     return printers
 
 
@@ -2424,13 +2449,25 @@ def save_printers(value: object) -> None:
     _local_sync()
 
 
+_printers_rev = {"n": 0}  # bumped when Spooler itself changes the saved printers (slice fill)
+
+
 def printer_state() -> dict:
     codes = read_codes()
     printers = [dict(p, has_code=p.get("kind") == "moonraker" or bool(codes.get(_code_key(p["id"]))))
                 for p in printers_cfg() if _live["links"].get(p["id"]) != "none"]
     live = any(p["ip"] and p["has_code"] for p in printers)
     return {"printers": printers, "live_ok": live, "usage": usage_state(), "progress": progress_settings(),
-            "stats": stats_settings()}
+            "stats": stats_settings(), "printers_rev": _printers_rev["n"]}
+
+
+def live_message() -> dict:
+    """The Printer tab's poll reply: live state, the booking list, and the saved printers when
+    Spooler changed them itself (a slice filled the toolheads), so the page doesn't save over it."""
+    msg = {"type": "live", "live": live_poll(), "usage": usage_state(), "printers_rev": _printers_rev["n"]}
+    if _printers_rev["n"]:
+        msg["printers"] = printer_state()["printers"]
+    return msg
 
 
 LOCAL_PORT = 8883
@@ -2873,7 +2910,9 @@ def live_snapshot() -> dict:
             units = []
             for unit_id in sorted(state["units"]):
                 slots = state["units"][unit_id]
-                size = 1 if unit_id >= 128 else 4
+                # Toolheads (U1, network printers) are one unit with as many slots as the printer has.
+                size = 1 if unit_id >= 128 else (state.get("head_count") or max(4, max(slots, default=-1) + 1)
+                                                 if state.get("heads") else 4)
                 units.append({"id": unit_id, "kind": "ht" if unit_id >= 128 else "ams",
                               "trays": [_live_tray(i, slots.get(i, {})) for i in range(size)]})
             ext = _live_tray(0, state["ext"]) if state["ext"] else None
@@ -2918,7 +2957,9 @@ def save_printer_code(pid: object, code: object) -> None:
     if pid not in {p["id"] for p in printers_cfg()}:
         return
     codes = read_codes()
-    code = re.sub(r"\s", "", str(code or ""))[:32]
+    kind = next((p.get("type") for p in printers_cfg() if p["id"] == pid), "bambu")
+    # A Bambu access code is 8 characters; a PrusaLink password or an OctoPrint API key is longer.
+    code = str(code or "").strip()[:128] if kind in NET_KINDS else re.sub(r"\s", "", str(code or ""))[:32]
     if code:
         codes[_code_key(pid)] = code
     else:
@@ -3080,6 +3121,11 @@ def _local_sync_locked() -> bool:
             wanted[printer["id"]] = {"ip": printer["ip"], "name": printer["name"], "kind": "moonraker"}
             continue
         code = codes.get(_code_key(printer["id"]))
+        if printer.get("type") in NET_KINDS:
+            if printer.get("ip") and code:
+                wanted[printer["id"]] = {"kind": printer["type"], "ip": printer["ip"], "user": printer.get("user", ""),
+                                         "code": code, "name": printer["name"]}
+            continue
         if printer.get("ip") and code:
             wanted[printer["id"]] = {"ip": printer["ip"], "serial": printer["serial"], "code": code,
                                      "name": printer["name"]}
@@ -3096,12 +3142,15 @@ def _local_sync_locked() -> bool:
         if entry and (entry["thread"].is_alive() or _live["links"].get(pid) in ("auth", "none", "serial")):
             continue
         stop = threading.Event()
-        run = _moon_run if link.get("kind") == "moonraker" else _local_run
+        run = {"moonraker": _moon_run, "prusalink": _net_run, "octoprint": _net_run}.get(link.get("kind"), _local_run)
         thread = threading.Thread(target=run, args=(pid, link, stop), daemon=True)
         _local[pid] = {"link": link, "stop": stop, "thread": thread}
         thread.start()
-    bambu = any(link.get("kind") != "moonraker" for link in wanted.values())
-    _live["keep"] = bambu and usage_mode() != "off" and source() == "spoolman"
+    # Keep the links up while the tab is closed when a print on them may be booked: Bambu and network
+    # printers, and Klipper printers once a poll showed Spooler may book them (see usage_track).
+    booking = any(link.get("kind") != "moonraker" or (_live["printers"].get(pid) or {}).get("book_ok")
+                  for pid, link in wanted.items())
+    _live["keep"] = booking and usage_mode() != "off" and source() == "spoolman"
     return bool(wanted)
 
 
@@ -3340,8 +3389,32 @@ def moon_lanes(base: str) -> dict:
             if isinstance(entry, dict) and _int(entry.get("lane")) >= 0}
 
 
+MOON_STATES = {"standby": "IDLE", "printing": "RUNNING", "paused": "PAUSE", "complete": "FINISH",
+               "cancelled": "FAILED", "error": "FAILED"}
+MOON_IDLE = 15.0  # seconds between polls while nothing prints
+
+
+def moon_progress(status: dict) -> dict:
+    """Bambu-shaped job fields from Moonraker's print_stats and virtual_sdcard; {} without them."""
+    stats = status.get("print_stats")
+    if not isinstance(stats, dict) or not stats:
+        return {}
+    state = MOON_STATES.get(str(stats.get("state") or "").lower(), "IDLE")
+    sd = status.get("virtual_sdcard") if isinstance(status.get("virtual_sdcard"), dict) else {}
+    frac = sd.get("progress")
+    frac = float(frac) if isinstance(frac, (int, float)) and not isinstance(frac, bool) and 0 <= frac <= 1 else None
+    file = str(stats.get("filename") or "")
+    out = {"gcode_state": state, "gcode_file": file, "subtask_name": Path(file).stem if file else "",
+           "mc_percent": round(frac * 100) if frac is not None else 0}
+    took = stats.get("print_duration")
+    if state in ("RUNNING", "PAUSE") and frac and frac > 0.01 and isinstance(took, (int, float)) and took > 0:
+        out["mc_remaining_time"] = round(took * (1 - frac) / frac / 60)
+    return out
+
+
 def moon_poll(base: str) -> tuple[dict, bool]:
-    status = _moon_get(base, "/printer/objects/query?print_task_config&filament_detect").get("status") or {}
+    status = _moon_get(base, "/printer/objects/query?print_task_config&filament_detect&print_stats&virtual_sdcard"
+                       ).get("status") or {}
     active = lanes = None
     # Moonraker answers {} for an object the printer doesn't have (only the U1 has this one).
     if not status.get("print_task_config"):
@@ -3351,7 +3424,18 @@ def moon_poll(base: str) -> tuple[dict, bool]:
                 active = _moon_get(base, "/server/spoolman/spool_id").get("spool_id")
             except urllib.error.HTTPError:
                 active = None  # Moonraker without its Spoolman integration
-    return moon_report(status, active, _spool_cache["spools"] or [], target_for_host(base), lanes)
+    doc, heads = moon_report(status, active, _spool_cache["spools"] or [], target_for_host(base), lanes)
+    doc["print"].update(moon_progress(status))
+    return doc, heads
+
+
+def moon_spoolman_connected(base: str) -> bool:
+    """Whether Moonraker's own Spoolman integration is set up and connected: it then books the
+    printer's filament use itself, and Spooler must not book it a second time."""
+    try:
+        return bool(_moon_get(base, "/server/spoolman/status").get("spoolman_connected"))
+    except urllib.error.HTTPError:
+        return False  # no [spoolman] section in moonraker.conf
 
 
 def moon_mark(pid: str, doc: dict, heads: bool) -> None:
@@ -3759,7 +3843,9 @@ def _moon_run(pid: str, link: dict, stop: threading.Event) -> None:
     """Read a printer found from a preset's host address: Moonraker, or Anycubic LAN mode."""
     fails = 0
     kind = None
+    checked = 0.0
     while _live_active() and not stop.is_set():
+        busy = False
         try:
             if kind is None:
                 kind = printer_kind(link["ip"])
@@ -3774,6 +3860,19 @@ def _moon_run(pid: str, link: dict, stop: threading.Event) -> None:
             doc, heads = moon_poll(link["ip"])
             if stop.is_set():
                 break
+            busy = doc["print"].get("gcode_state") in LIVE_STATES
+            if time.monotonic() - checked > 60 and not busy:
+                # Re-checked while idle only, so a booking rule can't change in the middle of a print.
+                checked = time.monotonic()
+                try:
+                    connected = moon_spoolman_connected(link["ip"])
+                except (urllib.error.URLError, OSError, ValueError):
+                    connected = True  # unknown: assume it books, never count twice
+                with _live_lock:
+                    state = _live["printers"].setdefault(pid, {"name": link["name"], "units": {}, "ext": {},
+                                                               "time": 0.0, "link": pid})
+                    # The Snapmaker U1 (toolheads) is booked by u1control; a Moonraker with Spoolman books itself.
+                    state["book_ok"] = not heads and not connected
             live_apply(pid, link["name"], doc, link=pid, full=True)
             with _live_lock:
                 if stop.is_set():
@@ -3790,8 +3889,378 @@ def _moon_run(pid: str, link: dict, stop: threading.Event) -> None:
             # One message per kind of failure, so an offline printer logs once, not every retry.
             reason = "not reachable" if isinstance(exc, (urllib.error.URLError, OSError)) else str(exc)
             _report(f"Printer {link['name']}", reason)
-        stop.wait(MOON_POLL if not fails else LIVE_RETRY[min(fails - 1, len(LIVE_RETRY) - 1)])
+        stop.wait((MOON_POLL if busy else MOON_IDLE) if not fails else LIVE_RETRY[min(fails - 1, len(LIVE_RETRY) - 1)])
     _live["links"].pop(pid, None)
+
+
+# --- Network printers: PrusaLink and OctoPrint -------------------------------------------
+# Added by hand on the Printer tab (address and password or API key), read over plain HTTP and fed
+# into the same live state as a Bambu Live Link: progress, and the spool assigned to each toolhead.
+# Neither reports which toolhead is printing, so their prints are always asked before booking.
+# APIs: PrusaLink v1 (https://github.com/prusa3d/Prusa-Link-Web/blob/master/spec/openapi.yaml) and
+# OctoPrint's REST API (https://docs.octoprint.org/en/master/api/job.html).
+
+NET_POLL = 3.0      # seconds between polls while a print runs
+NET_IDLE = 15.0     # seconds between polls otherwise
+NET_TAIL = 512 * 1024          # bytes read from the end of a job's G-code: the footer and settings block
+NET_STREAM_MAX = 512 * 1024 * 1024  # a server that ignores Range is read through at most this far
+PL_STATES = {"PRINTING": "RUNNING", "PAUSED": "PAUSE", "ATTENTION": "PAUSE", "BUSY": "PREPARE",
+             "FINISHED": "FINISH", "STOPPED": "FAILED", "ERROR": "FAILED", "IDLE": "IDLE", "READY": "IDLE"}
+
+
+class NetAuthError(Exception):
+    """The printer refused the password or API key."""
+
+
+def net_base(link: dict) -> str:
+    return moon_base(link.get("ip"))
+
+
+def _net_request(link: dict, path: str, headers: dict | None = None, timeout: float = TIMEOUT):
+    """Open path on the printer, authenticated: PrusaLink with HTTP digest (username and password),
+    or an X-Api-Key header (OctoPrint, and PrusaLink without a username). Only paths on the printer
+    itself are opened: a reference the printer hands back can't point Spooler at another host."""
+    base = net_base(link)
+    if not base or not path.startswith("/") or path.startswith("//"):
+        raise ValueError(f"not a path on the printer: {path[:80]}")
+    url = base + urllib.parse.quote(path, safe="/?&=%:@!$'()*+,;~-._")
+    req = urllib.request.Request(url, headers=dict(headers or {}))
+    handlers = []
+    if link.get("kind") == "prusalink" and link.get("user"):
+        mgr = urllib.request.HTTPPasswordMgrWithDefaultRealm()
+        mgr.add_password(None, base, link["user"], link.get("code") or "")
+        handlers.append(urllib.request.HTTPDigestAuthHandler(mgr))
+    else:
+        req.add_header("X-Api-Key", link.get("code") or "")
+    try:
+        return urllib.request.build_opener(*handlers).open(req, timeout=timeout)
+    except urllib.error.HTTPError as exc:
+        if exc.code in (401, 403):
+            raise NetAuthError(f"the printer refused the {'password' if handlers else 'API key'}") from exc
+        raise
+
+
+def net_json(link: dict, path: str) -> dict:
+    """A JSON answer as a dict; {} for 204 No Content (PrusaLink's /job while nothing prints)."""
+    with _net_request(link, path, {"Accept": "application/json"}) as resp:
+        if getattr(resp, "status", 200) == 204:
+            return {}
+        raw = resp.read(4 * 1024 * 1024 + 1)
+    if len(raw) > 4 * 1024 * 1024:
+        raise ValueError("answer too large")
+    data = json.loads(raw.decode("utf-8") or "{}")
+    return data if isinstance(data, dict) else {}
+
+
+def _pos_num(value: object) -> float | None:
+    if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or value < 0:
+        return None
+    return float(value)
+
+
+def prusalink_job(status: dict, job: dict) -> dict:
+    """Bambu-shaped job fields from PrusaLink's /api/v1/status and /api/v1/job answers."""
+    printer = status.get("printer") if isinstance(status.get("printer"), dict) else {}
+    job = job if isinstance(job, dict) else {}
+    brief = status.get("job") if isinstance(status.get("job"), dict) else {}
+    file = job.get("file") if isinstance(job.get("file"), dict) else {}
+    raw = str(printer.get("state") or "").upper()
+    state = PL_STATES.get(raw, "IDLE")
+    if state == "PREPARE" and not (job or brief):
+        state = "IDLE"  # BUSY with no job: homing or a menu action, not a print starting
+    name = str(file.get("display_name") or file.get("name") or "")
+    folder = str(file.get("path") or "").rstrip("/")
+    pct = _pos_num(job.get("progress", brief.get("progress")))
+    left = _pos_num(job.get("time_remaining", brief.get("time_remaining")))
+    out = {"gcode_state": state, "mc_percent": round(min(pct, 100)) if pct is not None else 0,
+           "subtask_name": Path(name).stem if name else "",
+           "gcode_file": f"{folder}/{file['name']}" if file.get("name") else "",
+           "task_id": str(job.get("id", brief.get("id")) or "")}
+    if left is not None and state in LIVE_STATES:
+        out["mc_remaining_time"] = round(left / 60)
+    ref = (file.get("refs") or {}).get("download") if isinstance(file.get("refs"), dict) else None
+    if isinstance(ref, str):
+        out["download"] = ref
+    return out
+
+
+def octoprint_state(text: object, completion: float | None, has_file: bool) -> str:
+    """OctoPrint's state text as a Bambu gcode_state."""
+    s = str(text or "").strip().lower()
+    if s.startswith("printing") or s in ("finishing", "resuming"):
+        return "RUNNING"
+    if s.startswith(("starting", "sending file")):
+        return "PREPARE"
+    if s in ("pausing", "paused"):
+        return "PAUSE"
+    if s.startswith(("cancelling", "error")) or "after error" in s:
+        return "FAILED"
+    if s.startswith("operational") and has_file and completion is not None and completion >= 100:
+        return "FINISH"
+    return "IDLE"
+
+
+def octoprint_job(answer: dict) -> dict:
+    """Bambu-shaped job fields from OctoPrint's /api/job answer."""
+    job = answer.get("job") if isinstance(answer.get("job"), dict) else {}
+    prog = answer.get("progress") if isinstance(answer.get("progress"), dict) else {}
+    file = job.get("file") if isinstance(job.get("file"), dict) else {}
+    path = str(file.get("path") or file.get("name") or "")
+    pct = _pos_num(prog.get("completion"))
+    state = octoprint_state(answer.get("state"), pct, bool(path))
+    name = str(file.get("display") or file.get("name") or "")
+    out = {"gcode_state": state, "mc_percent": round(min(pct, 100)) if pct is not None else 0,
+           "subtask_name": Path(name).stem if name else "", "gcode_file": path,
+           # The file's upload time tells two uploads of one name apart, and stays the same for a whole print.
+           "task_id": f"{path}@{file.get('date')}" if path and file.get("date") else path}
+    left = _pos_num(prog.get("printTimeLeft"))
+    if left is not None and state in LIVE_STATES:
+        out["mc_remaining_time"] = round(left / 60)
+    if path and str(file.get("origin") or "local") == "local":
+        out["download"] = "/downloads/files/local/" + path.lstrip("/")
+    return out
+
+
+def net_trays(printer: dict, spools: list[dict], target: str) -> tuple[list[dict], dict | None]:
+    """(toolhead trays, external spool tray) from the spools assigned on the Printer tab."""
+    heads, ext = [], None
+    for unit in printer.get("units") or []:
+        for spool_id in unit["slots"]:
+            spool = _spool_by_id(spool_id, spools)
+            if unit["kind"] == "ext":
+                ext = _spool_tray(MOON_EXT, spool, target) if spool else {"id": str(MOON_EXT)}
+                continue
+            slot = len(heads)
+            heads.append(_spool_tray(slot, spool, target) if spool else {"id": str(slot)})
+    return heads, ext
+
+
+def net_doc(job: dict, printer: dict, spools: list[dict], target: str = "") -> tuple[dict, bool]:
+    """(Bambu-shaped report, has toolheads) for a network printer."""
+    heads, ext = net_trays(printer, spools, target)
+    report = {k: v for k, v in job.items() if k != "download"}
+    if heads:
+        report["ams"] = {"ams": [{"id": "0", "tray": heads}]}
+        if len(heads) == 1:
+            report["ams"]["tray_now"] = "0"  # one toolhead: it is the one printing
+    elif ext is not None:
+        report["ams"] = {"tray_now": "254"}
+    report["vt_tray"] = ext if ext is not None else {"id": str(MOON_EXT)}
+    return {"print": report}, bool(heads)
+
+
+def net_poll(link: dict) -> dict:
+    """The printer's current job fields (with 'download', the job file's path, when known)."""
+    if link.get("kind") == "prusalink":
+        status = net_json(link, "/api/v1/status")
+        job = net_json(link, "/api/v1/job") if isinstance(status.get("job"), dict) and status["job"] else {}
+        return prusalink_job(status, job)
+    return octoprint_job(net_json(link, "/api/job"))
+
+
+def _net_run(pid: str, link: dict, stop: threading.Event) -> None:
+    """Poll a PrusaLink or OctoPrint printer while the Printer tab is open or a print may be booked."""
+    fails = 0
+    who = f"Printer {link['name']}"
+    while _live_active() and not stop.is_set():
+        busy = False
+        try:
+            job = net_poll(link)
+            if stop.is_set():
+                break
+            busy = job.get("gcode_state") in LIVE_STATES
+            printer = next((p for p in printers_cfg() if p["id"] == pid), {"units": []})
+            doc, heads = net_doc(job, printer, _spool_cache["spools"] or [], target_for_host(net_base(link)))
+            with _live_lock:
+                state = _live["printers"].setdefault(pid, {"name": link["name"], "units": {}, "ext": {},
+                                                           "time": 0.0, "link": pid})
+                state["download"] = job.get("download") or ""
+            live_apply(pid, link["name"], doc, link=pid, full=True)
+            with _live_lock:
+                if stop.is_set():
+                    _live["printers"].pop(pid, None)
+                elif pid in _live["printers"]:
+                    _live["printers"][pid]["heads"] = heads
+                    _live["printers"][pid]["head_count"] = len(doc["print"]["ams"]["ams"][0]["tray"]) if heads else 0
+            _live["links"][pid] = "live"
+            fails = 0
+            _report(who, None)
+        except NetAuthError as exc:
+            _live["links"][pid] = "auth"
+            _report(who, str(exc))
+            return  # wrong password or key: wait for it to be changed (_local_sync starts a new link)
+        except Exception as exc:
+            fails += 1
+            _live["links"][pid] = "unreachable"
+            reason = "not reachable" if isinstance(exc, (urllib.error.URLError, OSError)) else str(exc)
+            _report(who, reason)
+        stop.wait((NET_POLL if busy else NET_IDLE) if not fails else LIVE_RETRY[min(fails - 1, len(LIVE_RETRY) - 1)])
+    _live["links"].pop(pid, None)
+
+
+def read_http_tail(resp, size: int = NET_TAIL, cap: int = NET_STREAM_MAX) -> bytes | None:
+    """The last size bytes of an answer to a Range request. A 206 is the tail already; a server that
+    ignored Range sends everything (200), which is read through keeping only the end. None past cap."""
+    if getattr(resp, "status", 200) == 206:
+        return resp.read(size + 1)[-size:]
+    buf = bytearray()
+    total = 0
+    while True:
+        chunk = resp.read(256 * 1024)
+        if not chunk:
+            return bytes(buf[-size:])
+        total += len(chunk)
+        if total > cap:
+            return None
+        buf += chunk
+        if len(buf) > 2 * size:
+            del buf[:-size]
+
+
+def parse_gcode_tail(lines) -> list[dict] | None:
+    """Grams per filament slot from an OrcaSlicer G-code's footer and settings block, in the shape
+    parse_slice returns; None when the file doesn't say (another slicer, or a binary .bgcode)."""
+    found: dict = {}
+    keys = {"filament used [g]": "grams", "filament_type": "material", "filament_colour": "colour",
+            "filament_settings_id": "preset"}
+    for raw in lines:
+        line = raw.decode("utf-8", "replace") if isinstance(raw, bytes) else raw
+        if not line.startswith(";") or "=" not in line:
+            continue
+        key, value = (part.strip() for part in line[1:].split("=", 1))
+        if key in keys:
+            found[keys[key]] = value
+    if "grams" not in found:
+        return None
+    grams = [float(n) for n in re.findall(r"-?\d+(?:\.\d+)?", found["grams"])]
+    lists = {k: split_list(found.get(k, "")) for k in ("material", "colour", "preset")}
+
+    def at(name: str, i: int) -> str:
+        return lists[name][i] if i < len(lists[name]) else ""
+    items = [{"n": i + 1, "grams": round(g, 2), "preset": at("preset", i), "colour": _hex6(at("colour", i)),
+              "material": at("material", i)} for i, g in enumerate(grams) if g > 0]
+    return items or None
+
+
+def _gcode_tail_items(link: dict, path: str, opener) -> list[dict] | None:
+    if path.lower().endswith((".bgcode", ".bgc")):
+        return None  # Prusa binary G-code: its metadata is compressed; the slice plan is used instead
+    with opener(link, path, {"Range": f"bytes=-{NET_TAIL}"}) as resp:
+        tail = read_http_tail(resp)
+    if tail is None or tail.startswith(b"GCDE"):
+        return None
+    return parse_gcode_tail(tail.decode("utf-8", "replace").splitlines())
+
+
+def net_fetch_job(link: dict, job: dict, pid: str = "") -> list[dict] | None:
+    """Grams per slot of a PrusaLink or OctoPrint print, from the end of its G-code file."""
+    with _live_lock:
+        path = (_live["printers"].get(pid) or {}).get("download") or ""
+    if not path:
+        file = str(job.get("file") or "")
+        if link.get("kind") != "octoprint" or not file:
+            return None
+        path = "/downloads/files/local/" + file.lstrip("/")
+    return _gcode_tail_items(link, path, _net_request)
+
+
+def _moon_open(link: dict, path: str, headers: dict | None = None):
+    req = urllib.request.Request(moon_base(link.get("ip")) + urllib.parse.quote(path, safe="/?&=%"),
+                                 headers=dict(headers or {}))
+    return urllib.request.urlopen(req, timeout=TIMEOUT)
+
+
+def moon_items(meta: dict) -> list[dict] | None:
+    """Grams per slot from Moonraker's file metadata (filament_weights, as OrcaSlicer's G-code states it)."""
+    weights = meta.get("filament_weights")
+    if not isinstance(weights, list):
+        total = _pos_num(meta.get("filament_weight_total"))
+        weights = [total] if total else []
+    types = split_list(meta.get("filament_type") or "")
+    colours = meta.get("filament_colors") if isinstance(meta.get("filament_colors"), list) else []
+    names = split_list(meta.get("filament_name") or "")
+    items = []
+    for i, g in enumerate(weights):
+        g = _pos_num(g)
+        if g:
+            items.append({"n": i + 1, "grams": round(g, 2), "preset": names[i] if i < len(names) else "",
+                          "colour": _hex6(colours[i]) if i < len(colours) else "",
+                          "material": types[i] if i < len(types) else ""})
+    return items or None
+
+
+def moon_fetch_job(link: dict, job: dict) -> list[dict] | None:
+    """Grams per slot of a Klipper print: Moonraker's file metadata, else the end of the G-code."""
+    file = str(job.get("file") or "").lstrip("/")
+    if not file:
+        return None
+    base = moon_base(link.get("ip"))
+    try:
+        items = moon_items(_moon_get(base, "/server/files/metadata?filename=" + urllib.parse.quote(file)))
+    except (urllib.error.HTTPError, ValueError):
+        items = None
+    return items or _gcode_tail_items(link, "/server/files/gcodes/" + file, _moon_open)
+
+
+def _same_host(a: str, b: str) -> bool:
+    ha, hb = urllib.parse.urlsplit(moon_base(a)).hostname, urllib.parse.urlsplit(moon_base(b)).hostname
+    return bool(ha) and ha == hb
+
+
+def slice_fill(slots: list[dict], host: str, spools: list[dict] | None = None) -> bool:
+    """After a slice for a PrusaLink or OctoPrint printer, put the matching spool on each toolhead the
+    plate uses: filament n goes on that printer's n-th toolhead. Only a single match is set (and moved
+    off any other slot); several or none leave the toolhead as it is. Bambu printers are never touched:
+    they report their own trays. Returns whether the saved printers changed. Runs off the UI thread."""
+    used = [s for s in slots if s.get("grams", 0) > 0]
+    if not used or not host or source() != "spoolman":
+        return False
+    saved = get_settings().get("printers")
+    printers = parse_printers(saved.get(source())) if isinstance(saved, dict) else []
+    printer = next((p for p in printers if p["type"] in NET_KINDS and p["slice_fill"] and p["ip"]
+                    and _same_host(p["ip"], host)), None)
+    if printer is None:
+        return False
+    tools = [u for u in printer["units"] if u["kind"] == "tool"]
+    if max(s["n"] for s in used) > len(tools):
+        log.info("Slice uses filament %d but %s has %d toolheads; not filling them",
+                 max(s["n"] for s in used), printer["name"], len(tools))
+        return False
+    if spools is None:
+        url = current_origin()[0]
+        spools = (plate_spools(url) if url and url != BAMBU_KEY else None) or []
+    changed = False
+    for slot in used:
+        found = match_spools({"vendor": "", "sub_type": "", **slot}, spools)
+        if len(found) != 1:
+            if found:
+                log.info("Filament %d matches %d spools; leaving %s T%d as it is", slot["n"], len(found),
+                         printer["name"], slot["n"])
+            continue
+        spool_id = str(found[0]["id"])
+        unit = tools[slot["n"] - 1]
+        if unit["slots"][0] == spool_id:
+            continue
+        for other in printers:  # a spool sits in at most one slot
+            for u in other["units"]:
+                u["slots"] = [None if v == spool_id else v for v in u["slots"]]
+        unit["slots"][0] = spool_id
+        changed = True
+        log.info("Slice: put spool %s on %s T%d", spool_id, printer["name"], slot["n"])
+    if changed:
+        save_printers(printers)
+        _printers_rev["n"] += 1
+    return changed
+
+
+def slice_fill_ctx(ctx, slots: list[dict]) -> None:
+    """slice_fill for the printer preset being sliced for, off the slicing thread."""
+    try:
+        host = moon_base(ctx.config_value("print_host")) or _ui_snap.get("host") or ""
+    except Exception:
+        host = _ui_snap.get("host") or ""
+    if host and any(s.get("grams", 0) > 0 for s in slots):
+        spawn(slice_fill, slots, host, name="spooler-slice-fill")
 
 
 USAGE_FILE = DATA_DIR / "usage.json"
@@ -3907,6 +4376,11 @@ def match_spool(tray: dict | None, spools: list[dict]) -> dict | None:
     """The one spool whose RFID tag matches the tray, else None."""
     if not tray:
         return None
+    # Klipper lanes and network printers' toolheads name their Spoolman spool directly.
+    if tray.get("spool_id") not in (None, ""):
+        spool = _spool_by_id(tray["spool_id"], spools)
+        if spool is not None and not spool.get("archived"):
+            return spool
     uids = _tag_ids([tray.get("tag_uid"), tray.get("tray_uuid")])
     found = [sp for sp in spools if not sp.get("archived") and uids & spool_tags(sp)]
     return found[0] if len(found) == 1 else None
@@ -3992,11 +4466,11 @@ def usage_track(dev_id: str, state: dict, has_state: bool) -> list[tuple]:
 
     The run is saved to disk while it lasts, so a dropped link or a restart picks it up again.
     """
-    # Only Bambu Live Link prints are booked here. Printers found from a preset's host address
-    # ("auto-..." ids: Moonraker, Anycubic) are not: on the Snapmaker U1 the u1control plugin
-    # books each toolhead's use to Spoolman, and Moonraker's own Spoolman integration books
-    # other Klipper printers, so booking them here too would count the filament twice.
-    if str(dev_id).startswith("auto-"):
+    # Printers found from a preset's host address ("auto-..." ids) are booked only when nothing else
+    # does it: the Snapmaker U1's toolheads are booked by u1control, a Moonraker with its Spoolman
+    # integration connected books its own use, and Anycubic printers have no job file to read. _moon_run
+    # sets book_ok for a Klipper printer that is none of these; anything else would count twice.
+    if str(dev_id).startswith("auto-") and not state.get("book_ok"):
         return []
     job = state.get("job") or {}
     gcode = job.get("gcode_state")
@@ -4032,7 +4506,8 @@ def usage_track(dev_id: str, state: dict, has_state: bool) -> list[tuple]:
             plan = _usage["plan"]["slots"] if new and _usage["plan"] else None
             state["run"] = {"id": f"{dev_id}-{int(time.time())}", "plan": plan, "file": None, "job": ident,
                             "name": str(job.get("subtask_name") or job.get("gcode_file") or "Print")[:80],
-                            "trays": _loaded(state), "pct": pct, "late": not new}
+                            "trays": _loaded(state), "pct": pct, "late": not new,
+                            "ask": _link_kind(dev_id) in ASK_ONLY}
             state["idle_seen"] = False
             events.append(("start", dev_id, dict(state["run"])))
         if not same_job(state.get("last"), ident) and (ident["name"] or ident["file"]):
@@ -4278,11 +4753,21 @@ def fetch_job(link: dict, job: dict) -> list[dict] | None:
     return items
 
 
+def _link_kind(dev_id: str) -> str:
+    """'bambu', 'moonraker', 'prusalink' or 'octoprint' for a live printer id."""
+    link = (_local.get(dev_id) or {}).get("link") or {}
+    return link.get("kind") or ("moonraker" if str(dev_id).startswith("auto-") else "bambu")
+
+
 def _try_fetch(dev_id: str, job: dict) -> list[dict] | None:
     link = (_local.get(dev_id) or {}).get("link")
     if not link:
         return None
     try:
+        if link.get("kind") in NET_KINDS:
+            return net_fetch_job(link, job, dev_id)
+        if link.get("kind") == "moonraker":
+            return moon_fetch_job(link, job)
         return fetch_job(link, job)
     except (ftplib.Error, OSError, ValueError, KeyError, zipfile.BadZipFile, ET.ParseError) as exc:
         log.warning("Could not read the job file from a printer: %s", exc)
@@ -4418,7 +4903,8 @@ def usage_finish(run: dict, dev_id: str = "") -> None:
         return
     log.info("A print ended (%s, %d%%, grams from the %s): %d slots to book", run["result"], run["pct"],
              "job file" if src == "file" else "last slice", len(rows))
-    if usage_mode() == "auto" and run["result"] == "finished" and not late:
+    ask_only = bool(run.get("ask")) or (bool(dev_id) and _link_kind(dev_id) in ASK_ONLY)
+    if usage_mode() == "auto" and run["result"] == "finished" and not late and not ask_only:
         notice = usage_book(entry["id"], None)
         if notice:
             log.warning("Booking %s: %s", entry["id"], notice)
@@ -5956,7 +6442,7 @@ class SpoolerWindow(orca.script.ScriptPluginCapabilityBase):
         elif msg_type == "printers":
             save_printers(data.get("printers"))
         elif msg_type == "live":
-            self._panel.post({"type": "live", "live": live_poll(), "usage": usage_state()})
+            self._panel.post(live_message())
         elif msg_type == "printer_code":
             save_printer_code(data.get("id"), data.get("code"))
         elif msg_type in ("usage_mode", "usage_book", "usage_undo", "usage_resolve"):
@@ -6156,7 +6642,7 @@ if _PAGES:
                 elif msg_type == "printers":
                     save_printers(data.get("printers"))
                 elif msg_type == "live":
-                    self.post_message({"type": "live", "live": live_poll(), "usage": usage_state()})
+                    self.post_message(live_message())
                 elif msg_type == "printer_code":
                     save_printer_code(data.get("id"), data.get("code"))
                 elif msg_type in ("usage_mode", "usage_book", "usage_undo", "usage_resolve"):
@@ -6409,6 +6895,7 @@ if _SLICING:
                 enabled, margin = plate_settings()
                 slots = plate_slots(ctx, parse_usage(read_tail(ctx.gcode_path)))
                 usage_plan(slots)
+                slice_fill_ctx(ctx, slots)
                 if enabled:
                     if any(slot["grams"] > 0 for slot in slots):
                         # Off the slicing thread: it may fetch the spool list, and UI calls from
