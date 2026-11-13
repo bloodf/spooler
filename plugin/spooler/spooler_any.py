@@ -6,7 +6,7 @@
 # name = "Spooler"
 # description = "Spoolman inventory for OrcaSlicer: auto-synced filament profiles and live printer slots"
 # author = "bloodf (fork of Spoolio by Dan J Moore)"
-# version = "0.21.1"
+# version = "0.21.2"
 # ///
 
 import asyncio
@@ -51,7 +51,7 @@ except (ImportError, AttributeError):
 _SLICING = hasattr(getattr(orca, "slicing", None), "SlicingPipelineCapabilityBase")
 
 PLUGIN_NAME = "Spooler"
-PLUGIN_VERSION = "0.21.1"
+PLUGIN_VERSION = "0.21.2"
 # Stamped per operating system by scripts/build.py.
 BUILD_TARGET = "any"
 
@@ -5933,7 +5933,7 @@ class SpoolerWindow(orca.script.ScriptPluginCapabilityBase):
             PLUGIN_NAME,
             PLUGIN_VERSION,
             platform.python_version(),
-            platform.platform(),
+            sys.platform + "-" + platform.machine(),  # platform.platform() opens files Orca's audit blocks
         )
         sync_config(self)
         start_presence()
@@ -6256,7 +6256,7 @@ if _PAGES:
                 PLUGIN_NAME,
                 PLUGIN_VERSION,
                 platform.python_version(),
-                platform.platform(),
+                sys.platform + "-" + platform.machine(),  # platform.platform() opens files Orca's audit blocks
             )
             sync_config(self)
             start_presence()   # called on load even when the tab is disabled in the Plugins dialog

@@ -3,6 +3,10 @@
 Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); entries before
 0.9.0 are Spoolio's.
 
+## [0.21.2] - 2026-11-12
+
+- Fix Spooler failing to load in OrcaSlicer 2.5 ("Plugin on_load failed: PermissionError … audited operation open"). The load log line called `platform.platform()`, which on macOS reads `/System/Library/CoreServices/SystemVersion.plist` and opens `/dev/null`; the host's audit blocks both. The log now uses `sys.platform` and `platform.machine()`, which read no files. A test loads the tab and the window with file access outside the data folder blocked.
+
 ## [0.21.1] - 2026-11-12
 
 - Build tools only: shared Orca UI foundation 2.0.3 (Vite 8.3.8, @vitejs/plugin-vue 6.0.11). No change to spools, printers or the interface.
