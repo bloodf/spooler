@@ -4897,23 +4897,37 @@ def export_history(period: object) -> dict:
         with path.open("w", encoding="utf-8-sig", newline="") as fh:
             out = csv.writer(fh)
             out.writerow(["Date", "Print", "Printer", "Result", "Progress %", "Spool ID", "Spool", "Material", "Colour",
-                          "Grams", "Cost", "Waste Support g", "Waste Purge g"])
+                          "Grams", "Cost", "Waste Support g", "Waste Purge g", "Calibration"])
             for e in hist:
                 when = time.strftime("%Y-%m-%dT%H:%M:%S", time.localtime(e.get("time") or 0))
+                cal = "yes" if is_calibration(e.get("name")) else ""
                 for r in e["rows"]:
-                    ws, wp = r.get("ws"), r.get("wp")
+                    ws, wp = (None, None) if cal else (r.get("ws"), r.get("wp"))
                     out.writerow([csv_cell(c) for c in (
                         when, e.get("name") or "", e.get("printer") or "", e.get("result") or "",
                         "" if e.get("pct") is None else e["pct"], r["spool"], r.get("label") or "",
                         r.get("material") or "", r.get("colour") or "", r["grams"],
                         "" if r.get("cost") is None else r["cost"],
                         round(r["grams"] * ws, 2) if isinstance(ws, (int, float)) else "",
-                        round(r["grams"] * wp, 2) if isinstance(wp, (int, float)) else "")])
+                        round(r["grams"] * wp, 2) if isinstance(wp, (int, float)) else "", cal)])
     except OSError as exc:
         log.exception("Could not write %s", path)
         return {"ok": False, "text": f"Could not write the export: {exc}"}
     open_url(folder.as_uri())
     return {"ok": True, "text": f"Saved {path}", "path": str(path)}
+
+
+# OrcaSlicer's Calibration menu names its test prints after the test; so do the common hand-made towers.
+CALIBRATION_NAME = re.compile(
+    r"calib|flow[\s_-]*rate|pressure[\s_-]*advance|\bpa[\s_-]*(line|pattern|tower|test)\b|temp(erature)?[\s_-]*tower"
+    r"|retraction[\s_-]*(test|tower)|max[\s_-]*volumetric|\bmvs\b|\bvfa\b|input[\s_-]*shap|junction[\s_-]*deviation"
+    r"|cornering[\s_-]*test", re.I)
+
+
+def is_calibration(name: object) -> bool:
+    """A calibration test print (flow, pressure advance, temperature, retraction, max volumetric speed, VFA,
+    input shaping), told from its print name. Its prime tower and flushes are part of the test, not waste."""
+    return isinstance(name, str) and bool(CALIBRATION_NAME.search(name))
 
 
 def stats_data(period: object) -> dict:
@@ -4975,9 +4989,16 @@ def stats_data(period: object) -> dict:
                         "weeks": round(wk, 1) if wk is not None else None,
                         "pct": max(0, min(100, left / full * 100)) if full else None})
     out.sort(key=lambda x: (not x["low"], x["weeks"] if x["weeks"] is not None else 99, x["left"]))
-    ws = {"model": 0.0, "support": 0.0, "purge": 0.0, "cost": 0.0, "mcost": 0.0, "scost": 0.0, "pcost": 0.0, "prints": 0}
+    ws = {"model": 0.0, "support": 0.0, "purge": 0.0, "calibration": 0.0, "cost": 0.0, "mcost": 0.0, "scost": 0.0,
+          "pcost": 0.0, "ccost": 0.0, "prints": 0}
     worst = []
     for e in sel:
+        if is_calibration(e.get("name")):
+            # a whole calibration print is its own slice: never support/purge waste, never "most wasteful"
+            ws["prints"] += 1
+            ws["calibration"] += sum(r["grams"] for r in e["rows"])
+            ws["ccost"] += sum(r["cost"] for r in e["rows"] if isinstance(r.get("cost"), (int, float)))
+            continue
         rows = [r for r in e["rows"] if "ws" in r]
         if not rows:
             continue
@@ -5013,7 +5034,7 @@ def stats_data(period: object) -> dict:
             "top": sorted(top.values(), key=lambda x: -x["g"])[:5], "weeks": weeks, "soon": out[:5],
             "waste": ws if ws["prints"] else None, "failed": failed, "shelf": shelf_out, "worst": sorted(worst, key=lambda x: -x["g"])[:3],
             "history": [{"time": e["time"], "name": e["name"], "printer": e["printer"], "result": e["result"],
-                         "pct": e.get("pct"), "rows": e["rows"]} for e in reversed(sel)]}
+                         "pct": e.get("pct"), "rows": e["rows"], "cal": is_calibration(e.get("name"))} for e in reversed(sel)]}
 
 
 def is_newer(latest: str, current: str) -> bool:

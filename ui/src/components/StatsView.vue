@@ -19,7 +19,8 @@ const histOpen = ref(readFlag());
 function readFlag() { try { return localStorage.getItem('spooler.history') === '1'; } catch { return false; } }
 const shownN = ref(7);
 const COLS = ['var(--p-primary-color)', '#5b8def', '#c27c0e', '#9b6bd6', '#2f9a8f', '#c43d38', '#888'];
-const W_COLS: Record<string, string> = { model: 'var(--p-primary-color)', support: '#c27c0e', purge: '#c43d38' };
+const W_COLS: Record<string, string> = { model: 'var(--p-primary-color)', support: '#c27c0e', purge: '#c43d38', calibration: '#6b6fd4' };
+const W_KEYS = [['model', 'mcost'], ['support', 'scost'], ['purge', 'pcost'], ['calibration', 'ccost']] as const;
 
 function ask() { bridge.postMain({ type: 'stats', period: period.value }); }
 let offs: (() => void)[] = [];
@@ -61,7 +62,8 @@ const donut = computed(() => {
   return top.map((x: any, i: number) => { const len = (x.g / d.grams) * 100; const seg = { ...x, colour: COLS[i], len, at }; at += len; return seg; });
 });
 const wasted = computed(() => (data.value?.waste ? data.value.waste.support + data.value.waste.purge : null));
-const wasteRows = (e: any) => { const rows = e.rows.filter((r: any) => typeof r.ws === 'number'); return rows.length ? rows.reduce((a: number, r: any) => a + r.grams * (r.ws + r.wp), 0) : null; };
+const wTotal = computed(() => { const x = data.value?.waste; return x ? x.model + x.support + x.purge + (x.calibration || 0) : 0; });
+const wasteRows = (e: any) => { if (e.cal) return null; const rows = e.rows.filter((r: any) => typeof r.ws === 'number'); return rows.length ? rows.reduce((a: number, r: any) => a + r.grams * (r.ws + r.wp), 0) : null; };
 const rowCost = (e: any) => { const c = e.rows.filter((r: any) => typeof r.cost === 'number'); return c.length ? c.reduce((a: number, r: any) => a + r.cost, 0) : null; };
 const rowG = (e: any) => e.rows.reduce((a: number, r: any) => a + r.grams, 0);
 const soonLabel = (s: any) => {
@@ -86,7 +88,7 @@ const soonLabel = (s: any) => {
         <div class="stv-tile"><span>{{ t('stats.cost') }}</span><b>{{ money(data.cost) }}</b></div>
         <div class="stv-tile" :class="{ warn: data.low }"><span>{{ t('stats.low') }}</span><b>{{ data.low }}</b></div>
         <div class="stv-tile"><span>{{ t('stats.wasted') }}</span><b>{{ wasted === null ? '–' : w(wasted) }}</b>
-          <small>{{ data.waste ? (data.waste.cost ? money(data.waste.cost) + ' · ' : '') + t('stats.pctAll', { pct: Math.round((wasted as number) / (data.waste.model + data.waste.support + data.waste.purge) * 100) }) : t('stats.fromJob') }}</small></div>
+          <small>{{ data.waste ? (data.waste.cost ? money(data.waste.cost) + ' · ' : '') + t('stats.pctAll', { pct: Math.round((wasted as number) / (wTotal || 1) * 100) }) : t('stats.fromJob') }}</small></div>
         <div class="stv-tile"><span>{{ t('stats.shelf') }}</span><b>{{ data.shelf ? w(data.shelf.g) : '–' }}</b>
           <small>{{ data.shelf ? money(data.shelf.value) + (data.shelf.unpriced ? ' · ' + tn('stats.unpriced', data.shelf.unpriced) : '') : t('stats.needsSpoolman') }}</small></div>
         <div class="stv-tile" :class="{ warn: data.failed.prints }"><span>{{ t('stats.failed') }}</span><b>{{ w(data.failed.g) }}</b>
@@ -133,9 +135,9 @@ const soonLabel = (s: any) => {
           <p v-if="!data.waste" class="oui-muted">{{ t('stats.ratiosNone') }}</p>
           <div v-else class="stv-wi">
             <div>
-              <div class="stv-wbar"><i v-for="k in ['model', 'support', 'purge']" v-show="data.waste[k] > 0" :key="k" :style="{ flex: data.waste[k], background: W_COLS[k] }" :title="`${t(`stats.waste.${k}` as any)}: ${w(data.waste[k])}`" /></div>
-              <ul class="stv-leg"><li v-for="[k, cost] in [['model', 'mcost'], ['support', 'scost'], ['purge', 'pcost']]" :key="k"><span class="stv-k" :style="{ background: W_COLS[k] }" />
-                <span>{{ t(`stats.waste.${k}` as any) }}</span><span class="sp-num">{{ w(data.waste[k]) }} · {{ Math.round(data.waste[k] / (data.waste.model + data.waste.support + data.waste.purge) * 100) }}%<template
+              <div class="stv-wbar"><i v-for="[k] in W_KEYS" v-show="data.waste[k] > 0" :key="k" :style="{ flex: data.waste[k], background: W_COLS[k] }" :title="`${t(`stats.waste.${k}` as any)}: ${w(data.waste[k])}`" /></div>
+              <ul class="stv-leg"><li v-for="[k, cost] in W_KEYS" v-show="k !== 'calibration' || data.waste.calibration > 0" :key="k"><span class="stv-k" :style="{ background: W_COLS[k] }" />
+                <span>{{ t(`stats.waste.${k}` as any) }}</span><span class="sp-num">{{ w(data.waste[k]) }} · {{ Math.round(data.waste[k] / (wTotal || 1) * 100) }}%<template
                   v-if="data.waste.cost || data.waste.mcost"> · {{ money(data.waste[cost]) }}</template></span></li></ul>
               <p class="oui-meta">{{ t('stats.wasteNote') }} {{ data.waste.prints < data.prints ? t('stats.wasteSome', { n: data.waste.prints, total: data.prints }) : t('stats.wasteSince') }}</p>
             </div>
@@ -157,7 +159,7 @@ const soonLabel = (s: any) => {
                 <th scope="col" class="r">{{ t('stats.col.weight') }}</th><th scope="col" class="r">{{ t('stats.col.waste') }}</th><th scope="col" class="r">{{ t('stats.col.cost') }}</th></tr></thead>
               <tbody><tr v-for="(e, i) in data.history.slice(0, shownN)" :key="i">
                 <td class="sp-num">{{ date(e.time) }}</td>
-                <td><strong>{{ e.name || t('stats.print') }}</strong><span v-if="e.result === 'cancelled' || e.result === 'failed'" class="sp-chip bad stv-fail">
+                <td><strong>{{ e.name || t('stats.print') }}</strong><span v-if="e.cal" class="sp-chip stv-cal" :title="t('stats.calHelp')">{{ t('stats.waste.calibration') }}</span><span v-if="e.result === 'cancelled' || e.result === 'failed'" class="sp-chip bad stv-fail">
                   {{ t('stats.failedAt', { pct: e.pct || 0, g: fmt.number(rowG(e), 1) }) }}<template v-if="rowCost(e) !== null"> · {{ money(rowCost(e)) }}</template></span>
                   <div v-if="e.printer" class="oui-meta">{{ e.printer }}</div></td>
                 <td><span v-for="(r, k) in e.rows" :key="k" class="stv-m" :title="r.label"><i :style="{ background: col(r.colour) }" />{{ r.material || '' }} {{ fmt.number(r.grams, 1) }} g</span></td>
@@ -204,7 +206,7 @@ const soonLabel = (s: any) => {
 .stv-wbar { display: flex; height: 14px; border-radius: 7px; overflow: hidden; margin-bottom: 8px; }
 .stv-hh { display: flex; gap: 12px; align-items: center; width: 100%; border: 0; background: none; color: var(--oui-text); font: inherit; cursor: pointer; text-align: left; flex-wrap: wrap; padding: 0; }
 .stv-hh h2 { margin: 0; }
-.stv-fail { margin-left: 6px; }
+.stv-fail, .stv-cal { margin-left: 6px; }
 .stv-m { display: inline-flex; gap: 4px; align-items: center; margin-right: 8px; white-space: nowrap; font-size: 12px; }
 .stv-m i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
 .stv-hbar { margin-top: 8px; }
