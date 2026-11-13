@@ -141,6 +141,24 @@ class WasteTest(StatsBase):
         # T0: 6 model, 2 support, 1.5 flush + 0.5 tower. T1: 5 model, then 5 support (absolute).
         self.assertEqual(sp.parse_waste(GCODE.splitlines()), {1: (0.2, 0.2), 2: (0.5, 0.0)})
 
+    def test_flush_words_in_the_settings_block_are_not_a_flush(self):
+        # OrcaSlicer copies the printer's change-filament template into the settings block; its
+        # FLUSH_START (with no FLUSH_END on the same line) must not turn a single-colour print into purge.
+        for at_top in (True, False):
+            config = ["; CONFIG_BLOCK_START",
+                      "; change_filament_gcode = M620 S[next_extruder]A\\n; FLUSH_START\\nG1 E10",
+                      "; machine_end_gcode = ; flush_start",
+                      ";TYPE:Support",
+                      "G1 E50",
+                      "; CONFIG_BLOCK_END"]
+            body = ["M83", ";TYPE:Outer wall", "G1 X1 E8", ";TYPE:Support", "G1 X2 E2"]
+            lines = config + body if at_top else body + config
+            self.assertEqual(sp.parse_waste(lines), {1: (0.2, 0.0)}, at_top)
+
+    def test_a_flush_marker_must_be_the_whole_comment(self):
+        lines = ["M83", "; note: flush_start is set in the template", "G1 E5"]
+        self.assertEqual(sp.parse_waste(lines), {1: (0.0, 0.0)})
+
     def test_bytes_lines_and_nothing_extruded(self):
         self.assertEqual(sp.parse_waste([b";TYPE:Support\n", b"M83\n", b"G1 E4\n"]), {1: (1.0, 0.0)})
         self.assertEqual(sp.parse_waste(["G1 X1 Y1", "T1"]), {})
@@ -193,3 +211,59 @@ class WasteTest(StatsBase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class UnreadableFilesTest(unittest.TestCase):
+    """A file left half written is kept as .bad, never silently replaced by an empty one."""
+
+    def setUp(self):
+        self.dir = Path(tempfile.mkdtemp())
+        self.addCleanup(__import__("shutil").rmtree, self.dir, True)
+
+    def _swap(self, name, value):
+        old = getattr(sp, name)
+        setattr(sp, name, value)
+        self.addCleanup(setattr, sp, name, old)
+
+    def test_history_is_kept_aside_and_a_second_copy_does_not_overwrite_the_first(self):
+        path = self.dir / "history.json"
+        self._swap("HISTORY_FILE", path)
+        path.write_text('[{"id": 1}, {"id": 2', encoding="utf-8")
+        self.assertEqual(sp.hist_load(), [])
+        self.assertFalse(path.exists())
+        self.assertEqual((self.dir / "history.json.bad").read_text(encoding="utf-8"), '[{"id": 1}, {"id": 2')
+        path.write_text("{", encoding="utf-8")
+        self.assertEqual(sp.hist_load(), [])
+        self.assertEqual(len(list(self.dir.glob("history.json*.bad"))), 2)
+
+    def test_usage_and_codes_are_kept_aside(self):
+        usage, codes = self.dir / "usage.json", self.dir / "printer_codes.json"
+        self._swap("USAGE_FILE", usage)
+        self._swap("CODES_FILE", codes)
+        usage.write_text("{", encoding="utf-8")
+        codes.write_text("{", encoding="utf-8")
+        sp.usage_load()
+        self.assertEqual(sp.read_codes(), {})
+        self.assertTrue((self.dir / "usage.json.bad").exists())
+        self.assertTrue((self.dir / "printer_codes.json.bad").exists())
+
+    def test_settings_are_kept_aside_and_defaults_used(self):
+        path = self.dir / "spooler_settings.json"
+        self._swap("SETTINGS_FILE", path)
+        self._swap("OLD_SETTINGS", self.dir / "missing.json")
+        path.write_text('{"spoolman_url": "http://x"', encoding="utf-8")
+        settings = sp.get_settings()
+        self.assertTrue((self.dir / "spooler_settings.json.bad").exists())
+        self.assertEqual(settings["spoolman_url"], "")
+        self.assertEqual(settings["spool_columns"], 1)
+
+    def test_codes_are_written_in_one_step_and_private(self):
+        import os
+        import stat
+        codes = self.dir / "printer_codes.json"
+        self._swap("CODES_FILE", codes)
+        sp.write_codes({"bambu:p1": "12345678"})
+        self.assertEqual(sp.read_codes(), {"bambu:p1": "12345678"})
+        if os.name == "posix":
+            self.assertEqual(stat.S_IMODE(codes.stat().st_mode), 0o600)
+        self.assertEqual([p.name for p in self.dir.iterdir()], ["printer_codes.json"])

@@ -225,9 +225,15 @@ def get_settings() -> dict:
     }
     for path in (SETTINGS_FILE, OLD_SETTINGS):
         try:
-            return {**defaults, **json.loads(path.read_text(encoding="utf-8"))}
-        except (OSError, ValueError):
+            saved = json.loads(path.read_text(encoding="utf-8"))
+        except ValueError:
+            if path == SETTINGS_FILE:
+                _keep_unreadable(path)
             continue
+        except OSError:
+            continue
+        if isinstance(saved, dict):
+            return {**defaults, **saved}
     return defaults
 
 
@@ -1395,11 +1401,29 @@ def profile_snapshot() -> dict | None:
     return snap
 
 
-def _write_json(path: Path, value: object) -> None:
+def _keep_unreadable(path: Path) -> Path | None:
+    """Move a file that is not valid JSON aside as <name>.bad (or <name>.<time>.bad when one is
+    already kept), so the next save starts clean without erasing what it held: a half-written
+    history can still be merged back by hand. Returns where it went, or None."""
+    bad = path.with_name(path.name + ".bad")
+    if bad.exists():
+        bad = path.with_name(f"{path.name}.{int(time.time())}.bad")
+    try:
+        os.replace(path, bad)
+    except OSError:
+        log.exception("Could not read %s, and could not keep it aside", path)
+        return None
+    log.warning("Could not read %s; kept it as %s and started a new one", path.name, bad.name)
+    return bad
+
+
+def _write_json(path: Path, value: object, mode: int | None = None) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_name(f".{path.name}.{threading.get_ident()}.tmp")
     try:
         tmp.write_text(json.dumps(value, indent=2, ensure_ascii=False), encoding="utf-8")
+        if mode is not None:
+            os.chmod(tmp, mode)  # before it takes the real name: never readable by others, even briefly
         os.replace(tmp, path)
     except OSError:
         tmp.unlink(missing_ok=True)
@@ -2858,7 +2882,10 @@ def read_codes() -> dict:
         data = json.loads(CODES_FILE.read_text(encoding="utf-8"))
     except FileNotFoundError:
         return {}
-    except (OSError, ValueError):
+    except ValueError:
+        _keep_unreadable(CODES_FILE)
+        return {}
+    except OSError:
         log.exception("Could not read %s", CODES_FILE)
         return {}
     return {str(k): str(v) for k, v in data.items()} if isinstance(data, dict) else {}
@@ -2866,8 +2893,7 @@ def read_codes() -> dict:
 
 def write_codes(codes: dict) -> None:
     try:
-        CODES_FILE.write_text(json.dumps(codes), encoding="utf-8")
-        os.chmod(CODES_FILE, 0o600)
+        _write_json(CODES_FILE, codes, mode=0o600)
     except OSError:
         log.exception("Could not write %s", CODES_FILE)
 
@@ -3761,7 +3787,10 @@ def usage_load() -> dict:
         data = json.loads(USAGE_FILE.read_text(encoding="utf-8"))
     except FileNotFoundError:
         data = {}
-    except (OSError, ValueError):
+    except ValueError:
+        _keep_unreadable(USAGE_FILE)
+        data = {}
+    except OSError:
         log.exception("Could not read %s", USAGE_FILE)
         data = {}
     data = data if isinstance(data, dict) else {}
@@ -4102,21 +4131,35 @@ WASTE_PURGE = ("prime tower", "wipe tower", "flush", "purge")
 
 
 def parse_waste(lines) -> dict[int, tuple[float, float]]:
-    """Support and purge share of each filament (1-based), from the plate G-code."""
-    tool, kind, flush, rel, last = 0, "model", False, False, 0.0
+    """Support and purge share of each filament (1-based), from the plate G-code.
+
+    A flush is only the bare "; FLUSH_START" / "; FLUSH_END" comment line. The same words also appear
+    inside the printer's custom G-code templates that OrcaSlicer copies into the settings block
+    (CONFIG_BLOCK, at the top or the end of the file); read as markers, they left the flush open and
+    counted a whole single-colour print as purge. The settings block is skipped entirely."""
+    tool, kind, flush, rel, last, config = 0, "model", False, False, 0.0, False
     sums: dict[int, list[float]] = {}
     for raw in lines:
         line = raw.decode("utf-8", "replace") if isinstance(raw, bytes) else raw
         if line.startswith(";"):
             low = line.lower()
-            if low.startswith((";type:", "; feature:")):
+            marker = low[1:].strip()
+            if marker == "config_block_start":
+                config = True
+            elif marker == "config_block_end":
+                config = False
+            elif config:
+                pass
+            elif low.startswith((";type:", "; feature:")):
                 name = low.split(":", 1)[1].strip()
                 kind = ("support" if any(w in name for w in WASTE_SUPPORT)
                         else "purge" if any(w in name for w in WASTE_PURGE) else "model")
-            elif "flush_start" in low:
+            elif marker == "flush_start":
                 flush = True
-            elif "flush_end" in low:
+            elif marker == "flush_end":
                 flush = False
+            continue
+        if config:
             continue
         cmd = line.split(";", 1)[0].strip()
         if not cmd:
@@ -4716,7 +4759,10 @@ def hist_load() -> list[dict]:
         data = json.loads(HISTORY_FILE.read_text(encoding="utf-8"))
     except FileNotFoundError:
         return []
-    except (OSError, ValueError):
+    except ValueError:
+        _keep_unreadable(HISTORY_FILE)
+        return []
+    except OSError:
         log.exception("Could not read %s", HISTORY_FILE)
         return []
     return [e for e in data if isinstance(e, dict)] if isinstance(data, list) else []
