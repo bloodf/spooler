@@ -351,6 +351,32 @@ test('manual printer editing: add, rename, units, remove with confirmation', `
   await click(btn('Remove printer')); await yes();
   eq(lastOf('printers').printers.length, 0, 'removed');
 `);
+test('network printer: PrusaLink link form, toolheads, and a slice-filled toolhead taken from the live poll', `
+  await spools(SPOOLS);
+  await tab('printer');
+  await click(byTest('add-printer'));
+  await press('Enter');
+  const id = lastOf('printers').printers[0].id;
+  await click(btn('+ Toolhead')); await click(btn('+ Toolhead'));
+  eq(lastOf('printers').printers[0].units.map(u => u.kind), ['tool', 'tool'], 'two toolheads');
+  await click(q('[data-act="link"]'));
+  assert(vis(q('.pp-link')).includes('Serial number'), 'Bambu asks for the serial');
+  await pick(q('[data-test="link-type"]'), 'PrusaLink');
+  assert(!vis(q('.pp-link')).includes('Serial number'), 'no serial for PrusaLink');
+  assert(vis(q('.pp-link')).includes('Password') && vis(q('.pp-link')).includes('always asked'), 'password label and the asking note');
+  await type(q('.pp-link input[placeholder="192.168.1.50"]'), '10.0.0.5');
+  await type(byTest('link-user'), 'maker');
+  await type(q('.pp-link input[type="password"]'), 'secret');
+  await click(btn('Save'));
+  const saved = lastOf('printers').printers[0];
+  eq([saved.type, saved.ip, saved.user, saved.slice_fill, saved.serial], ['prusalink', '10.0.0.5', 'maker', true, ''], 'saved as PrusaLink');
+  eq(lastOf('printer_code'), {type: 'printer_code', id, code: 'secret'}, 'password sent once');
+  const filled = {...saved, has_code: true, units: [{kind: 'tool', slots: ['1']}, {kind: 'tool', slots: [null]}]};
+  post({type: 'live', live: {links: {}, printers: []}, usage: {enabled: true, mode: 'ask', prints: []}, printers_rev: 1, printers: [filled]});
+  await settle();
+  assert(q('.pp [data-spool="1"]'), 'the toolhead shows the spool the slice put on it');
+  assert(vis(q('.pp')).includes('T1'), 'toolheads are named T1, T2');
+`);
 test('unknown booking asks the user instead of offering Book; resolve sends the answer', `
   await spools(SPOOLS, {usage: {enabled: true, mode: 'ask', prints: [{id: 'job', name: 'Benchy', printer: 'X1', result: 'finished', pct: 100, time: Date.now() / 1000, state: 'unknown',
     rows: [{slot: 1, grams: 10, label: 'PLA', state: 'unknown', op: 'book', error: 'check'}]}]}});

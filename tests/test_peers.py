@@ -227,3 +227,28 @@ class SpoolsMessageTest(PeerCase):
         for m in msgs:
             self.assertEqual((m["ok"], m["error_code"], m["peers"]), (False, "no_url", {"u1control": True}))
         self.assertEqual(self.requests, [])
+
+
+class RefreshRecoversTest(PeerCase):
+    def test_a_failed_read_does_not_stop_later_refreshes(self):
+        self.settings["spoolman_url"] = "http://spoolman.test:7912"
+        posted = []
+        window = sp.SpoolerWindow()
+        window._panel = mock.Mock(is_open=lambda: True, post=posted.append)
+        page = sp.SpoolerPage()
+        boom = mock.Mock(side_effect=RuntimeError("Spoolman said 500"))
+
+        def sync(fn, *a, **k):
+            fn(*a)
+            return mock.Mock()
+        with mock.patch.object(sp, "ws_sync", lambda post: None), mock.patch.object(sp, "source", lambda: "spoolman"), \
+             mock.patch.object(sp, "refresh_snapshot", lambda: None), mock.patch.object(sp, "_local_sync", lambda: None), \
+             mock.patch.object(sp, "fresh_spools", boom), mock.patch.object(sp, "spawn", sync), \
+             self.assertLogs(sp.log, "ERROR"):
+            for host in (window, page):
+                host._push_data()
+                host._push_data()
+                self.assertFalse(host._refreshing)
+        self.assertEqual(boom.call_count, 4)
+        msgs = [m for m in posted + page.posted if m.get("type") == "spools"]
+        self.assertTrue(all(m["ok"] is False and "Spoolman said 500" in m["error"] for m in msgs))

@@ -32,6 +32,7 @@ export const m = reactive({
   cart: false,
   columns: 1 as 1 | 2,
   cfg: [] as ManualPrinter[],
+  printersRev: 0,
   showPrinterTab: true,
   liveOn: false,
   live: { status: 'off', printers: [] as LivePrinter[], links: {} as Record<string, string> },
@@ -140,6 +141,7 @@ function render(p: any): void {
   if (typeof p.show_cart === 'boolean') m.cart = p.show_cart;
   if (p.spool_columns) m.columns = p.spool_columns === 2 ? 2 : 1;
   if (Array.isArray(p.printers)) m.cfg = p.printers;
+  if (typeof p.printers_rev === 'number') m.printersRev = p.printers_rev;
   if (typeof p.show_printer_tab === 'boolean') m.showPrinterTab = p.show_printer_tab;
   m.liveOn = p.live_ok === true;
   if (p.usage) setUsage(p.usage, false);
@@ -180,6 +182,8 @@ function onMessage(d: any): void {
       break;
     case 'sent': settle('send', !!d.ok, d.text || ''); break;
     case 'live': {
+      // Spooler changed the saved printers itself (a slice filled the toolheads): take them, or the next edit saves over it.
+      if (typeof d.printers_rev === 'number' && d.printers_rev !== m.printersRev) { m.printersRev = d.printers_rev; if (Array.isArray(d.printers)) m.cfg = d.printers; }
       const key = liveSig(d.live);
       if (key !== m.liveKey) { m.liveKey = key; m.live = d.live; }
       if (d.usage) setUsage(d.usage, false);

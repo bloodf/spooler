@@ -37,6 +37,28 @@ class StatsBase(unittest.TestCase):
         sp.HISTORY_FILE.write_text(json.dumps(entries), encoding="utf-8")
 
 
+class CalibrationTest(StatsBase):
+    def test_names(self):
+        yes = ["Flow rate test - Pass 1", "flowrate-test-pass2", "Pressure Advance", "pa_line", "PA pattern", "temp_tower",
+               "Temperature Tower PLA", "Retraction test", "max volumetric speed", "MVS", "VFA", "Input Shaping Frequency",
+               "printer calibration cube", "Junction Deviation", "cornering test"]
+        no = ["Benchy", "Headphone_Stand", "spatula", "paper_holder", "", None, "temple", "flowers vase"]
+        self.assertEqual([n for n in yes if not sp.is_calibration(n)], [])
+        self.assertEqual([n for n in no if sp.is_calibration(n)], [])
+
+    def test_own_slice_not_waste_not_worst(self):
+        cal = entry("c", 1, [dict(row(1, 20.0, cost=0.4), ws=0.0, wp=0.6)])
+        cal["name"] = "Pressure Advance tower"
+        model = entry("m", 1, [dict(row(2, 100.0, cost=2.0), ws=0.1, wp=0.1)])
+        self.save([cal, model])
+        data = sp.stats_data("30")
+        ws = data["waste"]
+        self.assertEqual((ws["calibration"], ws["ccost"], ws["prints"]), (20.0, 0.4, 2))
+        self.assertEqual((ws["support"], ws["purge"], ws["model"]), (10.0, 10.0, 80.0))
+        self.assertEqual([w["name"] for w in data["worst"]], ["print m"])
+        self.assertEqual([h["cal"] for h in data["history"]], [False, True])
+
+
 class ParseStatsTest(unittest.TestCase):
     def test_defaults_and_validation(self):
         self.assertEqual(sp.parse_stats(None), {"on": sp.parse_flag(None), "cur": "spoolman"})

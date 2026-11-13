@@ -6,11 +6,18 @@ export interface LivePrinter { id?: string; link?: string; name: string; heads?:
   age?: number; spool_set?: boolean; job?: Job | null }
 export interface Job { state: string; name?: string; pct?: number; stage?: string; layer?: number; layers?: number; left?: number | null;
   took?: number; end?: number; tray?: { unit: number | string; slot: number } | null }
-export interface ManualUnit { kind: 'ams' | 'ht' | 'ext'; slots: (string | number | null)[] }
-export interface ManualPrinter { id: string; name: string; auto?: boolean; ip?: string; serial?: string; has_code?: boolean; units: ManualUnit[] }
+export type UnitKind = 'ams' | 'ht' | 'ext' | 'tool';
+export type PrinterType = 'bambu' | 'prusalink' | 'octoprint';
+export interface ManualUnit { kind: UnitKind; slots: (string | number | null)[] }
+export interface ManualPrinter { id: string; name: string; auto?: boolean; kind?: string; ip?: string; serial?: string; has_code?: boolean; units: ManualUnit[];
+  type?: PrinterType; user?: string; slice_fill?: boolean }
 
-export const KINDS: Record<string, number> = { ams: 4, ht: 1, ext: 1 };
-export const RANK: Record<string, number> = { ams: 0, ht: 1, ext: 2 };
+/** PrusaLink and OctoPrint printers: read over HTTP, toolheads assigned by hand, prints always asked before booking. */
+export const isNet = (p: ManualPrinter) => p.type === 'prusalink' || p.type === 'octoprint';
+export const MAX_UNITS = 8;
+
+export const KINDS: Record<string, number> = { tool: 1, ams: 4, ht: 1, ext: 1 };
+export const RANK: Record<string, number> = { tool: 0, ams: 1, ht: 2, ext: 3 };
 export const LIVE_STALE = 180;
 export const PROG_LIVE = ['RUNNING', 'PREPARE', 'SLICING', 'PAUSE'];
 export const PROG_STATES: Record<string, { cls: string; fill: string }> = {
@@ -23,6 +30,7 @@ export interface Words { ams: string; ht: string; ext: string; slot: (unit: stri
 export function unitLabel(p: ManualPrinter, u: ManualUnit, w: Words): string {
   const same = p.units.filter(x => x.kind === u.kind);
   const n = same.indexOf(u) + 1;
+  if (u.kind === 'tool') return w.head(n);
   if (u.kind === 'ams') return `${w.ams} ${n}`;
   if (u.kind === 'ht') return same.length > 1 ? `${w.ht} ${n}` : w.ht;
   return w.ext;
@@ -47,7 +55,7 @@ export function computeInUse(live: LivePrinter[], cfg: ManualPrinter[], w: Words
   }
   for (const p of cfg || []) {
     (p.units || []).forEach(u => u.slots.forEach((id, si) => {
-      const where = u.kind === 'ext' ? w.externalShort : u.kind === 'ht' ? unitLabel(p, u, w) : w.slot(unitLabel(p, u, w), si + 1);
+      const where = u.kind === 'ext' ? w.externalShort : u.kind === 'ht' || u.kind === 'tool' ? unitLabel(p, u, w) : w.slot(unitLabel(p, u, w), si + 1);
       if (id && !found.has(String(id))) found.set(String(id), `${p.name} · ${where}`);
     }));
   }
@@ -66,8 +74,8 @@ export const liveSig = (live: unknown) => JSON.stringify(live, (k, v) => (k === 
 export function newPrinterId(now = Date.now(), rand = Math.random()): string {
   return 'p' + now.toString(36) + Math.floor(rand * 1296).toString(36);
 }
-export function addUnit(p: ManualPrinter, kind: 'ams' | 'ht' | 'ext'): ManualPrinter {
-  if (!KINDS[kind] || (kind === 'ext' && p.units.some(u => u.kind === 'ext'))) return p;
+export function addUnit(p: ManualPrinter, kind: UnitKind): ManualPrinter {
+  if (!KINDS[kind] || p.units.length >= MAX_UNITS || (kind === 'ext' && p.units.some(u => u.kind === 'ext'))) return p;
   const units = [...p.units, { kind, slots: new Array(KINDS[kind]).fill(null) }].sort((x, y) => RANK[x.kind] - RANK[y.kind]);
   return { ...p, units };
 }
