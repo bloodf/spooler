@@ -154,6 +154,18 @@ const cfg = [{name: 'P1', units: [{kind: 'ams', slots: ['1']}, {kind: 'ht', slot
 console.log(JSON.stringify(Object.fromEntries(P.computeInUse([], cfg, w))));""")
         self.assertEqual(out, {"1": "P1 · AMS 1 Slot 1", "2": "P1 · AMS HT", "3": "P1 · AMS 2 Slot 2", "4": "P1 · External"})
 
+    def test_toolhead_units(self):
+        out = run_logic(self, self.W + """
+let p = {id: 'n', name: 'MK4', type: 'prusalink', units: [{kind: 'ext', slots: [null]}]};
+p = P.addUnit(P.addUnit(p, 'tool'), 'tool');
+const kinds = p.units.map(u => u.kind);
+let full = p; for (let i = 0; i < 10; i++) full = P.addUnit(full, 'tool');
+const cfg = [{name: 'MK4', units: [{kind: 'tool', slots: ['1']}, {kind: 'tool', slots: ['2']}]}];
+console.log(JSON.stringify({kinds, max: full.units.length, net: [P.isNet(p), P.isNet({type: 'bambu'}), P.isNet({})],
+  where: Object.fromEntries(P.computeInUse([], cfg, w))}));""")
+        self.assertEqual(out, {"kinds": ["tool", "tool", "ext"], "max": 8, "net": [True, False, False],
+                               "where": {"1": "MK4 · T1", "2": "MK4 · T2"}})
+
     def test_dried_age_and_reminder_threshold(self):
         rows = [
             {"extra": {"dried": '"2026-11-11T00:00:00+00:00"'}, "dry_days": 30}, {"extra": {"dried": '"2026-11-10T00:00:00+00:00"'}, "dry_days": 30},
