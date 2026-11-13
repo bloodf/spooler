@@ -510,7 +510,7 @@ def get_spools(spoolman_url: str) -> dict:
     publish_stock(spoolman_url, data)   # for u1control, only while it shows the stock
     notices = low_stock_crossed(spoolman_url, _spool_cache["spools"])
     if notices:
-        threading.Thread(target=lambda: [push_notice("warning", text) for text in notices], daemon=True).start()
+        spawn(lambda: [push_notice("warning", text) for text in notices])
     return {"ok": True, "spools": data}
 
 
@@ -1417,6 +1417,20 @@ def _keep_unreadable(path: Path) -> Path | None:
     return bad
 
 
+def spawn(fn, *args, name: str = "") -> threading.Thread:
+    """Run fn(*args) on a daemon thread; an exception goes to spooler.log instead of a stderr nobody sees."""
+    name = name or f"spooler-{getattr(fn, '__name__', 'task')}"
+
+    def run():
+        try:
+            fn(*args)
+        except Exception:
+            log.exception("Background task %s failed", name)
+    thread = threading.Thread(target=run, name=name, daemon=True)
+    thread.start()
+    return thread
+
+
 def _write_json(path: Path, value: object, mode: int | None = None) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_name(f".{path.name}.{threading.get_ident()}.tmp")
@@ -1899,7 +1913,7 @@ def start_preset_sync(post) -> None:
             ok, text = True, f"Synced {state.get('count', 0)} filament presets from Spoolman."
         post({"type": "sent", "ok": ok, "text": text})
 
-    threading.Thread(target=worker, daemon=True).start()
+    spawn(worker)
 
 
 def target_for_host(host: str) -> str:
@@ -2355,7 +2369,7 @@ def start_send(post, edits: tuple | None = None, auto: bool = False) -> None:
 
     _auto["busy"] = True
 
-    threading.Thread(target=worker, daemon=True).start()
+    spawn(worker)
 
 
 PRINTER_SLOTS = {"ams": 4, "ht": 1, "ext": 1}
@@ -2699,7 +2713,7 @@ def ws_sync(post) -> None:
     if url:
         stop = threading.Event()
         _ws["stop"] = stop
-        threading.Thread(target=_ws_run, args=(url, stop), daemon=True).start()
+        spawn(_ws_run, url, stop)
 
 
 def _int(value: object, default: int = -1) -> int:
@@ -3047,8 +3061,18 @@ def _local_run(pid: str, link: dict, stop: threading.Event) -> None:
     _live["links"].pop(pid, None)
 
 
+_local_lock = threading.Lock()
+
+
 def _local_sync() -> bool:
-    """Match the local connections to the saved printers."""
+    """Match the local connections to the saved printers. Called from the UI thread and from workers at
+    once; the lock keeps two callers from each starting a connection to the same printer (two Bambu MQTT
+    sessions with one access code knock each other off)."""
+    with _local_lock:
+        return _local_sync_locked()
+
+
+def _local_sync_locked() -> bool:
     codes = read_codes()
     wanted = {}
     for printer in printers_cfg():
@@ -3388,7 +3412,7 @@ def start_moon_spool(data: object, post) -> None:
             else moon_set_spool(data.get("id"), data.get("spool"))
         post({"type": "moon_spool", "id": data.get("id"), **result})
         post({"type": "live", "live": live_snapshot(), "usage": usage_state()})
-    threading.Thread(target=work, daemon=True).start()
+    spawn(work)
 
 
 def is_moonraker(base: str) -> bool:
@@ -3821,11 +3845,20 @@ def usage_save(data: dict) -> None:
     _write_json(USAGE_FILE, data)
 
 
+_usage_seen: dict = {"prints": []}
+
+
 def usage_state() -> dict:
+    """The booking list for the page. Called on OrcaSlicer's UI thread, so it never waits: while a booking
+    holds _usage_lock (it does so across Spoolman requests, which can take long when Spoolman is slow or
+    offline) it answers with the list as last read, and the booking's own reply brings the new one."""
     enabled = source() == "spoolman"
-    with _usage_lock:
-        data = usage_load()
-    return {"enabled": enabled, "mode": usage_mode(), "prints": data["prints"] if enabled else []}
+    if _usage_lock.acquire(blocking=False):
+        try:
+            _usage_seen["prints"] = usage_load()["prints"]
+        finally:
+            _usage_lock.release()
+    return {"enabled": enabled, "mode": usage_mode(), "prints": _usage_seen["prints"] if enabled else []}
 
 
 def usage_plan(slots: list[dict]) -> None:
@@ -4324,13 +4357,13 @@ def usage_event(kind: str, dev_id: str, data: dict) -> None:
     if kind in ("start", "save"):
         _store(lambda d: d["active"].__setitem__(dev_id, data))
     if kind in ("start", "fetch"):
-        threading.Thread(target=_job_fetch, args=(dev_id, data["id"]), daemon=True).start()
+        spawn(_job_fetch, dev_id, data["id"])
     elif kind == "last":
         _store(lambda d: d["last"].__setitem__(dev_id, data))
     elif kind == "end":
-        threading.Thread(target=_end, args=(dev_id, data), daemon=True).start()
+        spawn(_end, dev_id, data)
     elif kind == "missed":
-        threading.Thread(target=_missed, args=(dev_id, data), daemon=True).start()
+        spawn(_missed, dev_id, data)
 
 
 def _spool_label(spool: dict) -> str:
@@ -4583,7 +4616,7 @@ def start_spool_action(data: object, post) -> None:
         if action != "locations":
             _spool_cache["time"] = 0.0
         post({"type": "action_result", "action": action, **result})
-    threading.Thread(target=work, daemon=True).start()
+    spawn(work)
 
 
 ORIGIN_TEXT = ("This print was recorded for another spool source, or before Spooler noted which Spoolman "
@@ -5475,11 +5508,24 @@ def push_notice(kind: str, text: str) -> bool:
 
 def plate_spools(url: str) -> list[dict] | None:
     """The spool list, from the cache when it is fresh; None if Spoolman can't be reached."""
-    age = time.monotonic() - _spool_cache["time"]
-    if _spool_cache["url"] == url and age < CACHE_SECS:
-        return _spool_cache["spools"]
-    result = load_spools()
+    def cached():
+        if _spool_cache["url"] == url and time.monotonic() - _spool_cache["time"] < CACHE_SECS:
+            return _spool_cache["spools"]
+        return None
+    hit = cached()
+    if hit is not None:
+        return hit
+    # One read at a time: after a slice the plate check, the slot sync and the page each want the list, and
+    # without this each asked Spoolman for it. Whoever waited reuses the read that just finished.
+    with _plate_read_lock:
+        hit = cached()
+        if hit is not None:
+            return hit
+        result = load_spools()
     return active_spools(result["spools"]) if result["ok"] else None
+
+
+_plate_read_lock = threading.Lock()
 
 
 def plate_rows(results: list[dict]) -> list[dict]:
@@ -5805,7 +5851,7 @@ class SpoolerWindow(orca.script.ScriptPluginCapabilityBase):
             if window.is_open():
                 window.post({"type": "test_result", "source": src, "url": url, **info})
 
-        threading.Thread(target=worker, daemon=True).start()
+        spawn(worker)
 
     def _bambu_sign_in(self, data, window):
         if data.get("action") == "sign_out":
@@ -5816,7 +5862,7 @@ class SpoolerWindow(orca.script.ScriptPluginCapabilityBase):
             if window.is_open():
                 window.post({"type": "bambu_auth_result", **result})
 
-        threading.Thread(target=worker, daemon=True).start()
+        spawn(worker)
 
     def _on_settings(self, data):
         msg_type = data.get("type") if isinstance(data, dict) else None
@@ -5877,7 +5923,7 @@ class SpoolerWindow(orca.script.ScriptPluginCapabilityBase):
                 if window.is_open():
                     window.post({"type": "update_result", **result})
 
-            threading.Thread(target=worker, daemon=True).start()
+            spawn(worker)
         elif msg_type == "release" and self._release_url.startswith("https://"):
             open_url(self._release_url)
         elif msg_type == "cancel" and self._settings_window is not None:
@@ -5914,13 +5960,13 @@ class SpoolerWindow(orca.script.ScriptPluginCapabilityBase):
         elif msg_type == "printer_code":
             save_printer_code(data.get("id"), data.get("code"))
         elif msg_type in ("usage_mode", "usage_book", "usage_undo", "usage_resolve"):
-            threading.Thread(target=lambda: self._panel.post({"type": "usage", "usage": usage_action(data)}), daemon=True).start()
+            spawn(lambda: self._panel.post({"type": "usage", "usage": usage_action(data)}), name="spooler-usage")
         elif msg_type == "stats":
-            threading.Thread(target=lambda: self._panel.post({"type": "stats", "stats": stats_data(data.get("period"))}), daemon=True).start()
+            spawn(lambda: self._panel.post({"type": "stats", "stats": stats_data(data.get("period"))}), name="spooler-stats")
         elif msg_type == "stats_export":
-            threading.Thread(target=lambda: self._panel.post({"type": "stats_export", **export_history(data.get("period"))}), daemon=True).start()
+            spawn(lambda: self._panel.post({"type": "stats_export", **export_history(data.get("period"))}), name="spooler-export")
         elif msg_type == "spool_detail":
-            threading.Thread(target=lambda: self._panel.post({"type": "spool_detail", "detail": spool_detail(data.get("id"))}), daemon=True).start()
+            spawn(lambda: self._panel.post({"type": "spool_detail", "detail": spool_detail(data.get("id"))}), name="spooler-detail")
         elif msg_type == "send":
             start_send(self._panel.post)
         elif msg_type == "sync_presets":
@@ -5958,15 +6004,20 @@ class SpoolerWindow(orca.script.ScriptPluginCapabilityBase):
         snapshot = snapshot if source() == "spoolman" else None
 
         def worker():
-            result = fresh_spools(snapshot)
-            self._refreshing = False
+            try:
+                result = fresh_spools(snapshot)
+            except Exception as exc:  # never leave _refreshing set: the list would stop refreshing for good
+                log.exception("Reading the spool list failed")
+                result = {"ok": False, "error": f"Could not read the spool list: {exc}"}
+            finally:
+                self._refreshing = False
             if panel.is_open():
                 panel.post({"type": "spools", "low_stock_grams": low_stock_grams,
                             "weight_display": weight_mode(), "show_cart": cart_on(), "display": display_settings(),
                             "spool_columns": spool_columns(), "source": source(), **printer_state(),
                             **spools_message_extras(result), **result})
 
-        threading.Thread(target=worker, daemon=True).start()
+        spawn(worker, name="spooler-refresh")
 
     def _on_panel_close(self):
         self._panel = None
@@ -6109,15 +6160,15 @@ if _PAGES:
                 elif msg_type == "printer_code":
                     save_printer_code(data.get("id"), data.get("code"))
                 elif msg_type in ("usage_mode", "usage_book", "usage_undo", "usage_resolve"):
-                    threading.Thread(target=lambda: self.post_message({"type": "usage", "usage": usage_action(data)}), daemon=True).start()
+                    spawn(lambda: self.post_message({"type": "usage", "usage": usage_action(data)}))
                 elif msg_type == "stats":
-                    threading.Thread(target=lambda: self.post_message({"type": "stats", "stats": stats_data(data.get("period"))}), daemon=True).start()
+                    spawn(lambda: self.post_message({"type": "stats", "stats": stats_data(data.get("period"))}))
                 elif msg_type == "stats_export":
-                    threading.Thread(target=lambda: self.post_message({"type": "stats_export", **export_history(data.get("period"))}), daemon=True).start()
+                    spawn(lambda: self.post_message({"type": "stats_export", **export_history(data.get("period"))}))
                 elif msg_type == "spool_detail":
-                    threading.Thread(target=lambda: self.post_message({"type": "spool_detail", "detail": spool_detail(data.get("id"))}), daemon=True).start()
+                    spawn(lambda: self.post_message({"type": "spool_detail", "detail": spool_detail(data.get("id"))}))
                 elif msg_type == "plate_recheck":
-                    threading.Thread(target=recheck, daemon=True).start()
+                    spawn(recheck)
                 elif msg_type == "plate_dismiss":
                     _plate.update(payload=None, slots=[])
                 elif msg_type == "send":
@@ -6159,14 +6210,19 @@ if _PAGES:
             snapshot = snapshot if source() == "spoolman" else None
 
             def worker():
-                result = fresh_spools(snapshot)
-                self._refreshing = False
+                try:
+                    result = fresh_spools(snapshot)
+                except Exception as exc:  # never leave _refreshing set: the list would stop refreshing for good
+                    log.exception("Reading the spool list failed")
+                    result = {"ok": False, "error": f"Could not read the spool list: {exc}"}
+                finally:
+                    self._refreshing = False
                 self.post_message({"type": "spools", "low_stock_grams": low_stock_grams,
                                    "weight_display": weight_mode(), "show_cart": cart_on(), "display": display_settings(),
                                    "spool_columns": spool_columns(), "source": source(), **printer_state(),
                             **spools_message_extras(result), **result})
 
-            threading.Thread(target=worker, daemon=True).start()
+            spawn(worker, name="spooler-refresh")
 
         def _save_settings(self, url, low_stock, plate_check=True,
                            plate_margin=DEFAULT_MARGIN, weight="both", cart=False, src="spoolman",
@@ -6241,7 +6297,7 @@ if _PAGES:
                 if window.is_open():
                     window.post({"type": "test_result", "source": src, "url": url, **info})
 
-            threading.Thread(target=worker, daemon=True).start()
+            spawn(worker)
 
         def _bambu_sign_in(self, data, window):
             if data.get("action") == "sign_out":
@@ -6252,7 +6308,7 @@ if _PAGES:
                 if window.is_open():
                     window.post({"type": "bambu_auth_result", **result})
 
-            threading.Thread(target=worker, daemon=True).start()
+            spawn(worker)
 
         def _on_settings(self, data):
             msg_type = data.get("type")
@@ -6306,7 +6362,7 @@ if _PAGES:
                         result["newer"] = is_newer(result["version"], PLUGIN_VERSION)
                     window.post({"type": "update_result", **result})
 
-                threading.Thread(target=worker, daemon=True).start()
+                spawn(worker)
             elif msg_type == "release" and self._release_url.startswith("https://"):
                 open_url(self._release_url)
             elif msg_type == "cancel":
@@ -6346,7 +6402,7 @@ if _SLICING:
             try:
                 if ctx.step == getattr(orca.slicing.Step, "posSlice", None):
                     if _plate["payload"]:
-                        threading.Thread(target=clear_plate, daemon=True).start()
+                        spawn(clear_plate)
                     return orca.ExecutionResult.success()
                 if ctx.step != orca.slicing.Step.psGCodePostProcess:
                     return orca.ExecutionResult.success()

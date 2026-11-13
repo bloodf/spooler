@@ -56,7 +56,7 @@ class ExportTest(StatsBase):
         self.assertRegex(Path(res["path"]).name, r"^history-\d{8}-\d{4}\.csv$")
         rows = self.read(res)
         self.assertEqual(len(rows), 3)
-        self.assertEqual(rows[1][1:], ["print a", "P1", "cancelled", "40", "1", "Spool 1", "PLA", "ff0000", "10.0", "0.5", "1.0", "2.0"])
+        self.assertEqual(rows[1][1:], ["print a", "P1", "cancelled", "40", "1", "Spool 1", "PLA", "ff0000", "10.0", "0.5", "1.0", "2.0", ""])
         self.assertEqual(rows[2][-3:], ["", "", ""])
         self.opened.assert_called_once_with((self.data / "exports").as_uri())
         self.assertIn(res["path"], res["text"])
