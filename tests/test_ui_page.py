@@ -134,6 +134,11 @@ class Logic(unittest.TestCase):
         out = run_logic(self, "console.log(JSON.stringify([L.barFill({color_hex: 'c8501e'}), L.barFill({multi_color_hexes: '#ff0000,00ff00'}), L.barFill({})]));")
         self.assertEqual(out, ["#c8501e", "linear-gradient(90deg, #ff0000 0% 50%, #00ff00 50% 100%)", "#888"])
 
+    def test_paint_tone_flags_near_black_and_near_white(self):
+        out = run_logic(self, "console.log(JSON.stringify(['#080a0d', '#000', '#ffffff', '#E2DEDB', '#c8501e', '#888', "
+                              "'linear-gradient(90deg, #000000 0% 50%, #111111 50% 100%)', 'linear-gradient(90deg, #000000 0% 50%, #ffffff 50% 100%)', 'red'].map(L.paintTone)));")
+        self.assertEqual(out, ["dark", "dark", "light", "light", "", "", "dark", "", ""])
+
     W = "const w = {ams: 'AMS', ht: 'AMS HT', ext: 'External spool', externalShort: 'External', slot: (u, n) => u + ' Slot ' + n, head: n => 'T' + n};\n"
 
     def test_slot_names_match_the_printer_panel(self):

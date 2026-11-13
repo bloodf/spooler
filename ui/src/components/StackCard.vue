@@ -23,9 +23,9 @@ const sub = computed(() => [f.value.vendor?.name && shown(m.disp, 'vendor') ? f.
 <template>
   <section class="st" :class="{ open }" :style="{ '--rows': items.length + 1 }" :data-stack="stackKey">
     <button type="button" class="st-head" :aria-expanded="open" @click="open = !open">
-      <span class="st-sw"><SpoolFigure class="st-back" :paint="swatch(f)" :fraction="1" :size="64" /><SpoolFigure :paint="swatch(f)" :fraction="tt.percent === null ? null : tt.percent / 100" :size="76" /><span class="st-count">{{ items.length }}</span></span>
+      <span class="st-sw"><SpoolFigure class="st-back" :paint="swatch(f)" :fraction="1" :size="58" /><SpoolFigure :paint="swatch(f)" :fraction="tt.percent === null ? null : tt.percent / 100" :size="72" /><span class="st-count">{{ items.length }}</span></span>
       <span class="st-main">
-        <span class="st-top"><strong class="st-title">{{ f.name || t('spool.numbered', { id: items[0].id }) }}</strong><span class="st-arrow" aria-hidden="true">{{ open ? '▾' : '▸' }}</span></span>
+        <span class="st-top"><strong class="st-title"><span class="st-dot" :style="{ background: swatch(f) }" aria-hidden="true" />{{ f.name || t('spool.numbered', { id: items[0].id }) }}</strong><span class="st-arrow" aria-hidden="true">{{ open ? '▾' : '▸' }}</span></span>
         <span class="st-weight sp-num"><strong class="st-big">{{ big }}</strong> <span v-if="ofTotal" class="st-of">{{ ofTotal }}</span> <span v-if="pctSide" class="st-pct">{{ pctSide }}</span></span>
         <LevelBar v-if="shown(m.disp, 'bar')" class="st-track" :pct="tt.percent" :paint="barFill(f)" />
         <span class="st-sub">{{ sub }}</span>
@@ -36,11 +36,14 @@ const sub = computed(() => [f.value.vendor?.name && shown(m.disp, 'vendor') ? f.
 </template>
 <style scoped>
 .st { display: grid; gap: 8px; grid-row: span var(--rows, 1); }
-.st:not(.open) { grid-row: auto; }
+.st:not(.open) { grid-row: auto; grid-template-rows: 1fr; }
+/* an open stack spans several rows: its head keeps its own height */
+.st.open { align-self: start; }
 .st-head { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 14px 10px 8px; border: 1px solid var(--oui-border); border-radius: 14px; background: var(--oui-surface);
-  color: var(--oui-text); font: inherit; text-align: left; cursor: pointer; min-width: 0; }
+  color: var(--oui-text); font: inherit; text-align: left; cursor: pointer; min-width: 0; height: 100%; }
+.st-head:hover { border-color: color-mix(in srgb, var(--oui-text) 22%, var(--oui-border)); }
 /* a stack: the same spool twice, one behind the other, with the count as a badge */
-.st-sw { position: relative; display: block; width: 92px; height: 82px; flex: none; }
+.st-sw { position: relative; display: block; width: 84px; height: 84px; flex: none; }
 .st-sw > :deep(.sf) { position: absolute; right: 0; bottom: 0; }
 .st-sw > :deep(.st-back) { left: 0; top: 0; right: auto; bottom: auto; opacity: 0.55; filter: saturate(0.85); }
 .st-count { position: absolute; right: -2px; top: -2px; min-width: 20px; text-align: center; background: var(--oui-text); color: var(--oui-surface);
@@ -51,7 +54,8 @@ const sub = computed(() => [f.value.vendor?.name && shown(m.disp, 'vendor') ? f.
 .st-big { font-size: 20px; font-weight: 700; line-height: 1.1; }
 .st-of, .st-pct { color: var(--oui-muted); font-size: 12px; }
 .st-pct { margin-left: auto; font-weight: 600; }
-.st-title { flex: 1; font-size: 14px; min-width: 0; overflow-wrap: anywhere; }
+.st-title { flex: 1; font-size: 14px; font-weight: 600; min-width: 0; overflow-wrap: anywhere; }
+.st-dot { display: inline-block; width: 10px; height: 10px; margin-right: 6px; border-radius: 50%; border: 1px solid color-mix(in srgb, var(--oui-text) 25%, transparent); }
 .st-sub { color: var(--oui-muted); font-size: 12px; }
 .st-items { display: grid; gap: 8px; padding-left: 16px; border-left: 2px solid var(--oui-border); }
 @media (prefers-reduced-motion: reduce) { .st-arrow { transition: none; } }

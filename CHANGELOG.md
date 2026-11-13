@@ -3,6 +3,17 @@
 Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); entries before
 0.9.0 are Spoolio's.
 
+## [0.22.2] - 2026-11-13
+
+### Fixed
+- Dark theme: a style meant for the spool picture and level bar was applied to the whole page (a faint glow filter and a different background on the page itself). The rules now reach only the reel and the bar.
+- Near-black filament on the dark theme, and near-white on the light theme, got a clear edge on the level bar, so a full black spool no longer looks like an empty bar.
+- Two-column list: cards in the same row share its height, so the columns read as rows instead of leaving gaps under shorter cards.
+- Grouped (stacked) cards line up with single cards: same picture width, same title weight, and the colour dot next to the name.
+- The card no longer shows a tooltip repeating its name and weight; it could float over the neighbouring card.
+- Stats (from a fix in Spoolio 0.10.1, written independently): a single-colour print could be counted entirely as purge when the printer's change-filament template, which OrcaSlicer copies into the G-code settings block, contained a flush marker. Only a bare `; FLUSH_START` / `; FLUSH_END` line counts now, and the settings block is skipped.
+- Settings, booking state, stats history and printer codes that cannot be read (for example a file left half written by a crash) are kept as `<name>.bad` instead of being replaced by the next save, so the history can be merged back by hand. Printer codes are now written in one step, private (0600) before they take their real name.
+
 ## [0.22.1] - 2026-11-13
 
 - Releases ship one file, `spooler_any.py`, for every OS instead of six identical per-OS copies (they differed only in the name and a log label). Orca Cloud's automated permission review kept failing on the six-file upload with SECURITY_SCAN_UNAVAILABLE; the other plugins publish one file and go through. Manual install: download `spooler_any.py`.

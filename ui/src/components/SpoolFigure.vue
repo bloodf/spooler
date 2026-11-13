@@ -45,5 +45,5 @@ const wind = computed(() => (level.value < 8 ? src(`n${level.value}-fio`) : ''))
 .sf::after { content: ''; position: absolute; z-index: -1; left: 14%; right: 14%; bottom: 1%; height: 8%; border-radius: 50%;
   background: radial-gradient(closest-side, rgb(0 0 0 / 0.28), transparent); }
 /* the reel is black: on a dark theme it gets a soft light rim so it does not disappear into the card */
-:global(.orca-dark) .sf-body { filter: drop-shadow(0 0 0.6px rgb(255 255 255 / 0.55)) drop-shadow(0 0 6px rgb(255 255 255 / 0.10)); }
+.orca-dark .sf-body { filter: drop-shadow(0 0 0.6px rgb(255 255 255 / 0.55)) drop-shadow(0 0 6px rgb(255 255 255 / 0.10)); }
 </style>

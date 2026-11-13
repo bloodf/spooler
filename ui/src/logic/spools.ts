@@ -257,3 +257,21 @@ export function barFill(f: Filament): string {
   const step = 100 / cs.length;
   return 'linear-gradient(90deg, ' + cs.map((c, i) => `${c} ${i * step}% ${(i + 1) * step}%`).join(', ') + ')';
 }
+
+/**
+ * 'dark' or 'light' when a paint's colours are all near black or all near white, else ''.
+ * A bar in such a colour sinks into a dark or light track, so it gets a contrasting edge.
+ */
+export function paintTone(paint: string): '' | 'dark' | 'light' {
+  const hexes = paint.match(/#[0-9a-f]{6}\b|#[0-9a-f]{3}\b/gi) || [];
+  if (!hexes.length) return '';
+  const lum = hexes.map((h) => {
+    const x = h.length === 4 ? h.slice(1).split('').map(c => c + c).join('') : h.slice(1);
+    const [r, g, b] = [0, 2, 4].map(i => parseInt(x.slice(i, i + 2), 16) / 255)
+      .map(c => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4));
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  });
+  if (lum.every(l => l < 0.06)) return 'dark';
+  if (lum.every(l => l > 0.7)) return 'light';
+  return '';
+}

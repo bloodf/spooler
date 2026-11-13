@@ -207,7 +207,8 @@ const setArchived = (on: boolean) => bridge.postMain({ type: 'spool_action', act
 .sv-match { width: 44px; height: 32px; padding: 0; border: 1px solid var(--oui-control-border, var(--oui-border)); border-radius: 6px; background: none; }
 .sv-list-wrap { display: grid; gap: 12px; }
 .sv-list { display: grid; gap: 8px; }
-.sv-list.two { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
+/* cards in a row share its height, so two columns read as rows instead of leaving holes */
+.sv-list.two { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: stretch; }
 @media (max-width: 760px) { .sv-list.two { grid-template-columns: minmax(0, 1fr); } }
 .sv-empty { display: grid; gap: 8px; justify-items: start; }
 .sv-empty h3, .sv-empty p { margin: 0; }
