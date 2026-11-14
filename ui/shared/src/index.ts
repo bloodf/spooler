@@ -6,7 +6,7 @@ import './base.css';
 
 export type OrcaLocale = 'en' | 'pt-BR';
 export type OrcaTheme = 'light' | 'dark';
-export const UI_VERSION = '3.0.1';
+export const UI_VERSION = '3.0.2';
 export { PRIMEUI_LICENSE_EXPIRES } from './license';
 export { OrcaPreset };
 

@@ -1,4 +1,6 @@
-# Orca UI foundation 3.0.1 — Vue and PrimeVue
+# Orca UI foundation 3.0.2 — Vue and PrimeVue
+
+Version 3.0.2 restores the 4.x text metrics: the preset sets `typography.lineHeight: inherit` (aura-compat's `normal` reached whole views through Tabs and shrank fields from 38px to 35px), and `base.css` keeps the button label weight on `.p-button-label` instead of the `.p-button` root, so slot content is not bold.
 
 Version 3.0.1 works around a PrimeVue 5.0.5 Tabs bug: `Tab` reads `$refs.tabs` from `TabList`, which 5.x renamed to `content`, so Home, End and arrow wrap-around threw. `installOrcaUI()` registers a global mixin that aliases the ref. Remove it once PrimeVue fixes `Tab`.
 

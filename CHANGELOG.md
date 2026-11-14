@@ -3,6 +3,16 @@
 Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); entries before
 0.9.0 are Spoolio's.
 
+## [0.25.0] - 2026-11-13
+
+### Changed
+- The page now runs on PrimeVue 5.0.5 and @primeuix/themes 3.1.1 through the shared Orca UI foundation 3.0.2 (Aura with the 4.x sizes and the same palette). No visible change is intended.
+- PrimeVue 5 colours use CSS `light-dark()`, so OrcaSlicer's page view needs WebKit 17.5 or later on macOS and WebKitGTK 2.44 or later on Linux (Windows uses WebView2, which already supports it).
+- PrimeVue 5 is under the PrimeUI License; Spooler ships the Community License key in the shared foundation, checked offline.
+
+### Fixed
+- The tab bar no longer shows a scroll arrow over the first tab when the Printer tab is open.
+
 ## [0.24.0] - 2026-11-13
 
 ### Added
