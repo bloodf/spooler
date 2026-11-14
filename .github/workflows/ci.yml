@@ -30,7 +30,7 @@ jobs:
       # Node runs the UI build, the page logic tests and the page test driver; provision it rather than rely on the runner image.
       - uses: actions/setup-node@v7
         with:
-          node-version: "24"
+          node-version: "26"
       # The page tests drive the built Vue page in headless Chrome (always --use-mock-keychain --password-store=basic).
       - uses: browser-actions/setup-chrome@v2
         id: chrome
@@ -71,7 +71,7 @@ jobs:
           python-version: "3.12"
       - uses: actions/setup-node@v7
         with:
-          node-version: "24"
+          node-version: "26"
       # Vue 3 + PrimeVue from ui/ (exact versions, lockfile); the committed page must be exactly what this builds.
       - name: Build the page from ui/
         working-directory: ui
