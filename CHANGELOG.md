@@ -3,7 +3,7 @@
 Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); entries before
 0.9.0 are Spoolio's.
 
-## Unreleased
+## [0.24.0] - 2026-11-13
 
 ### Added
 - Keep Slots Synced can start by itself when OrcaSlicer opens: Settings > Printer > "Keep the plate's filament slots synced automatically" (`auto_keep_slots`, also in Plugins > Spooler > Config). It is new and off by default. Running Plugins > Run > Spooler: Keep Slots Synced while it is on stops it until OrcaSlicer restarts; untick the setting to turn it off. It changes the slots from Spooler's own thread, which OrcaSlicer 2.5.0 accepts in its code but which hasn't been confirmed in daily use: if OrcaSlicer refuses it, Spooler turns it off for the session and tells you to use Plugins > Run.
