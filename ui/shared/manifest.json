@@ -1,20 +1,21 @@
 {
-  "version": "3.0.2",
+  "version": "3.1.0",
   "dependencies": {
     "@primeuix/themes": "3.1.1",
     "primevue": "5.0.5",
     "vue": "3.5.45"
   },
   "files": {
-    "src/index.ts": "18918b32f2cc57171c6413a299958a0a1bc4ffb5552f44da29b918cfa07d3a9d",
+    "src/index.ts": "d0d927c9a9c0b0970eb3dc0410a2d489c4b2c400511473618c32678870291184",
     "src/license.ts": "f2c83aeec15ac664d478bf5258bc1864ccf2dfe6d2bd4ab826596b118b630f89",
     "src/theme.ts": "80f405539e6c1577e9ed64f51f578397060b08a489094f68ca48ad8bd3d28b6e",
     "src/palette.json": "c34122d2cec296af74a0db5171a0ec3d0ee2e37b78bbe2a9e76df1e47501c677",
     "src/base.css": "c6138680aa4227e8db927d1495aae7ef9ed71780c9e416ebcce9b84d10e2d8cb",
-    "package.json": "72331efc140f8df6d74501c4d5d1a084c4d1ef2b8e77f3704053e562c02c81a7",
-    "package-lock.json": "b7a1f99178d6664879414c71ec0dabb9a5feab04ad02b4b747adbc6d99299857",
+    "package.json": "4703a6032844775b488d308ae72fbee73ad6972b6735bbaccc77f717fa510f72",
+    "package-lock.json": "6d8fa6c258940952c66722234bda0383af679211d688c7e0447fc575cacd3952",
     "scripts/check.mjs": "0e0ca8dcdd0b745629dac631a18fed704f4744712ca6d9281332a11d8b4f58b6",
-    "README.md": "17ef7d8250249e4186eca070ddbdac78cc7d92028884d7257eec1384e226ed18",
+    "scripts/vue-tsc.mjs": "5c3fe9ba1f0e824dda0fc987836bcdf47401fe6cbce39012e2935d1e7437fd68",
+    "README.md": "b6da545ae76d075a3a865112656288ff5e4ad399eb6b62d5d0cb81902e1a44bb",
     "DESIGN.md": "d089e150c4c738797619ff59db7fae49af99d8da3f0400a0142d68623b6324a1",
     "licenses/PrimeVue.txt": "0aa69c559104023e51ce6244bb9f4f605b6dad819af8fb1b317d8d853db98761",
     "licenses/PrimeUIX.txt": "3598e4f3d2a09c5c34024119c4be888d5de7ff92b58c4abdabc86b0443236244",

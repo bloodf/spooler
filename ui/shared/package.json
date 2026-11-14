@@ -1,1 +1,24 @@
-{"name":"@orca-plugins/ui-foundation","version":"3.0.2","private":true,"type":"module","description":"Shared Vue 3 and PrimeVue 5 visual foundation for Orca plugins","scripts":{"build":"vue-tsc --noEmit && vite build && node scripts/manifest.mjs","check":"node scripts/check.mjs"},"dependencies":{"@primeuix/themes":"3.1.1","primevue":"5.0.5","vue":"3.5.45"},"devDependencies":{"@vitejs/plugin-vue":"6.0.11","typescript":"6.0.3","vite":"8.3.8","vite-plugin-singlefile":"2.3.4","vue-tsc":"3.3.14"}}
+{
+  "name": "@orca-plugins/ui-foundation",
+  "version": "3.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Shared Vue 3 and PrimeVue 5 visual foundation for Orca plugins",
+  "scripts": {
+    "build": "node scripts/vue-tsc.mjs --noEmit && vite build && node scripts/manifest.mjs",
+    "check": "node scripts/check.mjs"
+  },
+  "dependencies": {
+    "@primeuix/themes": "3.1.1",
+    "primevue": "5.0.5",
+    "vue": "3.5.45"
+  },
+  "devDependencies": {
+    "@typescript/typescript6": "6.0.2",
+    "@vitejs/plugin-vue": "6.0.11",
+    "typescript": "7.0.2",
+    "vite": "8.3.8",
+    "vite-plugin-singlefile": "2.3.4",
+    "vue-tsc": "3.3.14"
+  }
+}
