@@ -75,7 +75,7 @@ class OpenUrlTest(unittest.TestCase):
 class CancelTest(unittest.TestCase):
     def test_cancel_stops_keep_slots_and_clears_the_marker(self):
         with tempfile.TemporaryDirectory() as tmp, mock.patch.object(sp, "_orca_data_dir", lambda: Path(tmp)):
-            sp._keep["run"] = object()
+            sp._keep["run"] = sp.KeepRun(set(), 0.0)
             sp.SpoolerKeepSlots().on_cancelled()
             self.assertIsNone(sp._keep["run"])
             self.assertFalse(json.loads((Path(tmp) / "spooler" / "keep_slots.json").read_text())["active"])

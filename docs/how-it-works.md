@@ -104,6 +104,26 @@ MQTT message type once (`kx_capture()`): its keys and a sample with serials, tok
 credentials replaced (`kx_redact()`), and asks for the `info` report every 20 seconds. Remove the
 key to stop. See [kobra-booking.md](kobra-booking.md).
 
+## Keep Slots Synced
+
+`KeepRun.step()` is one pass: read the printer's lanes, plan with `keep_plan()`, and select each
+changed slot with `orca.host.preset.filament.begin_update()`. Two drivers share it, and
+`_keep["run"]` holds the only one running:
+
+- **Plugins > Run > Keep Slots Synced** (`SpoolerKeepSlots.execute()`) on OrcaSlicer's Script
+  worker, waiting with `asyncio.sleep`. Running it again stops whichever loop is running.
+- **Automatic** (`auto_keep_slots`, off by default): `auto_keep_check()` runs after every snapshot
+  of the presets (`refresh_snapshot()`, on the UI thread) and when the setting is saved, and starts
+  `KeepRun.run_auto()` on a daemon thread once a snapshot exists. The thread idles while no printer
+  with a host is selected. Stopping it sets an event, so its wait ends at once. The manual action
+  stops it for the rest of the session (`_keep["auto_off"]`); unticking the setting stops it and
+  clears that, so ticking it again starts it.
+
+OrcaSlicer's docs say `begin_update` is for the Script worker only, but 2.5.0's code marshals the
+call to the UI thread without checking the caller. A slot change that fails on the automatic thread
+is logged once per slot and error; one whose error says the thread is not allowed turns the
+automatic loop off for the session with a notification pointing at Plugins > Run.
+
 ## Working with u1control
 
 On the Snapmaker U1, [u1control](https://github.com/bloodf/u1control) can run next to Spooler. They

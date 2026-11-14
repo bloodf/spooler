@@ -466,9 +466,11 @@ test('settings: one switch per Display option, drying table, save waits for a pa
   await press('Enter');
   assert(q('#dry-NYLON\\\\ CF'), 'material normalised');
   await click(q('#d-diameter'));
+  assert(!q('#auto-keep').checked, 'automatic Keep Slots Synced is off by default');
+  await click(q('#auto-keep'));
   await click(byTest('save'));
   const s = lastOf('save');
-  eq([s.view, s.display.diameter, s.drying['NYLON CF'], s.drying.HIPS, s.url], ['settings', true, 0, 9, 'http://spoolman:7912'], 'saved');
+  eq([s.view, s.display.diameter, s.drying['NYLON CF'], s.drying.HIPS, s.url, s.auto_keep_slots], ['settings', true, 0, 9, 'http://spoolman:7912', true], 'saved');
 `);
 test('settings: leaving with unsaved edits asks; going back keeps them', `
   await post({type: 'show_view', view: 'settings', url: 'http://s:7912', source: 'spoolman', low_stock: 100, display: DEFAULTS, drying: {}, progress: {}, stats: {}});
