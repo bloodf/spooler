@@ -39,7 +39,7 @@ function openSettings() { bridge.postMain({ type: 'settings' }); }
   <div class="sp-shell">
     <SettingsView v-if="settingsOnly" />
     <template v-else>
-      <Tabs v-model:value="tabValue" class="sp-tabs">
+      <Tabs v-model:value="tabValue" class="sp-tabs" :show-navigators="false">
         <header class="oui-header sp-head">
           <span class="sp-brand"><Logo /><h1>Spooler</h1></span>
           <TabList v-if="m.view === 'main' && showTabs" class="sp-nav" :aria-label="t('nav.label')">

@@ -1,5 +1,5 @@
 import { definePreset } from '@primeuix/themes';
-import Aura from '@primeuix/themes/aura';
+import Aura from '@primeuix/themes/aura-compat';
 import palette from './palette.json';
 
 function scheme(p: typeof palette.light) {
