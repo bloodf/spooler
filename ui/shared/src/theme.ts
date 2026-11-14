@@ -1,5 +1,5 @@
 import { definePreset } from '@primeuix/themes';
-import Aura from '@primeuix/themes/aura';
+import Aura from '@primeuix/themes/aura-compat';
 import palette from './palette.json';
 
 function scheme(p: typeof palette.light) {
@@ -61,6 +61,8 @@ function messageScheme(p: typeof palette.light) {
 
 export const OrcaPreset = definePreset(Aura, {
   semantic: {
+    // aura-compat sets line-height: normal on every .p-component; PrimeVue 5 applies it through Tabs to whole views.
+    typography: { fontFamily: 'inherit', lineHeight: 'inherit' },
     transitionDuration: '0.15s',
     focusRing: { width: '2px', style: 'solid', color: '{primary.color}', offset: '3px', shadow: 'none' },
     formField: { paddingX: '12px', paddingY: '8px', borderRadius: '6px',

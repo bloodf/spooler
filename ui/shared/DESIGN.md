@@ -1,6 +1,6 @@
 # Orca plugin family — shared Vue visual system
 
-Mode: Operate. Vue 3 + PrimeVue 4, one custom Aura preset and one palette for Calculator, Spooler, U1 Control and Organizer. Preserve the user decisions: separate Calculator, integrated stock/printer working area, direct Organizer access. Automatic tab hiding remains limited by the host; styling cannot solve that API boundary.
+Mode: Operate. Vue 3 + PrimeVue 5, one custom Aura (aura-compat) preset and one palette for Calculator, Spooler, U1 Control and Organizer. Preserve the user decisions: separate Calculator, integrated stock/printer working area, direct Organizer access. Automatic tab hiding remains limited by the host; styling cannot solve that API boundary.
 
 Typography: system sans, body 14 px, secondary 12 px, section titles 16 px, page title 20 px, primary result 28 px. Monospace only for paths/code/identifiers; tabular numbers for quantities and costs. Spacing 4/8/12/16/24/32 px. Controls 6 px radius; real task panels 12 px. Icons are consistent SVG with textual or accessible labels, not emoji standing in for physical controls. Filament swatches and toolhead colors retain their meaning.
 

@@ -28,6 +28,9 @@ body.orca-ui { margin: 0; color: var(--oui-text, #202731); background: var(--oui
 .oui-table-wrap { max-width: 100%; overflow: auto; }
 .oui-error-detail { white-space: pre-wrap; overflow-wrap: anywhere; font-family: ui-monospace, monospace; font-size: 12px; }
 @media (max-width: 720px) { .oui-header, .oui-panel { padding: 12px; } .oui-toolbar { row-gap: 12px; } }
+/* PrimeVue 5 puts the label weight on the .p-button root, which bolds slot content; keep it on the label as in 4.x. */
+.orca-ui .p-button { font-weight: normal; }
+.orca-ui .p-button-label { font-weight: var(--p-button-label-font-weight, 600); }
 /* Accessibility preferences must win over PrimeVue's runtime-injected component styles. */
 @media (prefers-reduced-motion: reduce) {
   .orca-ui *, .orca-ui *::before, .orca-ui *::after {

@@ -51,7 +51,7 @@ class Embedded(unittest.TestCase):
         info = json.loads((UI / "build.json").read_text(encoding="utf-8"))
         self.assertEqual(info["sha256"], sp.UI_PAGE_SHA256, "ui/build.json and the embedded page differ: rebuild and run scripts/embed_ui.py")
         self.assertEqual(page.count("__BOOT__"), 1)
-        self.assertNotRegex(page, r"<script[^>]+src=|<link[^>]+href=\"https?:|@import|url\(https?:")
+        self.assertNotRegex(page, r"<script[^>]+src=|<link[^>]+href=\"https?:|@import\s*(?:url\(|[\"'])|url\(https?:")
         self.assertNotRegex(page, r"\bnew Function\b|\beval\(")
         self.assertIn("__VUE_OPTIONS_API__: true", (UI / "vite.config.ts").read_text(encoding="utf-8"))
 

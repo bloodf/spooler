@@ -537,7 +537,8 @@ class AutoKeepTest(unittest.TestCase):
         self.fail = RuntimeError("begin_update is only valid on the Script worker thread")
         with mock.patch.object(sp, "push_notice") as notice:
             self.snapshot()
-            wait_for(lambda: sp._keep["run"] is None)
+            # refused() clears the run before it posts the notice: wait for both.
+            wait_for(lambda: sp._keep["run"] is None and notice.called)
         notice.assert_called_once_with("warning", sp.AUTO_KEEP_REFUSED)
         self.assertEqual(len(self.calls), 1)
         self.snapshot()
