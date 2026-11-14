@@ -1,4 +1,6 @@
-# Orca UI foundation 3.0.2 — Vue and PrimeVue
+# Orca UI foundation 3.1.0 — Vue and PrimeVue
+
+Version 3.1.0 moves the build tools to TypeScript 7.0.2 (the native compiler). TypeScript 7 has no JS API and vue-tsc 3.3 needs one, so `scripts/vue-tsc.mjs` runs vue-tsc on the TypeScript 6 compiler from Microsoft's `@typescript/typescript6` package. Consumers add `typescript` 7.0.2 and `@typescript/typescript6` 6.0.2 as dev dependencies and type-check with `node shared/scripts/vue-tsc.mjs --noEmit`. The runtime, preset and palette are unchanged.
 
 Version 3.0.2 restores the 4.x text metrics: the preset sets `typography.lineHeight: inherit` (aura-compat's `normal` reached whole views through Tabs and shrank fields from 38px to 35px), and `base.css` keeps the button label weight on `.p-button-label` instead of the `.p-button` root, so slot content is not bold.
 

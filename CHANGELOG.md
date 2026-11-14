@@ -3,6 +3,11 @@
 Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); entries before
 0.9.0 are Spoolio's.
 
+## [0.25.1] - 2026-11-14
+
+### Changed
+- Build tools: TypeScript 7.0.2 and the shared Orca UI foundation 3.1.0. vue-tsc type-checks the page on the TypeScript 6 compiler from `@typescript/typescript6`, because TypeScript 7 has no JS API yet. The page and plugin are unchanged.
+
 ## [0.25.0] - 2026-11-13
 
 ### Changed
