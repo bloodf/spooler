@@ -200,11 +200,13 @@ class BambuTokenFileTest(unittest.TestCase):
     def tearDown(self):
         self.patch.stop()
 
-    @unittest.skipIf(os.name == "nt", "POSIX modes")
     def test_token_file_is_private_from_the_start(self):
-        result = sp._after_login("global", "a@b.c", {"accessToken": "tok"}, [])
+        with mock.patch.object(sp, "_write_json", wraps=sp._write_json) as write:
+            result = sp._after_login("global", "a@b.c", {"accessToken": "tok"}, [])
         self.assertEqual(result["step"], "done")
-        self.assertEqual(stat.S_IMODE(sp.AUTH_FILE.stat().st_mode), 0o600)
+        self.assertEqual(write.call_args.kwargs.get("mode"), 0o600, "mode set before the file takes its name")
+        if os.name != "nt":   # Windows keeps only the read-only bit of a mode
+            self.assertEqual(stat.S_IMODE(sp.AUTH_FILE.stat().st_mode), 0o600)
         self.assertEqual(json.loads(sp.AUTH_FILE.read_text())["access_token"], "tok")
 
     def test_a_token_that_cant_be_saved_is_an_answer(self):
@@ -216,7 +218,6 @@ class BambuTokenFileTest(unittest.TestCase):
 
 
 class KobraKeyFileTest(unittest.TestCase):
-    @unittest.skipIf(os.name == "nt", "POSIX modes")
     def test_key_file_is_created_private(self):
         folder = Path(tempfile.mkdtemp())
         files = (folder / "a.pem", folder / "b.pem")
@@ -233,7 +234,10 @@ class KobraKeyFileTest(unittest.TestCase):
                 mock.patch.object(sp.socket, "create_connection", side_effect=OSError("no network in tests")):
             with self.assertRaises(OSError):
                 sp._kx_socket("127.0.0.1", {"devicecrt": "C", "devicepk": "K"}, files)
-        self.assertEqual(modes, [0o600, 0o600])
+        # Windows keeps only the read-only bit of a mode; elsewhere the file is private from creation.
+        self.assertEqual(len(modes), 2)
+        if os.name != "nt":
+            self.assertEqual(modes, [0o600, 0o600])
         self.assertFalse(any(p.exists() for p in files))
 
     def test_credentials_url_must_be_http(self):
