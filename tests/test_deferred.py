@@ -20,6 +20,63 @@ def ext_doc(state: str) -> dict:
     return {"print": {"vt_tray": {"id": "254", "spool_id": 5}, "gcode_state": state}}
 
 
+class MoonSpoolWhilePrintingTest(unittest.TestCase):
+    def setUp(self):
+        sp._local["sv"] = {"link": {"kind": "moonraker", "ip": "http://127.0.0.1:1", "name": "SV06"},
+                           "stop": threading.Event(), "thread": None}
+        self.addCleanup(sp._local.pop, "sv", None)
+        patches = [mock.patch.object(sp, "source", return_value="spoolman"),
+                   mock.patch.dict(sp._live["printers"], {"sv": {"spool_set": True}}),
+                   mock.patch.dict(sp._spool_cache, {"spools": [{"id": 7, "filament": {"id": 1}}]}),
+                   mock.patch.object(sp, "live_apply")]
+        for p in patches:
+            p.start()
+            self.addCleanup(p.stop)
+
+    def run_set(self, state: str, spool, confirmed=False):
+        posted = []
+        with mock.patch.object(sp, "moon_poll", return_value=(ext_doc(state), False)), \
+                mock.patch.object(sp, "_moon_post", side_effect=lambda *a: posted.append(a) or {}):
+            return sp.moon_set_spool("sv", spool, confirmed), posted
+
+    def test_printing_or_paused_asks_first_and_changes_nothing(self):
+        for state in ("RUNNING", "PAUSE", "PREPARE"):
+            result, posted = self.run_set(state, 7)
+            self.assertFalse(result["ok"])
+            self.assertTrue(result["confirm"])
+            self.assertIn("rest of this print", result["text"])
+            self.assertEqual(posted, [])
+            result, posted = self.run_set(state, None)
+            self.assertTrue(result["confirm"], "clearing moves the print's use away too")
+            self.assertEqual(posted, [])
+
+    def test_confirmed_change_while_printing_is_sent(self):
+        result, posted = self.run_set("RUNNING", 7, confirmed=True)
+        self.assertTrue(result["ok"])
+        self.assertEqual(posted, [("http://127.0.0.1:1", "/server/spoolman/spool_id", {"spool_id": 7})])
+
+    def test_idle_needs_no_confirmation(self):
+        for state in ("IDLE", "FINISH", "FAILED", None):
+            doc = ext_doc(state) if state else {"print": {"vt_tray": {"id": "254"}}}
+            posted = []
+            with mock.patch.object(sp, "moon_poll", return_value=(doc, False)), \
+                    mock.patch.object(sp, "_moon_post", side_effect=lambda *a: posted.append(a) or {}):
+                result = sp.moon_set_spool("sv", 7)
+            self.assertTrue(result["ok"], state)
+            self.assertNotIn("confirm", result)
+            self.assertEqual(len(posted), 1)
+
+    def test_page_confirmation_flag_reaches_the_check(self):
+        got = []
+        with mock.patch.object(sp, "moon_set_spool", side_effect=lambda *a: got.append(a) or {"ok": True, "text": ""}), \
+                mock.patch.object(sp, "stale_list", return_value=False), \
+                mock.patch.object(sp, "live_snapshot", return_value={}), mock.patch.object(sp, "usage_state", return_value={}), \
+                mock.patch.object(sp, "spawn", side_effect=lambda fn, *a, **k: fn(*a)):
+            sp.start_moon_spool({"id": "sv", "spool": 7, "confirm": True}, lambda msg: None)
+            sp.start_moon_spool({"id": "sv", "spool": 7, "confirm": "yes"}, lambda msg: None)
+        self.assertEqual(got, [("sv", 7, True), ("sv", 7, False)])
+
+
 class FreshVersionTest(unittest.TestCase):
     """A Spoolman downgraded below 0.26 while OrcaSlicer runs: the write that depends on the version
     reads it again, so a one-key extra PATCH can't wipe the spool's other fields."""

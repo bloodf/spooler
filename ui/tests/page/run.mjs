@@ -321,6 +321,34 @@ test('single-extruder Klipper card: change spool, clear only with a spool, resul
   await click(q('[data-pick="7"]'));
   eq(lastOf('moon_spool'), {type: 'moon_spool', id: 'auto-sv', spool: 7, origin: 3}, 'set with the list origin');
 `);
+test('changing the active spool while printing asks again, naming the consequence', `
+  const sv = {id: 'auto-sv', link: 'auto-sv', name: 'SV06', heads: false, units: [], ext: {...TRAY, spool: 7}, spool_set: true, age: 0};
+  await spools([{id: 7, remaining_weight: 100, filament: {id: 1, name: 'PLA Black'}}, {id: 8, remaining_weight: 900, filament: {id: 2, name: 'PETG Red'}}],
+    {printers: [{id: 'auto-sv', name: 'SV06', auto: true, ip: '10.0.0.7', units: []}], live_ok: true});
+  await tab('printer');
+  await post({type: 'live', live: {links: {'auto-sv': 'live'}, printers: [sv]}});
+  await click(btn('Change spool'));
+  await until(() => q('[data-pick="8"]'));
+  await click(q('[data-pick="8"]'));
+  eq(lastOf('moon_spool'), {type: 'moon_spool', id: 'auto-sv', spool: 8, origin: 3}, 'first try has no confirmation');
+  await post({type: 'moon_spool', id: 'auto-sv', spool: 8, ok: false, confirm: true, state: 'RUNNING', text: 'SV06 is running a print'});
+  await until(() => dialogOpen(), 'asks');
+  assert(dialogText().includes('SV06 is printing') && dialogText().includes('rest of this print'), 'names the consequence: ' + dialogText());
+  assert(!alerts().includes('SV06 is running'), 'not shown as a failure');
+  await no();
+  eq(sentOf('moon_spool').length, 1, 'go back: nothing more sent');
+  await post({type: 'moon_spool', id: 'auto-sv', spool: 8, ok: false, confirm: true, state: 'PAUSE', text: 'paused'});
+  await until(() => dialogOpen(), 'asks again');
+  assert(dialogText().includes('paused'), 'paused wording');
+  assert(btn('Change to spool #8 anyway'), 'answer names the spool');
+  await yes();
+  eq(lastOf('moon_spool'), {type: 'moon_spool', id: 'auto-sv', spool: 8, origin: 3, confirm: true}, 'confirmed resend');
+  await post({type: 'moon_spool', id: 'auto-sv', spool: null, ok: false, confirm: true, state: 'RUNNING', text: 'x'});
+  await until(() => dialogOpen());
+  assert(btn('Clear it anyway'), 'clear wording');
+  await yes();
+  eq(lastOf('moon_spool'), {type: 'moon_spool', id: 'auto-sv', spool: null, confirm: true}, 'confirmed clear');
+`);
 test('change spool is hidden for the U1, filament changers and Bambu Cloud', `
   const u1 = {id: 'auto-u1', link: 'auto-u1', name: 'U1', heads: true, ext: null, spool_set: false, age: 0, units: [{id: 0, kind: 'ams', trays: [TRAY]}]};
   await spools(SPOOLS, {printers: [{id: 'auto-u1', name: 'U1', auto: true, ip: '1.1.1.1', units: []}, {id: 'auto-afc', name: 'AFC', auto: true, ip: '1.1.1.2', units: []}], live_ok: true});
