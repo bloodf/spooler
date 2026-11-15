@@ -217,5 +217,34 @@ class BambuTokenFileTest(unittest.TestCase):
         self.assertIn("save", result["error"])
 
 
+class KobraKeyFileTest(unittest.TestCase):
+    @unittest.skipIf(os.name == "nt", "POSIX modes")
+    def test_key_file_is_created_private(self):
+        folder = Path(tempfile.mkdtemp())
+        files = (folder / "a.pem", folder / "b.pem")
+        modes = []
+        real_open = os.open
+
+        def spy(path, flags, mode=0o777, *args, **kwargs):
+            fd = real_open(path, flags, mode, *args, **kwargs)
+            modes.append(stat.S_IMODE(os.fstat(fd).st_mode))
+            return fd
+        context = mock.MagicMock()
+        with mock.patch.object(sp.ssl, "create_default_context", return_value=context), \
+                mock.patch.object(sp.os, "open", spy), \
+                mock.patch.object(sp.socket, "create_connection", side_effect=OSError("no network in tests")):
+            with self.assertRaises(OSError):
+                sp._kx_socket("127.0.0.1", {"devicecrt": "C", "devicepk": "K"}, files)
+        self.assertEqual(modes, [0o600, 0o600])
+        self.assertFalse(any(p.exists() for p in files))
+
+    def test_credentials_url_must_be_http(self):
+        info = {"token": "t" * 32, "ctrlInfoUrl": "file:///etc/hosts"}
+        with mock.patch.object(sp, "kx_info", return_value=info), \
+                mock.patch.object(sp.urllib.request, "urlopen", side_effect=AssertionError("must not open")):
+            with self.assertRaises(ValueError):
+                sp.kx_credentials("http://127.0.0.1")
+
+
 if __name__ == "__main__":
     unittest.main()

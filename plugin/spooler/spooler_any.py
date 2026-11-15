@@ -3684,7 +3684,9 @@ def kx_credentials(base: str) -> dict:
     nonce = "".join(alphabet[b % len(alphabet)] for b in os.urandom(6))
     params = kx_signed_params(info["token"], int(time.time() * 1000), nonce, os.urandom(16).hex().upper())
     url = str(info["ctrlInfoUrl"])
-    url += ("&" if "?" in url else "?") + urllib.parse.urlencode(params)
+    if urllib.parse.urlsplit(url).scheme not in ("http", "https"):
+        raise ValueError("The printer's LAN credentials address isn't http")
+    url +=("&" if "?" in url else "?") + urllib.parse.urlencode(params)
     with urllib.request.urlopen(urllib.request.Request(url, method="POST"), timeout=TIMEOUT) as resp:
         reply = json.loads(resp.read().decode("utf-8"))
     return kx_decrypt_bundle(reply, info["token"])
@@ -3772,8 +3774,10 @@ def _kx_socket(host: str, bundle: dict, files: tuple[Path, Path]):
     try:
         for path, text in zip(files, (bundle["devicecrt"], bundle["devicepk"])):
             path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_text(text if text.endswith("\n") else text + "\n", encoding="utf-8")
-            os.chmod(path, 0o600)
+            path.unlink(missing_ok=True)  # O_CREAT's mode only applies to a new file
+            # Created private: the key is never readable by others, even before a chmod.
+            with os.fdopen(os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600), "w", encoding="utf-8") as fh:
+                fh.write(text if text.endswith("\n") else text + "\n")
         context.load_cert_chain(str(files[0]), str(files[1]))
     finally:
         for path in files:
