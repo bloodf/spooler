@@ -5,7 +5,7 @@ import { t } from '../core/i18n';
 
 // One spool's action panel open at a time (Spoolman only). Every action is sent with the list origin it was
 // chosen from, so the plugin refuses it if the spool source changed meanwhile.
-export const menu = reactive({ id: null as number | null, mode: '' as '' | 'weigh' | 'use' | 'move' | 'detail', val: '', detail: null as any });
+export const menu = reactive({ id: null as number | null, mode: '' as '' | 'weigh' | 'use' | 'remain' | 'note' | 'move' | 'detail', val: '', detail: null as any });
 on('detail', d => { if (menu.mode === 'detail' && menu.id === d?.id) menu.detail = d; });
 
 export function openMenu(id: number): void {

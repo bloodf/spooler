@@ -93,6 +93,67 @@ class ActionTest(Settings):
             self.assertTrue(result["text"], data)
             call.assert_not_called()
 
+    # --- note, remaining weight and several spools at once (features, 2026-11) -----------------
+
+    def test_note_sets_or_clears_the_comment(self):
+        result, call = self.act({"action": "comment", "id": 3, "comment": "  wet, dry before use \n"})
+        self.assertTrue(result["ok"], result)
+        call.assert_called_once_with("PATCH", "spool/3", {"comment": "wet, dry before use"})
+        result, call = self.act({"action": "comment", "id": 3, "comment": "   "})
+        self.assertTrue(result["ok"])
+        self.assertIn("no note", result["text"])
+        call.assert_called_once_with("PATCH", "spool/3", {"comment": None})
+
+    def test_note_keeps_line_breaks_inside(self):
+        result, call = self.act({"action": "comment", "id": 3, "comment": "line one\nline two"})
+        call.assert_called_once_with("PATCH", "spool/3", {"comment": "line one\nline two"})
+
+    def test_remaining_sets_the_net_weight_left(self):
+        result, call = self.act({"action": "remaining", "id": 7, "grams": "412,5"})
+        self.assertTrue(result["ok"], result)
+        call.assert_called_once_with("PATCH", "spool/7", {"remaining_weight": 412.5})
+        result, call = self.act({"action": "remaining", "id": 7, "grams": 0})
+        self.assertTrue(result["ok"], "an empty spool is 0 g left")
+        call.assert_called_once_with("PATCH", "spool/7", {"remaining_weight": 0.0})
+
+    def test_add_several_spools(self):
+        made = iter([{"id": 50}, {"id": 51}, {"id": 52}])
+        with mock.patch.object(sp, "spoolman_call", side_effect=lambda *a: next(made)) as call:
+            result = sp.spool_action({"action": "add", "id": 3, "filament": 9, "count": 3})
+        self.assertTrue(result["ok"], result)
+        self.assertIn("#50, #51 and #52", result["text"])
+        self.assertEqual(call.call_args_list, [mock.call("POST", "spool", {"filament_id": 9})] * 3)
+
+    def test_add_stops_at_the_first_failure_and_says_what_was_added(self):
+        error = sp.urllib.error.HTTPError("u", 500, "busy", {}, None)
+        answers = iter([{"id": 60}, error])
+
+        def call(*a):
+            answer = next(answers)
+            if isinstance(answer, Exception):
+                raise answer
+            return answer
+        with mock.patch.object(sp, "spoolman_call", side_effect=call) as spy:
+            result = sp.spool_action({"action": "add", "id": 3, "filament": 9, "count": 4})
+        self.assertFalse(result["ok"])
+        self.assertIn("#60", result["text"])
+        self.assertIn("HTTP 500", result["text"])
+        self.assertEqual(spy.call_count, 2)
+
+    def test_new_actions_refuse_bad_input(self):
+        bad = [{"action": "comment", "id": 1, "comment": 5}, {"action": "comment", "id": 1},
+               {"action": "comment", "id": 1, "comment": "x" * 1025},
+               {"action": "remaining", "id": 1, "grams": -1}, {"action": "remaining", "id": 1, "grams": "nan"},
+               {"action": "remaining", "id": 1, "grams": 100001}, {"action": "remaining", "id": 1},
+               {"action": "remaining", "id": 1, "grams": True},
+               {"action": "add", "id": 1, "filament": 9, "count": 0}, {"action": "add", "id": 1, "filament": 9, "count": 21},
+               {"action": "add", "id": 1, "filament": 9, "count": "3"}, {"action": "add", "id": 1, "filament": 9, "count": 2.5}]
+        for data in bad:
+            result, call = self.act(data)
+            self.assertFalse(result["ok"], data)
+            self.assertTrue(result["text"], data)
+            call.assert_not_called()
+
     def test_bambu_source_gets_no_write_actions(self):
         sp.save_settings({**sp.get_settings(), "spool_source": "bambu"})
         result, call = self.act({"action": "archive", "id": 3})

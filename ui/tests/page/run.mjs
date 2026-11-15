@@ -201,6 +201,72 @@ test('weights and grams fields validate before sending (no blank grams)', `
   await press('Enter');
   const use = sentOf('spool_action').find(m => m.action === 'use');
   eq(use.grams, '12.5', 'decimal comma accepted');
+  await click(q('[data-spool="1"] [data-act="sp-menu"]'));
+  await click(btn('Use filament', card(1)));
+  for (const bad of ['0', '-3', '100001']) {
+    await type(q('#sc-in-1'), bad);
+    assert(q('[data-spool="1"] [data-act="sp-go"]').disabled && text(card(1)).includes('above 0'), bad + ' refused before sending');
+  }
+  eq(sentOf('spool_action').filter(m => m.action === 'use').length, 1, 'nothing more sent');
+`);
+
+test('grams left: set from the card, 0 allowed for an empty spool', `
+  await spools(SPOOLS, {display: {...DEFAULTS, group_same: false}});
+  await click(q('[data-spool="1"] [data-act="sp-menu"]'));
+  await click(btn('Set grams left', card(1)));
+  assert(text(card(1)).includes('0 for an empty spool'), 'explains');
+  await type(q('#sc-in-1'), '-2');
+  assert(q('[data-spool="1"] [data-act="sp-go"]').disabled && text(card(1)).includes('from 0 to 100,000'), 'negative refused');
+  await type(q('#sc-in-1'), '0');
+  await press('Enter');
+  const left = sentOf('spool_action').find(m => m.action === 'remaining');
+  eq([left.id, left.grams, left.origin], [1, '0', 3], 'sent with the list origin');
+  await click(q('[data-spool="1"] [data-act="sp-menu"]'));
+  await click(btn('Set grams left', card(1)));
+  await type(q('#sc-in-1'), '412,5');
+  await press('Enter');
+  eq(lastOf('spool_action').grams, '412.5', 'decimal comma');
+`);
+test('a note is added, edited and removed from the card', `
+  await spools([{...SPOOLS[0], comment: ''}, {...SPOOLS[1], comment: 'tangled <b>once</b>'}], {display: {...DEFAULTS, group_same: false}});
+  await click(q('[data-spool="1"] [data-act="sp-menu"]'));
+  assert(btn('Add a note', card(1)) && !btn('Edit note', card(1)), 'no note yet: add');
+  await click(btn('Add a note', card(1)));
+  await type(q('#sc-in-1'), 'Dry before use');
+  await click(q('[data-spool="1"] [data-act="sp-go"]'));
+  eq(lastOf('spool_action'), {type: 'spool_action', action: 'comment', id: 1, origin: 3, comment: 'Dry before use'}, 'saved');
+  await click(q('[data-spool="2"] [data-act="sp-menu"]'));
+  await click(btn('Edit note', card(2)));
+  eq(q('#sc-in-2').value, 'tangled <b>once</b>', 'starts from the current note');
+  assert(!q('[data-spool="2"] [data-act="sp-go"]').disabled, 'clearing is allowed');
+  await type(q('#sc-in-2'), '');
+  await click(q('[data-spool="2"] [data-act="sp-go"]'));
+  eq(lastOf('spool_action').comment, '', 'empty removes it');
+`);
+test('add several spools of a filament at once', `
+  await spools(SPOOLS, {display: {...DEFAULTS, group_same: false}});
+  await click(q('[data-spool="1"] [data-act="sp-menu"]'));
+  await click(btn('Add a spool of this filament', card(1)));
+  await until(() => dialogOpen());
+  assert(dialogText().includes('Each one starts full'), 'says what is added');
+  eq(q('#dlg-input').value, '1', 'one by default');
+  await yes();
+  const one = lastOf('spool_action');
+  eq([one.action, one.filament, 'count' in one], ['add', SPOOLS[0].filament.id, false], 'one spool: no count sent');
+  await click(q('[data-spool="1"] [data-act="sp-menu"]'));
+  await click(btn('Add a spool of this filament', card(1)));
+  await until(() => dialogOpen());
+  await type(q('#dlg-input'), '4');
+  await yes();
+  eq(lastOf('spool_action').count, 4, 'four');
+  const before = sentOf('spool_action').length;
+  await click(q('[data-spool="1"] [data-act="sp-menu"]'));
+  await click(btn('Add a spool of this filament', card(1)));
+  await until(() => dialogOpen());
+  await type(q('#dlg-input'), '25');
+  await yes();
+  eq(sentOf('spool_action').length, before, 'too many: nothing sent');
+  assert(alerts().includes('1 to 20'), 'and why: ' + alerts());
 `);
 
 // ------------------------------------------------------------------ status, errors, empty states (F10, S01, S02, B-20)
@@ -320,6 +386,34 @@ test('single-extruder Klipper card: change spool, clear only with a spool, resul
   await until(() => q('[data-pick="7"]'));
   await click(q('[data-pick="7"]'));
   eq(lastOf('moon_spool'), {type: 'moon_spool', id: 'auto-sv', spool: 7, origin: 3}, 'set with the list origin');
+`);
+test('changing the active spool while printing asks again, naming the consequence', `
+  const sv = {id: 'auto-sv', link: 'auto-sv', name: 'SV06', heads: false, units: [], ext: {...TRAY, spool: 7}, spool_set: true, age: 0};
+  await spools([{id: 7, remaining_weight: 100, filament: {id: 1, name: 'PLA Black'}}, {id: 8, remaining_weight: 900, filament: {id: 2, name: 'PETG Red'}}],
+    {printers: [{id: 'auto-sv', name: 'SV06', auto: true, ip: '10.0.0.7', units: []}], live_ok: true});
+  await tab('printer');
+  await post({type: 'live', live: {links: {'auto-sv': 'live'}, printers: [sv]}});
+  await click(btn('Change spool'));
+  await until(() => q('[data-pick="8"]'));
+  await click(q('[data-pick="8"]'));
+  eq(lastOf('moon_spool'), {type: 'moon_spool', id: 'auto-sv', spool: 8, origin: 3}, 'first try has no confirmation');
+  await post({type: 'moon_spool', id: 'auto-sv', spool: 8, ok: false, confirm: true, state: 'RUNNING', text: 'SV06 is running a print'});
+  await until(() => dialogOpen(), 'asks');
+  assert(dialogText().includes('SV06 is printing') && dialogText().includes('rest of this print'), 'names the consequence: ' + dialogText());
+  assert(!alerts().includes('SV06 is running'), 'not shown as a failure');
+  await no();
+  eq(sentOf('moon_spool').length, 1, 'go back: nothing more sent');
+  await post({type: 'moon_spool', id: 'auto-sv', spool: 8, ok: false, confirm: true, state: 'PAUSE', text: 'paused'});
+  await until(() => dialogOpen(), 'asks again');
+  assert(dialogText().includes('paused'), 'paused wording');
+  assert(btn('Change to spool #8 anyway'), 'answer names the spool');
+  await yes();
+  eq(lastOf('moon_spool'), {type: 'moon_spool', id: 'auto-sv', spool: 8, origin: 3, confirm: true}, 'confirmed resend');
+  await post({type: 'moon_spool', id: 'auto-sv', spool: null, ok: false, confirm: true, state: 'RUNNING', text: 'x'});
+  await until(() => dialogOpen());
+  assert(btn('Clear it anyway'), 'clear wording');
+  await yes();
+  eq(lastOf('moon_spool'), {type: 'moon_spool', id: 'auto-sv', spool: null, confirm: true}, 'confirmed clear');
 `);
 test('change spool is hidden for the U1, filament changers and Bambu Cloud', `
   const u1 = {id: 'auto-u1', link: 'auto-u1', name: 'U1', heads: true, ext: null, spool_set: false, age: 0, units: [{id: 0, kind: 'ams', trays: [TRAY]}]};

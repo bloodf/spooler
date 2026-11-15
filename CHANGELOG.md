@@ -3,6 +3,29 @@
 Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); entries before
 0.9.0 are Spoolio's.
 
+## [0.26.0] - 2026-11-14
+
+### Added
+- Three spool card actions (Spoolman): ***Set Grams Left*** sets the filament left without a scale (0 for an empty spool); ***Add a Note*** / ***Edit Note*** edits the spool's Spoolman comment (empty removes it); ***Add Spool of This Filament*** asks how many, 1 to 20, for a multi-pack. If Spoolman refuses one of several, the message names the spools that were added.
+
+### Changed
+- Changing a Klipper printer's active spool while it prints or is paused now asks first: Moonraker would book the rest of that print to the new spool. Idle printers change at once, as before.
+- Stats, spool Details and the CSV export count only the prints booked on the Spoolman in Settings (prints booked before this version, which don't say which Spoolman they were on, still count). Nothing in `history.json` is rewritten.
+- The weekly use in Details and Stats divides by the weeks Spooler has history for (one to four), so a new install no longer shows a fraction of the real rate and far too many weeks left.
+
+### Fixed
+- A print whose booking had a slot set to 0 g stayed "not booked" for good; such a slot is now settled without a request to Spoolman. The booking panel also stops at the 5,000 g per slot that is booked.
+- The spool card offered weights and uses of 0 g and above 100,000 g, which Spoolman's side refused with a confusing message; it now checks the same range and says so.
+- Setting the dried date or sending preset edits reads Spoolman's version again first, so a Spoolman downgraded below 0.26 while OrcaSlicer runs can't have its other extra fields wiped.
+- A printer link that restarted could hide its status on the Printer tab until the next report.
+- In the window build (no tab), a booking, undo or stats request made just before closing the window raised an error and the booking didn't run.
+- Test Connection stopped answering for the rest of the session after testing an address that answered with something other than Spoolman's JSON (an empty page, a list, a router page), and Save stayed blocked with it. It now says the address didn't answer like Spoolman. A spool list that isn't a list of spools is a failed read instead of an error in the Spools tab.
+- A Spoolman address with a user name and password (`http://user:password@host:7912`, for a Spoolman behind a proxy with basic auth) could never be reached. They are now sent as basic auth, on the live-updates connection too. Only `http://` and `https://` addresses are opened.
+- The Bambu Cloud sign-in token and the Anycubic printer's client key are written readable only by you from the moment the file exists; a sign-in that can't be saved now says so instead of leaving Settings waiting.
+- A PrusaLink or OctoPrint printer redirecting to another host no longer gets its API key sent there.
+- Setting the active spool of a Klipper printer always gets an answer, also when Moonraker's reply is malformed.
+- Spooler now declares the Bambu Cloud addresses it really calls (2FA and the filament list) to OrcaSlicer's permissions.
+
 ## [0.25.1] - 2026-11-14
 
 ### Changed

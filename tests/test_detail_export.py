@@ -16,14 +16,16 @@ class RateAndDetailTest(StatsBase):
         self.save([entry("b", 20, [row(1, 40.0, cost=1.5), row(2, 8.0)]), entry("a", 3, [row(1, 40.0, cost=1.0)])])
         out = sp.spool_detail(1)
         self.assertEqual([p["grams"] for p in out["prints"]], [40.0, 40.0])
-        self.assertEqual((out["grams"], out["cost"], out["rate"], out["weeks"]), (80.0, 2.5, 20.0, None))
+        # 80 g in the 20 days the history covers: 28 g a week, not 80 / 4
+        self.assertEqual((out["grams"], out["cost"], out["rate"], out["weeks"]), (80.0, 2.5, 28.0, None))
         self.assertEqual(out["prints"][0]["name"], "print a")
 
     def test_weeks_left_from_remaining_weight(self):
         self.save([entry("a", 3, [row(1, 40.0)])])
         sp.get_settings = lambda: {"stats": {"on": True, "cur": "gbp"}, "spoolman_url": "http://x", "low_stock_grams": 100}
         with mock.patch.object(sp, "plate_spools", return_value=[{"id": 1, "remaining_weight": 100}]):
-            self.assertEqual(sp.spool_detail(1)["weeks"], 10.0)
+            # 40 g in a 3-day history is 40 g a week (one week at least), so 100 g lasts 2.5 weeks
+            self.assertEqual(sp.spool_detail(1)["weeks"], 2.5)
 
     def test_no_history_and_bad_id(self):
         out = sp.spool_detail(5)

@@ -1,7 +1,8 @@
 import { reactive } from 'vue';
 import * as bridge from '../core/bridge';
-import { m, note, pollLive } from './main';
+import { m, note, on, pollLive } from './main';
 import { t } from '../core/i18n';
+import { ask } from '../core/dialog';
 import { addUnit, newPrinterId, type ManualPrinter, type PrinterType, type UnitKind } from '../logic/printers';
 
 // Manual printers are edited as new arrays (never in place) and saved whole, as the previous page did.
@@ -43,7 +44,18 @@ export function saveLink(id: string, f: LinkForm, remove: boolean): void {
   window.setTimeout(pollLive, 300);
 }
 
-export function moonSet(link: string, spool: number | null): void {
-  bridge.postMain(spool === null ? { type: 'moon_spool', id: link, spool: null } : { type: 'moon_spool', id: link, spool, origin: m.origin });
+export function moonSet(link: string, spool: number | null, confirm = false): void {
+  const msg: Record<string, unknown> = spool === null ? { type: 'moon_spool', id: link, spool: null } : { type: 'moon_spool', id: link, spool, origin: m.origin };
+  bridge.postMain(confirm ? { ...msg, confirm: true } : msg);
   note('pending', spool === null ? t('moon.clearing') : t('moon.setting', { id: spool }), 'moon:' + link);
 }
+
+// Changing the active spool while the printer prints books the rest of that print to the new spool: the plugin
+// refuses it until this second, explicit answer.
+on('moonConfirm', async d => {
+  const printer = m.live.printers.find(p => p.id === d.id)?.name || String(d.id);
+  const spool = typeof d.spool === 'number' ? d.spool : null;
+  const yes = await ask({ title: t('moon.busyTitle', { printer }), text: t(d.state === 'PAUSE' ? 'moon.busyPaused' : 'moon.busyText', { printer }),
+    yes: spool === null ? t('moon.busyClear') : t('moon.busyChange', { id: spool }), no: t('common.goBack'), danger: true });
+  if (yes) moonSet(String(d.id), spool, true);
+});

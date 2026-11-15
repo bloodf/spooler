@@ -137,6 +137,13 @@ export const closestSpools = (spools: Spool[], hex: string): Spool[] => spools
   .slice(0, MATCH_TOP).map(x => x.s);
 
 /** "#12" finds spool 12 only; other text looks in name, material, manufacturer, location, lot and comment. */
+/** Grams typed on a card (decimal comma allowed) that the plugin accepts: more than 0, up to max. */
+export function gramsValid(text: string, min0 = false, max = 100000): boolean {
+  if (!text.trim()) return false;
+  const n = Number(text.trim().replace(',', '.'));
+  return Number.isFinite(n) && (min0 ? n >= 0 : n > 0) && n <= max;
+}
+
 export function spoolMatches(s: Spool, query: string): boolean {
   if (/^#\d+$/.test(query)) return String(s.id) === query.slice(1);
   const f = s.filament || {};

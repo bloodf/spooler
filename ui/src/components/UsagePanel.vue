@@ -44,7 +44,8 @@ const spoolOptions = (material?: string) => {
     .map(s => ({ value: s.id, label: [s.filament?.vendor?.name, s.filament?.name || t('spool.numbered', { id: s.id }), '#' + s.id,
       formatWeight(s.remaining_weight, shown(m.disp, 'exact_weight'), locale.value)].filter(Boolean).join(' · ') }));
 };
-const bookable = (p: UsagePrint) => p.rows.filter(r => r.state !== 'booked').every(r => { const v = gramsOf(p, r); return typeof v === 'number' && v >= 0; });
+// The plugin books 0 to 5,000 g per slot (0: nothing used from it); anything else would stay unbooked silently.
+const bookable = (p: UsagePrint) => p.rows.filter(r => r.state !== 'booked').every(r => { const v = gramsOf(p, r); return typeof v === 'number' && v >= 0 && v <= 5000; });
 function book(p: UsagePrint) {
   if (busy.value || !bookable(p)) return;
   const rows = p.rows.filter(r => r.state !== 'booked').map(r => {
@@ -99,7 +100,7 @@ const left = (id?: number | null) => m.spools.find(s => s.id === id)?.remaining_
                 :placeholder="t('usage.choose')" :aria-label="t('usage.chooseFor', { n: r.slot })" class="us-sel" @update:model-value="v => (edit(p, r.slot).spool = v)" />
                 <span class="sp-chip warn">{{ t('usage.notIdentified') }}</span></template>
             </span>
-            <span v-if="r.state !== 'booked'" class="us-g"><InputNumber :model-value="gramsOf(p, r)" :min="0" :max-fraction-digits="1" :use-grouping="false" suffix=" g"
+            <span v-if="r.state !== 'booked'" class="us-g"><InputNumber :model-value="gramsOf(p, r)" :min="0" :max="5000" :max-fraction-digits="1" :use-grouping="false" suffix=" g"
               :aria-label="t('usage.gramsFor', { n: r.slot })" :invalid="typeof gramsOf(p, r) !== 'number'"
               @input="e => (edit(p, r.slot).grams = typeof e.value === 'number' ? e.value : null)" @update:model-value="v => (edit(p, r.slot).grams = v)" /></span>
           </template>

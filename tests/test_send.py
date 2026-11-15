@@ -271,7 +271,7 @@ class ButtonTest(unittest.TestCase):
         window = sp.SpoolerWindow()
         window._panel = types.SimpleNamespace(post=lambda data: None)
         window.on_message({"type": "send"})
-        self.assertEqual(self.started, [page.post_message, window._panel.post])
+        self.assertEqual(self.started, [page.post_message, window._post])  # posts only while the window is open
 
 
 

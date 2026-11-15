@@ -191,6 +191,18 @@ console.log(JSON.stringify({a: f('shelf a'), b: f('l-42'), c: f('#7'), d: f('#70
         self.assertEqual(out, {"a": [1], "b": [7], "c": [7], "d": [], "kg": "1.38 kg", "g": "1,380 g", "pt": "1.380 g", "low": ["low", "out", "", ""]})
 
 
+class UnitTests(unittest.TestCase):
+    def test_ui_unit_tests_pass(self):
+        """ui/tests/unit (npm run test:unit): every string in both languages and the locale rules."""
+        need_node(self)
+        files = sorted(str(p) for p in (UI / "tests" / "unit").glob("*.test.ts"))
+        self.assertTrue(files, "ui/tests/unit has no tests")
+        out = subprocess.run([NODE, "--no-warnings", "--test", *files], capture_output=True, text=True,
+                             encoding="utf-8", timeout=120, cwd=UI)
+        self.assertEqual(out.returncode, 0, out.stdout[-3000:] + out.stderr[-2000:])
+        self.assertRegex(out.stdout, r"(?m)^\S* ?pass [1-9]")
+
+
 class BuiltPage(unittest.TestCase):
     def test_page_scenarios_in_headless_chrome(self):
         need_node(self)

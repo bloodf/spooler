@@ -114,7 +114,7 @@ export const sourceOff = computed(() => {
 
 // ------------------------------------------------------------------ messages
 const listeners = { plate: new Set<() => void>(), detail: new Set<(d: any) => void>(), stats: new Set<(d: any) => void>(),
-  statsExport: new Set<(d: any) => void>() };
+  statsExport: new Set<(d: any) => void>(), moonConfirm: new Set<(d: any) => void>() };
 export const on = <K extends keyof typeof listeners>(k: K, h: Parameters<(typeof listeners)[K]['add']>[0]) => {
   (listeners[k] as Set<any>).add(h); return () => (listeners[k] as Set<any>).delete(h);
 };
@@ -177,6 +177,8 @@ function onMessage(d: any): void {
       bridge.postMain({ type: 'refresh' });
       break;
     case 'moon_spool':
+      // The printer is printing: the plugin changed nothing and asks first (state/printers.ts).
+      if (d.confirm) { for (const n of m.notes.filter(n => n.key === 'moon:' + d.id)) dismiss(n.id); listeners.moonConfirm.forEach(h => h(d)); break; }
       m.moonNote = { id: d.id, ok: !!d.ok, text: d.text || '' };
       settle('moon:' + d.id, !!d.ok, d.text || '');
       break;
