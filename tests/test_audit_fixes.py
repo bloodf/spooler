@@ -173,5 +173,29 @@ class SpoolmanAddressTest(unittest.TestCase):
         self.assertNotIn("Authorization", sent[0].decode())
 
 
+class BambuTokenFileTest(unittest.TestCase):
+    def setUp(self):
+        self.folder = Path(tempfile.mkdtemp())
+        self.patch = mock.patch.object(sp, "AUTH_FILE", self.folder / "sub" / "bambu_auth.json")
+        self.patch.start()
+
+    def tearDown(self):
+        self.patch.stop()
+
+    @unittest.skipIf(os.name == "nt", "POSIX modes")
+    def test_token_file_is_private_from_the_start(self):
+        result = sp._after_login("global", "a@b.c", {"accessToken": "tok"}, [])
+        self.assertEqual(result["step"], "done")
+        self.assertEqual(stat.S_IMODE(sp.AUTH_FILE.stat().st_mode), 0o600)
+        self.assertEqual(json.loads(sp.AUTH_FILE.read_text())["access_token"], "tok")
+
+    def test_a_token_that_cant_be_saved_is_an_answer(self):
+        with mock.patch.object(sp, "_write_json", side_effect=PermissionError("read-only")), \
+                mock.patch.object(sp, "_bambu_post", return_value=({"accessToken": "tok"}, [])):
+            result = sp.bambu_sign_in({"action": "password", "account": "a@b.c", "password": "x"})
+        self.assertFalse(result["ok"])
+        self.assertIn("save", result["error"])
+
+
 if __name__ == "__main__":
     unittest.main()

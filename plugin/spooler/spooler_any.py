@@ -740,12 +740,12 @@ def _after_login(region: str, account: str, reply: dict, cookies: list[str]) -> 
             token = cookie[6:].split(";")[0]
     if token:
         _pending.clear()
-        AUTH_FILE.write_text(json.dumps({"access_token": token, "region": region, "account": account}),
-                             encoding="utf-8")
         try:
-            os.chmod(AUTH_FILE, 0o600)
-        except OSError:
-            pass
+            # Private before it takes its name, and in one step: never readable by others, even briefly.
+            _write_json(AUTH_FILE, {"access_token": token, "region": region, "account": account}, mode=0o600)
+        except OSError as exc:
+            log.warning("Could not save the Bambu sign-in: %s", exc)
+            raise BambuError(f"Signed in, but Spooler could not save the sign-in to {AUTH_FILE.parent}") from None
         _spool_cache.update(url="", time=0.0, spools=[])
         log.info("Signed in to Bambu Cloud (%s)", region)
         return {"ok": True, "step": "done"}
