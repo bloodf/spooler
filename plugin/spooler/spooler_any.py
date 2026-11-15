@@ -3113,6 +3113,14 @@ def _local_session(pid: str, link: dict, stop: threading.Event) -> None:
                       lambda: _live_active() and not stop.is_set())
 
 
+def _link_done(pid: str, stop: threading.Event) -> None:
+    """A link thread ending: drop its status unless a newer thread for the printer has taken over
+    (_local_sync restarted the link with a new stop event), whose status it would hide."""
+    entry = _local.get(pid)
+    if entry is None or entry["stop"] is stop:
+        _live["links"].pop(pid, None)
+
+
 def _local_run(pid: str, link: dict, stop: threading.Event) -> None:
     fails = 0
     while _live_active() and not stop.is_set():
@@ -3133,7 +3141,7 @@ def _local_run(pid: str, link: dict, stop: threading.Event) -> None:
             _live["links"][pid] = "unreachable" if fails else "connecting"
             log.warning("Live link to a printer stopped: %s", exc)
             stop.wait(LIVE_RETRY[min(fails, len(LIVE_RETRY) - 1)])
-    _live["links"].pop(pid, None)
+    _link_done(pid, stop)
 
 
 _local_lock = threading.Lock()
@@ -3934,7 +3942,7 @@ def _moon_run(pid: str, link: dict, stop: threading.Event) -> None:
             reason = "not reachable" if isinstance(exc, (urllib.error.URLError, OSError)) else str(exc)
             _report(f"Printer {link['name']}", reason)
         stop.wait((MOON_POLL if busy else MOON_IDLE) if not fails else LIVE_RETRY[min(fails - 1, len(LIVE_RETRY) - 1)])
-    _live["links"].pop(pid, None)
+    _link_done(pid, stop)
 
 
 # --- Network printers: PrusaLink and OctoPrint -------------------------------------------
@@ -4153,7 +4161,7 @@ def _net_run(pid: str, link: dict, stop: threading.Event) -> None:
             reason = "not reachable" if isinstance(exc, (urllib.error.URLError, OSError)) else str(exc)
             _report(who, reason)
         stop.wait((NET_POLL if busy else NET_IDLE) if not fails else LIVE_RETRY[min(fails - 1, len(LIVE_RETRY) - 1)])
-    _live["links"].pop(pid, None)
+    _link_done(pid, stop)
 
 
 def read_http_tail(resp, size: int = NET_TAIL, cap: int = NET_STREAM_MAX) -> bytes | None:

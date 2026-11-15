@@ -58,5 +58,37 @@ class FreshVersionTest(unittest.TestCase):
         self.assertIn("spoolman_at_least(SPOOLMAN_EXTRA_MERGE, fresh=True)", body)
 
 
+class LinkStatusOwnerTest(unittest.TestCase):
+    """A link restarted by _local_sync: the old thread ending must not erase the new one's status."""
+
+    def check(self, run, link):
+        old, new = threading.Event(), threading.Event()
+        old.set()   # the old thread was stopped: its loop doesn't run again
+        with mock.patch.dict(sp._local, {"p1": {"link": link, "stop": new, "thread": None}}), \
+                mock.patch.dict(sp._live["links"], {"p1": "live"}):
+            run("p1", link, old)
+            self.assertEqual(sp._live["links"].get("p1"), "live", run.__name__)
+            stray = threading.Event()
+            stray.set()
+            run("p1", link, stray)
+            self.assertEqual(sp._live["links"].get("p1"), "live", "a thread never registered owns nothing")
+            new.set()
+            run("p1", link, new)
+            self.assertNotIn("p1", sp._live["links"], "its own entry is removed")
+
+    def test_every_link_runner(self):
+        with mock.patch.object(sp, "_live_active", return_value=True):
+            self.check(sp._local_run, {"ip": "127.0.0.1", "serial": "", "code": "x", "name": "B"})
+            self.check(sp._moon_run, {"ip": "http://127.0.0.1:1", "name": "K", "kind": "moonraker"})
+            self.check(sp._net_run, {"ip": "127.0.0.1:1", "name": "N", "kind": "octoprint", "code": "k"})
+
+    def test_removed_printer_entry_goes(self):
+        stop = threading.Event()
+        stop.set()
+        with mock.patch.dict(sp._local, {}, clear=True), mock.patch.dict(sp._live["links"], {"p2": "live"}):
+            sp._net_run("p2", {"ip": "127.0.0.1:1", "name": "N", "kind": "octoprint"}, stop)
+            self.assertNotIn("p2", sp._live["links"])
+
+
 if __name__ == "__main__":
     unittest.main()
