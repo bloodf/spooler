@@ -630,6 +630,7 @@ AUTH_FILE = DATA_DIR / "bambu_auth.json"
 TFA_HOSTS = {"global": "https://bambulab.com", "china": "https://bambulab.cn"}
 LOGIN_PATH = "/v1/user-service/user/login"
 CODE_PATH = "/v1/user-service/user/sendemail/code"
+TFA_PATH = "/api/sign-in/tfa"
 SIGN_IN = "Open Settings and sign in to Bambu Cloud."
 _pending: dict = {}
 _ams_logged: list = []
@@ -786,7 +787,7 @@ def bambu_sign_in(data: dict) -> dict:
         if not code:
             raise BambuError("Enter your Bambu Lab verification code")
         if action == "tfa":
-            reply, cookies = _bambu_post(region, "/api/sign-in/tfa",
+            reply, cookies = _bambu_post(region, TFA_PATH,
                                          {"tfaKey": _pending.get("tfa_key", ""), "tfaCode": code},
                                          TFA_HOSTS[region])
         else:
@@ -7290,7 +7291,7 @@ def permission_targets() -> dict:
     urls = [RELEASE_API]
     for region in BAMBU_HOSTS:
         urls += [BAMBU_HOSTS[region] + LOGIN_PATH, BAMBU_HOSTS[region] + CODE_PATH,
-                 TFA_HOSTS[region] + LOGIN_PATH]
+                 BAMBU_HOSTS[region] + BAMBU_PATH, TFA_HOSTS[region] + TFA_PATH]
     return {"fs_readwrite": [str(DATA_DIR)], "network_http": urls, "threading": True}
 
 

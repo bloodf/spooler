@@ -269,5 +269,14 @@ class KobraKeyFileTest(unittest.TestCase):
                 sp.kx_credentials("http://127.0.0.1")
 
 
+class PermissionUrlsTest(unittest.TestCase):
+    def test_declares_every_fixed_bambu_url_spooler_calls(self):
+        urls = sp.permission_targets()["network_http"]
+        for region in sp.BAMBU_HOSTS:
+            self.assertIn(sp.TFA_HOSTS[region] + sp.TFA_PATH, urls)
+            self.assertIn(sp.BAMBU_HOSTS[region] + sp.BAMBU_PATH, urls)
+            self.assertIn(sp.BAMBU_HOSTS[region] + sp.LOGIN_PATH, urls)
+
+
 if __name__ == "__main__":
     unittest.main()
