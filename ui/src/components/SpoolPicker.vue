@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref } from 'vue';
 import InputText from 'primevue/inputtext';
+import { OuiSwatch } from '../../shared/src/components';
 import { m } from '../state/main';
 import { t, locale } from '../core/i18n';
-import { formatWeight, shown, swatch } from '../logic/spools';
+import { formatWeight, shown, spoolPaint } from '../logic/spools';
 import { takenIds } from '../logic/printers';
 
 // Pick a spool for a slot: search, Enter takes the first, Down moves into the list, Escape closes (F11).
@@ -36,28 +37,27 @@ function key(e: KeyboardEvent) {
 }
 </script>
 <template>
-  <div class="pk" role="group" :aria-label="label" @keydown="key">
-    <InputText ref="input" v-model="q" type="search" :placeholder="t('picker.search')" :aria-label="t('picker.search')" class="pk-q" data-test="picker-search" />
+  <div class="pk oui-well" role="group" :aria-label="label" @keydown="key">
+    <InputText ref="input" v-model="q" type="search" size="small" :placeholder="t('picker.search')" :aria-label="t('picker.search')" class="pk-q" data-test="picker-search" />
     <div ref="list" class="pk-list">
       <button v-for="s in items" :key="s.id" type="button" class="pk-item" :data-pick="s.id" @click="emit('pick', s.id)">
-        <span class="pk-dot" :style="{ background: swatch(s.filament || {}) }" />
-        <span class="pk-t"><span>{{ s.filament?.name || t('spool.numbered', { id: s.id }) }}</span>
-          <small class="oui-meta">{{ [s.filament?.vendor?.name, '#' + s.id, s.location].filter(Boolean).join(' · ') }}</small></span>
-        <span class="sp-num">{{ formatWeight(s.remaining_weight, shown(m.disp, 'exact_weight'), locale) }}</span>
+        <OuiSwatch v-bind="spoolPaint(s.filament || {})" :size="14" />
+        <span class="pk-t"><span class="oui-truncate">{{ s.filament?.name || t('spool.numbered', { id: s.id }) }}</span>
+          <small class="oui-meta oui-truncate">{{ [s.filament?.vendor?.name, '#' + s.id, s.location].filter(Boolean).join(' · ') }}</small></span>
+        <span class="oui-num">{{ formatWeight(s.remaining_weight, shown(m.disp, 'exact_weight'), locale) }}</span>
       </button>
       <p v-if="!items.length" class="oui-meta pk-none">{{ q.trim() ? t('picker.noMatch') : t('picker.none') }}</p>
     </div>
     <p v-if="excludeTaken" class="oui-meta">{{ t('picker.takenHint') }}</p>
   </div>
 </template>
-<style scoped>
-.pk { display: grid; gap: 6px; padding: 8px; border: 1px solid var(--p-primary-color); border-radius: 12px; background: var(--oui-surface); }
+<style>
+.pk { display: grid; gap: var(--oui-s2); padding: var(--oui-s2); box-shadow: inset 0 0 0 1px var(--oui-primary); min-width: 0; }
 .pk-q { width: 100%; }
-.pk-list { max-height: 260px; overflow: auto; display: grid; }
-.pk-item { display: flex; align-items: center; gap: 8px; padding: 8px; border: 0; border-bottom: 1px solid var(--oui-border); background: none; color: var(--oui-text);
-  font: inherit; text-align: left; cursor: pointer; }
-.pk-item:hover { background: var(--oui-background); }
-.pk-dot { width: 18px; height: 18px; border-radius: 50%; flex: none; border: 1px solid var(--oui-border); }
-.pk-t { display: grid; flex: 1; min-width: 0; overflow-wrap: anywhere; }
-.pk-none, .pk p { margin: 0; }
+.pk-list { max-height: 240px; overflow: auto; display: grid; }
+.orca-ui .pk-item { display: flex; align-items: center; gap: var(--oui-s2); padding: 6px var(--oui-s2); border: 0; border-radius: var(--oui-radius-sm); background: none; color: var(--oui-text);
+  font: inherit; text-align: start; cursor: pointer; min-width: 0; }
+.orca-ui .pk-item:hover, .orca-ui .pk-item:focus-visible { background: var(--oui-raised); }
+.pk-t { display: grid; flex: 1; min-width: 0; }
+.pk-none { padding: var(--oui-s2); }
 </style>

@@ -1,11 +1,11 @@
 {
   "name": "@orca-plugins/ui-foundation",
-  "version": "3.1.0",
+  "version": "4.0.1",
   "private": true,
   "type": "module",
   "description": "Shared Vue 3 and PrimeVue 5 visual foundation for Orca plugins",
   "scripts": {
-    "build": "node scripts/vue-tsc.mjs --noEmit && vite build && node scripts/manifest.mjs",
+    "build": "node scripts/icons.mjs && node scripts/vue-tsc.mjs --noEmit && vite build && node scripts/manifest.mjs",
     "check": "node scripts/check.mjs"
   },
   "dependencies": {
@@ -16,6 +16,7 @@
   "devDependencies": {
     "@typescript/typescript6": "6.0.2",
     "@vitejs/plugin-vue": "6.0.11",
+    "lucide-static": "1.73.0",
     "typescript": "7.0.2",
     "vite": "8.3.8",
     "vite-plugin-singlefile": "2.3.4",

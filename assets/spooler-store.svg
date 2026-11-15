@@ -1,11 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
 <title id="title">Spooler plugin store icon</title>
 <desc id="desc">Spooler plugin store icon</desc>
-<rect x="0" y="0" width="512" height="512" rx="0" fill="#F6F7FB"/><g transform="translate(64 64) scale(1.5)"><rect x="0" y="0" width="256" height="256" rx="56" fill="#14181F"/><g fill="none" stroke-linecap="round" stroke-linejoin="round">
-<path d="M188.36 107.66A77 77 0 1 1 116 57H216M201 42L216 57L201 72" stroke="#A99BFF" stroke-width="16"/>
-<path d="M85.59 103.59A43 43 0 0 1 146.41 103.59" stroke="#78CFD5" stroke-width="14"/>
-<path d="M157.53 122.87A43 43 0 0 1 127.13 175.53" stroke="#F4CF78" stroke-width="14"/>
-<path d="M104.87 175.53A43 43 0 0 1 74.47 122.87" stroke="#FF997D" stroke-width="14"/>
-<circle cx="116" cy="134" r="14" stroke="#F6F7FB" stroke-width="10"/>
-</g></g>
+<rect x="0" y="0" width="512" height="512" rx="0" fill="#F6F7FB"/><g transform="translate(64 64) scale(1.5)"><rect x="0" y="0" width="256" height="256" rx="56" fill="#A3247A"/><g transform="translate(16 16) scale(9.333)" fill="none" stroke="#FFFFFF" stroke-linecap="round"><circle cx="11" cy="13" r="6.1" stroke-width="4.4"/><circle cx="11" cy="13" r="1.5" fill="#FFFFFF" stroke="none"/><path d="M13.6 7.3C16.6 7.7 20.3 6.6 21.5 3.5" stroke-width="2.2"/></g></g>
 </svg>

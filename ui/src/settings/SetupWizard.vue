@@ -27,15 +27,15 @@ function back() { if (wizard.step > 0) wizard.step -= 1; }
     <div class="wz-dots" aria-hidden="true"><i v-for="i in STEPS" :key="i" :class="{ on: i - 1 === wizard.step }" /></div>
     <template #footer>
       <Button v-if="!last" severity="secondary" text :label="t('wiz.skip')" data-test="wiz-skip" @click="closeWizard(false)" />
-      <span class="sp-grow" />
-      <Button severity="secondary" outlined :label="t('wiz.back')" :disabled="wizard.step === 0" data-test="wiz-back" @click="back" />
+      <span class="oui-spacer" />
+      <Button severity="secondary" :label="t('wiz.back')" :disabled="wizard.step === 0" data-test="wiz-back" @click="back" />
       <Button :label="last ? t('wiz.finish') : t('wiz.next')" :disabled="!canNext" data-test="wiz-next" autofocus @click="next" />
     </template>
-    <p v-if="wizard.step === 1 && !ready" class="sp-why">{{ t('wiz.needTest') }}</p>
+    <p v-if="wizard.step === 1 && !ready" class="oui-meta">{{ t('wiz.needTest') }}</p>
   </Dialog>
 </template>
 <style scoped>
-.wz { display: grid; gap: 8px; } .wz p { margin: 0; }
+.wz { display: grid; gap: var(--oui-s2); } .wz p { margin: 0; }
 .wz-dots { display: flex; gap: 6px; justify-content: center; margin-top: 12px; }
-.wz-dots i { width: 8px; height: 8px; border-radius: 50%; background: var(--oui-border); } .wz-dots i.on { background: var(--p-primary-color); }
+.wz-dots i { width: 8px; height: 8px; border-radius: 50%; background: var(--oui-border); } .wz-dots i.on { background: var(--oui-primary); }
 </style>

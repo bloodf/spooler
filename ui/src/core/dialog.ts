@@ -3,7 +3,6 @@ import { reactive, nextTick } from 'vue';
 // One in-page dialog at a time (native confirm()/prompt() may be missing in Orca's WebView). Every protected
 // decision names both answers explicitly (U01). Closing returns focus to the control that opened it, or to the
 // control that now stands for it after a re-render (data-focus-key), never to <body> (B-01).
-export interface ChoiceItem { value: string; label: string }
 export interface DialogRequest {
   title: string;
   text: string;
@@ -11,7 +10,6 @@ export interface DialogRequest {
   no?: string;
   danger?: boolean;
   input?: { label: string; value: string; placeholder?: string };
-  choices?: ChoiceItem[];
 }
 interface Open extends DialogRequest { visible: boolean; resolve: ((v: any) => void) | null; cancelValue: unknown; inputValue: string }
 
@@ -30,7 +28,7 @@ async function open<T>(req: DialogRequest, cancelValue: T): Promise<T | any> {
   }
   await hidden;
   return new Promise(resolve => {
-    Object.assign(dialog, { yes: undefined, no: undefined, danger: false, input: undefined, choices: undefined },
+    Object.assign(dialog, { yes: undefined, no: undefined, danger: false, input: undefined },
       req, { visible: true, resolve, cancelValue, inputValue: req.input?.value ?? '' });
   });
 }
@@ -64,6 +62,5 @@ export function rememberOpener(fallbackKey: string | null = null): void {
 
 export const ask = (req: DialogRequest): Promise<boolean> => open(req, false);
 export const prompt = (req: DialogRequest & { input: NonNullable<DialogRequest['input']> }): Promise<string | null> => open(req, null);
-export const choose = (req: DialogRequest & { choices: ChoiceItem[] }): Promise<string | null> => open(req, null);
 /** The printer selection changed: no pending answer may apply to the next printer. */
 export const cancelDialog = (): void => { if (dialog.resolve) close(dialog.cancelValue); };

@@ -3,7 +3,7 @@ import * as bridge from '../core/bridge';
 import { boot, type SettingsBoot } from '../core/boot';
 import { t } from '../core/i18n';
 import { m } from '../state/main';
-import { rememberOpener } from '../core/dialog';
+import { ask, rememberOpener } from '../core/dialog';
 
 // Settings form. It resets to the saved values each time Settings opens (show_view), so abandoned edits don't
 // linger; Save stays off until the source passed a test, as the plugin also requires.
@@ -68,6 +68,12 @@ export function save(): void {
   window.setTimeout(() => { saving.value = false; }, 4000);
 }
 export function cancel(): void { bridge.postSettings({ type: 'cancel' }); }
+/** Leave Settings (Cancel, or another tab): unsaved edits ask first. False when the user keeps editing. */
+export async function leave(): Promise<boolean> {
+  if (dirty.value && !await ask({ title: t('set.discardTitle'), text: t('set.discardText'), yes: t('set.discard'), no: t('set.keepEditing'), danger: true })) return false;
+  cancel();
+  return true;
+}
 
 function onMessage(d: any): void {
   if (d.type === 'show_view') {

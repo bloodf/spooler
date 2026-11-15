@@ -6,8 +6,8 @@ there (`# --- ... ---`) follow the same order as this page.
 
 ## The page
 
-The tab, the spool window and the Settings window show one Vue 3 + PrimeVue 4 page (the shared Orca UI
-foundation, vendored in `ui/shared/`). `ui/` builds it into a single offline HTML file; `scripts/embed_ui.py`
+The tab, the spool window and the Settings window show one Vue 3 + PrimeVue 5 page (the shared Orca UI
+foundation 4.0.1, vendored in `ui/shared/` with its licences, Lucide icons and the Manrope font included). `ui/` builds it into a single offline HTML file; `scripts/embed_ui.py`
 stores it zlib-compressed at the end of `spooler_any.py`, so the plugin is still one file. `page_html()` fills
 the boot JSON: which surface (`tab`, `main`, `settings`), the saved settings, the host language and the
 user's language choice (`ui_language` in the settings file). The message contract with the plugin is the
@@ -144,6 +144,10 @@ data folder is shared by all plugins. So from load to unload Spooler rewrites
 `session` per load, the process id and the Spoolman address without user name or password), and
 says `"stopped"` when it unloads. OrcaSlicer calls `on_load` even when the Spooler page is turned
 off in its Plugins dialog, so presence keeps running then.
+
+Spooler does not book the filament of Anycubic Kobra prints; Kobra Control does. If Spooler ever
+books them, it must publish `"books": ["anycubic"]` under `provides` in `presence.json` in the same
+change, so Kobra Control stops booking in that Spoolman and no print counts twice.
 
 u1control does the same in `<OrcaSlicer data folder>/u1control/presence.json`. Only while that
 file is active, fresh (20 s), of this OrcaSlicer process and asks for the stock (its tab shows it)

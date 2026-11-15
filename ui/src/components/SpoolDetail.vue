@@ -1,24 +1,226 @@
 <script setup lang="ts">
-import { t, tn, fmt } from '../core/i18n';
-const props = defineProps<{ detail: null | { prints: { time: number; name?: string; grams: number; cost?: number | null }[]; grams: number;
-  cost: number | null; sign: string; rate: number | null; weeks: number | null } }>();
-const money = (v: unknown) => (typeof v === 'number' ? (props.detail?.sign ?? '') + fmt.number(v, 2) : '–');
-const date = (unix: number) => new Intl.DateTimeFormat(document.documentElement.lang || undefined, { dateStyle: 'medium' }).format(new Date(unix * 1000));
+import { computed, nextTick, ref, watch } from 'vue';
+import Button from 'primevue/button';
+import Column from 'primevue/column';
+import DataTable from 'primevue/datatable';
+import InputText from 'primevue/inputtext';
+import { OuiIcon, OuiKeyValue, OuiLevel, OuiPanel, OuiReadout, OuiSpark, OuiSpool, OuiSwatch, type OuiFact } from '../../shared/src/components';
+import { archive as archiveIcon, external, hourglass, scale, spool as spoolIcon, x } from '../../shared/src/icons';
+import SpoolChips from './SpoolChips.vue';
+import { boot } from '../core/boot';
+import { m, dupes } from '../state/main';
+import { menu, closeDetail, setMode, sendAction, type MenuMode } from '../state/menu';
+import { ask, prompt } from '../core/dialog';
+import { note } from '../state/main';
+import { t, tn, fmt, locale } from '../core/i18n';
+import { driedDays, gramsValid, formatWeight, levelTone, lowLevel, noteText, originalWeight, percentLeft, shown, spoolPaint, tagUids, type Spool } from '../logic/spools';
+
+// The selected spool, beside the list: what it is and how much is left (the page's one accent block), what you can do
+// to it (Spoolman only), its facts, its weekly use and the prints that used it. The plugin sends the print history
+// (spool_detail) when the spool is picked.
+interface Detail { prints: { time: number; name?: string; grams: number; cost?: number | null }[]; grams: number; cost: number | null; sign: string; rate: number | null; weeks: number | null }
+const props = defineProps<{ spool: Spool }>();
+const s = computed(() => props.spool);
+const f = computed(() => s.value.filament || {});
+const detail = computed<Detail | null>(() => menu.detail);
+const ex = computed(() => shown(m.disp, 'exact_weight'));
+const w = (g: unknown) => formatWeight(g, ex.value, locale.value);
+const name = computed(() => f.value.name || t('spool.numbered', { id: s.value.id }));
+const pct = computed(() => percentLeft(s.value));
+const original = computed(() => originalWeight(s.value));
+const level = computed(() => lowLevel(s.value.remaining_weight, m.low));
+const stale = computed(() => !!m.loadError);
+const canAct = computed(() => m.source === 'spoolman');
+const money = (v: unknown) => (typeof v === 'number' ? (detail.value?.sign ?? '') + fmt.number(v, 2) : '—');
+
+// The amount, big: grams (or the percentage, when Settings asks for it), with the rest as its sub line.
+const amount = computed(() => {
+  const known = typeof s.value.remaining_weight === 'number';
+  if (!known) return { value: pct.value === null ? null : pct.value, unit: '%', sub: '' };
+  const [value, unit] = w(s.value.remaining_weight).split(' ');
+  const of = typeof original.value === 'number' ? t('weight.of', { total: w(original.value) }) : '';
+  if (m.wMode === 'percent' && pct.value !== null) return { value: pct.value, unit: '%', sub: `${value} ${unit} ${of}`.trim() };
+  return { value, unit, sub: [of, m.wMode === 'both' && pct.value !== null ? `${pct.value}%` : ''].filter(Boolean).join(' · ') };
+});
+const lasts = computed(() => {
+  const d = detail.value;
+  if (!d) return { value: null, unit: '', sub: t('common.loading') };
+  if (d.rate === null) return { value: null, unit: '', sub: t('detail.noRate') };
+  const sub = t('detail.atRate', { g: Math.round(d.rate) });
+  if (d.weeks === null) return { value: null, unit: '', sub };
+  if (d.weeks < 1) return { value: '< 1', unit: tn('detail.weeks', 1), sub };
+  const digits = d.weeks < 10 && Math.round(d.weeks * 10) % 10 ? 1 : 0;
+  // A number shown with a decimal takes the plural (pt-BR's rules would make 1,6 singular).
+  return { value: fmt.number(d.weeks, digits), unit: digits ? t('detail.weeks_other') : tn('detail.weeks', Math.round(d.weeks)), sub };
+});
+// Grams booked to this spool in each of the last 8 weeks (oldest first), from the prints the plugin sent.
+const weeks = computed(() => {
+  const out = new Array<number>(8).fill(0), now = m.now / 1000;
+  for (const p of detail.value?.prints ?? []) { const i = 7 - Math.floor((now - p.time) / 604800); if (i >= 0 && i < 8) out[i] += p.grams; }
+  return out.map(v => Math.round(v));
+});
+const dried = computed(() => driedDays(s.value));
+const price = computed(() => {
+  const raw = (s.value as { price?: unknown }).price ?? (f.value as { price?: unknown }).price;
+  return typeof raw === 'number' && typeof original.value === 'number' && original.value > 0 ? (raw / original.value) * 1000 : null;
+});
+const dupe = computed(() => { const d = dupes.value.get(f.value.id as number); return d && d.count > 1 ? d : null; });
+const facts = computed<OuiFact[]>(() => [
+  // Location, Dried and RFID follow their Display switches; price and use have none.
+  ...(shown(m.disp, 'location') ? [{ label: t('menu.location'), value: s.value.location }] : []),
+  ...(shown(m.disp, 'dried') ? [{ label: t('detail.dried'), value: dried.value === null ? null : dried.value === 0 ? t('detail.today') : tn('detail.daysAgo', dried.value) }] : []),
+  { label: t('detail.price'), value: price.value === null ? null : `${money(price.value)} / kg` },
+  { label: t('detail.used'), value: typeof s.value.used_weight === 'number' ? [w(s.value.used_weight), detail.value && detail.value.cost !== null ? money(detail.value.cost) : ''].filter(Boolean).join(' · ') : null },
+  ...(shown(m.disp, 'rfid') ? [{ label: t('detail.rfid'), value: tagUids(s.value).join(', '), mono: true }] : []),
+  ...(dupe.value ? [{ label: t('detail.sameFilament'), value: t('spool.together', { n: dupe.value.count, w: w(dupe.value.total) }) }] : []),
+]);
+const noteLine = computed(() => noteText(s.value, { ...m.disp, comment: true }, boot.own_fields, v => t('spool.lot', { lot: v })));
+const date = (unix: number) => new Intl.DateTimeFormat(locale.value, { dateStyle: 'medium' }).format(new Date(unix * 1000));
+
+// ------------------------------------------------------------------ actions
+const HINTS = { move: 'menu.location', weigh: 'menu.scale', use: 'menu.used', remain: 'menu.remainLabel', note: 'menu.noteLabel' } as const;
+const hint = computed(() => t(HINTS[menu.mode as keyof typeof HINTS] ?? 'menu.used'));
+const isText = computed(() => menu.mode === 'move' || menu.mode === 'note');
+const locations = computed(() => [...new Set([...m.locations, ...m.spools.map(x => x.location)])].filter(Boolean).sort() as string[]);
+// The plugin takes 0 < grams <= 100,000 for a weight or a use (MAX_GRAMS): refuse the rest here, with the reason.
+// Grams left may be 0 (an empty spool).
+const gramsOk = computed(() => isText.value || gramsValid(menu.val, menu.mode === 'remain'));
+const help = computed(() => (menu.mode === 'note' ? t('menu.noteHelp')
+  : menu.mode === 'move' ? (s.value.u1_bound ? t('menu.u1Bound', { location: s.value.location }) : '')
+  : menu.val !== '' && !gramsOk.value ? t(menu.mode === 'remain' ? 'menu.remainInvalid' : 'menu.gramsInvalid')
+  : t(menu.mode === 'remain' ? 'menu.remainHelp' : 'menu.gramsHelp')));
+const panel = ref<HTMLElement | null>(null);
+let opener: MenuMode = '';
+watch(() => menu.mode, async (mode, was) => {   // the keyboard goes to the form's field, and back to the action that opened it
+  await nextTick();
+  if (mode) { opener = mode; (panel.value?.querySelector('input') as HTMLElement | null)?.focus(); }
+  else if (was && panel.value?.contains(document.activeElement) === false) (panel.value?.querySelector(`[data-focus-key="act:${opener}"]`) as HTMLElement | null)?.focus();
+});
+function cancel() { const from = menu.mode; setMode(''); void nextTick(() => (panel.value?.querySelector(`[data-focus-key="act:${from}"]`) as HTMLElement | null)?.focus()); }
+
+async function archive() {
+  if (!await ask({ title: t('menu.archive'), text: t('confirm.archive', { name: name.value, id: s.value.id }), yes: t('menu.archive'), no: t('common.goBack') })) return;
+  sendAction('archive', { filament: f.value.id });
+}
+// One or several (a multi-pack): the count is asked in the same confirmation.
+async function addSpool() {
+  const answer = await prompt({ title: t('menu.add'), text: t('confirm.add', { name: name.value }), yes: t('menu.addYes'), no: t('common.goBack'),
+    input: { label: t('menu.addCount'), value: '1' } });
+  if (answer === null) return;
+  const count = Number(answer.trim());
+  if (!Number.isInteger(count) || count < 1 || count > 20) { note('error', t('menu.addCountInvalid')); return; }
+  sendAction('add', { filament: f.value.id, ...(count > 1 ? { count } : {}) });
+}
+async function save() {
+  if (!gramsOk.value) return;
+  if (menu.mode === 'note') { sendAction('comment', { comment: menu.val }); return; }
+  if (menu.mode === 'remain') { sendAction('remaining', { grams: menu.val.replace(',', '.') }); return; }
+  if (menu.mode !== 'move') { sendAction(menu.mode, { grams: menu.val.replace(',', '.') }); return; }
+  if (s.value.u1_bound && !await ask({ title: t('menu.move'), text: t('confirm.unlink', { location: s.value.location }), yes: t('confirm.unlinkYes'), no: t('common.goBack'), danger: true })) return;
+  sendAction('move', { location: menu.val });
+}
 </script>
+
 <template>
-  <div class="sd" role="status" aria-live="polite">
-    <p v-if="!detail" class="oui-meta">{{ t('common.loading') }}</p>
-    <p v-else-if="!detail.prints.length" class="oui-meta">{{ t('detail.none') }}</p>
-    <template v-else>
-      <p class="oui-meta">{{ tn('detail.prints', detail.prints.length) }} · {{ fmt.number(detail.grams, 1) }} g · {{ money(detail.cost) }}</p>
-      <p class="oui-meta">{{ detail.rate === null ? t('detail.noRate') : t('detail.rate', { g: Math.round(detail.rate) }) }}<template
-        v-if="detail.rate !== null && detail.weeks !== null"> · {{ detail.weeks < 1 ? t('detail.lessWeek') : tn('detail.weeksLeft', Math.round(detail.weeks)) }}</template></p>
-      <table class="sp-table"><thead><tr><th scope="col">{{ t('stats.col.date') }}</th><th scope="col">{{ t('stats.col.print') }}</th>
-        <th scope="col" class="r">{{ t('stats.col.weight') }}</th><th scope="col" class="r">{{ t('stats.col.cost') }}</th></tr></thead>
-        <tbody><tr v-for="(p, i) in detail.prints.slice(0, 20)" :key="i"><td>{{ date(p.time) }}</td><td>{{ p.name || t('stats.print') }}</td>
-          <td class="r sp-num">{{ fmt.number(p.grams, 1) }} g</td><td class="r sp-num">{{ money(p.cost) }}</td></tr></tbody></table>
-      <p v-if="detail.prints.length > 20" class="oui-meta">{{ t('detail.latest', { n: detail.prints.length }) }}</p>
+  <OuiPanel :title="t('spool.numbered', { id: s.id })" :icon="spoolIcon" tone="accent" :data-detail="s.id">
+    <template #actions>
+      <Button v-if="canAct" severity="secondary" text size="small" :label="t('menu.open')" @click="sendAction('open')"><template #icon><OuiIcon :icon="external" :size="14" /></template></Button>
+      <Button severity="secondary" text size="small" :aria-label="t('detail.close')" :title="t('detail.close')" data-test="detail-close" @click="closeDetail"><template #icon><OuiIcon :icon="x" :size="14" /></template></Button>
     </template>
-  </div>
+
+    <div class="sd-hero oui-hero" :class="{ 'oui-on-band': !stale }" :data-tone="stale ? 'neutral' : undefined">
+      <OuiSpool v-bind="spoolPaint(f)" :fraction="pct === null ? null : pct / 100" :size="112" />
+      <div class="sd-id">
+        <SpoolChips :spool="s" band />
+        <p class="sd-name">{{ name }}</p>
+        <p class="oui-meta sd-sub"><OuiSwatch v-bind="spoolPaint(f)" />{{ [f.vendor?.name, f.material, typeof f.diameter === 'number' ? `${f.diameter} mm` : '', f.color_hex ? '#' + f.color_hex.replace(/^#/, '').toUpperCase() : ''].filter(Boolean).join(' · ') }}</p>
+        <div class="sd-amount">
+          <OuiReadout :icon="scale" :tone="level === 'out' ? 'danger' : level === 'low' ? 'warn' : 'accent'" :label="t('list.col.left')" :value="amount.value" :unit="amount.unit" :sub="amount.sub" size="lg"
+                      :stale="stale" :unknown-label="t('spool.unknownLeft')" data-test="weight" />
+          <OuiReadout v-if="canAct" :icon="hourglass" tone="sky" :label="t('detail.lasts')" :value="lasts.value" :unit="lasts.unit" :sub="lasts.sub" size="lg" :stale="stale" :unknown-label="lasts.sub" />
+        </div>
+        <OuiLevel :fraction="pct === null ? null : pct / 100" :tone="levelTone(level)" :label="pct === null ? t('spool.unknownLeft') : t('spool.pctLeft', { pct })" />
+      </div>
+    </div>
+
+    <div v-if="canAct" :id="`sc-panel-${s.id}`" ref="panel" class="sd-act" role="group" :aria-label="t('menu.label', { id: s.id })" @keydown.escape.prevent="menu.mode && cancel()">
+      <form v-if="menu.mode" class="sd-form oui-well" @submit.prevent="save">
+        <div class="oui-field"><label :for="`sc-in-${s.id}`">{{ hint }}</label>
+          <InputText v-if="menu.mode === 'move'" :id="`sc-in-${s.id}`" v-model="menu.val" maxlength="64" :list="`sc-locs-${s.id}`" aria-describedby="sc-help" />
+          <InputText v-else-if="menu.mode === 'note'" :id="`sc-in-${s.id}`" v-model="menu.val" maxlength="1024" aria-describedby="sc-help" />
+          <InputText v-else :id="`sc-in-${s.id}`" v-model="menu.val" inputmode="decimal" :invalid="menu.val !== '' && !gramsOk" aria-describedby="sc-help" /></div>
+        <datalist v-if="menu.mode === 'move'" :id="`sc-locs-${s.id}`"><option v-for="l in locations" :key="l" :value="l" /></datalist>
+        <Button type="submit" :label="t('common.save')" :disabled="!gramsOk" data-act="sp-go" />
+        <Button severity="secondary" text :label="t('common.cancel')" @click="cancel" />
+        <p id="sc-help" class="oui-meta sd-help" :class="{ 'sd-bad': menu.val !== '' && !gramsOk }">{{ help }}</p>
+      </form>
+      <div v-else class="sd-actions">
+        <Button :label="t('menu.weigh')" data-focus-key="act:weigh" @click="setMode('weigh')"><template #icon><OuiIcon :icon="scale" :size="14" /></template></Button>
+        <Button severity="secondary" :label="t('menu.use')" data-focus-key="act:use" @click="setMode('use')" />
+        <Button severity="secondary" :label="t('menu.remain')" data-focus-key="act:remain" @click="setMode('remain')" />
+        <Button severity="secondary" :label="t('menu.move')" data-focus-key="act:move" @click="setMode('move', s.location || '')" />
+        <Button severity="secondary" :label="t(s.comment ? 'menu.editNote' : 'menu.addNote')" data-focus-key="act:note" @click="setMode('note', s.comment || '')" />
+        <Button severity="secondary" :label="t('menu.dried')" @click="sendAction('dried')" />
+        <Button v-if="dried !== null" severity="secondary" :label="t('menu.clearDried')" @click="sendAction('clear_dried')" />
+        <Button v-if="f.id != null" severity="secondary" :label="t('menu.add')" @click="addSpool" />
+        <span class="oui-spacer" />
+        <Button v-if="s.archived" severity="secondary" :label="t('menu.unarchive')" @click="sendAction('unarchive')"><template #icon><OuiIcon :icon="archiveIcon" :size="14" /></template></Button>
+        <Button v-else severity="danger" outlined :label="t('menu.archive')" @click="archive"><template #icon><OuiIcon :icon="archiveIcon" :size="14" /></template></Button>
+      </div>
+    </div>
+    <hr class="oui-divider sd-rule">
+
+    <OuiKeyValue inline :items="facts" />
+    <p v-if="noteLine" class="sd-note"><span class="oui-label">{{ t('menu.noteLabel') }}</span>{{ noteLine }}</p>
+
+    <template v-if="canAct">
+      <div class="sd-usage">
+        <div><h3 class="oui-label">{{ t('detail.usedPerWeek') }}</h3>
+          <p v-if="!detail" class="oui-muted" role="status">{{ t('common.loading') }}</p>
+          <p v-else-if="detail.rate === null" class="oui-muted">{{ t('detail.noRate') }}</p>
+          <p v-else class="oui-num"><strong>{{ Math.round(detail.rate) }} g</strong> <span class="oui-muted">{{ t('detail.rateNote') }}</span></p></div>
+        <OuiSpark v-if="detail" type="bars" :values="weeks" :width="176" :height="40" :label="t('detail.weeksAria', { values: weeks.join(', ') })" />
+      </div>
+      <h3 class="oui-label sd-h">{{ t('detail.lastPrints') }}</h3>
+      <div class="sd" role="status" aria-live="polite">
+        <p v-if="!detail" class="oui-meta">{{ t('common.loading') }}</p>
+        <p v-else-if="!detail.prints.length" class="oui-meta">{{ t('detail.none') }}</p>
+        <template v-else>
+          <p class="oui-meta">{{ tn('detail.prints', detail.prints.length) }} · {{ fmt.number(detail.grams, 1) }} g · {{ money(detail.cost) }}</p>
+          <DataTable :value="detail.prints.slice(0, 20)" size="small" class="sd-history">
+            <Column :header="t('stats.col.date')" style="width: 30%"><template #body="{ data }">{{ date(data.time) }}</template></Column>
+            <Column :header="t('stats.col.print')"><template #body="{ data }"><span class="oui-truncate sd-print" :title="data.name || undefined">{{ data.name || t('stats.print') }}</span></template></Column>
+            <Column :header="t('stats.col.weight')" class="oui-num" style="width: 78px"><template #body="{ data }">{{ fmt.number(data.grams, 1) }} g</template></Column>
+            <Column :header="t('stats.col.cost')" class="oui-num" style="width: 72px"><template #body="{ data }">{{ money(data.cost) }}</template></Column>
+          </DataTable>
+          <p v-if="detail.prints.length > 20" class="oui-meta">{{ t('detail.latest', { n: detail.prints.length }) }}</p>
+        </template>
+      </div>
+    </template>
+  </OuiPanel>
 </template>
-<style scoped>.sd { display: grid; gap: 6px; } .sd p { margin: 0; }</style>
+
+<style>
+.sd-hero { display: flex; flex-wrap: wrap; align-items: center; gap: var(--oui-s4) var(--oui-s5); }
+.sd-id { flex: 1 1 240px; display: grid; gap: var(--oui-s1); min-width: 0; }
+.sd-name { font-size: var(--oui-text-xl); font-weight: 700; line-height: 1.3; overflow-wrap: anywhere; }
+.sd-sub { display: flex; align-items: center; gap: 6px; }
+.sd-amount { display: flex; flex-wrap: wrap; gap: var(--oui-s3) var(--oui-s8); margin-block: var(--oui-s2) var(--oui-s1); }
+.sd-act { margin-top: var(--oui-s4); }
+.sd-actions { display: flex; flex-wrap: wrap; gap: var(--oui-s2); }
+.sd-form { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--oui-s2); padding: var(--oui-s3); }
+.sd-form > .oui-field { flex: 1 1 200px; }
+.sd-help { flex: 1 0 100%; }
+.sd-help:empty { display: none; }
+.sd-bad { color: var(--oui-danger); }
+.sd-rule { margin-block: var(--oui-s4); }
+.sd-note { display: grid; gap: 2px; margin-top: var(--oui-s3); overflow-wrap: anywhere; }
+.sd-usage { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: var(--oui-s3); margin-top: var(--oui-s5); padding: var(--oui-s3) var(--oui-s4);
+  border-radius: var(--oui-radius); background: var(--oui-primary-soft); }
+.sd-usage strong { font-size: var(--oui-text-xl); font-weight: 600; }
+.sd-h { margin-block: var(--oui-s5) var(--oui-s1); }
+.sd { display: grid; gap: var(--oui-s2); }
+.sd-history { margin-inline: calc(-1 * var(--oui-s3)); }
+.sd-history table { table-layout: fixed; width: 100%; }
+.sd-print { display: block; }
+</style>

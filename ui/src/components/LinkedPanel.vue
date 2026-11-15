@@ -1,7 +1,11 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import SpoolCard from './SpoolCard.vue';
+import Button from 'primevue/button';
+import { OuiPanel } from '../../shared/src/components';
+import { printer } from '../../shared/src/icons';
+import SpoolSlot from './SpoolSlot.vue';
 import { m } from '../state/main';
+import { showSpool } from '../state/menu';
 import { t, tn } from '../core/i18n';
 import type { Spool } from '../logic/spools';
 
@@ -27,20 +31,18 @@ const slotsOf = (key: string | number, slots: Map<number, Spool>) => (key === 'e
 const count = (units: [string | number, Map<number, Spool>][]) => units.reduce((a, u) => a + u[1].size, 0);
 </script>
 <template>
-  <section v-for="p in printers" :key="p.name" class="sp-card lp" :aria-label="p.name">
-    <h2>{{ p.name }} <span class="oui-meta">{{ tn('linked.count', count(p.units)) }}</span></h2>
-    <template v-for="[key, slots] in p.units" :key="String(key)">
-      <strong>{{ key === 'ext' ? t('printer.external') : `${t('printer.ams')} ${+key + 1}` }}</strong>
-      <div class="lp-grid"><div v-for="i in slotsOf(key, slots)" :key="i" class="lp-cell"><span class="oui-meta">{{ key === 'ext' ? 'E' : i + 1 }}</span>
-        <SpoolCard v-if="slots.get(i)" :spool="slots.get(i)!" />
-        <div v-else class="lp-empty"><strong>{{ t('tray.empty') }}</strong><span class="oui-meta">{{ t('linked.noSpool') }}</span></div></div></div>
-    </template>
-    <p class="oui-meta">{{ t('linked.note') }}</p>
-  </section>
+  <OuiPanel v-for="p in printers" :key="p.name" class="lp" :title="p.name" :icon="printer" tone="magenta" :meta="tn('linked.count', count(p.units))">
+    <div class="oui-stack">
+      <template v-for="[key, slots] in p.units" :key="String(key)">
+        <h3 class="oui-label">{{ key === 'ext' ? t('printer.external') : `${t('printer.ams')} ${+key + 1}` }}</h3>
+        <div class="oui-cards">
+          <SpoolSlot v-for="i in slotsOf(key, slots)" :key="i" :label="key === 'ext' ? 'E' : String(i + 1)" :spool="slots.get(i)">
+            <p v-if="!slots.get(i)" class="oui-meta">{{ t('linked.noSpool') }}</p>
+            <template v-if="slots.get(i)" #actions><Button severity="secondary" text size="small" :label="t('printer.openSpool')" @click="showSpool(slots.get(i)!.id)" /></template>
+          </SpoolSlot>
+        </div>
+      </template>
+      <p class="oui-meta">{{ t('linked.note') }}</p>
+    </div>
+  </OuiPanel>
 </template>
-<style scoped>
-.lp { display: grid; gap: 8px; }
-.lp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; }
-.lp-cell { display: grid; gap: 4px; }
-.lp-empty { display: grid; padding: 10px; border: 1px dashed var(--oui-border); border-radius: 12px; }
-</style>

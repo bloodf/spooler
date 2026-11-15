@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import Message from 'primevue/message';
+import { OuiBanner } from '../../shared/src/components';
 import { m } from '../state/main';
 import { t } from '../core/i18n';
 // X01/X05: with U1 Control running in this OrcaSlicer, say in one line where the U1 printer and its links live,
@@ -7,9 +7,12 @@ import { t } from '../core/i18n';
 defineProps<{ where: 'spools' | 'printer' }>();
 </script>
 <template>
-  <Message v-if="m.peers.u1control" severity="info" data-test="peer-u1">
-    <span>{{ where === 'printer' ? t('peer.printer') : t('peer.spools') }}</span>
+  <OuiBanner v-if="m.peers.u1control" tone="info" :title="where === 'printer' ? t('peer.printer') : t('peer.spools')" data-test="peer-u1">
     <details class="pn"><summary>{{ t('peer.whyTitle') }}</summary><p>{{ t('peer.whyBody') }}</p></details>
-  </Message>
+  </OuiBanner>
 </template>
-<style scoped>.pn summary { cursor: pointer; } .pn p { margin: 6px 0 0; }</style>
+<style>
+.pn { display: inline; }
+.pn summary { display: inline; cursor: pointer; color: var(--oui-primary); font-weight: 600; }
+.pn[open] { display: block; margin-top: var(--oui-s1); }
+</style>

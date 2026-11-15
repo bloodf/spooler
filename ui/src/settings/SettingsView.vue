@@ -6,16 +6,16 @@ import InputNumber from 'primevue/inputnumber';
 import Select from 'primevue/select';
 import Checkbox from 'primevue/checkbox';
 import RadioButton from 'primevue/radiobutton';
-import Logo from '../components/Logo.vue';
+import { OuiFormRow, OuiFormSection, OuiIcon, OuiSettings, OuiStatus, OuiSwatch, type OuiSettingsSection } from '../../shared/src/components';
+import { chart, check, drop, eye, info, languages, layers, plus, printer, save as saveIcon, scale, spoolman, store, x } from '../../shared/src/icons';
 import SourceBlock from './SourceBlock.vue';
 import SetupWizard from './SetupWizard.vue';
 import * as bridge from '../core/bridge';
 import { boot } from '../core/boot';
 import { m } from '../state/main';
-import { ask } from '../core/dialog';
 import { t, tn, langPref, setLangPref, autoLocale, onLangPref } from '../core/i18n';
 import type { LangPref } from '../core/i18n-core';
-import { form, saving, dirty, ready, saveWhy, update, cancel, save, checkUpdate, startSettings, openWizard, wizard } from './state';
+import { form, saving, dirty, ready, saveWhy, update, save, checkUpdate, startSettings, openWizard, wizard, leave } from './state';
 
 const stop = startSettings();
 onBeforeUnmount(stop);
@@ -56,166 +56,167 @@ const setDays = (name: string, v: number | null) => { form.drying = { ...form.dr
 const currencies = computed(() => [{ v: 'spoolman', label: t('set.cur.spoolman', { code: form.cur_code }) }, { v: 'gbp', label: '£ GBP' }, { v: 'eur', label: '€ EUR' }, { v: 'usd', label: '$ USD' }]);
 const langOptions = computed(() => [{ value: 'auto', label: t('lang.auto', { current: t(`lang.${autoLocale.value}` as any) }) },
   { value: 'en', label: t('lang.en') }, { value: 'pt-BR', label: t('lang.pt-BR') }]);
+const setDisp = (k: string, v: unknown) => { form.display = { ...form.display, [k]: !!v }; };
 
-// Data loss: leaving with unsaved edits asks first.
-async function leave() {
-  if (dirty.value && !await ask({ title: t('set.discardTitle'), text: t('set.discardText'), yes: t('set.discard'), no: t('set.keepEditing'), danger: true })) return;
-  cancel();
-}
+// The index beside the sections; the source flags itself until it passed a test (Save waits for it).
+const sections = computed<OuiSettingsSection[]>(() => [
+  { id: 's-src', label: t('set.source'), icon: spoolman, ...(ready.value ? {} : { state: 'warn' as const }) },
+  { id: 's-reorder', label: t('set.reorder'), icon: store },
+  { id: 's-weights', label: t('set.weights'), icon: scale },
+  { id: 's-layout', label: t('set.layout'), icon: layers },
+  { id: 's-check', label: t('set.check'), icon: check },
+  { id: 's-display', label: t('set.display'), icon: eye },
+  { id: 's-dry', label: t('set.drying'), icon: drop },
+  { id: 's-printer', label: t('set.printer'), icon: printer },
+  { id: 's-stats', label: t('set.stats'), icon: chart },
+  { id: 's-lang', label: t('lang.title'), icon: languages },
+]);
 </script>
 
 <template>
+  <!-- One root: the tab hides this view with v-show and names it as a tab panel. -->
   <div class="set">
-    <header class="oui-header set-head">
-      <span class="sp-brand"><Logo /><h1>{{ t('set.title') }}</h1></span><span class="sp-grow" />
-      <Button severity="secondary" text :aria-label="t('set.feedback')" :title="t('set.feedback')" @click="bridge.postSettings({ type: 'feedback' })">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.5 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8 8.5 8.5 0 0 1 8.5-8.5h.5a8.5 8.5 0 0 1 8 8z"/></svg></Button>
-    </header>
-    <div class="set-body">
-      <section class="sp-card set-sec" aria-labelledby="s-src">
-        <div><h2 id="s-src">{{ t('set.source') }}</h2><SourceBlock v-if="!wizard.open" /><p v-else class="oui-meta">{{ t('set.inGuide') }}</p></div>
-        <aside class="set-aside"><h3>{{ t('set.guide') }}</h3><p class="oui-meta">{{ t('set.guideText') }}</p>
-          <Button severity="secondary" outlined :label="t('set.openGuide')" data-test="open-guide" data-focus-key="open-guide" @click="openWizard" /></aside>
-      </section>
+  <OuiSettings :sections="sections" :nav-label="t('set.title')">
+    <div class="oui-stack">
+      <OuiFormSection id="s-src" :icon="spoolman" tone="magenta" :title="t('set.source')" :description="t('set.guideText')">
+        <template #actions><Button severity="secondary" size="small" :label="t('set.openGuide')" data-test="open-guide" data-focus-key="open-guide" @click="openWizard" /></template>
+        <div class="set-pad"><SourceBlock v-if="!wizard.open" /><p v-else class="oui-meta">{{ t('set.inGuide') }}</p></div>
+      </OuiFormSection>
 
-      <section class="sp-card set-sec" aria-labelledby="s-reorder">
-        <div><h2 id="s-reorder">{{ t('set.reorder') }}</h2>
-          <span class="sp-row"><Checkbox v-model="form.show_cart" input-id="show-cart" binary /><label for="show-cart">{{ t('set.cart') }}</label></span>
-          <div class="oui-field"><label for="low-stock">{{ t('set.lowStock') }}</label>
-            <InputNumber v-model="form.low_stock" input-id="low-stock" :min="0" :step="10" :use-grouping="false" suffix=" g" aria-describedby="low-help" /></div>
-          <p id="low-help" class="oui-meta">{{ t('set.lowHelp') }}</p></div>
-        <aside class="set-aside" aria-live="polite"><h3>{{ t('set.preview') }}</h3>
+      <OuiFormSection id="s-reorder" :icon="store" tone="lime" :title="t('set.reorder')">
+        <OuiFormRow :label="t('set.cart')" for="show-cart"><Checkbox v-model="form.show_cart" input-id="show-cart" binary /></OuiFormRow>
+        <OuiFormRow :label="t('set.lowStock')" for="low-stock" :hint="t('set.lowHelp')">
+          <InputNumber v-model="form.low_stock" input-id="low-stock" :min="0" :step="10" :use-grouping="false" suffix=" g" aria-describedby="low-help" /><span id="low-help" class="oui-sr">{{ t('set.lowHelp') }}</span></OuiFormRow>
+        <div class="set-pad" aria-live="polite"><div class="set-pv oui-well">
+          <p class="oui-label">{{ t('set.preview') }}</p>
           <p v-if="!lowPreview" class="oui-meta">{{ t('set.previewNoSource') }}</p>
           <p v-else-if="lowPreview.invalid" class="oui-meta">{{ t('set.previewEnter') }}</p>
           <template v-else><p>{{ lowPreview.n ? tn('set.previewCount', lowPreview.n, { g: form.low_stock }) : t('set.previewNone', { g: form.low_stock }) }}</p>
-            <ul class="set-list"><li v-for="s in lowPreview.list.slice(0, 5)" :key="s.id"><span>{{ s.name }}</span><span class="sp-num">{{ Math.round(s.w) }} g</span></li></ul>
-            <p v-if="lowPreview.n > 5" class="oui-meta">{{ t('set.previewMore', { n: lowPreview.n - 5 }) }}</p></template></aside>
-      </section>
+            <ul class="set-list"><li v-for="s in lowPreview.list.slice(0, 5)" :key="s.id"><span class="oui-truncate">{{ s.name }}</span><span class="oui-num">{{ Math.round(s.w) }} g</span></li></ul>
+            <p v-if="lowPreview.n > 5" class="oui-meta">{{ t('set.previewMore', { n: lowPreview.n - 5 }) }}</p></template>
+        </div></div>
+      </OuiFormSection>
 
-      <section class="sp-card set-sec" aria-labelledby="s-weights">
-        <div><h2 id="s-weights">{{ t('set.weights') }}</h2><p class="oui-meta" id="w-l">{{ t('set.weightsLabel') }}</p>
-          <div class="sp-row" role="radiogroup" aria-labelledby="w-l"><span v-for="o in weights" :key="o.v" class="sp-row">
-            <RadioButton v-model="form.weight_display" :input-id="`w-${o.v}`" name="weight-display" :value="o.v" /><label :for="`w-${o.v}`">{{ o.label }}</label></span></div></div>
-        <aside class="set-aside"><h3>{{ t('set.preview') }}</h3><div class="set-sample"><span class="set-sw" /><span>PLA Matte - Black</span><span class="sp-num">{{ sample }}</span></div></aside>
-      </section>
+      <OuiFormSection id="s-weights" :icon="scale" :title="t('set.weights')">
+        <OuiFormRow :label="t('set.weightsLabel')">
+          <div class="oui-row" role="radiogroup" :aria-label="t('set.weightsLabel')"><span v-for="o in weights" :key="o.v" class="oui-row set-opt">
+            <RadioButton v-model="form.weight_display" :input-id="`w-${o.v}`" name="weight-display" :value="o.v" /><label :for="`w-${o.v}`">{{ o.label }}</label></span></div>
+        </OuiFormRow>
+        <OuiFormRow :label="t('set.preview')"><span class="set-sample"><OuiSwatch color="#1a1a1a" /><span>PLA Matte - Black</span><strong class="oui-num">{{ sample }}</strong></span></OuiFormRow>
+      </OuiFormSection>
 
-      <section class="sp-card set-sec" aria-labelledby="s-layout">
-        <div><h2 id="s-layout">{{ t('set.layout') }}</h2><p class="oui-meta" id="c-l">{{ t('set.layoutLabel') }}</p>
-          <div class="sp-row" role="radiogroup" aria-labelledby="c-l"><span v-for="c in [1, 2]" :key="c" class="sp-row">
+      <OuiFormSection id="s-layout" :icon="layers" tone="sky" :title="t('set.layout')" :description="t('set.layoutHelp')">
+        <OuiFormRow :label="t('set.layoutLabel')">
+          <div class="oui-row" role="radiogroup" :aria-label="t('set.layoutLabel')"><span v-for="c in [1, 2]" :key="c" class="oui-row set-opt">
             <RadioButton v-model="form.spool_columns" :input-id="`cols-${c}`" name="spool-cols" :value="c" /><label :for="`cols-${c}`">{{ c === 1 ? t('set.one') : t('set.two') }}</label></span></div>
-          <p class="oui-meta">{{ t('set.layoutHelp') }}</p></div>
-        <aside class="set-aside"><h3>{{ t('set.preview') }}</h3><div class="set-cols" :class="{ two: form.spool_columns === 2 }"><span v-for="c in ['#1a1a1a', '#C12E1F', '#2850A8', '#3F8E43']" :key="c" :style="{ borderColor: c }" /></div></aside>
-      </section>
+        </OuiFormRow>
+        <OuiFormRow :label="t('set.preview')"><div class="set-cols" :class="{ two: form.spool_columns === 2 }" aria-hidden="true">
+          <span v-for="c in ['accent', 'teal', 'sky', 'lime']" :key="c" :data-tone="c" /></div></OuiFormRow>
+      </OuiFormSection>
 
-      <section class="sp-card set-sec" aria-labelledby="s-display">
-        <div><h2 id="s-display">{{ t('set.display') }}</h2><p class="oui-meta">{{ t('set.displayHelp') }}</p>
-          <h3>{{ t('set.displaySpools') }}</h3><div class="set-checks">
-            <span v-for="k in SPOOL_KEYS" :key="k" class="sp-row"><Checkbox :input-id="`d-${k}`" binary :model-value="form.display[k] !== false" :data-disp="k"
-              @update:model-value="v => (form.display = { ...form.display, [k]: !!v })" /><label :for="`d-${k}`">{{ t(`disp.${k}` as any) }}</label></span></div>
-          <h3>{{ t('set.displayHeads') }}</h3><div class="set-checks">
-            <span v-for="k in HEAD_KEYS" :key="k" class="sp-row"><Checkbox :input-id="`d-${k}`" binary :model-value="form.display[k] !== false" :data-disp="k"
-              @update:model-value="v => (form.display = { ...form.display, [k]: !!v })" /><label :for="`d-${k}`">{{ t(`disp.${k}` as any) }}</label></span></div></div>
-        <aside class="set-aside"><p class="oui-meta">{{ t('set.displayNote') }}</p></aside>
-      </section>
-
-      <section class="sp-card set-sec" aria-labelledby="s-dry">
-        <div><h2 id="s-dry">{{ t('set.drying') }}</h2><p class="oui-meta">{{ t('set.dryingHelp') }}</p>
-          <table v-if="dryRows.length" class="sp-table set-dry"><tbody><tr v-for="[name, days] in dryRows" :key="name">
-            <th scope="row">{{ name }}</th>
-            <td><InputNumber :model-value="days > 0 ? days : null" :input-id="`dry-${name}`" :min="0" :max="3650" :use-grouping="false" :suffix="' ' + t('set.days')"
-              :aria-label="t('set.daysFor', { m: name })" :placeholder="t('set.noReminder')" @update:model-value="v => setDays(name, v)" @input="e => setDays(name, typeof e.value === 'number' ? e.value : null)" /></td>
-            <td><Button text severity="secondary" :aria-label="t('set.removeMat', { m: name })" :title="t('set.removeMat', { m: name })" @click="removeMat(name)">✕</Button></td></tr></tbody></table>
-          <p v-else class="oui-meta">{{ t('set.dryNone') }}</p>
-          <form class="sp-row" @submit.prevent="addMat"><InputText v-model="newMat" maxlength="24" :placeholder="t('set.matPh')" :aria-label="t('set.matLabel')" />
-            <Button type="submit" severity="secondary" outlined :label="t('set.addMat')" :disabled="!newMat.trim()" /></form></div>
-        <aside class="set-aside"><p class="oui-meta">{{ t('set.dryNote') }}</p></aside>
-      </section>
-
-      <section class="sp-card set-sec" aria-labelledby="s-check">
-        <div><h2 id="s-check">{{ t('set.check') }}</h2>
-          <span class="sp-row"><Checkbox v-model="form.plate_check" input-id="plate-check" binary /><label for="plate-check">{{ t('set.checkOn') }}</label></span>
-          <div class="oui-field"><label for="plate-margin">{{ t('set.margin') }}</label>
-            <InputNumber v-model="form.plate_margin" input-id="plate-margin" :min="0" :max="50" :step="5" suffix=" %" :use-grouping="false" aria-describedby="m-help" /></div>
-          <p id="m-help" class="oui-meta">{{ t('set.marginHelp') }}</p></div>
-        <aside class="set-aside"><h3>{{ t('set.beforeStart') }}</h3><p class="oui-meta">{{ t('set.checkHint') }}</p></aside>
-      </section>
-
-      <section class="sp-card set-sec" aria-labelledby="s-printer">
-        <div><h2 id="s-printer">{{ t('set.printer') }}</h2>
-          <span class="sp-row"><Checkbox v-model="form.progress.on" input-id="show-progress" binary /><label for="show-progress">{{ t('set.progressOn') }}</label></span>
-          <fieldset :disabled="!form.progress.on" class="set-fs">
-            <span class="sp-row"><Checkbox v-model="form.progress.finish" input-id="prog-finish" binary :disabled="!form.progress.on" /><label for="prog-finish">{{ t('set.finish') }}</label></span>
-            <span class="sp-row"><Checkbox v-model="form.progress.slot" input-id="prog-slot" binary :disabled="!form.progress.on" /><label for="prog-slot">{{ t('set.slot') }}</label></span>
-            <p class="oui-meta" id="idle-l">{{ t('set.idle') }}</p>
-            <div class="sp-row" role="radiogroup" aria-labelledby="idle-l"><span v-for="v in ['line', 'hide'] as const" :key="v" class="sp-row">
-              <RadioButton v-model="form.progress.idle" :input-id="`idle-${v}`" name="progress-idle" :value="v" :disabled="!form.progress.on" /><label :for="`idle-${v}`">{{ t(`set.idle.${v}`) }}</label></span></div>
-          </fieldset>
-          <p class="oui-meta">{{ t('set.liveNeeded') }}</p>
-          <span class="sp-row"><Checkbox v-model="form.auto_keep_slots" input-id="auto-keep" binary aria-describedby="auto-keep-help" /><label for="auto-keep">{{ t('set.autoKeep') }}</label></span>
-          <p id="auto-keep-help" class="oui-meta">{{ t('set.autoKeepHelp') }}</p></div>
-        <aside class="set-aside"><h3>{{ t('set.preview') }}</h3>
-          <p v-if="!form.progress.on" class="oui-meta">{{ t('set.progressHidden') }}</p>
-          <div v-else class="set-pp"><strong>Desk_Organiser_Plate_1</strong> <span class="sp-chip">{{ t('progress.state.RUNNING') }}</span> <span class="sp-num">37%</span>
-            <p class="oui-meta">{{ t('progress.layer', { n: 142, total: 380 }) }} · {{ t('progress.left', { d: t('progress.hm', { h: 2, m: '04' }) }) }}<template
-              v-if="form.progress.finish"> · {{ t('progress.done', { time: '11:24' }) }}</template><template v-if="form.progress.slot"> · {{ t('printer.slotOf', { unit: 'AMS 1', n: 2 }) }}</template></p></div></aside>
-      </section>
-
-      <section class="sp-card set-sec" aria-labelledby="s-stats">
-        <div><h2 id="s-stats">{{ t('set.stats') }}</h2>
-          <span class="sp-row"><Checkbox v-model="form.stats.on" input-id="show-stats" binary /><label for="show-stats">{{ t('set.statsOn') }}</label></span>
-          <p class="oui-meta" id="cur-l">{{ t('set.currency') }}</p>
-          <div class="sp-row" role="radiogroup" aria-labelledby="cur-l"><span v-for="c in currencies" :key="c.v" class="sp-row">
-            <RadioButton v-model="form.stats.cur" :input-id="`cur-${c.v}`" name="stats-cur" :value="c.v" :disabled="!form.stats.on" /><label :for="`cur-${c.v}`">{{ c.label }}</label></span></div>
-          <p class="oui-meta">{{ t('set.currencyHelp') }}</p><p class="oui-meta">{{ t('set.statsKeep') }}</p></div>
-        <aside class="set-aside"><h3>{{ t('set.preview') }}</h3>
-          <p v-if="!form.stats.on" class="oui-meta">{{ t('set.statsHidden') }}</p>
-          <p v-else>{{ t('stats.cost') }}: <strong class="sp-num">{{ curSign }}24.10</strong><br><span class="oui-meta">Headphone_Stand.3mf · 94.3 g · {{ curSign }}2.08</span></p></aside>
-      </section>
-
-      <section class="sp-card set-sec" aria-labelledby="s-lang">
-        <div><h2 id="s-lang">{{ t('lang.title') }}</h2>
-          <div class="sp-row"><label id="lang-l">{{ t('lang.label') }}</label>
-            <Select :model-value="langPref" :options="langOptions" option-label="label" option-value="value" aria-labelledby="lang-l" data-test="lang"
-                    @update:model-value="setLangPref($event as LangPref)" /></div>
-          <p class="oui-meta">{{ t('lang.help') }}</p></div>
-        <aside class="set-aside"><p class="oui-meta">{{ t('set.version', { v: boot.version }) }}</p>
-          <div class="sp-row"><Button severity="secondary" text :label="t('set.checkUpdate')" :loading="update.busy" @click="checkUpdate" />
-            <Button v-if="update.newer" text :label="t('set.newer', { v: update.newer })" @click="bridge.postSettings({ type: 'release' })" />
-            <span v-else class="oui-meta" role="status">{{ update.text }}</span></div>
-          <p class="oui-meta set-log">{{ t('set.log', { path: boot.settings.log_path }) }}</p></aside>
-      </section>
+      <OuiFormSection id="s-check" :icon="check" tone="teal" :title="t('set.check')" :description="t('set.checkHint')">
+        <OuiFormRow :label="t('set.checkOn')" for="plate-check"><Checkbox v-model="form.plate_check" input-id="plate-check" binary /></OuiFormRow>
+        <OuiFormRow :label="t('set.margin')" for="plate-margin" :hint="t('set.marginHelp')">
+          <InputNumber v-model="form.plate_margin" input-id="plate-margin" :min="0" :max="50" :step="5" suffix=" %" :use-grouping="false" aria-describedby="m-help" /><span id="m-help" class="oui-sr">{{ t('set.marginHelp') }}</span></OuiFormRow>
+      </OuiFormSection>
     </div>
-    <footer class="set-foot">
-      <span v-if="dirty" class="sp-warn" role="status">{{ t('set.unsaved') }}</span>
-      <span v-if="saveWhy" class="sp-why" id="save-why">{{ saveWhy }}</span>
-      <span class="sp-grow" />
-      <Button severity="secondary" outlined :label="t('common.cancel')" data-test="cancel" @click="leave" />
-      <Button :label="t('set.save')" :disabled="!ready" :loading="saving" aria-describedby="save-why" data-test="save" @click="save" />
-    </footer>
-    <SetupWizard />
+
+    <div class="oui-stack">
+      <OuiFormSection id="s-display" :icon="eye" tone="violet" :title="t('set.display')" :description="t('set.displayHelp')">
+        <div class="set-pad">
+          <h3 class="oui-label">{{ t('set.displaySpools') }}</h3>
+          <div class="set-checks"><span v-for="k in SPOOL_KEYS" :key="k" class="oui-row set-opt"><Checkbox :input-id="`d-${k}`" binary :model-value="form.display[k] !== false" :data-disp="k"
+            @update:model-value="v => setDisp(k, v)" /><label :for="`d-${k}`">{{ t(`disp.${k}` as any) }}</label></span></div>
+          <h3 class="oui-label">{{ t('set.displayHeads') }}</h3>
+          <div class="set-checks"><span v-for="k in HEAD_KEYS" :key="k" class="oui-row set-opt"><Checkbox :input-id="`d-${k}`" binary :model-value="form.display[k] !== false" :data-disp="k"
+            @update:model-value="v => setDisp(k, v)" /><label :for="`d-${k}`">{{ t(`disp.${k}` as any) }}</label></span></div>
+          <p class="oui-meta">{{ t('set.displayNote') }}</p>
+        </div>
+      </OuiFormSection>
+
+      <OuiFormSection id="s-dry" :icon="drop" tone="sky" :title="t('set.drying')" :description="t('set.dryingHelp')">
+        <OuiFormRow v-for="[name, days] in dryRows" :key="name" :label="name" :for="`dry-${name}`">
+          <InputNumber :model-value="days > 0 ? days : null" :input-id="`dry-${name}`" :min="0" :max="3650" :use-grouping="false" :suffix="' ' + t('set.days')"
+            :aria-label="t('set.daysFor', { m: name })" :placeholder="t('set.noReminder')" @update:model-value="v => setDays(name, v)" @input="e => setDays(name, typeof e.value === 'number' ? e.value : null)" />
+          <Button text severity="secondary" size="small" :aria-label="t('set.removeMat', { m: name })" :title="t('set.removeMat', { m: name })" @click="removeMat(name)">
+            <template #icon><OuiIcon :icon="x" :size="14" /></template></Button>
+        </OuiFormRow>
+        <p v-if="!dryRows.length" class="oui-meta set-pad">{{ t('set.dryNone') }}</p>
+        <form class="oui-row set-pad" @submit.prevent="addMat"><InputText v-model="newMat" maxlength="24" class="set-grow" :placeholder="t('set.matPh')" :aria-label="t('set.matLabel')" />
+          <Button type="submit" severity="secondary" :label="t('set.addMat')" :disabled="!newMat.trim()"><template #icon><OuiIcon :icon="plus" :size="14" /></template></Button></form>
+        <template #footer><p class="oui-meta">{{ t('set.dryNote') }}</p></template>
+      </OuiFormSection>
+
+      <OuiFormSection id="s-printer" :icon="printer" tone="cobalt" :title="t('set.printer')" :description="t('set.liveNeeded')">
+        <OuiFormRow :label="t('set.progressOn')" for="show-progress"><Checkbox v-model="form.progress.on" input-id="show-progress" binary /></OuiFormRow>
+        <OuiFormRow :label="t('set.finish')" for="prog-finish"><Checkbox v-model="form.progress.finish" input-id="prog-finish" binary :disabled="!form.progress.on" /></OuiFormRow>
+        <OuiFormRow :label="t('set.slot')" for="prog-slot"><Checkbox v-model="form.progress.slot" input-id="prog-slot" binary :disabled="!form.progress.on" /></OuiFormRow>
+        <OuiFormRow :label="t('set.idle')">
+          <div class="oui-row" role="radiogroup" :aria-label="t('set.idle')"><span v-for="v in ['line', 'hide'] as const" :key="v" class="oui-row set-opt">
+            <RadioButton v-model="form.progress.idle" :input-id="`idle-${v}`" name="progress-idle" :value="v" :disabled="!form.progress.on" /><label :for="`idle-${v}`">{{ t(`set.idle.${v}`) }}</label></span></div>
+        </OuiFormRow>
+        <OuiFormRow :label="t('set.autoKeep')" for="auto-keep" :hint="t('set.autoKeepHelp')"><Checkbox v-model="form.auto_keep_slots" input-id="auto-keep" binary aria-describedby="auto-keep-help" /><span id="auto-keep-help" class="oui-sr">{{ t('set.autoKeepHelp') }}</span></OuiFormRow>
+        <div class="set-pad"><div class="set-pv oui-well">
+          <p class="oui-label">{{ t('set.preview') }}</p>
+          <p v-if="!form.progress.on" class="oui-meta">{{ t('set.progressHidden') }}</p>
+          <template v-else><p class="oui-row"><strong>Desk_Organiser_Plate_1</strong><OuiStatus state="busy">{{ t('progress.state.RUNNING') }}</OuiStatus><span class="oui-num">37%</span></p>
+            <p class="oui-meta">{{ t('progress.layer', { n: 142, total: 380 }) }} · {{ t('progress.left', { d: t('progress.hm', { h: 2, m: '04' }) }) }}<template
+              v-if="form.progress.finish"> · {{ t('progress.done', { time: '11:24' }) }}</template><template v-if="form.progress.slot"> · {{ t('printer.slotOf', { unit: 'AMS 1', n: 2 }) }}</template></p></template>
+        </div></div>
+      </OuiFormSection>
+
+      <OuiFormSection id="s-stats" :icon="chart" tone="orange" :title="t('set.stats')" :description="t('set.statsKeep')">
+        <OuiFormRow :label="t('set.statsOn')" for="show-stats"><Checkbox v-model="form.stats.on" input-id="show-stats" binary /></OuiFormRow>
+        <OuiFormRow :label="t('set.currency')" :hint="t('set.currencyHelp')">
+          <div class="oui-row" role="radiogroup" :aria-label="t('set.currency')"><span v-for="c in currencies" :key="c.v" class="oui-row set-opt">
+            <RadioButton v-model="form.stats.cur" :input-id="`cur-${c.v}`" name="stats-cur" :value="c.v" :disabled="!form.stats.on" /><label :for="`cur-${c.v}`">{{ c.label }}</label></span></div>
+        </OuiFormRow>
+        <OuiFormRow :label="t('set.preview')">
+          <p v-if="!form.stats.on" class="oui-meta">{{ t('set.statsHidden') }}</p>
+          <p v-else class="set-end">{{ t('stats.cost') }}: <strong class="oui-num">{{ curSign }}24.10</strong><br><span class="oui-meta">Headphone_Stand.3mf · 94.3 g · {{ curSign }}2.08</span></p>
+        </OuiFormRow>
+      </OuiFormSection>
+
+      <OuiFormSection id="s-lang" :icon="languages" tone="neutral" :title="t('lang.title')">
+        <OuiFormRow :label="t('lang.label')" :hint="t('lang.help')">
+          <Select :model-value="langPref" :options="langOptions" option-label="label" option-value="value" :aria-label="t('lang.label')" data-test="lang"
+                  @update:model-value="setLangPref($event as LangPref)" /></OuiFormRow>
+        <OuiFormRow :label="t('set.version', { v: boot.version })">
+          <span v-if="!update.newer" class="oui-meta" role="status">{{ update.text }}</span>
+          <Button v-else size="small" :label="t('set.newer', { v: update.newer })" @click="bridge.postSettings({ type: 'release' })" />
+          <Button severity="secondary" size="small" :label="t('set.checkUpdate')" :loading="update.busy" @click="checkUpdate"><template #icon><OuiIcon :icon="info" :size="14" /></template></Button>
+        </OuiFormRow>
+        <p class="oui-meta set-pad set-log">{{ t('set.log', { path: boot.settings.log_path }) }}</p>
+      </OuiFormSection>
+    </div>
+
+    <template #footer>
+      <OuiStatus v-if="dirty" state="pending" role="status">{{ t('set.unsaved') }}</OuiStatus>
+      <span v-if="saveWhy" id="save-why" class="oui-meta">{{ saveWhy }}</span>
+      <span class="oui-spacer" />
+      <Button severity="secondary" text :label="t('common.cancel')" data-test="cancel" @click="leave" />
+      <Button :label="t('set.save')" :disabled="!ready" :loading="saving" aria-describedby="save-why" data-test="save" @click="save"><template #icon><OuiIcon :icon="saveIcon" :size="14" /></template></Button>
+    </template>
+  </OuiSettings>
+  <SetupWizard />
   </div>
 </template>
 
-<style scoped>
-.set { min-height: 100vh; background: var(--oui-background); display: flex; flex-direction: column; }
-.set-head { position: sticky; top: 0; z-index: 5; }
-.set-body { padding: 16px; display: grid; gap: 16px; max-width: 1100px; width: 100%; }
-.set-sec { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(220px, 1fr); gap: 16px; }
-.set-sec h2 { margin: 0 0 8px; } .set-sec h3 { font-size: 14px; margin: 12px 0 6px; }
-.set-sec > div { display: grid; gap: 8px; align-content: start; min-width: 0; }
-.set-aside { border-left: 1px solid var(--oui-border); padding-left: 16px; display: grid; gap: 6px; align-content: start; min-width: 0; }
-.set-aside h3 { margin: 0; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--oui-muted); }
-.set-aside p { margin: 0; }
-.set-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 2px; } .set-list li { display: flex; justify-content: space-between; gap: 8px; }
-.set-sample { display: flex; gap: 8px; align-items: center; } .set-sample > span:nth-child(2) { flex: 1; }
-.set-sw { width: 20px; height: 20px; border-radius: 50%; background: #1a1a1a; }
-.set-cols { display: grid; gap: 6px; } .set-cols.two { grid-template-columns: 1fr 1fr; }
-.set-cols span { height: 18px; border: 1px solid var(--oui-border); border-left-width: 6px; border-radius: 6px; }
-.set-checks { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 6px 16px; }
-.set-dry th { font-weight: 600; } .set-dry :deep(input) { width: 140px; }
-.set-fs { border: 0; padding: 0; margin: 0; display: grid; gap: 8px; min-width: 0; }
-.set-pp p { margin: 4px 0 0; }
+<style>
+.set-pad { padding: var(--oui-s3) var(--oui-s4); }
+.set-pad > * + * { margin-top: var(--oui-s2); }
+.set-pv { display: grid; gap: var(--oui-s1); padding: var(--oui-s3); }
+.set-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.set-list li { display: flex; justify-content: space-between; gap: var(--oui-s2); }
+.set-opt { gap: 6px; }
+.set-sample { display: inline-flex; align-items: center; gap: var(--oui-s2); }
+.set-cols { display: grid; gap: 4px; width: min(220px, 100%); }
+.set-cols.two { grid-template-columns: 1fr 1fr; }
+.set-cols span { height: 14px; border-radius: var(--oui-radius-sm); background: var(--oui-tone-soft); box-shadow: inset 4px 0 0 var(--oui-tone); }
+.set-checks { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 6px var(--oui-s4); }
+.set-checks > .set-opt { flex-wrap: nowrap; align-items: flex-start; }
+.set-checks label { min-width: 0; padding-top: 1px; }
+.set-grow { flex: 1 1 160px; min-width: 0; }
+.set-end { text-align: end; }
 .set-log { overflow-wrap: anywhere; }
-.set-foot { position: sticky; bottom: 0; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 12px 16px; background: var(--oui-surface); border-top: 1px solid var(--oui-border); }
-@media (max-width: 760px) { .set-sec { grid-template-columns: minmax(0, 1fr); } .set-aside { border-left: 0; padding-left: 0; border-top: 1px solid var(--oui-border); padding-top: 12px; } }
 </style>

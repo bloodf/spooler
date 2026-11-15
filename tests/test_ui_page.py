@@ -55,6 +55,16 @@ class Embedded(unittest.TestCase):
         self.assertNotRegex(page, r"\bnew Function\b|\beval\(")
         self.assertIn("__VUE_OPTIONS_API__: true", (UI / "vite.config.ts").read_text(encoding="utf-8"))
 
+    def test_licences_of_the_bundled_code_ship_in_the_plugin_file(self):
+        # The release is spooler_any.py alone; the page bundles Vue, PrimeVue (PrimeUIX), Lucide icons (ISC) and the
+        # Manrope font (SIL OFL 1.1), whose licences ask for their notice in every copy.
+        notices = sp.UI_LICENSES
+        for name, marker in (("Vue.txt", "Yuxi (Evan) You"), ("PrimeVue.txt", "PrimeTek"), ("PrimeUIX.txt", "PrimeUI License"),
+                             ("Lucide.txt", "ISC License"), ("Manrope.txt", "SIL OPEN FONT LICENSE")):
+            text = (UI / "shared" / "licenses" / name).read_text(encoding="utf-8").replace("\r\n", "\n").rstrip("\n")
+            self.assertIn(f"===== {name} =====\n" + text, notices, name)
+            self.assertIn(marker, notices, name)
+
     def test_block_matches_the_build_when_present(self):
         built = UI / "dist" / "spooler-ui.html"
         if not built.exists():   # a fresh checkout without `npm run build`: the hash test above still applies
@@ -91,7 +101,7 @@ class Embedded(unittest.TestCase):
         settings = (UI / "src" / "settings" / "SettingsView.vue").read_text(encoding="utf-8")
         self.assertGreater(settings.index('id="s-stats"'), settings.index('id="s-printer"'))   # was test_stats_settings_come_last
         self.assertGreater(settings.index('id="s-stats"'), settings.index('id="s-src"'))
-        spools = (UI / "src" / "components" / "SpoolsView.vue").read_text(encoding="utf-8")
+        spools = (UI / "src" / "components" / "SpoolTable.vue").read_text(encoding="utf-8")
         rule = spools[spools.index(".sv-gbar {"):]
         rule = rule[:rule.index("}")]
         self.assertIn("min-width: 90px", rule)   # was test_group_header_weight_is_never_squeezed_into_a_fixed_width
@@ -125,19 +135,23 @@ class Logic(unittest.TestCase):
             py_d = sp.colour_diff(c, target)
             self.assertTrue((py_d is None and d is None) or abs(py_d - d) < 1e-9)
 
-    def test_spool_picture_level(self):
-        out = run_logic(self, "console.log(JSON.stringify([1, 0.9, 0.6, 0.36, 0.2, 0.05, 0.001, 0, -1, null, 2, NaN].map(L.spoolLevel)));")
-        # full, nearest render in between; any filament left is never the bare reel; nothing or unknown is the bare reel
-        self.assertEqual(out, [1, 2, 4, 5, 6, 7, 7, 8, 8, 8, 1, 8])
+    def test_spool_paint_uses_every_colour(self):
+        # The drawn spool (OuiSpool) and the swatch: one colour, every colour of a multi-colour filament, or none (unknown).
+        out = run_logic(self, "console.log(JSON.stringify([L.spoolPaint({color_hex: 'c8501e'}), L.spoolPaint({color_hex: '000000', multi_color_hexes: '#ff0000,00ff00'}), "
+                              "L.spoolPaint({multi_color_hexes: 'ff0000'}), L.spoolPaint({})]));")
+        self.assertEqual(out, [{"color": "#c8501e", "colors": None}, {"color": "#ff0000", "colors": ["#ff0000", "#00ff00"]},
+                               {"color": "#ff0000", "colors": None}, {"color": None, "colors": None}])
 
-    def test_bar_fill_uses_every_colour(self):
-        out = run_logic(self, "console.log(JSON.stringify([L.barFill({color_hex: 'c8501e'}), L.barFill({multi_color_hexes: '#ff0000,00ff00'}), L.barFill({})]));")
-        self.assertEqual(out, ["#c8501e", "linear-gradient(90deg, #ff0000 0% 50%, #00ff00 50% 100%)", "#888"])
+    def test_level_tone_follows_low_stock(self):
+        out = run_logic(self, "console.log(JSON.stringify([[500, 100], [80, 100], [20, 100], [0, 100], [null, 100]].map(([g, low]) => L.levelTone(L.lowLevel(g, low)))));")
+        self.assertEqual(out, ["normal", "low", "critical", "critical", "normal"])
 
-    def test_paint_tone_flags_near_black_and_near_white(self):
-        out = run_logic(self, "console.log(JSON.stringify(['#080a0d', '#000', '#ffffff', '#E2DEDB', '#c8501e', '#888', "
-                              "'linear-gradient(90deg, #000000 0% 50%, #111111 50% 100%)', 'linear-gradient(90deg, #000000 0% 50%, #ffffff 50% 100%)', 'red'].map(L.paintTone)));")
-        self.assertEqual(out, ["dark", "dark", "light", "light", "", "", "dark", "", ""])
+    def test_left_label_follows_the_weight_setting(self):
+        out = run_logic(self, "console.log(JSON.stringify([L.leftLabel(640, 64, 'grams', true, 'en'), L.leftLabel(640, 64, 'percent', true, 'en'), "
+                              "L.leftLabel(640, 64, 'both', true, 'en'), L.leftLabel(null, 64, 'grams', true, 'en'), L.leftLabel(null, null, 'both', true, 'en'), "
+                              "L.leftLabel(1380, null, 'percent', false, 'en')]));")
+        # unknown grams show the percentage, never 0; nothing known is a dash
+        self.assertEqual(out, ["640 g", "64%", "640 g", "64%", "\u2014", "1.38 kg"])
 
     W = "const w = {ams: 'AMS', ht: 'AMS HT', ext: 'External spool', externalShort: 'External', slot: (u, n) => u + ' Slot ' + n, head: n => 'T' + n};\n"
 

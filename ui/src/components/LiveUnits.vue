@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import Button from 'primevue/button';
+import { OuiStatus } from '../../shared/src/components';
 import TrayCard from './TrayCard.vue';
 import SpoolPicker from './SpoolPicker.vue';
 import { m } from '../state/main';
@@ -28,6 +29,7 @@ const units = computed(() => {
   });
 });
 const picking = computed(() => ui.picking?.moon && ui.picking.p === props.link);
+const tool = (i: number) => (props.lv.heads && i < 4 ? (i + 1) as 1 | 2 | 3 | 4 : undefined);
 async function clear() {
   if (!await ask({ title: t('moon.clearTitle'), text: t('moon.clearText', { printer: props.lv.name }), yes: t('moon.clear'), no: t('common.goBack') })) return;
   moonSet(props.link, null);
@@ -35,43 +37,33 @@ async function clear() {
 function pick(id: number) { ui.picking = null; moonSet(props.link, id); }
 </script>
 <template>
-  <div class="lu">
+  <div class="lu oui-stack">
     <template v-if="moon">
-      <div class="sp-row lu-unit"><span>{{ t('moon.active') }}</span><span class="sp-grow" />
-        <Button v-if="lv.ext" severity="secondary" outlined :label="t('moon.clear')" :data-focus-key="`moon-clear:${link}`" @click="clear" />
-        <Button :label="t('moon.change')" :aria-expanded="!!picking" :data-focus-key="`moon-pick:${link}`" data-act="moon-pick"
-                @click="ui.picking = picking ? null : { p: link, moon: true }" /></div>
-      <div class="lu-grid"><div class="lu-cell"><span class="lu-n">E</span>
-        <TrayCard v-if="lv.ext" :tray="lv.ext" />
-        <div v-else class="lu-none"><strong>{{ t('moon.none') }}</strong><span class="oui-meta">{{ t('moon.noneHelp') }}</span></div>
-        <SpoolPicker v-if="picking" :label="t('moon.change')" @pick="pick" @close="ui.picking = null" /></div></div>
-      <p v-if="m.moonNote && m.moonNote.id === link" class="oui-meta" :class="{ 'sp-err': !m.moonNote.ok }" role="status">{{ m.moonNote.text }}</p>
+      <h3 class="oui-label">{{ t('moon.active') }}</h3>
+      <div class="oui-cards">
+        <TrayCard :tray="lv.ext" label="E" :empty-label="t('moon.none')" :empty-hint="t('moon.noneHelp')">
+          <SpoolPicker v-if="picking" :label="t('moon.change')" @pick="pick" @close="ui.picking = null" />
+          <template #actions>
+            <Button severity="secondary" size="small" :label="t('moon.change')" :aria-expanded="!!picking" :data-focus-key="`moon-pick:${link}`" data-act="moon-pick"
+                    @click="ui.picking = picking ? null : { p: link, moon: true }" />
+            <Button v-if="lv.ext" severity="secondary" text size="small" :label="t('moon.clear')" :data-focus-key="`moon-clear:${link}`" @click="clear" />
+          </template>
+        </TrayCard>
+      </div>
+      <p v-if="m.moonNote && m.moonNote.id === link" role="status" data-test="moon-note"><OuiStatus :state="m.moonNote.ok ? 'ok' : 'error'" variant="plain">{{ m.moonNote.text }}</OuiStatus></p>
     </template>
     <template v-else>
       <template v-for="(x, k) in units" :key="String(x.u.id) + ':' + k">
-        <div class="lu-unit">{{ x.label }}</div>
-        <div class="lu-grid">
-          <div v-for="(tr, i) in x.u.trays" :key="i" class="lu-cell" :class="{ active: act && act.unit === x.u.id && act.slot === i }">
-            <span class="lu-n">{{ lv.heads ? 'T' + (i + 1) : i + 1 }}</span><TrayCard :tray="tr" />
-            <span v-if="act && act.unit === x.u.id && act.slot === i" class="sp-chip accent">{{ t('progress.inUseSlot') }}</span>
-          </div>
+        <h3 class="oui-label">{{ x.label }}</h3>
+        <div class="oui-cards">
+          <TrayCard v-for="(tr, i) in x.u.trays" :key="i" :tray="tr" :label="lv.heads ? 'T' + (i + 1) : String(i + 1)" :tool="tool(i)" :active="!!act && act.unit === x.u.id && act.slot === i" />
         </div>
       </template>
       <template v-if="lv.ext && !lv.heads">
-        <div class="lu-unit">{{ t('printer.external') }}</div>
-        <div class="lu-grid"><div class="lu-cell" :class="{ active: act && act.unit === 'ext' }"><span class="lu-n">E</span><TrayCard :tray="lv.ext" /></div></div>
+        <h3 class="oui-label">{{ t('printer.external') }}</h3>
+        <div class="oui-cards"><TrayCard :tray="lv.ext" label="E" :active="!!act && act.unit === 'ext'" /></div>
       </template>
       <p v-if="!units.length && !lv.ext" class="oui-meta" role="status">{{ lv.heads ? t('printer.waitingHeads') : t('printer.waitingSlots') }}</p>
     </template>
   </div>
 </template>
-<style scoped>
-.lu { display: grid; gap: 8px; }
-.lu-unit { font-weight: 600; margin-top: 4px; }
-.lu-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; }
-.lu-cell { display: grid; gap: 4px; align-content: start; }
-.lu-cell.active :deep(.tc) { border-color: var(--p-primary-color); box-shadow: inset 0 0 0 1px var(--p-primary-color); }
-.lu-cell > .sp-chip { justify-self: start; }
-.lu-n { color: var(--oui-muted); font-size: 12px; font-weight: 600; }
-.lu-none { display: grid; gap: 2px; padding: 10px; border: 1px dashed var(--oui-border); border-radius: 12px; }
-</style>

@@ -2,9 +2,10 @@
 import { computed, reactive, ref, watch } from 'vue';
 import Button from 'primevue/button';
 import Select from 'primevue/select';
-import Message from 'primevue/message';
 import Dialog from 'primevue/dialog';
 import InputNumber from 'primevue/inputnumber';
+import { OuiBanner, OuiIcon, OuiPanel, OuiStatus, OuiSwatch } from '../../shared/src/components';
+import { chevronDown, chevronRight, clipboard, undo as undoIcon } from '../../shared/src/icons';
 import * as bridge from '../core/bridge';
 import { m, usageState, type UsagePrint } from '../state/main';
 import { t, tn, fmt, locale } from '../core/i18n';
@@ -22,7 +23,7 @@ const todo = computed(() => list.value.filter(p => p.state === 'pending').length
 const modes = computed(() => (['ask', 'auto', 'off'] as const).map(v => ({ value: v, label: t(`usage.mode.${v}`) })));
 const busy = computed(() => !!usageState.booking || usageState.undoing);
 const g = (v: number) => `${new Intl.NumberFormat(locale.value, { maximumFractionDigits: 1 }).format(Math.round(v * 10) / 10)} g`;
-const hex = (c?: string) => (c ? '#' + String(c).replace(/^#/, '') : '#888');
+const hex = (c?: string) => (c ? '#' + String(c).replace(/^#/, '') : null);
 const total = (p: UsagePrint, booked = false) => p.rows.filter(r => !booked || r.state === 'booked').reduce((a, r) => a + r.grams, 0);
 function when(unix: number) {
   const d = new Date(unix * 1000), days = Math.round((+new Date(new Date().toDateString()) - +new Date(d.toDateString())) / 864e5);
@@ -69,82 +70,90 @@ const left = (id?: number | null) => m.spools.find(s => s.id === id)?.remaining_
 </script>
 
 <template>
-  <section v-if="show" class="sp-card us" aria-labelledby="us-h" data-test="usage">
-    <div class="sp-row"><h2 id="us-h">{{ t('usage.title') }}</h2><span class="sp-grow" />
-      <label id="us-mode-l">{{ t('usage.whenDone') }}</label>
-      <Select :model-value="m.usage.mode" :options="modes" option-label="label" option-value="value" aria-labelledby="us-mode-l" @update:model-value="setMode" /></div>
-    <Message v-if="m.usageNotice" severity="error" role="alert">{{ m.usageNotice }}</Message>
+  <OuiPanel v-if="show" class="us" :title="t('usage.title')" :icon="clipboard" tone="lime" flush data-test="usage">
+    <template #actions>
+      <label id="us-mode-l" class="oui-meta us-mode-l">{{ t('usage.whenDone') }}</label>
+      <Select :model-value="m.usage.mode" size="small" :options="modes" option-label="label" option-value="value" aria-labelledby="us-mode-l" @update:model-value="setMode" />
+    </template>
+    <div v-if="m.usageNotice" class="us-pad"><OuiBanner tone="error" :title="m.usageNotice" /></div>
     <button v-if="list.length" type="button" class="us-toggle" :aria-expanded="open" aria-controls="us-list" @click="open = !open">
-      <span aria-hidden="true">{{ open ? '▾' : '▸' }}</span><strong>{{ t('usage.recent') }}</strong>
-      <span class="oui-meta">{{ tn('usage.lastN', list.length) }}</span><span v-if="todo" class="sp-chip warn">{{ tn('usage.toBook', todo) }}</span></button>
+      <OuiIcon :icon="open ? chevronDown : chevronRight" :size="14" /><strong>{{ t('usage.recent') }}</strong>
+      <span class="oui-meta">{{ tn('usage.lastN', list.length) }}</span><OuiStatus v-if="todo" state="pending">{{ tn('usage.toBook', todo) }}</OuiStatus></button>
+    <p v-else class="oui-meta us-pad">{{ t('usage.none') }}</p>
     <div v-if="list.length && open" id="us-list" class="us-list">
       <article v-for="p in list" :key="p.id" class="us-card" :class="{ undone: p.state === 'undone' }" :data-run="p.id">
-        <div class="sp-row"><strong class="us-name">{{ p.name }}</strong>
-          <span class="oui-meta">{{ p.printer }} · {{ result(p) }} · {{ when(p.time) }}</span><span class="sp-grow" />
-          <span v-if="p.state === 'booked'" class="sp-chip ok">{{ t('usage.booked', { g: g(total(p)) }) }}</span>
-          <span v-else-if="p.state === 'undone'" class="sp-chip">{{ t('usage.undone') }}</span>
-          <span v-else-if="p.state === 'unknown'" class="sp-chip warn">{{ t('usage.check') }}</span>
-          <span v-else class="sp-chip warn">{{ t('usage.notBooked') }}</span>
-          <Button v-if="p.state === 'booked'" severity="secondary" outlined :label="t('usage.undo')" :disabled="busy" data-usage="undo" :data-focus-key="`undo:${p.id}`" @click="rememberOpener(); undoRun = p.id" />
-          <Button v-else-if="p.state !== 'unknown' && p.state !== 'undone'" :label="usageState.booking === p.id ? t('usage.booking') : t('usage.book')"
+        <div class="us-head">
+          <div class="us-id"><strong class="us-name">{{ p.name }}</strong><span class="oui-meta">{{ p.printer }} · {{ result(p) }} · {{ when(p.time) }}</span></div>
+          <OuiStatus v-if="p.state === 'booked'" state="ok">{{ t('usage.booked', { g: g(total(p)) }) }}</OuiStatus>
+          <OuiStatus v-else-if="p.state === 'undone'" state="idle">{{ t('usage.undone') }}</OuiStatus>
+          <OuiStatus v-else-if="p.state === 'unknown'" state="warn">{{ t('usage.check') }}</OuiStatus>
+          <OuiStatus v-else state="pending">{{ t('usage.notBooked') }}</OuiStatus>
+          <Button v-if="p.state === 'booked'" severity="secondary" size="small" :label="t('usage.undo')" :disabled="busy" data-usage="undo" :data-focus-key="`undo:${p.id}`" @click="rememberOpener(); undoRun = p.id">
+            <template #icon><OuiIcon :icon="undoIcon" :size="14" /></template></Button>
+          <Button v-else-if="p.state !== 'unknown' && p.state !== 'undone'" size="small" :label="usageState.booking === p.id ? t('usage.booking') : t('usage.book')"
                   :loading="usageState.booking === p.id" :disabled="busy || !bookable(p)" data-usage="book" @click="book(p)" />
         </div>
         <div v-for="r in p.rows" :key="r.slot" class="us-row" :data-slot="r.slot">
-          <span class="us-dot" :style="{ background: hex(r.colour) }" />
+          <OuiSwatch :color="hex(r.colour)" :size="14" />
           <span class="us-slot">{{ t('usage.slot', { n: r.slot }) }}<template v-if="r.material"> · {{ r.material }}</template></span>
           <template v-if="p.state === 'pending'">
             <span class="us-spool">
-              <template v-if="r.state === 'booked'">{{ r.label }} <span class="sp-chip ok">{{ t('usage.booked', { g: g(r.grams) }) }}</span></template>
-              <template v-else-if="r.spool">{{ r.label }} <span v-if="r.how === 'rfid'" class="sp-chip">{{ t('usage.rfid') }}</span></template>
-              <template v-else><Select :model-value="edit(p, r.slot).spool ?? null" :options="spoolOptions(r.material)" option-label="label" option-value="value" filter
+              <template v-if="r.state === 'booked'">{{ r.label }} <OuiStatus state="ok" variant="plain">{{ t('usage.booked', { g: g(r.grams) }) }}</OuiStatus></template>
+              <template v-else-if="r.spool">{{ r.label }} <span v-if="r.how === 'rfid'" class="oui-chip">{{ t('usage.rfid') }}</span></template>
+              <template v-else><Select :model-value="edit(p, r.slot).spool ?? null" size="small" :options="spoolOptions(r.material)" option-label="label" option-value="value" filter
                 :placeholder="t('usage.choose')" :aria-label="t('usage.chooseFor', { n: r.slot })" class="us-sel" @update:model-value="v => (edit(p, r.slot).spool = v)" />
-                <span class="sp-chip warn">{{ t('usage.notIdentified') }}</span></template>
+                <OuiStatus state="warn" variant="plain">{{ t('usage.notIdentified') }}</OuiStatus></template>
             </span>
-            <span v-if="r.state !== 'booked'" class="us-g"><InputNumber :model-value="gramsOf(p, r)" :min="0" :max="5000" :max-fraction-digits="1" :use-grouping="false" suffix=" g"
+            <span v-if="r.state !== 'booked'" class="us-g"><InputNumber :model-value="gramsOf(p, r)" size="small" :min="0" :max="5000" :max-fraction-digits="1" :use-grouping="false" suffix=" g"
               :aria-label="t('usage.gramsFor', { n: r.slot })" :invalid="typeof gramsOf(p, r) !== 'number'"
               @input="e => (edit(p, r.slot).grams = typeof e.value === 'number' ? e.value : null)" @update:model-value="v => (edit(p, r.slot).grams = v)" /></span>
           </template>
-          <template v-else><span class="us-spool">{{ r.label }}</span><span class="sp-num">{{ g(r.grams) }}</span></template>
-          <p v-if="r.error" class="us-full sp-err" role="status">{{ r.error }}</p>
-          <div v-if="r.state === 'unknown'" class="us-full sp-row">
-            <span class="oui-meta">{{ r.op === 'undo' ? t('usage.askUndo') : t('usage.askBook') }}</span>
-            <Button severity="secondary" outlined :disabled="busy" :label="r.op === 'undo' ? t('usage.wasAddedBack') : t('usage.wasBooked')" @click="resolve(p, r.slot, 'applied')" />
-            <Button severity="secondary" outlined :disabled="busy" :label="r.op === 'undo' ? t('usage.wasntAddedBack') : t('usage.wasntBooked')" @click="resolve(p, r.slot, 'not_applied')" />
+          <template v-else><span class="us-spool">{{ r.label }}</span><span class="oui-num">{{ g(r.grams) }}</span></template>
+          <p v-if="r.error" class="us-full" role="status"><OuiStatus state="error" variant="plain">{{ r.error }}</OuiStatus></p>
+          <div v-if="r.state === 'unknown'" class="us-full oui-row">
+            <span class="oui-meta us-ask">{{ r.op === 'undo' ? t('usage.askUndo') : t('usage.askBook') }}</span>
+            <Button severity="secondary" size="small" :disabled="busy" :label="r.op === 'undo' ? t('usage.wasAddedBack') : t('usage.wasBooked')" @click="resolve(p, r.slot, 'applied')" />
+            <Button severity="secondary" size="small" :disabled="busy" :label="r.op === 'undo' ? t('usage.wasntAddedBack') : t('usage.wasntBooked')" @click="resolve(p, r.slot, 'not_applied')" />
           </div>
         </div>
         <p v-if="p.state === 'pending' && (p.late || p.result !== 'finished')" class="oui-meta">{{ p.late ? t('usage.late') : t('usage.estimate') }}</p>
-        <p v-if="p.state === 'pending' && !bookable(p)" class="sp-why">{{ t('usage.gramsNeeded') }}</p>
+        <p v-if="p.state === 'pending' && !bookable(p)" class="oui-meta us-why">{{ t('usage.gramsNeeded') }}</p>
       </article>
     </div>
     <Dialog :visible="!!undoPrint" modal :header="t('usage.undoTitle')" :closable="!usageState.undoing" :draggable="false" :style="{ width: 'min(520px, calc(100vw - 32px))' }"
             @update:visible="v => { if (!v && !usageState.undoing) undoRun = null; }" @after-hide="restoreFocus">
-      <template v-if="undoPrint">
+      <div v-if="undoPrint" class="oui-stack">
         <p>{{ t('usage.undoText', { name: undoPrint.name, g: g(total(undoPrint, true)) }) }}</p>
-        <table class="sp-table"><tbody><tr v-for="r in undoPrint.rows.filter(x => x.state === 'booked')" :key="r.slot">
-          <td><span class="us-dot" :style="{ background: hex(r.colour) }" /> {{ r.label }}</td>
-          <td class="r sp-num">{{ g(left(r.spool)) }} + {{ g(r.grams) }} = <strong>{{ g(left(r.spool) + r.grams) }}</strong></td></tr></tbody></table>
+        <ul class="us-undo oui-well"><li v-for="r in undoPrint.rows.filter(x => x.state === 'booked')" :key="r.slot">
+          <OuiSwatch :color="hex(r.colour)" :size="14" /><span class="oui-truncate">{{ r.label }}</span>
+          <span class="oui-num">{{ g(left(r.spool)) }} + {{ g(r.grams) }} = <strong>{{ g(left(r.spool) + r.grams) }}</strong></span></li></ul>
         <p class="oui-meta">{{ t('usage.undoKeep') }}</p>
-      </template>
+      </div>
       <template #footer>
-        <Button severity="secondary" outlined :label="t('common.goBack')" :disabled="usageState.undoing" autofocus @click="undoRun = null" />
+        <Button severity="secondary" :label="t('common.goBack')" :disabled="usageState.undoing" autofocus @click="undoRun = null" />
         <Button :label="usageState.undoing ? t('usage.addingBack') : t('usage.addBack')" :loading="usageState.undoing" data-usage="unbook" @click="undo" />
       </template>
     </Dialog>
-  </section>
+  </OuiPanel>
 </template>
-<style scoped>
-.us { display: grid; gap: 10px; }
-.us h2 { margin: 0; }
-.us-toggle { display: flex; align-items: center; gap: 8px; border: 0; background: none; color: var(--oui-text); font: inherit; cursor: pointer; padding: 4px 0; }
-.us-list { display: grid; gap: 10px; }
-.us-card { border: 1px solid var(--oui-border); border-radius: 12px; padding: 10px; display: grid; gap: 6px; }
-.us-card.undone { border-style: dashed; }
+<style>
+.us-mode-l { white-space: nowrap; }
+.us-pad { padding: var(--oui-s3) var(--oui-s4); }
+.orca-ui .us-toggle { display: flex; flex-wrap: wrap; align-items: center; gap: var(--oui-s2); width: 100%; padding: var(--oui-s3) var(--oui-s4); border: 0; background: none; color: var(--oui-text); font: inherit; text-align: start; cursor: pointer; }
+.us-list { display: grid; }
+.us-card { display: grid; gap: var(--oui-s2); padding: var(--oui-s3) var(--oui-s4); border-top: 1px solid var(--oui-border); min-width: 0; }
+.us-card.undone .us-name { color: var(--oui-muted); text-decoration: line-through; }
+.us-head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--oui-s2); }
+.us-id { flex: 1 1 180px; display: grid; gap: 1px; min-width: 0; }
 .us-name { overflow-wrap: anywhere; }
-.us-row { display: grid; grid-template-columns: 14px minmax(110px, auto) minmax(0, 1fr) auto; gap: 8px; align-items: center; }
-.us-full { grid-column: 1 / -1; margin: 0; }
-.us-dot { display: inline-block; width: 14px; height: 14px; border-radius: 50%; border: 1px solid var(--oui-border); }
+.us-row { display: grid; grid-template-columns: 14px minmax(88px, auto) minmax(0, 1fr) auto; gap: var(--oui-s2); align-items: center; }
+.us-full { grid-column: 1 / -1; }
+.us-ask { flex: 1 1 200px; }
 .us-spool { min-width: 0; overflow-wrap: anywhere; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
-.us-sel { min-width: 200px; max-width: 100%; }
-.us-g :deep(input) { width: 110px; }
-@media (max-width: 600px) { .us-row { grid-template-columns: 14px minmax(0, 1fr); } .us-spool, .us-g { grid-column: 2; } }
+.us-sel { min-width: 0; flex: 1 1 180px; max-width: 100%; }
+.us-g input { width: 96px; }
+.us-why { color: var(--oui-warning); }
+.us-undo { list-style: none; display: grid; gap: var(--oui-s2); padding: var(--oui-s3); }
+.us-undo li { display: grid; grid-template-columns: 14px minmax(0, 1fr) auto; gap: var(--oui-s2); align-items: center; }
+@container oui-page (max-width: 560px) { .us-row { grid-template-columns: 14px minmax(0, 1fr); } .us-spool, .us-g { grid-column: 2; } .us-mode-l { display: none; } }
 </style>
