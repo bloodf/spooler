@@ -145,6 +145,10 @@ data folder is shared by all plugins. So from load to unload Spooler rewrites
 says `"stopped"` when it unloads. OrcaSlicer calls `on_load` even when the Spooler page is turned
 off in its Plugins dialog, so presence keeps running then.
 
+Spooler does not book the filament of Anycubic Kobra prints; Kobra Control does. If Spooler ever
+books them, it must publish `"books": ["anycubic"]` under `provides` in `presence.json` in the same
+change, so Kobra Control stops booking in that Spoolman and no print counts twice.
+
 u1control does the same in `<OrcaSlicer data folder>/u1control/presence.json`. Only while that
 file is active, fresh (20 s), of this OrcaSlicer process and asks for the stock (its tab shows it)
 does Spooler write `stock.json` next to its presence: the live spools from its own Spoolman reads,

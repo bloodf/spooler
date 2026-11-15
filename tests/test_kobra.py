@@ -84,6 +84,49 @@ class ReportTest(unittest.TestCase):
         self.assertEqual(sp.kx_report([], None, SPOOLS), {"print": {"ams": {"ams": []}}})
 
 
+class NoKobraBookingTest(unittest.TestCase):
+    """Spooler never books the filament of an Anycubic Kobra print: Kobra Control books it. Should that
+    change, presence.json must publish "books": ["anycubic"] under "provides" in the same change."""
+
+    PID = "kobra-test"
+    # Every key live_apply turns into a job, and so into a usage_track call.
+    JOB = ("gcode_state", "mc_percent", "subtask_name", "gcode_file") + sp.JOB_KEYS
+
+    def reports(self):
+        box = BOX_REPLY["data"]["multi_color_box"]
+        return [sp.kx_report(box, {"type": "PLA", "color": [255, 0, 0]}, SPOOLS, KOBRA),
+                sp.kx_report(box, None, SPOOLS), sp.kx_report([], None, [])]
+
+    def keys(self, value):
+        if isinstance(value, dict):
+            for key, inner in value.items():
+                yield key
+                yield from self.keys(inner)
+        elif isinstance(value, list):
+            for inner in value:
+                yield from self.keys(inner)
+
+    def test_report_carries_no_print_state(self):
+        for report in self.reports():
+            self.assertFalse(set(self.keys(report)) & set(self.JOB), report)
+
+    def test_live_apply_never_tracks_usage(self):
+        calls = []
+        original = sp.usage_track
+        sp.usage_track = lambda *args, **kwargs: calls.append(args) or []
+        try:
+            for report in self.reports():
+                sp.live_apply(self.PID, "Kobra X", report, link=self.PID, full=True)
+        finally:
+            sp.usage_track = original
+            with sp._live_lock:
+                sp._live["printers"].pop(self.PID, None)
+        self.assertEqual(calls, [])
+
+    def test_presence_does_not_claim_kobra_booking(self):
+        self.assertNotIn("books", sp.presence_doc()["provides"])
+
+
 class KindTest(unittest.TestCase):
     def setUp(self):
         self.originals = (sp.is_moonraker, sp.kx_info)

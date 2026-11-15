@@ -3772,6 +3772,10 @@ def kx_tray(slot: int, item: object, spools: list[dict], target: str) -> dict:
 
 def kx_report(boxes: object, external: object, spools: list[dict], target: str = "") -> dict:
     """A Bambu-shaped report from multiColorBox and extfilbox replies."""
+    # Slots only: no gcode_state or job keys, so live_apply never books an Anycubic print (Kobra Control
+    # books it; tests/test_kobra.py NoKobraBookingTest). If Spooler ever books Anycubic prints, publish
+    # "books": ["anycubic"] under "provides" in presence.json in the same change: Kobra Control then stops
+    # booking in that Spoolman.
     units = []
     for number, box in enumerate(boxes if isinstance(boxes, list) else []):
         if isinstance(box, dict) and isinstance(box.get("slots"), list):
