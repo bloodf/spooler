@@ -3251,18 +3251,22 @@ def refresh_snapshot() -> dict | None:
     return snapshot
 
 
+def _moon_result(data: object) -> dict:
+    """Moonraker's "result" object; {} for anything else, so callers can always .get() from it."""
+    result = data.get("result") if isinstance(data, dict) else None
+    return result if isinstance(result, dict) else {}
+
+
 def _moon_get(base: str, path: str) -> dict:
     with urllib.request.urlopen(base + path, timeout=TIMEOUT) as resp:
-        data = json.loads(resp.read().decode("utf-8"))
-    return data.get("result") or {} if isinstance(data, dict) else {}
+        return _moon_result(json.loads(resp.read().decode("utf-8")))
 
 
 def _moon_post(base: str, path: str, body: dict) -> dict:
     req = urllib.request.Request(base + path, data=json.dumps(body).encode("utf-8"), method="POST",
                                  headers={"Content-Type": "application/json"})
     with urllib.request.urlopen(req, timeout=TIMEOUT) as resp:
-        data = json.loads(resp.read().decode("utf-8"))
-    return data.get("result") or {} if isinstance(data, dict) else {}
+        return _moon_result(json.loads(resp.read().decode("utf-8")))
 
 
 def _spool_remain(spool: dict) -> float | None:
@@ -3447,7 +3451,8 @@ def moon_progress(status: dict) -> dict:
 
 def moon_poll(base: str) -> tuple[dict, bool]:
     status = _moon_get(base, "/printer/objects/query?print_task_config&filament_detect&print_stats&virtual_sdcard"
-                       ).get("status") or {}
+                       ).get("status")
+    status = status if isinstance(status, dict) else {}
     active = lanes = None
     # Moonraker answers {} for an object the printer doesn't have (only the U1 has this one).
     if not status.get("print_task_config"):
@@ -3509,7 +3514,7 @@ def moon_set_spool(pid: object, spool_id: object) -> dict:
         # {"spool_id": <id>} sets the active spool; {"spool_id": null} clears it and stops tracking.
         _moon_post(base, "/server/spoolman/spool_id", {"spool_id": spool_id})
         doc, heads = moon_poll(base)
-    except (urllib.error.URLError, OSError, ValueError) as exc:
+    except Exception as exc:  # the page waits for an answer: any failure is one
         log.warning("Could not set the spool on %s: %s", link["name"], exc)
         return {"ok": False, "text": f"Could not set the spool on {link['name']}: {exc}"}
     live_apply(str(pid), link["name"], doc, link=str(pid), full=True)

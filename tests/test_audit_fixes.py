@@ -173,6 +173,26 @@ class SpoolmanAddressTest(unittest.TestCase):
         self.assertNotIn("Authorization", sent[0].decode())
 
 
+class MoonrakerMalformedTest(unittest.TestCase):
+    def test_non_object_result_reads_as_empty(self):
+        with FakeServer({"/server/spoolman/spool_id": (200, {}, b'{"result": [1, 2]}')}) as server:
+            self.assertEqual(sp._moon_get(f"http://127.0.0.1:{server.port}", "/server/spoolman/spool_id"), {})
+
+    def test_set_spool_always_answers(self):
+        """moon_set_spool runs on a worker whose reply the page waits for: a malformed answer is a
+        failed set, not an exception that leaves the page without one."""
+        sp._local["p9"] = {"link": {"kind": "moonraker", "ip": "http://127.0.0.1:1", "name": "K"},
+                          "stop": threading.Event(), "thread": None}
+        try:
+            with mock.patch.object(sp, "source", return_value="spoolman"), \
+                    mock.patch.dict(sp._live["printers"], {"p9": {"spool_set": True}}), \
+                    mock.patch.object(sp, "moon_poll", side_effect=AttributeError("'list' object has no attribute 'get'")):
+                result = sp.moon_set_spool("p9", None)
+            self.assertFalse(result["ok"])
+        finally:
+            sp._local.pop("p9", None)
+
+
 class BambuTokenFileTest(unittest.TestCase):
     def setUp(self):
         self.folder = Path(tempfile.mkdtemp())
