@@ -3958,6 +3958,16 @@ def net_base(link: dict) -> str:
     return moon_base(link.get("ip"))
 
 
+class _SameHostRedirect(urllib.request.HTTPRedirectHandler):
+    """urllib copies every header onto a redirect, X-Api-Key included: follow one only on the host it
+    started on."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        if urllib.parse.urlsplit(newurl).netloc.lower() != urllib.parse.urlsplit(req.full_url).netloc.lower():
+            raise urllib.error.HTTPError(req.full_url, code, "the printer redirected to another host", headers, fp)
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+
 def _net_request(link: dict, path: str, headers: dict | None = None, timeout: float = TIMEOUT):
     """Open path on the printer, authenticated: PrusaLink with HTTP digest (username and password),
     or an X-Api-Key header (OctoPrint, and PrusaLink without a username). Only paths on the printer
@@ -3975,7 +3985,7 @@ def _net_request(link: dict, path: str, headers: dict | None = None, timeout: fl
     else:
         req.add_header("X-Api-Key", link.get("code") or "")
     try:
-        return urllib.request.build_opener(*handlers).open(req, timeout=timeout)
+        return urllib.request.build_opener(*handlers, _SameHostRedirect).open(req, timeout=timeout)
     except urllib.error.HTTPError as exc:
         if exc.code in (401, 403):
             raise NetAuthError(f"the printer refused the {'password' if handlers else 'API key'}") from exc

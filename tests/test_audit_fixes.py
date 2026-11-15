@@ -173,6 +173,29 @@ class SpoolmanAddressTest(unittest.TestCase):
         self.assertNotIn("Authorization", sent[0].decode())
 
 
+class NetPrinterRedirectTest(unittest.TestCase):
+    """The printer's API key or password never follows a redirect to another host."""
+
+    def test_redirect_to_another_host_is_refused(self):
+        with FakeServer({}) as server:
+            # "localhost" is another host name for the same loopback server, so a leak would show up here.
+            server.routes.update({"/api/job": (302, {"Location": f"http://localhost:{server.port}/steal"}, b""),
+                                  "/steal": (200, {}, b"{}")})
+            link = {"kind": "octoprint", "ip": f"127.0.0.1:{server.port}", "code": "SECRETKEY"}
+            with self.assertRaises(sp.urllib.error.HTTPError):
+                sp.net_json(link, "/api/job")
+            self.assertEqual([r["path"] for r in server.requests], ["/api/job"])
+
+    def test_redirect_on_the_same_host_is_followed(self):
+        with FakeServer({}) as server:
+            server.routes.update({
+                "/api/job": (302, {"Location": f"http://127.0.0.1:{server.port}/api/job2"}, b""),
+                "/api/job2": (200, {}, b'{"state": "Operational"}')})
+            link = {"kind": "octoprint", "ip": f"127.0.0.1:{server.port}", "code": "SECRETKEY"}
+            self.assertEqual(sp.net_json(link, "/api/job"), {"state": "Operational"})
+            self.assertEqual(server.requests[-1]["headers"].get("X-Api-Key"), "SECRETKEY")
+
+
 class MoonrakerMalformedTest(unittest.TestCase):
     def test_non_object_result_reads_as_empty(self):
         with FakeServer({"/server/spoolman/spool_id": (200, {}, b'{"result": [1, 2]}')}) as server:
