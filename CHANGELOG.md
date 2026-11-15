@@ -3,7 +3,7 @@
 Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); entries before
 0.9.0 are Spoolio's.
 
-## [Unreleased]
+## [0.26.0] - 2026-11-14
 
 ### Added
 - Three spool card actions (Spoolman): ***Set Grams Left*** sets the filament left without a scale (0 for an empty spool); ***Add a Note*** / ***Edit Note*** edits the spool's Spoolman comment (empty removes it); ***Add Spool of This Filament*** asks how many, 1 to 20, for a multi-pack. If Spoolman refuses one of several, the message names the spools that were added.
