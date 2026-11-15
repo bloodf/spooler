@@ -560,11 +560,27 @@ def active_spools(spools: list) -> list:
     return [s for s in spools if isinstance(s, dict) and not s.get("archived")]
 
 
+def split_auth(url: str) -> tuple[str, dict]:
+    """(address without user name and password, {"Authorization": ...} for them or {}): urllib can't
+    open an address that holds them, so they go as HTTP basic auth."""
+    parts = urllib.parse.urlsplit(url)
+    if parts.username is None:
+        return url, {}
+    pair = f"{urllib.parse.unquote(parts.username)}:{urllib.parse.unquote(parts.password or '')}"
+    netloc = parts.netloc.rpartition("@")[2]
+    return (urllib.parse.urlunsplit(parts._replace(netloc=netloc)),
+            {"Authorization": "Basic " + base64.b64encode(pair.encode("utf-8")).decode("ascii")})
+
+
 def _spoolman_open(base: str, path: str, method: str = "GET", body: object = None) -> object:
-    """One Spoolman API request with a JSON body and answer; raises urllib's errors."""
+    """One Spoolman API request with a JSON body and answer; raises urllib's errors. Only http(s):
+    urllib would also read file:// and ftp:// addresses typed or synced in as Spoolman's."""
+    url, auth = split_auth(f"{base.rstrip('/')}/api/v1/{path}")
+    if urllib.parse.urlsplit(url).scheme not in ("http", "https"):
+        raise urllib.error.URLError("the address must start with http:// or https://")
     data = None if body is None else json.dumps(body).encode("utf-8")
-    request = urllib.request.Request(f"{base.rstrip('/')}/api/v1/{path}", data=data, method=method,
-                                     headers={"Content-Type": "application/json"})
+    request = urllib.request.Request(url, data=data, method=method,
+                                     headers={"Content-Type": "application/json", **auth})
     with urllib.request.urlopen(request, timeout=TIMEOUT) as resp:
         return json.loads(resp.read().decode("utf-8") or "null")
 
@@ -2653,8 +2669,9 @@ def _ws_handshake(sock, url: str) -> None:
     """Ask for the upgrade and check Spoolman's Sec-WebSocket-Accept; raises ConnectionError."""
     parts = urllib.parse.urlsplit(url)
     key = base64.b64encode(os.urandom(16)).decode("ascii")
+    auth = "".join(f"{k}: {v}\r\n" for k, v in split_auth(url)[1].items())
     sock.sendall((f"GET {parts.path or '/'} HTTP/1.1\r\nHost: {parts.netloc.rpartition('@')[2]}\r\n"
-                  "Upgrade: websocket\r\nConnection: Upgrade\r\n"
+                  f"{auth}Upgrade: websocket\r\nConnection: Upgrade\r\n"
                   f"Sec-WebSocket-Key: {key}\r\nSec-WebSocket-Version: 13\r\n"
                   f"User-Agent: {PLUGIN_NAME}/{PLUGIN_VERSION}\r\n\r\n").encode("ascii"))
     head = b""

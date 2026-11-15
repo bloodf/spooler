@@ -128,5 +128,50 @@ class ReleaseMalformedTest(unittest.TestCase):
             self.assertFalse(sp.get_release()["ok"])
 
 
+class SpoolmanAddressTest(unittest.TestCase):
+    def test_user_and_password_go_as_basic_auth(self):
+        with FakeServer({"/api/v1/info": (200, {}, b'{"version": "0.22.1"}')}) as server:
+            result = sp.ping(f"http://alice:s%3Acret@127.0.0.1:{server.port}")
+        self.assertTrue(result["ok"], result)
+        auth = server.requests[0]["headers"].get("Authorization", "")
+        self.assertEqual(auth, "Basic " + base64.b64encode(b"alice:s:cret").decode())
+
+    def test_only_http_and_https(self):
+        folder = Path(tempfile.mkdtemp())
+        (folder / "api" / "v1").mkdir(parents=True)
+        (folder / "api" / "v1" / "info").write_text('{"version": "1.0.0"}')
+        result = sp.ping(folder.as_uri())
+        self.assertFalse(result["ok"])
+        self.assertIn("http", result["error"])
+
+    def test_websocket_handshake_carries_the_credentials(self):
+        sent = []
+
+        class Sock:
+            def sendall(self, data):
+                sent.append(data)
+
+            def recv(self, n):
+                raise ConnectionError("done")
+        with self.assertRaises(ConnectionError):
+            sp._ws_handshake(Sock(), "ws://bob:pw@127.0.0.1:7912/api/v1/spool")
+        head = sent[0].decode()
+        self.assertIn("Host: 127.0.0.1:7912\r\n", head)
+        self.assertIn("Authorization: Basic " + base64.b64encode(b"bob:pw").decode(), head)
+
+    def test_websocket_handshake_without_credentials_has_no_auth(self):
+        sent = []
+
+        class Sock:
+            def sendall(self, data):
+                sent.append(data)
+
+            def recv(self, n):
+                raise ConnectionError("done")
+        with self.assertRaises(ConnectionError):
+            sp._ws_handshake(Sock(), "ws://127.0.0.1:7912/api/v1/spool")
+        self.assertNotIn("Authorization", sent[0].decode())
+
+
 if __name__ == "__main__":
     unittest.main()
