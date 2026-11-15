@@ -163,7 +163,9 @@ Illustrative project artwork. [Credits and licenses](docs/related-plugins/README
   - **Single-extruder Klipper printers (e.g. Sovol SV06 with Klipper):** the spool Moonraker's
     Spoolman integration has marked as active. ***Change Spool*** on the card picks another
     non-archived spool and ***Clear*** unsets it, so Moonraker books the next print to the right
-    spool. Not offered on the U1 or on filament changers, which manage their own spools.
+    spool. While the printer prints or is paused it asks first, since Moonraker would then book the
+    rest of that print to the new spool. Not offered on the U1 or on filament changers, which
+    manage their own spools.
   - **Anycubic Kobra X (and other Anycubic printers in LAN mode):** each slot of the multi-colour
     box (ACE) and the external spool, matched to your Spoolman spools by material and colour.
     Turn on LAN mode on the printer and put its IP address in the printer preset's host field.
