@@ -2102,11 +2102,12 @@ SPOOLMAN_ATOMIC_USE = (0, 18, 0)
 _versions: dict = {}
 
 
-def spoolman_version() -> tuple | None:
+def spoolman_version(fresh: bool = False) -> tuple | None:
     """The pinned (or configured) Spoolman's version as (major, minor, patch); None when it can't
-    be read. Cached per address and source generation."""
+    be read. Cached per address and source generation; fresh reads it again, for a write whose
+    shape depends on it (Spoolman can be up- or downgraded while OrcaSlicer runs)."""
     pinned = getattr(_op, "origin", None) or current_origin()
-    if pinned in _versions:
+    if pinned in _versions and not fresh:
         return _versions[pinned]
     try:
         info = spoolman_call("GET", "info")
@@ -2121,8 +2122,8 @@ def spoolman_version() -> tuple | None:
     return version
 
 
-def spoolman_at_least(minimum: tuple) -> bool:
-    version = spoolman_version()
+def spoolman_at_least(minimum: tuple, fresh: bool = False) -> bool:
+    version = spoolman_version(fresh)
     return version is not None and version >= minimum
 
 
@@ -2237,7 +2238,7 @@ def _send_changes(name: str, changes: dict, snapshot: dict) -> str:
                 patch.pop(NATIVE_KEYS.get(key), None)
         kept.sort()
         value = json.dumps(json.dumps(data))
-        if spoolman_at_least(SPOOLMAN_EXTRA_MERGE):
+        if spoolman_at_least(SPOOLMAN_EXTRA_MERGE, fresh=True):
             # Spoolman merges extra key by key: send only the one field this changes.
             patch["extra"] = {ORCA_SETTINGS_FIELD: value}
         else:
@@ -5050,7 +5051,7 @@ def _dried_extra(sid: int, value: str | None) -> dict | str:
     whole, with only the dried key changed. A change made by someone else between that read and the
     PATCH can still be lost there: Spoolman's PATCH has no precondition.
     """
-    version = spoolman_version()
+    version = spoolman_version(fresh=True)
     if version is None:
         return DRIED_NO_VERSION
     if version >= SPOOLMAN_EXTRA_MERGE:
