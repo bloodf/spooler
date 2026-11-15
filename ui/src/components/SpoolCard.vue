@@ -7,9 +7,9 @@ import SpoolFigure from './SpoolFigure.vue';
 import LevelBar from './LevelBar.vue';
 import * as bridge from '../core/bridge';
 import { boot } from '../core/boot';
-import { m, inUse, dupes, plateSlots, pending } from '../state/main';
+import { m, inUse, dupes, plateSlots, pending, note } from '../state/main';
 import { menu, openMenu, closeMenu, setMode, sendAction } from '../state/menu';
-import { ask } from '../core/dialog';
+import { ask, prompt } from '../core/dialog';
 import { t, locale } from '../core/i18n';
 import { barFill, driedDays, gramsValid, driedOld, formatWeight, lowLevel, noteText, originalWeight, percentLeft, shown, swatch, swatchCols, swatchMain,
   tagUids, type Spool } from '../logic/spools';
@@ -58,21 +58,34 @@ watch(() => [open.value, menu.mode], async ([o]) => {   // the keyboard goes to 
   (panel.value?.querySelector('input, button') as HTMLElement | null)?.focus();
 });
 function close() { closeMenu(); void nextTick(() => more.value?.$el.focus()); }
-const hint = computed(() => (menu.mode === 'move' ? t('menu.location') : menu.mode === 'weigh' ? t('menu.scale') : t('menu.used')));
+const HINTS = { move: 'menu.location', weigh: 'menu.scale', use: 'menu.used', remain: 'menu.remainLabel', note: 'menu.noteLabel' } as const;
+const hint = computed(() => t(HINTS[menu.mode as keyof typeof HINTS] ?? 'menu.used'));
+const isText = computed(() => menu.mode === 'move' || menu.mode === 'note');
 const locations = computed(() => [...new Set([...m.locations, ...m.spools.map(x => x.location)])].filter(Boolean).sort() as string[]);
 // The plugin takes 0 < grams <= 100,000 for a weight or a use (MAX_GRAMS): refuse the rest here, with the reason.
-const gramsOk = computed(() => menu.mode === 'move' || gramsValid(menu.val));
+// Grams left may be 0 (an empty spool).
+const gramsOk = computed(() => isText.value || gramsValid(menu.val, menu.mode === 'remain'));
+const help = computed(() => (menu.mode === 'note' ? t('menu.noteHelp')
+  : menu.val !== '' && !gramsOk.value ? t(menu.mode === 'remain' ? 'menu.remainInvalid' : 'menu.gramsInvalid')
+  : t(menu.mode === 'remain' ? 'menu.remainHelp' : 'menu.gramsHelp')));
 
 async function archive() {
   if (!await ask({ title: t('menu.archive'), text: t('confirm.archive', { name: name.value, id: s.value.id }), yes: t('menu.archive'), no: t('common.goBack') })) return;
   sendAction('archive', { filament: f.value.id });
 }
+// One or several (a multi-pack): the count is asked in the same confirmation.
 async function addSpool() {
-  if (!await ask({ title: t('menu.add'), text: t('confirm.add', { name: name.value }), yes: t('menu.add'), no: t('common.goBack') })) return;
-  sendAction('add', { filament: f.value.id });
+  const answer = await prompt({ title: t('menu.add'), text: t('confirm.add', { name: name.value }), yes: t('menu.addYes'), no: t('common.goBack'),
+    input: { label: t('menu.addCount'), value: '1' } });
+  if (answer === null) return;
+  const count = Number(answer.trim());
+  if (!Number.isInteger(count) || count < 1 || count > 20) { note('error', t('menu.addCountInvalid')); return; }
+  sendAction('add', { filament: f.value.id, ...(count > 1 ? { count } : {}) });
 }
 async function save() {
   if (!gramsOk.value) return;
+  if (menu.mode === 'note') { sendAction('comment', { comment: menu.val }); return; }
+  if (menu.mode === 'remain') { sendAction('remaining', { grams: menu.val.replace(',', '.') }); return; }
   if (menu.mode !== 'move') { sendAction(menu.mode, { grams: menu.val.replace(',', '.') }); return; }
   if (s.value.u1_bound && !await ask({ title: t('menu.move'), text: t('confirm.unlink', { location: s.value.location }), yes: t('confirm.unlinkYes'), no: t('common.goBack'), danger: true })) return;
   sendAction('move', { location: menu.val });
@@ -125,16 +138,19 @@ function onKey(e: KeyboardEvent) {
       <form v-else-if="menu.mode" class="sp-row" @submit.prevent="save">
         <label :for="`sc-in-${s.id}`" class="sp-sr">{{ hint }}</label>
         <InputText v-if="menu.mode === 'move'" :id="`sc-in-${s.id}`" v-model="menu.val" maxlength="64" :list="`sc-locs-${s.id}`" :placeholder="hint" class="sc-in" />
+        <InputText v-else-if="menu.mode === 'note'" :id="`sc-in-${s.id}`" v-model="menu.val" maxlength="1024" :placeholder="hint" class="sc-in sc-note-in" />
         <InputText v-else :id="`sc-in-${s.id}`" v-model="menu.val" inputmode="decimal" :placeholder="hint" class="sc-in" :invalid="menu.val !== '' && !gramsOk" />
         <datalist v-if="menu.mode === 'move'" :id="`sc-locs-${s.id}`"><option v-for="l in locations" :key="l" :value="l" /></datalist>
         <Button type="submit" :label="t('common.save')" :disabled="!gramsOk" data-act="sp-go" />
         <Button severity="secondary" outlined :label="t('common.cancel')" @click="setMode('')" />
         <p v-if="menu.mode === 'move' && s.u1_bound" class="sp-why sc-full">{{ t('menu.u1Bound', { location: s.location }) }}</p>
-        <p v-if="menu.mode !== 'move'" class="sp-why sc-full">{{ menu.val !== '' && !gramsOk ? t('menu.gramsInvalid') : t('menu.gramsHelp') }}</p>
+        <p v-if="menu.mode !== 'move'" class="sp-why sc-full">{{ help }}</p>
       </form>
       <div v-else class="sc-actions">
         <Button severity="secondary" outlined :label="t('menu.weigh')" @click="setMode('weigh')" />
         <Button severity="secondary" outlined :label="t('menu.use')" @click="setMode('use')" />
+        <Button severity="secondary" outlined :label="t('menu.remain')" @click="setMode('remain')" />
+        <Button severity="secondary" outlined :label="t(s.comment ? 'menu.editNote' : 'menu.addNote')" @click="setMode('note', s.comment || '')" />
         <Button severity="secondary" outlined :label="t('menu.move')" @click="setMode('move', s.location || '')" />
         <Button severity="secondary" outlined :label="t('menu.details')" @click="setMode('detail')" />
         <Button v-if="s.archived" severity="secondary" outlined :label="t('menu.unarchive')" @click="sendAction('unarchive')" />

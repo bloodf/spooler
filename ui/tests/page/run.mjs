@@ -210,6 +210,65 @@ test('weights and grams fields validate before sending (no blank grams)', `
   eq(sentOf('spool_action').filter(m => m.action === 'use').length, 1, 'nothing more sent');
 `);
 
+test('grams left: set from the card, 0 allowed for an empty spool', `
+  await spools(SPOOLS, {display: {...DEFAULTS, group_same: false}});
+  await click(q('[data-spool="1"] [data-act="sp-menu"]'));
+  await click(btn('Set grams left', card(1)));
+  assert(text(card(1)).includes('0 for an empty spool'), 'explains');
+  await type(q('#sc-in-1'), '-2');
+  assert(q('[data-spool="1"] [data-act="sp-go"]').disabled && text(card(1)).includes('from 0 to 100,000'), 'negative refused');
+  await type(q('#sc-in-1'), '0');
+  await press('Enter');
+  const left = sentOf('spool_action').find(m => m.action === 'remaining');
+  eq([left.id, left.grams, left.origin], [1, '0', 3], 'sent with the list origin');
+  await click(q('[data-spool="1"] [data-act="sp-menu"]'));
+  await click(btn('Set grams left', card(1)));
+  await type(q('#sc-in-1'), '412,5');
+  await press('Enter');
+  eq(lastOf('spool_action').grams, '412.5', 'decimal comma');
+`);
+test('a note is added, edited and removed from the card', `
+  await spools([{...SPOOLS[0], comment: ''}, {...SPOOLS[1], comment: 'tangled <b>once</b>'}], {display: {...DEFAULTS, group_same: false}});
+  await click(q('[data-spool="1"] [data-act="sp-menu"]'));
+  assert(btn('Add a note', card(1)) && !btn('Edit note', card(1)), 'no note yet: add');
+  await click(btn('Add a note', card(1)));
+  await type(q('#sc-in-1'), 'Dry before use');
+  await click(q('[data-spool="1"] [data-act="sp-go"]'));
+  eq(lastOf('spool_action'), {type: 'spool_action', action: 'comment', id: 1, origin: 3, comment: 'Dry before use'}, 'saved');
+  await click(q('[data-spool="2"] [data-act="sp-menu"]'));
+  await click(btn('Edit note', card(2)));
+  eq(q('#sc-in-2').value, 'tangled <b>once</b>', 'starts from the current note');
+  assert(!q('[data-spool="2"] [data-act="sp-go"]').disabled, 'clearing is allowed');
+  await type(q('#sc-in-2'), '');
+  await click(q('[data-spool="2"] [data-act="sp-go"]'));
+  eq(lastOf('spool_action').comment, '', 'empty removes it');
+`);
+test('add several spools of a filament at once', `
+  await spools(SPOOLS, {display: {...DEFAULTS, group_same: false}});
+  await click(q('[data-spool="1"] [data-act="sp-menu"]'));
+  await click(btn('Add a spool of this filament', card(1)));
+  await until(() => dialogOpen());
+  assert(dialogText().includes('Each one starts full'), 'says what is added');
+  eq(q('#dlg-input').value, '1', 'one by default');
+  await yes();
+  const one = lastOf('spool_action');
+  eq([one.action, one.filament, 'count' in one], ['add', SPOOLS[0].filament.id, false], 'one spool: no count sent');
+  await click(q('[data-spool="1"] [data-act="sp-menu"]'));
+  await click(btn('Add a spool of this filament', card(1)));
+  await until(() => dialogOpen());
+  await type(q('#dlg-input'), '4');
+  await yes();
+  eq(lastOf('spool_action').count, 4, 'four');
+  const before = sentOf('spool_action').length;
+  await click(q('[data-spool="1"] [data-act="sp-menu"]'));
+  await click(btn('Add a spool of this filament', card(1)));
+  await until(() => dialogOpen());
+  await type(q('#dlg-input'), '25');
+  await yes();
+  eq(sentOf('spool_action').length, before, 'too many: nothing sent');
+  assert(alerts().includes('1 to 20'), 'and why: ' + alerts());
+`);
+
 // ------------------------------------------------------------------ status, errors, empty states (F10, S01, S02, B-20)
 test('F10: a read error keeps the old list of the same source, marked; another source drops it', `
   await spools([{id: 1, remaining_weight: 100, filament: {id: 1, name: 'OldSpool', material: 'PLA'}}]);

@@ -99,8 +99,10 @@ Restart OrcaSlicer, then tick Activate for Spooler.
   colour family from swatches, sit above the list.
 - **Act on a spool from its card (Spoolman).** The ***⋯*** button on each spool card opens its
   actions: ***Set Weight From Scale*** (weigh the spool and enter the gross weight), ***Use
-  Filament*** (subtract grams by hand), ***Move*** (pick one of Spoolman's locations or type a new
-  one), ***Archive*** / ***Unarchive***, ***Add Spool of This Filament*** and ***Open in
+  Filament*** (subtract grams by hand), ***Set Grams Left*** (no scale needed, 0 for an empty
+  spool), ***Add a Note*** / ***Edit Note*** (the spool's Spoolman comment), ***Move*** (pick one of
+  Spoolman's locations or type a new one), ***Archive*** / ***Unarchive***, ***Add Spool of This
+  Filament*** (1 to 20 at once) and ***Open in
   Spoolman***. Archiving and adding ask for a second click; so does moving a spool off a U1
   toolhead's location, since that unlinks it in u1control. ***Show archived*** in the filters
   lists archived spools, dimmed; they still never count for presets, the filament check or the
@@ -173,7 +175,8 @@ Link, filament usage booking, the Stats tab and the after-slice filament check.
   over them: Save makes a separate user preset that no longer follows Spoolman. Use ***Send to
   Spoolman*** instead.
 - Card actions need Spoolman as the source; Bambu Cloud spools have none. Set Weight From Scale
-  needs the spool's empty weight (or the filament's) in Spoolman.
+  needs the spool's empty weight (or the filament's) in Spoolman; Set Grams Left needs the spool's
+  initial weight (or the filament's).
 - Filament usage on Klipper printers is best tracked by Moonraker's own
   [Spoolman integration](https://moonraker.readthedocs.io/en/latest/configuration/#spoolman).
 

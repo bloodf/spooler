@@ -123,9 +123,11 @@ Illustrative project artwork. [Credits and licenses](docs/related-plugins/README
   colour family from swatches, sit above the list.
 - **Act on a spool from its card (Spoolman).** The ***⋯*** button on each spool card opens its
   actions: ***Set Weight From Scale*** (weigh the spool and enter the gross weight), ***Use
-  Filament*** (subtract grams by hand), ***Move*** (pick one of Spoolman's locations or type a new
-  one), ***Archive*** / ***Unarchive***, ***Add Spool of This Filament*** and ***Open in
-  Spoolman***. Archiving and adding ask for a second click; so does moving a spool off a U1
+  Filament*** (subtract grams by hand), ***Set Grams Left*** (type the filament left when you have
+  no scale, 0 for an empty spool), ***Add a Note*** / ***Edit Note*** (the spool's Spoolman
+  comment, say "dry before use"; empty removes it), ***Move*** (pick one of Spoolman's locations or
+  type a new one), ***Archive*** / ***Unarchive***, ***Add Spool of This Filament*** (1 to 20 at
+  once, for a multi-pack) and ***Open in Spoolman***. Archiving and adding ask for a second click; so does moving a spool off a U1
   toolhead's location, since that unlinks it in u1control. ***Show archived*** in the filters
   lists archived spools, dimmed; they still never count for presets, the filament check or the
   printer slots.
