@@ -3,6 +3,16 @@
 Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); entries before
 0.9.0 are Spoolio's.
 
+## [Unreleased]
+
+### Fixed
+- Test Connection stopped answering for the rest of the session after testing an address that answered with something other than Spoolman's JSON (an empty page, a list, a router page), and Save stayed blocked with it. It now says the address didn't answer like Spoolman. A spool list that isn't a list of spools is a failed read instead of an error in the Spools tab.
+- A Spoolman address with a user name and password (`http://user:password@host:7912`, for a Spoolman behind a proxy with basic auth) could never be reached. They are now sent as basic auth, on the live-updates connection too. Only `http://` and `https://` addresses are opened.
+- The Bambu Cloud sign-in token and the Anycubic printer's client key are written readable only by you from the moment the file exists; a sign-in that can't be saved now says so instead of leaving Settings waiting.
+- A PrusaLink or OctoPrint printer redirecting to another host no longer gets its API key sent there.
+- Setting the active spool of a Klipper printer always gets an answer, also when Moonraker's reply is malformed.
+- Spooler now declares the Bambu Cloud addresses it really calls (2FA and the filament list) to OrcaSlicer's permissions.
+
 ## [0.25.1] - 2026-11-14
 
 ### Changed
