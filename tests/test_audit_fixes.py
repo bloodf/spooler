@@ -2,13 +2,11 @@
 
 import base64
 import http.server
-import importlib.util
 import json
 import os
 import stat
 import tempfile
 import threading
-import types
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -16,23 +14,6 @@ from unittest import mock
 from plugin_loader import load
 
 sp, orca = load()
-
-
-def _fresh_socket():
-    """socket's own create_connection: test_review_fixes swaps the module's for a guard that
-    refuses all network, and these tests talk to a fake server on 127.0.0.1 only."""
-    spec = importlib.util.find_spec("socket")
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    # Its code, run against the real socket module (a re-executed copy can't build every enum).
-    fresh = module.create_connection
-    real = types.FunctionType(fresh.__code__, sp.socket.__dict__, fresh.__name__, fresh.__defaults__)
-    real.__kwdefaults__ = fresh.__kwdefaults__
-    return real
-
-
-_LOOPBACK = {"create_connection": _fresh_socket(),
-             "urlopen": lambda url, data=None, timeout=10, **kw: sp.urllib.request.build_opener().open(url, data, timeout)}
 
 
 class FakeServer:
@@ -65,16 +46,10 @@ class FakeServer:
         self.thread = threading.Thread(target=self.httpd.serve_forever, daemon=True)
 
     def __enter__(self):
-        self.patches = [mock.patch.object(sp.socket, "create_connection", _LOOPBACK["create_connection"]),
-                        mock.patch.object(sp.urllib.request, "urlopen", _LOOPBACK["urlopen"])]
-        for patch in self.patches:
-            patch.start()
         self.thread.start()
         return self
 
     def __exit__(self, *exc):
-        for patch in self.patches:
-            patch.stop()
         self.httpd.shutdown()
         self.httpd.server_close()
 

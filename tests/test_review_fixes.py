@@ -28,12 +28,7 @@ def stored(data):
     return json.dumps(json.dumps(data))
 
 
-def no_network(*args, **kwargs):
-    raise AssertionError("network forbidden in these tests")
-
-
-sp.urllib.request.urlopen = no_network
-sp.socket.create_connection = no_network
+# Network is refused for the whole run by plugin_loader's guard (loopback only).
 
 
 class Settings:
