@@ -54,6 +54,7 @@ if (SCN === 'stale') __t.handler({type: 'spools', ok: false, origin: 1, error: '
 if (SCN === 'tabsettings') { __t.handler({type: 'show_view', view: 'settings', ...${JSON.stringify(SETTINGS)}}); }
 await settle();
 // The detail asks for the shown spool's print history: answer it as the plugin would.
+await until(() => SCN === 'nourl' || SCN === 'empty' || __t.sent.some(m => m.type === 'spool_detail'), 'detail asked (after the list settles)');
 const ask = [...__t.sent].reverse().find(m => m.type === 'spool_detail');
 if (ask) __t.handler({type: 'spool_detail', detail: {id: ask.id, sign: '€', grams: 360, cost: 7.2, rate: 45, weeks: 1.6,
   prints: [96, 94.3, 31.5, 12.5, 125.7].map((g, i) => ({time: now - i * 4 * 86400 - 3600, name: ['Desk_Organiser_Plate_1', 'Headphone_Stand', 'Cable_Clip_x12', 'Benchy', 'Drawer_Divider_Set'][i], grams: g, cost: g * .02}))}});

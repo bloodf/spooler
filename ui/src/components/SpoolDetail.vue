@@ -48,7 +48,10 @@ const lasts = computed(() => {
   if (d.rate === null) return { value: null, unit: '', sub: t('detail.noRate') };
   const sub = t('detail.atRate', { g: Math.round(d.rate) });
   if (d.weeks === null) return { value: null, unit: '', sub };
-  return d.weeks < 1 ? { value: '< 1', unit: tn('detail.weeks', 1), sub } : { value: fmt.number(d.weeks, d.weeks < 10 && Math.round(d.weeks * 10) % 10 ? 1 : 0), unit: tn('detail.weeks', d.weeks), sub };
+  if (d.weeks < 1) return { value: '< 1', unit: tn('detail.weeks', 1), sub };
+  const digits = d.weeks < 10 && Math.round(d.weeks * 10) % 10 ? 1 : 0;
+  // A number shown with a decimal takes the plural (pt-BR's rules would make 1,6 singular).
+  return { value: fmt.number(d.weeks, digits), unit: digits ? t('detail.weeks_other') : tn('detail.weeks', Math.round(d.weeks)), sub };
 });
 // Grams booked to this spool in each of the last 8 weeks (oldest first), from the prints the plugin sent.
 const weeks = computed(() => {
@@ -63,11 +66,12 @@ const price = computed(() => {
 });
 const dupe = computed(() => { const d = dupes.value.get(f.value.id as number); return d && d.count > 1 ? d : null; });
 const facts = computed<OuiFact[]>(() => [
-  { label: t('menu.location'), value: s.value.location },
-  { label: t('detail.dried'), value: dried.value === null ? null : dried.value === 0 ? t('detail.today') : tn('detail.daysAgo', dried.value) },
+  // Location, Dried and RFID follow their Display switches; price and use have none.
+  ...(shown(m.disp, 'location') ? [{ label: t('menu.location'), value: s.value.location }] : []),
+  ...(shown(m.disp, 'dried') ? [{ label: t('detail.dried'), value: dried.value === null ? null : dried.value === 0 ? t('detail.today') : tn('detail.daysAgo', dried.value) }] : []),
   { label: t('detail.price'), value: price.value === null ? null : `${money(price.value)} / kg` },
   { label: t('detail.used'), value: typeof s.value.used_weight === 'number' ? [w(s.value.used_weight), detail.value && detail.value.cost !== null ? money(detail.value.cost) : ''].filter(Boolean).join(' · ') : null },
-  { label: t('detail.rfid'), value: tagUids(s.value).join(', '), mono: true },
+  ...(shown(m.disp, 'rfid') ? [{ label: t('detail.rfid'), value: tagUids(s.value).join(', '), mono: true }] : []),
   ...(dupe.value ? [{ label: t('detail.sameFilament'), value: t('spool.together', { n: dupe.value.count, w: w(dupe.value.total) }) }] : []),
 ]);
 const noteLine = computed(() => noteText(s.value, { ...m.disp, comment: true }, boot.own_fields, v => t('spool.lot', { lot: v })));

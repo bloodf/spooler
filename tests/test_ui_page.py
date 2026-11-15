@@ -55,6 +55,16 @@ class Embedded(unittest.TestCase):
         self.assertNotRegex(page, r"\bnew Function\b|\beval\(")
         self.assertIn("__VUE_OPTIONS_API__: true", (UI / "vite.config.ts").read_text(encoding="utf-8"))
 
+    def test_licences_of_the_bundled_code_ship_in_the_plugin_file(self):
+        # The release is spooler_any.py alone; the page bundles Vue, PrimeVue (PrimeUIX), Lucide icons (ISC) and the
+        # Manrope font (SIL OFL 1.1), whose licences ask for their notice in every copy.
+        notices = sp.UI_LICENSES
+        for name, marker in (("Vue.txt", "Yuxi (Evan) You"), ("PrimeVue.txt", "PrimeTek"), ("PrimeUIX.txt", "PrimeUI License"),
+                             ("Lucide.txt", "ISC License"), ("Manrope.txt", "SIL OPEN FONT LICENSE")):
+            text = (UI / "shared" / "licenses" / name).read_text(encoding="utf-8").replace("\r\n", "\n").rstrip("\n")
+            self.assertIn(f"===== {name} =====\n" + text, notices, name)
+            self.assertIn(marker, notices, name)
+
     def test_block_matches_the_build_when_present(self):
         built = UI / "dist" / "spooler-ui.html"
         if not built.exists():   # a fresh checkout without `npm run build`: the hash test above still applies

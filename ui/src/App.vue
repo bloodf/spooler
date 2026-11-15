@@ -26,13 +26,16 @@ watch(() => m.view, v => { if (v === 'main') pollLive(); });
 type Tab = 'spools' | 'printer' | 'stats';
 const tab = computed<Tab>(() => ((m.tab === 'stats' && !statsOn.value) || (m.tab === 'printer' && !m.showPrinterTab) ? 'spools' : m.tab));
 const current = computed(() => (m.view === 'settings' ? 'settings' : tab.value));
+// Each tab carries its name as a tooltip: in the 380 px dock the tabs show their icons only (the name stays their
+// accessible name, visually hidden).
+const named = (tab: OuiTab): OuiTab => ({ ...tab, attrs: { title: tab.label, ...tab.attrs } });
 const tabs = computed<OuiTab[]>(() => [
   { value: 'spools', label: t('nav.spools'), icon: spool, ...(m.spools.length ? { count: m.spools.length } : {}) },
   ...(m.showPrinterTab ? [{ value: 'printer', label: t('nav.printer'), icon: printer,
     ...(plateAttention.value > 0 || usageAttention.value ? { attention: t('nav.attention') } : {}) }] : []),
   ...(statsOn.value ? [{ value: 'stats', label: t('nav.stats'), icon: chart }] : []),
   ...(boot.mode === 'tab' ? [{ value: 'settings', label: t('nav.settings'), icon: settings, attrs: { 'data-test': 'settings-btn' } }] : []),
-]);
+].map(named));
 // Settings is the plugin's to open and close (it sends show_view); leaving it with unsaved edits asks first.
 async function go(value: string) {
   if (value === 'settings') { if (m.view !== 'settings') openSettings(); return; }
@@ -96,6 +99,7 @@ html, body, #app { min-height: 100%; }
 /* Narrow bar (the 380 px dock): the page actions keep their icons and drop their words; the state keeps its chip. */
 @container oui-appbar (max-width: 520px) {
   .sp-sync .p-button-label, .sp-state { display: none; }
+  .oui-appbar-tab > span:not([class]) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   .sp-sync.p-button { width: var(--oui-control-sm); padding-inline: 0; }
 }
 </style>

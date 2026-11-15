@@ -103,10 +103,12 @@ const soonLabel = (s: any) => {
         <OuiPanel :title="t('stats.perWeek')" :icon="chart" tone="accent">
           <p v-if="!weekMax" class="oui-muted">{{ t('stats.noWeeks') }}</p>
           <template v-else>
-            <div class="stv-weeks" role="img" :aria-label="t('stats.perWeekAria') + ': ' + data.weeks.map((wk: any) => w(sum(wk.parts))).join(', ')">
+            <div class="stv-weeks" role="img" :aria-label="t('stats.perWeekAria') + ': ' + data.weeks.map((wk: any) => [w(sum(wk.parts)), weekTip(wk)].filter(Boolean).join(', ')).join('; ')">
               <div v-for="wk in data.weeks" :key="wk.start" class="stv-week" :title="weekTip(wk) || undefined">
                 <span class="oui-meta oui-num stv-wv">{{ sum(wk.parts) ? w(sum(wk.parts)) : '' }}</span>
-                <span class="stv-bar" :class="{ now: wk.now }" :style="{ height: (sum(wk.parts) ? Math.max(3, sum(wk.parts) / weekMax * 100) : 0) + '%' }" />
+                <!-- One part per filament, in its own colour, inside a neutral frame (this week's frame in the accent). -->
+                <span class="stv-bar" :class="{ now: wk.now }" :style="{ height: (sum(wk.parts) ? Math.max(3, sum(wk.parts) / weekMax * 100) : 0) + '%' }">
+                  <i v-for="(p, i) in wk.parts" :key="i" :style="{ flex: p.g, background: col(p.colour) ?? 'var(--oui-muted)' }" :title="`${p.label}: ${Math.round(p.g)} g`" /></span>
                 <span class="oui-meta stv-wl">{{ wk.now ? t('stats.thisWeek') : weekDay(wk.start) }}</span>
               </div>
             </div>
@@ -184,8 +186,11 @@ const soonLabel = (s: any) => {
 .stv-weeks { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: var(--oui-s2); height: 168px; margin-bottom: var(--oui-s2); }
 .stv-week { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; justify-items: center; gap: 3px; min-width: 0; text-align: center; }
 .stv-wv, .stv-wl { white-space: nowrap; font-size: var(--oui-text-xs); }
-.stv-bar { align-self: end; width: 72%; max-width: 44px; border-radius: 3px 3px 0 0; background: color-mix(in srgb, var(--oui-primary) 55%, var(--oui-primary-soft)); }
-.stv-bar.now { background: var(--oui-primary); }
+.stv-bar { align-self: end; display: flex; flex-direction: column-reverse; gap: 1px; width: 72%; max-width: 44px; padding: 2px; border-radius: 4px 4px 0 0;
+  background: var(--oui-raised); box-shadow: inset 0 0 0 1px var(--oui-border); overflow: hidden; }
+/* A thin edge in the text colour keeps a near-black or near-white filament visible against the frame in either theme. */
+.stv-bar > i { min-height: 2px; border-radius: 2px; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--oui-text) 22%, transparent); }
+.stv-bar.now { box-shadow: inset 0 0 0 2px var(--oui-primary); }
 /* a composition: one segmented bar and a legend of squares */
 .stv-seg { display: flex; gap: 2px; height: 10px; margin-bottom: var(--oui-s3); }
 .stv-seg i { min-width: 3px; border-radius: 2px; background: var(--oui-tone); }

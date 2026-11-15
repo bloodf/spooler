@@ -2,7 +2,9 @@
 """Embed the compiled Vue page (ui/ -> ui/dist/spooler-ui.html, `npm run build`) into the single-file plugin.
 
 The plugin ships as one .py file, so the page lives in it as a generated block: zlib (level 9) + base64, between
-the BEGIN/END markers, with its SHA-256. Same input, same bytes. `--check` fails when the block is missing or
+the BEGIN/END markers, with its SHA-256, and the licence texts of what the page bundles (ui/shared/licenses: Vue,
+PrimeVue, PrimeUIX, the Lucide icons and the Manrope font) as UI_LICENSES, because the release is this one file
+and those licences ask for their notice in every copy. Same input, same bytes. `--check` fails when the block is missing or
 differs from the built page (CI and tests use it).
 
     python scripts/embed_ui.py            # write the block
@@ -20,9 +22,20 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 PLUGIN = ROOT / "plugin" / "spooler" / "spooler_any.py"
 PAGE = ROOT / "ui" / "dist" / "spooler-ui.html"
+LICENSES = ROOT / "ui" / "shared" / "licenses"
 BEGIN = "# --- BEGIN GENERATED UI: scripts/embed_ui.py from ui/ (npm run build); do not edit ---\n"
 END = "# --- END GENERATED UI ---\n"
 WIDTH = 100
+
+
+def licenses() -> str:
+    """Every bundled licence text, one after the other, each under its file name."""
+    texts = [f"===== {f.name} =====\n" + f.read_text(encoding="utf-8").replace("\r\n", "\n").rstrip("\n") + "\n"
+             for f in sorted(LICENSES.glob("*.txt"))]
+    if not texts:
+        sys.exit(f"error: no licence texts in {LICENSES.relative_to(ROOT)}")
+    lines = "".join(f"    {line!r}\n" for line in "\n".join(texts).splitlines(keepends=True))
+    return f"# Third-party licences of the embedded page (Vue, PrimeVue, PrimeUIX, Lucide icons, Manrope font).\nUI_LICENSES = (\n{lines})\n"
 
 
 def block(html: str) -> str:
@@ -30,7 +43,7 @@ def block(html: str) -> str:
     packed = base64.b64encode(zlib.compress(data, 9)).decode("ascii")
     lines = "".join(f'    "{packed[i:i + WIDTH]}"\n' for i in range(0, len(packed), WIDTH))
     return (BEGIN + f'UI_PAGE_SHA256 = "{hashlib.sha256(data).hexdigest()}"\n'
-            + f"UI_PAGE_BYTES = {len(data)}\nUI_PAGE_Z64 = (\n{lines})\n" + END)
+            + f"UI_PAGE_BYTES = {len(data)}\nUI_PAGE_Z64 = (\n{lines})\n" + licenses() + END)
 
 
 def current(text: str) -> str | None:

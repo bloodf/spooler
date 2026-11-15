@@ -273,6 +273,44 @@ test('add several spools of a filament at once', `
   assert(alerts().includes('1 to 20'), 'and why: ' + alerts());
 `);
 
+test('the detail asks for history once the list settles; a pick asks at once; rows control the detail', `
+  await spools(SPOOLS, {display: {...DEFAULTS, group_same: false}});
+  await until(() => sentOf('spool_detail').length === 1, 'first row asked after the list settled');
+  const before = sentOf('spool_detail').length;
+  for (const v of ['shelf b', 'shelf a', 'shelf b']) { const el = byTest('search'); el.value = v; el.dispatchEvent(new Event('input')); await sleep(60); }
+  await until(() => sentOf('spool_detail').length > before, 'asked after typing stopped');
+  await sleep(400);
+  eq(sentOf('spool_detail').slice(before).map(m => m.id), [2], 'one request, for the row shown once typing stopped');
+  const el = byTest('search'); el.value = ''; el.dispatchEvent(new Event('input')); await settle();
+  const n = sentOf('spool_detail').length;
+  await open(1);
+  eq([sentOf('spool_detail').length >= n + 1, lastOf('spool_detail').id], [true, 1], 'a pick asks at once');
+  eq(row(1).getAttribute('aria-controls'), 'sp-detail', 'the row controls the detail');
+  assert(q('#sp-detail') === panel(1), 'and the detail is that element');
+`);
+test('detail facts follow the Display switches', `
+  await spools([{...SPOOLS[0], extra: {dried: '"2026-11-01"'}, rfid_tags: ['04AB']}], {display: {...DEFAULTS, group_same: false, location: false, dried: false, rfid: false}});
+  await open(1);
+  const facts = vis(q('.oui-kv', panel(1)) || panel(1));
+  for (const k of ['LOCATION', 'DRIED', 'RFID TAG']) assert(!facts.toUpperCase().includes(k), 'hidden: ' + k + ' in ' + facts);
+  assert(facts.toUpperCase().includes('PRICE'), 'price has no switch and stays');
+`);
+test('narrow: a pick moves focus to the detail under the list', `
+  await spools(SPOOLS, {display: {...DEFAULTS, group_same: false}});
+  await open(2);
+  await until(() => document.activeElement && document.activeElement.matches('#sp-detail .oui-panel-title'), 'focus on the detail heading');
+`, { width: 720 });
+test('380 px dock: every tab is reachable, icons only, named', `
+  await spools(SPOOLS, {stats: {on: true, cur: 'spoolman'}});
+  const tabs = qa('[role=tab]');
+  assert(tabs.length >= 2, 'tabs: ' + tabs.length);
+  for (const b of tabs) {
+    const r = b.getBoundingClientRect();
+    assert(r.left >= 0 && r.right <= innerWidth, 'inside the bar: ' + b.dataset.tab + ' ' + r.left + '..' + r.right);
+    assert(b.title && text(b).startsWith(b.title), 'named and with a tooltip: ' + b.dataset.tab);
+  }
+`, { width: 380, mode: 'main' });
+
 // ------------------------------------------------------------------ status, errors, empty states (F10, S01, S02, B-20)
 test('F10: a read error keeps the old list of the same source, marked; another source drops it', `
   await spools([{id: 1, remaining_weight: 100, filament: {id: 1, name: 'OldSpool', material: 'PLA'}}]);
@@ -340,6 +378,7 @@ test('slot card shows the spool details and says it was linked by U1 Control', `
   for (const s of ['Acme', 'PLA', '#111111', '980 g of 1,000 g left', 'Spool #2', 'Shelf B', 'linked by U1 Control', 'Acme PLA Black @U1'])
     assert(text(c).includes(s), 'slot card has ' + s + ': ' + text(c));
   assert(c.getAttribute('title').includes('Spool linked by U1 Control'), 'tooltip names U1 Control (X05)');
+  assert(text(q('[data-source="printer"]', c)) === '98% on the printer' && text(q('[data-source="spoolman"]', c)).endsWith('· Spoolman'), 'each amount names its source');
 `);
 test('F11: assign and picker are keyboard controls; focus returns to the slot', `
   await spools([{id: 7, remaining_weight: 100, filament: {id: 1, name: 'PLA Black'}}], {printers: [{id: 'p1', name: 'P', units: [{kind: 'ams', slots: [null, null, null, null]}]}]});
@@ -526,6 +565,19 @@ test('plate check: rows, attention pill, recheck and dismiss', `
 `);
 
 // ------------------------------------------------------------------ stats (test_detail_export / test_stats)
+test('weekly use is split by filament, each part named', `
+  await spools(SPOOLS, {usage: {enabled: true, mode: 'ask', prints: []}, stats: {on: true, cur: 'spoolman'}});
+  await tab('stats');
+  await until(() => lastOf('stats'), 'stats asked');
+  const now = Date.now() / 1000;
+  await post({type: 'stats', stats: {period: lastOf('stats').period, since: now - 86400 * 30, code: 'GBP', sign: '£', grams: 40, prints: 1, cost: 1, low: 0, mats: [], top: [], soon: [],
+    weeks: [{start: now - 86400, now: true, parts: [{g: 30, colour: 'ff0000', label: 'PLA Red'}, {g: 10, colour: '0000ff', label: 'PETG Blue'}]}],
+    failed: {prints: 0, g: 0, cost: 0}, history: []}});
+  const parts = qa('.stv-bar > i');
+  eq(parts.map(i => i.getAttribute('title')), ['PLA Red: 30 g', 'PETG Blue: 10 g'], 'one part per filament');
+  eq(parts.map(i => getComputedStyle(i).backgroundColor), ['rgb(255, 0, 0)', 'rgb(0, 0, 255)'], 'in the filament colours');
+  assert(q('.stv-weeks').getAttribute('aria-label').includes('PETG Blue: 10 g'), 'read out too');
+`);
 test('stats tiles, shelf, waste, failed marker, history and export', `
   await spools(SPOOLS, {usage: {enabled: true, mode: 'ask', prints: []}, stats: {on: true, cur: 'spoolman'}});
   await tab('stats');
@@ -677,7 +729,7 @@ try {
       const p = await bounded(browser.newPage(), 'open page / initialize DevTools');
       const started = Date.now();
       try {
-        await bounded(p.size(1280, 900), 'set viewport');
+        await bounded(p.size(sc.width ?? 1280, 900), 'set viewport');
         await bounded(p.init(MOCK_HOST + 'try { localStorage.clear(); } catch {}'), 'install mock host');
         await bounded(p.goto(pathToFileURL(file).href), 'navigate / load event');
         const body = `(async () => { ${HELPERS} ${PRELUDE}

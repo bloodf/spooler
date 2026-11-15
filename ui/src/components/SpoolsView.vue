@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, nextTick, ref, watch } from 'vue';
 import Button from 'primevue/button';
 import InputText from 'primevue/inputtext';
 import Select from 'primevue/select';
@@ -111,6 +111,17 @@ const selected = computed<Spool | null>(() => {
   return top.kind === 'stack' ? top.items[0] : top.spool;
 });
 watch(() => selected.value?.id ?? null, shownSpool, { immediate: true });
+// Where the detail sits under the list (narrow), an explicit pick takes the keyboard and the eye to its heading.
+watch(() => menu.picks, async () => {
+  await nextTick();
+  const detail = document.getElementById('sp-detail'), list = detail?.previousElementSibling;
+  if (!detail || !list || detail.getBoundingClientRect().top < list.getBoundingClientRect().bottom - 1) return;
+  const head = detail.querySelector<HTMLElement>('.oui-panel-title');
+  if (!head) return;
+  head.tabIndex = -1;
+  head.focus({ preventScroll: true });
+  detail.scrollIntoView({ block: 'nearest' });
+});
 
 // Summary (count, presets) and the list state: first use, no address, read error, empty, filters (S01/S02).
 const countLine = computed(() => {
@@ -190,7 +201,7 @@ const setArchived = (on: boolean) => bridge.postMain({ type: 'spool_action', act
         </section>
         <template v-if="sourceOff" #footer><p id="sv-why" class="oui-meta">{{ t('list.actionsOff', { reason: sourceOff }) }}</p></template>
       </OuiPanel>
-      <SpoolDetail v-if="selected" :spool="selected" class="sp-detail" />
+      <SpoolDetail v-if="selected" id="sp-detail" :spool="selected" class="sp-detail" />
     </div>
     <p v-if="!sourceOff" id="sv-why" class="oui-sr">{{ t('list.sendHelp') }}</p>
   </div>

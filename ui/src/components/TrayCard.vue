@@ -4,10 +4,11 @@ import { OuiIcon, OuiLevel, OuiSlot, OuiStatus } from '../../shared/src/componen
 import { rfid } from '../../shared/src/icons';
 import { m } from '../state/main';
 import { t, locale } from '../core/i18n';
-import { formatWeight, levelTone, lowLevel, originalWeight, shown } from '../logic/spools';
+import { formatWeight, lowLevel, originalWeight, shown } from '../logic/spools';
 import type { Tray } from '../logic/printers';
 
-// One live slot (AMS tray, toolhead, external spool) as the printer reports it, with the spool it holds.
+// One live slot (AMS tray, toolhead, external spool) as the printer reports it, with the spool it holds. Two sources,
+// said apart: the percentage, the bar and the colour are the printer's; the grams line is Spoolman's.
 const props = defineProps<{ tray?: Tray | null; label: string; tool?: 1 | 2 | 3 | 4; active?: boolean; emptyLabel?: string; emptyHint?: string }>();
 const tr = computed<Tray>(() => props.tray ?? { empty: true });
 const pct = computed(() => (tr.value.remain == null ? null : Math.round(tr.value.remain)));
@@ -39,9 +40,10 @@ const empty = computed(() => !!tr.value.empty);
     </template>
     <template #meta>{{ sub }}</template>
     <template #amount>
-      <div v-if="pct !== null || weight" class="oui-slot-amount">
-        <p class="oui-num"><strong v-if="pct !== null">{{ pct }}%</strong><span v-if="weight" class="oui-muted">{{ pct !== null ? ' · ' : '' }}{{ weight }}</span></p>
-        <OuiLevel v-if="shown(d, 'head_bar')" :fraction="pct === null ? null : pct / 100" :tone="levelTone(level)" :label="pct === null ? t('spool.unknownLeft') : t('spool.pctLeft', { pct })" />
+      <div v-if="pct !== null || weight" class="oui-slot-amount" data-test="weight">
+        <p v-if="pct !== null" class="oui-num" data-source="printer"><strong>{{ pct }}%</strong><span class="oui-muted">{{ ' ' + t('tray.fromPrinter') }}</span></p>
+        <OuiLevel v-if="shown(d, 'head_bar') && pct !== null" :fraction="pct / 100" :label="t('spool.pctLeft', { pct }) + ' ' + t('tray.fromPrinter')" />
+        <p v-if="weight" class="oui-num oui-meta" data-source="spoolman">{{ weight }} · Spoolman</p>
       </div>
     </template>
     <template v-if="empty">

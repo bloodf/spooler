@@ -14,6 +14,8 @@ Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); 
 - Settings: an index of sections on the left that follows the scroll, the settings in two columns, and one bar at the bottom with Cancel and Save. The setup guide, the empty and error states and the stale-list warning use the same look; the empty states have the Spooler shelf illustration.
 - New Spooler mark (a spool seen from the side) in the tab icon, the page and the README art.
 
+- The licence texts of what the page bundles (Vue, PrimeVue, the Lucide icons and the Manrope font) now travel inside `spooler_any.py`.
+
 ### Fixed
 - The actions panel of a spool card could draw outside its card. The actions now live in the spool's detail.
 

@@ -41,7 +41,7 @@ const together = (r: Row) => { const d = r.kind === 'spool' && !r.child ? dupes.
 const note = (r: Row) => (r.kind === 'spool' ? noteText(r.spool, m.disp, boot.own_fields, v => t('spool.lot', { lot: v })) : '');
 const selectedRow = computed(() => props.rows.find(r => (r.kind === 'spool' ? r.spool.id === props.selected : !r.open && r.items.some(s => s.id === props.selected))) ?? null);
 const rowClass = (r: Row) => ({ 'sp-hidden': r.hidden, 'sp-child': r.kind === 'spool' && r.child, 'sp-archived': r.kind === 'spool' && r.spool.archived });
-const rowAttrs = (r?: Row) => (r?.kind === 'spool' ? { 'data-spool': r.spool.id } : r ? { 'data-stack': r.key } : {});
+const rowAttrs = (r?: Row) => (r?.kind === 'spool' ? { 'data-spool': r.spool.id, 'aria-controls': 'sp-detail' } : r ? { 'data-stack': r.key } : {});
 function onRow(r: Row) { if (r.kind === 'stack') emit('stack', r.key); else pickSpool(r.spool.id); }
 </script>
 
@@ -57,7 +57,7 @@ function onRow(r: Row) { if (r.kind === 'stack') emit('stack', r.key); else pick
           <OuiLevel :fraction="frac(groups[data.group].totals)" /></span>
       </button>
     </template>
-    <Column :header="t('list.col.spool')">
+    <Column :header="t('list.col.spool')" class="sp-c-spool">
       <template #body="{ data: r }">
         <div class="sp-spool">
           <OuiSpool v-bind="spoolPaint(fil(r))" :fraction="frac(sum(r))" :size="r.child ? 32 : 40" />
@@ -95,10 +95,12 @@ function onRow(r: Row) { if (r.kind === 'stack') emit('stack', r.key); else pick
 
 <style>
 .sp-table table { table-layout: fixed; width: 100%; }
-.sp-c-mat { width: 84px; } .sp-c-loc { width: 116px; } .sp-c-state { width: 152px; } .sp-c-left { width: 148px; }
+/* The name column has a share of the width; the state column takes the rest, so its chips sit side by side and wrap
+   only when they must instead of stacking one per line. */
+.sp-c-spool { width: 36%; } .sp-c-mat { width: 84px; } .sp-c-loc { width: 116px; } .sp-c-left { width: 148px; }
 /* "of 1,000 g" is read out and in the tooltip always; it is written where the list has the room. */
 .sp-of { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-@container sp-col (min-width: 900px) { .sp-c-left { width: 224px; } .sp-c-state { width: 216px; } .sp-of { position: static; width: auto; height: auto; clip-path: none; } }
+@container sp-col (min-width: 900px) { .sp-c-left { width: 200px; } .sp-of { position: static; width: auto; height: auto; clip-path: none; } }
 .sp-table tbody > tr { cursor: pointer; }
 .orca-ui .sp-table tr.sp-hidden { display: none; }
 .sp-spool { display: flex; align-items: center; gap: var(--oui-s3); min-width: 0; }
@@ -117,5 +119,5 @@ function onRow(r: Row) { if (r.kind === 'stack') emit('stack', r.key); else pick
 .sv-gbar { display: grid; gap: 4px; min-width: 90px; white-space: nowrap; text-align: end; }
 /* Narrow list: the location goes first, then material and state move under the name. */
 @container sp-col (max-width: 760px) { .orca-ui .sp-wider { display: none; } }
-@container sp-col (max-width: 500px) { .orca-ui .sp-wide { display: none; } .sp-narrow { display: flex; } }
+@container sp-col (max-width: 500px) { .orca-ui .sp-wide { display: none; } .sp-narrow { display: flex; } .sp-c-spool { width: auto; } }
 </style>
