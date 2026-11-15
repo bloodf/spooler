@@ -498,6 +498,9 @@ def get_spools(spoolman_url: str) -> dict:
     path = "spool?allow_archived=true" if display_settings()["archived"] else "spool"
     try:
         data = _spoolman_open(spoolman_url, path)
+        if not isinstance(data, list):
+            raise ValueError("Spoolman sent a spool list Spooler doesn't understand")
+        data = [spool for spool in data if isinstance(spool, dict)]
     except urllib.error.URLError as exc:
         error = f"Could not reach Spoolman at {spoolman_url} ({exc.reason})"
         _report("Spool list", error)
@@ -579,8 +582,16 @@ def ping(spoolman_url: str) -> dict:
         return {"ok": False, "error": "No Spoolman URL configured yet"}
     try:
         data = _spoolman_open(spoolman_url, "info")
+        if not isinstance(data, dict):
+            raise ValueError("not a JSON object")
     except urllib.error.URLError as exc:
         error = f"Could not reach Spoolman at {spoolman_url} ({exc.reason})"
+        log.warning("Connection test failed: %s", error)
+        return {"ok": False, "error": error}
+    except ValueError:
+        # Not JSON, or not an object: a web page or another service at that address. Raising here
+        # would leave the page's Test Connection waiting, and every later test ignored.
+        error = f"{spoolman_url} answered, but not like Spoolman does"
         log.warning("Connection test failed: %s", error)
         return {"ok": False, "error": error}
     except Exception as exc:
@@ -5584,6 +5595,8 @@ def get_release() -> dict:
     try:
         with urllib.request.urlopen(request, timeout=TIMEOUT) as resp:
             data = json.loads(resp.read().decode("utf-8"))
+        if not isinstance(data, dict):
+            raise ValueError("GitHub sent an answer Spooler doesn't understand")
     except urllib.error.HTTPError as exc:
         if exc.code == 404:
             error = "No published release found yet"
