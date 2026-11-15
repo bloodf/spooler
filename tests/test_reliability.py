@@ -91,5 +91,13 @@ class NetworkGuardTest(unittest.TestCase):
             sp.urllib.request.urlopen("http://10.25.16.41:7125/server/info", timeout=1)
 
     def test_loopback_is_allowed(self):
-        with self.assertRaises(ConnectionRefusedError):
-            sp.socket.create_connection(("127.0.0.1", 1), timeout=1)
+        # A real listener, so the result doesn't depend on how an OS answers a closed port (Windows
+        # retries the SYN for about two seconds instead of refusing at once).
+        with sp.socket.socket(sp.socket.AF_INET, sp.socket.SOCK_STREAM) as server:
+            server.bind(("127.0.0.1", 0))
+            server.listen(1)
+            with sp.socket.create_connection(server.getsockname(), timeout=5) as client:
+                accepted, _ = server.accept()
+                with accepted:
+                    client.sendall(b"ping")
+                    self.assertEqual(accepted.recv(4), b"ping")
