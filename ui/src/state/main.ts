@@ -113,7 +113,7 @@ export const sourceOff = computed(() => {
 });
 
 // ------------------------------------------------------------------ messages
-const listeners = { plate: new Set<() => void>(), detail: new Set<(d: any) => void>(), stats: new Set<(d: any) => void>(),
+const listeners = { actionOk: new Set<() => void>(), plate: new Set<() => void>(), detail: new Set<(d: any) => void>(), stats: new Set<(d: any) => void>(),
   statsExport: new Set<(d: any) => void>(), moonConfirm: new Set<(d: any) => void>() };
 export const on = <K extends keyof typeof listeners>(k: K, h: Parameters<(typeof listeners)[K]['add']>[0]) => {
   (listeners[k] as Set<any>).add(h); return () => (listeners[k] as Set<any>).delete(h);
@@ -174,6 +174,7 @@ function onMessage(d: any): void {
     case 'action_result':
       if (d.action === 'locations') { m.locations = d.ok ? d.locations || [] : []; return; }
       if (d.text) settle('spool-action', !!d.ok, d.text); else for (const n of m.notes.filter(n => n.key === 'spool-action')) dismiss(n.id);
+      if (d.ok) listeners.actionOk.forEach(h => h());
       bridge.postMain({ type: 'refresh' });
       break;
     case 'moon_spool':

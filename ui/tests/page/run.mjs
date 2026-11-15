@@ -288,6 +288,39 @@ test('the detail asks for history once the list settles; a pick asks at once; ro
   eq(row(1).getAttribute('aria-controls'), 'sp-detail', 'the row controls the detail');
   assert(q('#sp-detail') === panel(1), 'and the detail is that element');
 `);
+test('N1: the shown spool is asked again when an action settles and when a newer list arrives', `
+  await spools(SPOOLS, {display: {...DEFAULTS, group_same: false}});
+  await open(1);
+  await post({type: 'spool_detail', detail: {id: 1, sign: '£', grams: 40, cost: 1, rate: 20, weeks: 20, prints: [{time: 1700000000, name: 'Benchy', grams: 40, cost: 1}]}});
+  const asked = () => sentOf('spool_detail').filter(m => m.id === 1).length;
+  let n = asked();
+  await click(btn('Mark dried today', panel(1)));
+  await post({type: 'action_result', ok: true, action: 'dried', text: 'Spool #1 updated'});
+  await spools(SPOOLS, {display: {...DEFAULTS, group_same: false}});
+  await until(() => asked() > n, 'asked again after the action');
+  await sleep(400);
+  eq(asked(), n + 1, 'the result and the list it refreshes make one request');
+  assert(text(panel(1)).includes('Benchy'), 'the old history stays until the new one arrives');
+  n = asked();
+  await spools([{...SPOOLS[0], remaining_weight: 300}, SPOOLS[1]], {display: {...DEFAULTS, group_same: false}});
+  await until(() => asked() > n, 'asked again for a newer list');
+  await post({type: 'action_result', ok: false, action: 'dried', text: 'refused'});
+  await sleep(400);
+  eq(asked(), n + 1, 'a refused action asks nothing');
+`);
+test('N2: the same id from another source is another spool; only Spoolman is asked', `
+  await spools([SPOOLS[0]], {display: {...DEFAULTS, group_same: false}});
+  await open(1);
+  const n = sentOf('spool_detail').length;
+  await spools([SPOOLS[0]], {source: 'bambu', display: {...DEFAULTS, group_same: false}});
+  await sleep(400);
+  eq(sentOf('spool_detail').length, n, 'Bambu Cloud has no history: nothing asked');
+  assert(!/Loading/.test(text(panel(1))), 'no Loading stuck on the Bambu spool: ' + text(panel(1)));
+  await spools([SPOOLS[0]], {source: 'spoolman', display: {...DEFAULTS, group_same: false}});
+  await until(() => sentOf('spool_detail').length > n, 'back on Spoolman: asked afresh for the same id');
+  await post({type: 'spool_detail', detail: {id: 1, sign: '£', grams: 0, cost: 0, rate: null, weeks: null, prints: []}});
+  assert(!/Loading/.test(text(panel(1))), 'the answer shows: ' + text(panel(1)));
+`);
 test('detail facts follow the Display switches', `
   await spools([{...SPOOLS[0], extra: {dried: '"2026-11-01"'}, rfid_tags: ['04AB']}], {display: {...DEFAULTS, group_same: false, location: false, dried: false, rfid: false}});
   await open(1);
