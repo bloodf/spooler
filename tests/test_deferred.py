@@ -90,5 +90,47 @@ class LinkStatusOwnerTest(unittest.TestCase):
             self.assertNotIn("p2", sp._live["links"])
 
 
+class LegacyWindowAfterCloseTest(unittest.TestCase):
+    """The window build (no orca.pages): a booking still runs when the window closed meanwhile."""
+
+    def setUp(self):
+        self.win = sp.SpoolerWindow()
+        self.win._panel = None
+
+    def test_booking_runs_and_nothing_raises(self):
+        done = threading.Event()
+
+        def act(data):
+            done.set()
+            return {"prints": [], "notice": ""}
+        with mock.patch.object(sp, "usage_action", side_effect=act), \
+                mock.patch.object(sp.log, "exception") as logged:
+            self.win.on_message({"type": "usage_book", "run": "r1", "rows": []})
+            self.assertTrue(done.wait(5))
+            time.sleep(0.1)
+        logged.assert_not_called()
+
+    def test_every_reply_survives_a_closed_window(self):
+        with mock.patch.object(sp, "stats_data", return_value={}), mock.patch.object(sp, "spool_detail", return_value={}), \
+                mock.patch.object(sp, "export_history", return_value={"ok": True}), \
+                mock.patch.object(sp, "live_message", return_value={"type": "live"}), \
+                mock.patch.object(sp, "start_send") as send, mock.patch.object(sp, "start_preset_sync"), \
+                mock.patch.object(sp, "start_spool_action"), mock.patch.object(sp, "start_moon_spool"), \
+                mock.patch.object(sp, "auto_send"), mock.patch.object(sp.log, "exception") as logged:
+            for kind in ("live", "stats", "stats_export", "spool_detail", "send", "sync_presets", "spool_action",
+                         "moon_spool", "tick"):
+                self.win.on_message({"type": kind})
+            time.sleep(0.2)
+            post = send.call_args[0][0]
+            post({"type": "sent", "ok": True, "text": ""})   # the worker's reply after the close
+        logged.assert_not_called()
+
+    def test_open_window_still_gets_the_reply(self):
+        got = []
+        self.win._panel = mock.Mock(is_open=lambda: True, post=got.append)
+        self.win._post({"type": "x"})
+        self.assertEqual(got, [{"type": "x"}])
+
+
 if __name__ == "__main__":
     unittest.main()

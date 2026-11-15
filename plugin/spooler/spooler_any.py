@@ -6499,6 +6499,16 @@ class SpoolerWindow(orca.script.ScriptPluginCapabilityBase):
         if self._settings_window is not None and self._settings_window.is_open():
             self._settings_window.close()
 
+    def _post(self, data):
+        """Post to the window if it is still open. Workers answer after their work is done, and the
+        window may have closed meanwhile: the work (a booking, say) has still happened."""
+        panel = self._panel
+        try:
+            if panel is not None and panel.is_open():
+                panel.post(data)
+        except Exception as exc:  # closed between the check and the post
+            log.debug("Could not post to the closed window: %s", exc)
+
     def on_message(self, data):
         msg_type = data.get("type") if isinstance(data, dict) else None
         if msg_type in ("ready", "refresh"):
@@ -6511,27 +6521,27 @@ class SpoolerWindow(orca.script.ScriptPluginCapabilityBase):
         elif msg_type == "printers":
             save_printers(data.get("printers"))
         elif msg_type == "live":
-            self._panel.post(live_message())
+            self._post(live_message())
         elif msg_type == "printer_code":
             save_printer_code(data.get("id"), data.get("code"))
         elif msg_type in ("usage_mode", "usage_book", "usage_undo", "usage_resolve"):
-            spawn(lambda: self._panel.post({"type": "usage", "usage": usage_action(data)}), name="spooler-usage")
+            spawn(lambda: self._post({"type": "usage", "usage": usage_action(data)}), name="spooler-usage")
         elif msg_type == "stats":
-            spawn(lambda: self._panel.post({"type": "stats", "stats": stats_data(data.get("period"))}), name="spooler-stats")
+            spawn(lambda: self._post({"type": "stats", "stats": stats_data(data.get("period"))}), name="spooler-stats")
         elif msg_type == "stats_export":
-            spawn(lambda: self._panel.post({"type": "stats_export", **export_history(data.get("period"))}), name="spooler-export")
+            spawn(lambda: self._post({"type": "stats_export", **export_history(data.get("period"))}), name="spooler-export")
         elif msg_type == "spool_detail":
-            spawn(lambda: self._panel.post({"type": "spool_detail", "detail": spool_detail(data.get("id"))}), name="spooler-detail")
+            spawn(lambda: self._post({"type": "spool_detail", "detail": spool_detail(data.get("id"))}), name="spooler-detail")
         elif msg_type == "send":
-            start_send(self._panel.post)
+            start_send(self._post)
         elif msg_type == "sync_presets":
-            start_preset_sync(self._panel.post)
+            start_preset_sync(self._post)
         elif msg_type == "spool_action":
-            start_spool_action(data, self._panel.post)
+            start_spool_action(data, self._post)
         elif msg_type == "moon_spool":
-            start_moon_spool(data, self._panel.post)
+            start_moon_spool(data, self._post)
         elif msg_type == "tick":
-            auto_send(self._panel.post)
+            auto_send(self._post)
         elif msg_type == "ui_language":
             save_ui_language(data.get("value"))
 
