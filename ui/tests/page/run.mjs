@@ -42,7 +42,12 @@ async function pick(root, label) {
 const sentOf = type => __t.sent.filter(m => m.type === type);
 const lastOf = type => [...__t.sent].reverse().find(m => m.type === type);
 const card = id => q('[data-spool="' + id + '"]');
-const alerts = () => qa('[role=alert] .p-message').map(text).join(' | ');
+const alerts = () => qa('[role=alert] .oui-banner').map(text).join(' | ');
+// The list is a table of rows; the picked spool's detail, with its actions, sits beside it.
+const row = id => q('tr[data-spool="' + id + '"]');
+const panel = id => q('[data-detail="' + id + '"]');
+async function open(id) { await click(row(id)); await until(() => panel(id), 'detail of spool ' + id); }
+const stackText = () => [q('[data-stack]'), ...qa('tr.sp-child')].map(vis).join(' ');
 `;
 
 const scenarios = [];
@@ -52,27 +57,26 @@ const test = (name, body, opts = {}) => scenarios.push({ name, body, ...opts });
 test('grouped spools show full totals and the loaded one first', `
   await spools(SPOOLS);
   await post({type: 'live', live: LIVE});
-  const head = q('[data-stack] .st-head');
+  const head = q('[data-stack]');
   assert(text(head).includes('1,380 g of 2,000 g'), 'totals: ' + text(head));
   assert(text(head).includes('1 in use'), 'in use count');
-  await click(head);
-  const items = qa('[data-stack] .sc');
+  await click(q('[data-stack] .st-head'));
+  const items = qa('tr.sp-child');
   eq(items.map(c => c.dataset.spool), ['2', '1'], 'spool 2 is loaded: first');
   assert(text(items[0]).includes('In use · U1 · T1'), 'where it is loaded');
 `);
 test('groups and single spools share one card; stack shows its count', `
   await spools(SPOOLS);
-  assert(text(q('.st-count')) === '2', 'count on the swatch');
+  assert(text(q('.st-count')) === '×2', 'count on the stack row');
   await click(q('[data-stack] .st-head'));
   eq(qa('.st-sub, .sc-subtext').filter(e => e.textContent.includes('Acme')).length, 3, 'group and both spools name the manufacturer');
 `);
-test('an open stack stays in its column (grid rows)', `
-  await spools(SPOOLS, {spool_columns: 2});
-  const st = q('[data-stack]');
-  eq(st.style.getPropertyValue('--rows'), '3', 'rows = head + spools');
+test('an open stack stays in its column', `
+  await spools([...SPOOLS, {...SPOOLS[0], id: 5, filament: {...SPOOLS[0].filament, id: 8, name: 'Blue'}}], {spool_columns: 2});
+  eq(qa('.sp-col').length, 2, 'two columns');
   await click(q('[data-stack] .st-head'));
-  eq(getComputedStyle(st).gridRowStart, 'span 3', 'spans its own rows only');
-  assert(getComputedStyle(st).gridColumnStart === 'auto', 'not spanning both columns');
+  const col = q('[data-stack]').closest('.sp-col');
+  eq(qa('tr.sp-child').map(r => r.closest('.sp-col') === col), [true, true], 'its spools open under it, in its column');
 `);
 test('every Display switch hides its part', `
   const off = Object.fromEntries(Object.keys(DEFAULTS).map(k => [k, false]));
@@ -88,13 +92,13 @@ test('group card follows the switches and keeps the list order', `
   await post({type: 'live', live: LIVE});
   assert(q('[data-stack]'), 'still grouped');
   await click(q('[data-stack] .st-head'));
-  const v = vis(q('[data-stack]'));
+  const v = stackText();
   for (const s of ['Acme', 'PLA', 'in use', 'In use']) assert(!v.includes(s), 'hidden: ' + s + ' in ' + v);
   assert(v.indexOf('400 g') < v.indexOf('980 g'), 'list order kept');
 `);
 test('kilograms when exact weights are off', `
   await spools(SPOOLS, {display: {...DEFAULTS, exact_weight: false}});
-  assert(text(q('[data-stack] .st-head')).includes('1.38 kg of 2.00 kg'), text(q('[data-stack] .st-head')));
+  assert(text(q('[data-stack]')).includes('1.38 kg of 2.00 kg'), text(q('[data-stack]')));
 `);
 test('comment on by default; lot and extra fields off; Spooler fields never shown', `
   await spools(NOTED);
@@ -133,34 +137,34 @@ test('a Spoolman change asks for a refresh', `
 test('card actions only for Spoolman; archived spool; move that unlinks a U1 toolhead confirms', `
   const list = [...SPOOLS, {...SPOOLS[0], id: 3, archived: true, location: 'Snapmaker U1 T0', u1_bound: true}];
   await spools(list, {display: {...DEFAULTS, group_same: false}});
-  eq(qa('[data-act="sp-menu"]').length, 3, 'one actions button per spool');
-  await click(q('[data-spool="3"] [data-act="sp-menu"]'));
-  const panel = vis(card(3));
+  eq(qa('tr[data-spool]').length, 3, 'one row per spool');
+  await open(3);
+  const actions = vis(panel(3));
   for (const s of ['Set weight from scale', 'Use filament', 'Move', 'Unarchive', 'Add a spool of this filament', 'Open in Spoolman', 'Archived'])
-    assert(panel.includes(s), 'menu has ' + s);
-  assert(!btn('Archive', card(3)), 'no Archive on an archived spool');
-  eq(q('[data-spool="3"] [data-act="sp-menu"]').getAttribute('aria-expanded'), 'true', 'expanded');
-  await click(btn('Move', card(3)));
+    assert(actions.includes(s), 'detail has ' + s);
+  assert(!btn('Archive', panel(3)), 'no Archive on an archived spool');
+  eq(row(3).getAttribute('aria-selected'), 'true', 'its row is the selected one');
+  await click(btn('Move', panel(3)));
   await until(() => sentOf('spool_action').some(m => m.action === 'locations'), 'locations asked');
-  assert(vis(card(3)).includes('unlinks that toolhead'), 'warns before');
+  assert(vis(panel(3)).includes('unlinks that toolhead'), 'warns before');
   await type(q('#sc-in-3'), 'Shelf');
-  await click(q('[data-spool="3"] [data-act="sp-go"]'));
+  await click(q('[data-detail="3"] [data-act="sp-go"]'));
   assert(dialogOpen() && dialogText().includes('unlinks that toolhead'), 'second step is a confirmation');
   await yes();
   const mv = sentOf('spool_action').find(m => m.action === 'move');
   eq([mv.id, mv.location, mv.origin], [3, 'Shelf', 3], 'moves with the list origin');
   assert(text(q('.sa')).includes('Sending to Spoolman'), 'pending shown');
-  await click(q('[data-spool="1"] [data-act="sp-menu"]'));
-  await click(btn('Archive', card(1)));
+  await open(1);
+  await click(btn('Archive', panel(1)));
   assert(dialogText().includes('Archive Black'), 'archive asks');
   await no();
   assert(!sentOf('spool_action').some(m => m.action === 'archive'), 'declined: nothing sent');
   await spools(list, {source: 'bambu', display: {...DEFAULTS, group_same: false}});
-  eq(qa('[data-act="sp-menu"]').length, 0, 'no actions for Bambu Cloud');
+  assert(panel(1) && !btn('Set weight from scale', panel(1)) && !btn('Archive', panel(1)) && !btn('Open in Spoolman', panel(1)), 'no actions for Bambu Cloud');
 `);
 test('use first chip follows the payload and its switch', `
   await spools([{...SPOOLS[0], use_first: true}, {...SPOOLS[1], id: 9, filament: {...SPOOLS[1].filament, id: 6}}], {display: {...DEFAULTS, group_same: false}});
-  eq(qa('.sp-chip').filter(c => text(c) === 'Use first').length, 1, 'one chip');
+  eq(qa('tr[data-spool]').filter(r => r.querySelector('[data-chip="use-first"]')).length, 1, 'one chip');
   await spools([{...SPOOLS[0], use_first: true}], {display: {...DEFAULTS, use_first: false, group_same: false}});
   assert(!document.body.textContent.includes('Use first'), 'switch hides it');
 `);
@@ -169,99 +173,99 @@ test('dried chip and menu: mark, then clear only when marked', `
   await spools([marked, {...SPOOLS[1], filament: {...SPOOLS[1].filament, id: 6}}], {display: {...DEFAULTS, group_same: false, extra_fields: true}});
   assert(text(card(1)).includes('Dried today') && byTest('dried'), 'chip');
   assert(!text(card(1)).includes('dried:') && text(card(1)).includes('dryer: Box 2'), 'own field hidden, user field shown');
-  await click(q('[data-spool="1"] [data-act="sp-menu"]'));
-  assert(btn('Mark dried today', card(1)) && btn('Clear dried date', card(1)), 'both');
-  await click(btn('Mark dried today', card(1)));
-  await click(q('[data-spool="2"] [data-act="sp-menu"]'));
-  assert(btn('Mark dried today', card(2)) && !btn('Clear dried date', card(2)), 'clear only when marked');
-  await click(q('[data-spool="1"] [data-act="sp-menu"]'));
-  await click(btn('Clear dried date', card(1)));
+  await open(1);
+  assert(btn('Mark dried today', panel(1)) && btn('Clear dried date', panel(1)), 'both');
+  await click(btn('Mark dried today', panel(1)));
+  await open(2);
+  assert(btn('Mark dried today', panel(2)) && !btn('Clear dried date', panel(2)), 'clear only when marked');
+  await open(1);
+  await click(btn('Clear dried date', panel(1)));
   eq(sentOf('spool_action').map(m => m.action).filter(a => a !== 'locations'), ['dried', 'clear_dried'], 'actions');
   await spools([marked], {display: {...DEFAULTS, dried: false}});
   assert(!byTest('dried'), 'switch hides it');
 `);
 test('details panel renders the history as text', `
   await spools(SPOOLS, {display: {...DEFAULTS, group_same: false}});
-  await click(q('[data-spool="1"] [data-act="sp-menu"]'));
-  await click(btn('Details', card(1)));
+  await open(1);
   eq(lastOf('spool_detail').id, 1, 'asked');
   await post({type: 'spool_detail', detail: {id: 1, sign: '£', grams: 80, cost: 2.5, rate: 20, weeks: 5, prints: [{time: 1700000000, name: '<b>Benchy</b>', grams: 40, cost: 1}]}});
-  const d = text(card(1));
-  for (const s of ['1 print', '20 g a week', 'about 5 weeks left', '£2.50', '<b>Benchy</b>']) assert(d.includes(s), 'detail has ' + s + ': ' + d);
-  assert(!card(1).querySelector('b b, td b'), 'markup is text, not HTML');
+  const d = text(panel(1));
+  for (const s of ['1 print', '20 g a week on average', 'at 20 g per week', '£2.50', '<b>Benchy</b>']) assert(d.includes(s), 'detail has ' + s + ': ' + d);
+  assert(/Lasts about\\s*5\\s*weeks/.test(d), 'lasts about 5 weeks: ' + d);
+  assert(!panel(1).querySelector('b b, td b'), 'markup is text, not HTML');
 `);
 test('weights and grams fields validate before sending (no blank grams)', `
   await spools(SPOOLS, {display: {...DEFAULTS, group_same: false}});
-  await click(q('[data-spool="1"] [data-act="sp-menu"]'));
-  await click(btn('Use filament', card(1)));
-  assert(q('[data-spool="1"] [data-act="sp-go"]').disabled, 'Save waits for grams');
+  await open(1);
+  await click(btn('Use filament', panel(1)));
+  assert(q('[data-detail="1"] [data-act="sp-go"]').disabled, 'Save waits for grams');
   await type(q('#sc-in-1'), 'abc');
-  assert(q('[data-spool="1"] [data-act="sp-go"]').disabled && text(card(1)).includes('Enter a number of grams'), 'invalid explained');
+  assert(q('[data-detail="1"] [data-act="sp-go"]').disabled && text(panel(1)).includes('Enter a number of grams'), 'invalid explained');
   await type(q('#sc-in-1'), '12,5');
   await press('Enter');
   const use = sentOf('spool_action').find(m => m.action === 'use');
   eq(use.grams, '12.5', 'decimal comma accepted');
-  await click(q('[data-spool="1"] [data-act="sp-menu"]'));
-  await click(btn('Use filament', card(1)));
+  await open(1);
+  await click(btn('Use filament', panel(1)));
   for (const bad of ['0', '-3', '100001']) {
     await type(q('#sc-in-1'), bad);
-    assert(q('[data-spool="1"] [data-act="sp-go"]').disabled && text(card(1)).includes('above 0'), bad + ' refused before sending');
+    assert(q('[data-detail="1"] [data-act="sp-go"]').disabled && text(panel(1)).includes('above 0'), bad + ' refused before sending');
   }
   eq(sentOf('spool_action').filter(m => m.action === 'use').length, 1, 'nothing more sent');
 `);
 
 test('grams left: set from the card, 0 allowed for an empty spool', `
   await spools(SPOOLS, {display: {...DEFAULTS, group_same: false}});
-  await click(q('[data-spool="1"] [data-act="sp-menu"]'));
-  await click(btn('Set grams left', card(1)));
-  assert(text(card(1)).includes('0 for an empty spool'), 'explains');
+  await open(1);
+  await click(btn('Set grams left', panel(1)));
+  assert(text(panel(1)).includes('0 for an empty spool'), 'explains');
   await type(q('#sc-in-1'), '-2');
-  assert(q('[data-spool="1"] [data-act="sp-go"]').disabled && text(card(1)).includes('from 0 to 100,000'), 'negative refused');
+  assert(q('[data-detail="1"] [data-act="sp-go"]').disabled && text(panel(1)).includes('from 0 to 100,000'), 'negative refused');
   await type(q('#sc-in-1'), '0');
   await press('Enter');
   const left = sentOf('spool_action').find(m => m.action === 'remaining');
   eq([left.id, left.grams, left.origin], [1, '0', 3], 'sent with the list origin');
-  await click(q('[data-spool="1"] [data-act="sp-menu"]'));
-  await click(btn('Set grams left', card(1)));
+  await open(1);
+  await click(btn('Set grams left', panel(1)));
   await type(q('#sc-in-1'), '412,5');
   await press('Enter');
   eq(lastOf('spool_action').grams, '412.5', 'decimal comma');
 `);
 test('a note is added, edited and removed from the card', `
   await spools([{...SPOOLS[0], comment: ''}, {...SPOOLS[1], comment: 'tangled <b>once</b>'}], {display: {...DEFAULTS, group_same: false}});
-  await click(q('[data-spool="1"] [data-act="sp-menu"]'));
-  assert(btn('Add a note', card(1)) && !btn('Edit note', card(1)), 'no note yet: add');
-  await click(btn('Add a note', card(1)));
+  await open(1);
+  assert(btn('Add a note', panel(1)) && !btn('Edit note', panel(1)), 'no note yet: add');
+  await click(btn('Add a note', panel(1)));
   await type(q('#sc-in-1'), 'Dry before use');
-  await click(q('[data-spool="1"] [data-act="sp-go"]'));
+  await click(q('[data-detail="1"] [data-act="sp-go"]'));
   eq(lastOf('spool_action'), {type: 'spool_action', action: 'comment', id: 1, origin: 3, comment: 'Dry before use'}, 'saved');
-  await click(q('[data-spool="2"] [data-act="sp-menu"]'));
-  await click(btn('Edit note', card(2)));
+  await open(2);
+  await click(btn('Edit note', panel(2)));
   eq(q('#sc-in-2').value, 'tangled <b>once</b>', 'starts from the current note');
-  assert(!q('[data-spool="2"] [data-act="sp-go"]').disabled, 'clearing is allowed');
+  assert(!q('[data-detail="2"] [data-act="sp-go"]').disabled, 'clearing is allowed');
   await type(q('#sc-in-2'), '');
-  await click(q('[data-spool="2"] [data-act="sp-go"]'));
+  await click(q('[data-detail="2"] [data-act="sp-go"]'));
   eq(lastOf('spool_action').comment, '', 'empty removes it');
 `);
 test('add several spools of a filament at once', `
   await spools(SPOOLS, {display: {...DEFAULTS, group_same: false}});
-  await click(q('[data-spool="1"] [data-act="sp-menu"]'));
-  await click(btn('Add a spool of this filament', card(1)));
+  await open(1);
+  await click(btn('Add a spool of this filament', panel(1)));
   await until(() => dialogOpen());
   assert(dialogText().includes('Each one starts full'), 'says what is added');
   eq(q('#dlg-input').value, '1', 'one by default');
   await yes();
   const one = lastOf('spool_action');
   eq([one.action, one.filament, 'count' in one], ['add', SPOOLS[0].filament.id, false], 'one spool: no count sent');
-  await click(q('[data-spool="1"] [data-act="sp-menu"]'));
-  await click(btn('Add a spool of this filament', card(1)));
+  await open(1);
+  await click(btn('Add a spool of this filament', panel(1)));
   await until(() => dialogOpen());
   await type(q('#dlg-input'), '4');
   await yes();
   eq(lastOf('spool_action').count, 4, 'four');
   const before = sentOf('spool_action').length;
-  await click(q('[data-spool="1"] [data-act="sp-menu"]'));
-  await click(btn('Add a spool of this filament', card(1)));
+  await open(1);
+  await click(btn('Add a spool of this filament', panel(1)));
   await until(() => dialogOpen());
   await type(q('#dlg-input'), '25');
   await yes();
@@ -378,7 +382,7 @@ test('single-extruder Klipper card: change spool, clear only with a spool, resul
   await yes();
   eq(lastOf('moon_spool'), {type: 'moon_spool', id: 'auto-sv', spool: null}, 'clear sent');
   await post({type: 'moon_spool', id: 'auto-sv', ok: false, text: 'SV06 refused <x>'});
-  assert(text(q('.lu')).includes('SV06 refused <x>') && q('.lu .sp-err'), 'result as text on the card');
+  assert(text(q('.lu')).includes('SV06 refused <x>') && q('.lu [data-test="moon-note"] [data-state="error"]'), 'result as text on the card');
   assert(alerts().includes('SV06 refused'), 'and persists in the status area');
   await post({type: 'live', live: {links: {'auto-sv': 'live'}, printers: [sv(null)]}});
   assert(btn('Change spool') && !btn('Clear'), 'no active spool: change only');
@@ -511,7 +515,7 @@ test('plate check: rows, attention pill, recheck and dismiss', `
     headline: 'Not enough', detail: 'needs 600 g', ids: [1], first: 0}]});
   await tab('printer');
   assert(text(byTest('plate')).includes('1 needs attention') && text(byTest('plate')).includes('Not enough'), 'plate shown');
-  assert(q('[data-tab="printer"] .sp-dot'), 'attention dot on the tab');
+  assert(q('[data-tab="printer"] .oui-appbar-attention'), 'attention dot on the tab');
   await click(btn('Check again'));
   eq(lastOf('plate_recheck').type, 'plate_recheck', 'recheck');
   await tab('spools');
@@ -618,19 +622,19 @@ test('low-stock preview lists the spools under the typed weight', `
 test('X04: pt-BR from the host: tabs, empty states, weights and dialogs in Portuguese', `
   await spools(SPOOLS);
   eq(document.documentElement.lang, 'pt-BR', 'lang');
-  assert(text(q('[data-tab="spools"]')) === 'Bobinas', 'nav');
-  assert(text(q('[data-stack] .st-head')).includes('1.380 g de 2.000 g'), 'weights in pt-BR: ' + text(q('[data-stack] .st-head')));
+  assert(text(q('[data-tab="spools"]')).startsWith('Bobinas'), 'nav');
+  assert(text(q('[data-stack]')).includes('1.380 g de 2.000 g'), 'weights in pt-BR: ' + text(q('[data-stack]')));
   await post({type: 'spools', ok: false, error: 'x', error_code: 'no_url'});
   assert(text(byTest('empty-no-url')).includes('O Spoolman ainda não foi configurado'), 'empty state');
 `, { lang: 'pt_BR' });
 test('X04: the saved explicit language wins over the host', `
   await until(() => q('[data-tab="spools"]'));
-  eq(text(q('[data-tab="spools"]')), 'Spools', 'English kept');
+  assert(text(q('[data-tab="spools"]')).startsWith('Spools'), 'English kept');
   await click(byTest('settings-btn'));
   await post({type: 'show_view', view: 'settings', url: '', source: 'spoolman', low_stock: 100, display: DEFAULTS, drying: {}, progress: {}, stats: {}});
   await pick(byTest('lang'), 'Português (Brasil)');
   eq(lastOf('ui_language'), {type: 'ui_language', value: 'pt-BR', view: 'settings'}, 'saved through the plugin');
-  assert(text(q('#s-lang')) === 'Idioma', 'switched');
+  assert(text(q('#s-lang .oui-panel-title')) === 'Idioma', 'switched');
 `, { lang: 'pt_BR', pref: 'en' });
 test('B-21/B-24: focus ring on group heads is visible; reduced motion honoured', `
   await spools(SPOOLS);

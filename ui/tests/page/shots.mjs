@@ -1,4 +1,4 @@
-// MOCK evidence for the built Spooler page: light/dark, en/pt-BR, 1280/720/380 px and 200 % zoom, with overflow
+// MOCK evidence for the built Spooler page: light/dark, en/pt-BR, 1900/1280/720/380 px and 200 % zoom, with overflow
 // and DOM measurements. Scripted bridge only; not OrcaSlicer.   OUT=<dir> PAGE=<page> node tests/page/shots.mjs
 import { writeFile, mkdtemp, rm, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -48,27 +48,42 @@ if (SCN === 'stats') { const s = [...__t.sent].reverse().find(m => m.type === 's
     worst: [{kind: 'purge', name: 'Multicolour_Logo', g: 60, cost: 1.1}], failed: {prints: 1, g: 35, cost: .6}, shelf: {g: 2235, value: 38.5, unpriced: 1, mats: [{name: 'PLA', g: 2150, value: 36}]},
     history: [{time: now - 3600, name: 'Desk_Organiser_Plate_1', printer: 'X1C', result: 'finished', rows: [{label: 'Acme PLA', colour: '1a1a1a', material: 'PLA', grams: 96, cost: 1.9, ws: .08, wp: .05}]}]}});
   const h = document.querySelector('.stv-hh'); if (h) h.click(); }
-if (SCN === 'menu') { const b = document.querySelector('[data-stack] .st-head'); b.click(); await settle(); document.querySelector('[data-spool="1"] [data-act="sp-menu"]').click(); }
+if (SCN === 'menu') { document.querySelector('[data-stack] .st-head').click(); await settle(); document.querySelector('tr[data-spool="3"]').click(); await settle();
+  document.querySelector('[data-detail] [data-focus-key="act:use"]').click(); }
+if (SCN === 'stale') __t.handler({type: 'spools', ok: false, origin: 1, error: 'Connection refused', error_code: 'read_failed'});
+if (SCN === 'tabsettings') { __t.handler({type: 'show_view', view: 'settings', ...${JSON.stringify(SETTINGS)}}); }
+await settle();
+// The detail asks for the shown spool's print history: answer it as the plugin would.
+const ask = [...__t.sent].reverse().find(m => m.type === 'spool_detail');
+if (ask) __t.handler({type: 'spool_detail', detail: {id: ask.id, sign: '€', grams: 360, cost: 7.2, rate: 45, weeks: 1.6,
+  prints: [96, 94.3, 31.5, 12.5, 125.7].map((g, i) => ({time: now - i * 4 * 86400 - 3600, name: ['Desk_Organiser_Plate_1', 'Headphone_Stand', 'Cable_Clip_x12', 'Benchy', 'Drawer_Divider_Set'][i], grams: g, cost: g * .02}))}});
 await sleep(500);
 `;
+// [scene, page mode, theme, language, width, height, zoom]: the reference sizes (1900x1000, 1280x720, 720 narrow) and the 380 px dock.
 const SCENES = [
-  ['spools', 'tab', 'light', 'en', 1280, 1], ['spools', 'tab', 'dark', 'pt_BR', 1280, 1], ['spools', 'tab', 'light', 'pt_BR', 720, 1], ['spools', 'tab', 'dark', 'en', 640, 2],
-  ['spools', 'main', 'light', 'pt_BR', 380, 1], ['menu', 'tab', 'dark', 'en', 720, 1], ['empty', 'tab', 'light', 'pt_BR', 1280, 1], ['nourl', 'tab', 'dark', 'en', 720, 1],
-  ['error', 'tab', 'light', 'en', 1280, 1], ['printer', 'tab', 'light', 'en', 1280, 1], ['printer', 'tab', 'dark', 'pt_BR', 720, 1], ['printer', 'tab', 'light', 'en', 640, 2],
-  ['stats', 'tab', 'dark', 'en', 1280, 1], ['stats', 'tab', 'light', 'pt_BR', 720, 1], ['settings', 'settings', 'light', 'en', 1280, 1], ['settings', 'settings', 'dark', 'pt_BR', 720, 1],
-  ['settings', 'settings', 'light', 'pt_BR', 640, 2], ['wizard', 'settings', 'dark', 'en', 720, 1], ['wizard', 'settings', 'light', 'pt_BR', 1280, 1],
+  ['spools', 'tab', 'dark', 'en', 1900, 1000, 1], ['spools', 'tab', 'light', 'en', 1900, 1000, 1], ['spools', 'tab', 'dark', 'en', 1280, 720, 1], ['spools', 'tab', 'light', 'en', 1280, 720, 1],
+  ['spools', 'tab', 'dark', 'pt_BR', 1280, 720, 1], ['spools', 'tab', 'dark', 'en', 720, 1000, 1], ['spools', 'tab', 'light', 'pt_BR', 720, 1000, 1], ['spools', 'tab', 'dark', 'en', 640, 900, 2],
+  ['spools', 'main', 'light', 'pt_BR', 380, 900, 1], ['spools', 'main', 'dark', 'en', 380, 900, 1],
+  ['menu', 'tab', 'dark', 'en', 1280, 720, 1], ['menu', 'tab', 'light', 'pt_BR', 720, 1000, 1],
+  ['empty', 'tab', 'light', 'pt_BR', 1280, 720, 1], ['nourl', 'tab', 'dark', 'en', 1280, 720, 1], ['nourl', 'main', 'light', 'en', 380, 900, 1], ['error', 'tab', 'light', 'en', 1280, 720, 1],
+  ['stale', 'tab', 'dark', 'en', 1280, 720, 1],
+  ['printer', 'tab', 'light', 'en', 1900, 1000, 1], ['printer', 'tab', 'dark', 'en', 1280, 720, 1], ['printer', 'tab', 'dark', 'pt_BR', 720, 1000, 1], ['printer', 'tab', 'light', 'en', 640, 900, 2],
+  ['stats', 'tab', 'dark', 'en', 1900, 1000, 1], ['stats', 'tab', 'light', 'en', 1280, 720, 1], ['stats', 'tab', 'light', 'pt_BR', 720, 1000, 1],
+  ['tabsettings', 'tab', 'dark', 'en', 1900, 1000, 1], ['settings', 'settings', 'light', 'en', 1280, 720, 1], ['settings', 'settings', 'dark', 'pt_BR', 1280, 720, 1],
+  ['settings', 'settings', 'dark', 'en', 720, 1000, 1], ['settings', 'settings', 'light', 'pt_BR', 640, 900, 2],
+  ['wizard', 'settings', 'dark', 'en', 1280, 720, 1], ['wizard', 'settings', 'light', 'pt_BR', 720, 1000, 1],
 ];
 const dir = await mkdtemp(join(tmpdir(), 'spooler-shots-'));
 const browser = await launch();
 const metrics = [];
 try {
-  for (const [scn, mode, theme, lang, width, scale] of SCENES) {
+  for (const [scn, mode, theme, lang, width, height, scale] of SCENES) {
     const boot = { mode, view: mode === 'settings' ? 'settings' : 'main', version: '0.20.1', lang, pref: 'auto', low_stock_default: 100, refresh_ms: 600000,
       display_defaults: DISPLAY, own_fields: ['tag', 'orca_settings', 'dried'], settings: { ...SETTINGS, wizard: scn === 'wizard' } };
     const file = join(dir, `${scn}.html`);
     await writeFile(file, preparePage(page, boot));
     const p = await browser.newPage();
-    await p.size(width, 900, scale);
+    await p.size(width, height, scale);
     await p.init(MOCK_HOST);
     await p.goto(pathToFileURL(file).href + '?theme=' + theme);
     const m = await p.evaluate(`(async () => { ${HELPERS} const SCN = ${JSON.stringify(scn)};
@@ -81,7 +96,7 @@ try {
         dom: document.getElementsByTagName('*').length, lang: document.documentElement.lang, dark: document.documentElement.classList.contains('orca-dark'),
         bodyFont: getComputedStyle(document.body).fontSize, buttonRadius: cs && cs.borderRadius, buttonFont: cs && cs.fontSize,
         violations: __t.violations, errors: __t.errors, rejections: __t.rejections }; })()`);
-    const name = `MOCK-spooler-${scn}-${mode}-${theme}-${lang}-${width}${scale > 1 ? '-zoom200' : ''}.png`;
+    const name = `MOCK-spooler-${scn}-${mode}-${theme}-${lang}-${width}x${height}${scale > 1 ? '-zoom200' : ''}.png`;
     await writeFile(join(OUT, name), await p.screenshot());
     metrics.push({ name, ...m });
     console.log(name, JSON.stringify({ overflowX: m.overflowX, over: m.overflowing, dom: m.dom, lang: m.lang, dark: m.dark }));

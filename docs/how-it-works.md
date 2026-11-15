@@ -6,8 +6,8 @@ there (`# --- ... ---`) follow the same order as this page.
 
 ## The page
 
-The tab, the spool window and the Settings window show one Vue 3 + PrimeVue 4 page (the shared Orca UI
-foundation, vendored in `ui/shared/`). `ui/` builds it into a single offline HTML file; `scripts/embed_ui.py`
+The tab, the spool window and the Settings window show one Vue 3 + PrimeVue 5 page (the shared Orca UI
+foundation 4.0.1, vendored in `ui/shared/` with its licences, Lucide icons and the Manrope font included). `ui/` builds it into a single offline HTML file; `scripts/embed_ui.py`
 stores it zlib-compressed at the end of `spooler_any.py`, so the plugin is still one file. `page_html()` fills
 the boot JSON: which surface (`tab`, `main`, `settings`), the saved settings, the host language and the
 user's language choice (`ui_language` in the settings file). The message contract with the plugin is the

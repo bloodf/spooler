@@ -19,19 +19,6 @@ export function swatchHex(v: unknown): string {
   return m ? '#' + m[0] : '';
 }
 export const swatchCols = (f: Filament): string[] => String(f.multi_color_hexes || '').split(',').map(swatchHex).filter(Boolean);
-/** One solid colour for the ring and bar; the first colour on multi-colour spools. */
-export function swatchMain(f: Filament): string {
-  const cs = swatchCols(f);
-  return (cs.length < 2 && swatchHex(f.color_hex)) || cs[0] || '#888';
-}
-export function swatch(f: Filament): string {
-  const cs = swatchCols(f);
-  if (cs.length < 2) return swatchMain(f);
-  if (f.multi_color_direction === 'longitudinal') return `linear-gradient(135deg, ${cs.join(', ')})`;
-  const step = 360 / cs.length;
-  return 'conic-gradient(' + cs.map((c, i) => `${c} ${i * step}deg ${(i + 1) * step}deg`).join(', ') + ')';
-}
-
 export function formatWeight(grams: unknown, exact: boolean, locale: string): string {
   if (typeof grams !== 'number') return '?';
   if (exact) return `${new Intl.NumberFormat(locale, { maximumFractionDigits: 0 }).format(Math.round(grams))} g`;
@@ -237,48 +224,18 @@ export function lowLevel(grams: unknown, low: number): '' | 'low' | 'out' {
   return grams <= low * 0.2 ? 'out' : 'low';
 }
 
-/**
- * The spool picture: eight renders of the same spool, from full (1) to an empty reel (8), tinted with the
- * filament colour on the page. These are how much each render shows wound on the reel.
- */
-export const SPOOL_LEVEL_FILL = [1, 0.85, 0.7, 0.55, 0.4, 0.25, 0.08, 0] as const;
-export type SpoolLevel = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
+/** Tone of the level bar for a low-stock level: fine, low, or almost empty. */
+export const levelTone = (level: '' | 'low' | 'out'): 'normal' | 'low' | 'critical' => (level === 'out' ? 'critical' : level === 'low' ? 'low' : 'normal');
 
-/**
- * The render closest to `fraction` (0..1). Any filament left, however little, is still level 7 ("almost
- * empty"): the bare reel (8) is only for a spool with nothing on it or an unknown amount, because drawing an
- * empty reel for a spool that still has filament would be wrong.
- */
-export function spoolLevel(fraction: number | null | undefined): SpoolLevel {
-  if (fraction == null || !Number.isFinite(fraction) || fraction <= 0) return 8;
-  const f = Math.min(1, fraction);
-  let best = 0;
-  for (let n = 1; n < 7; n++) if (Math.abs(SPOOL_LEVEL_FILL[n] - f) < Math.abs(SPOOL_LEVEL_FILL[best] - f)) best = n;
-  return (best + 1) as SpoolLevel;
-}
-
-/** The bar's fill as CSS: the filament's own colours, side by side for multi-colour spools. */
-export function barFill(f: Filament): string {
+/** What the drawn spool and the swatch are painted with: one colour, or every colour of a multi-colour filament. */
+export function spoolPaint(f: Filament): { color: string | null; colors: string[] | null } {
   const cs = swatchCols(f);
-  if (cs.length < 2) return swatchMain(f);
-  const step = 100 / cs.length;
-  return 'linear-gradient(90deg, ' + cs.map((c, i) => `${c} ${i * step}% ${(i + 1) * step}%`).join(', ') + ')';
+  return cs.length > 1 ? { color: cs[0], colors: cs } : { color: swatchHex(f.color_hex) || cs[0] || null, colors: null };
 }
 
-/**
- * 'dark' or 'light' when a paint's colours are all near black or all near white, else ''.
- * A bar in such a colour sinks into a dark or light track, so it gets a contrasting edge.
- */
-export function paintTone(paint: string): '' | 'dark' | 'light' {
-  const hexes = paint.match(/#[0-9a-f]{6}\b|#[0-9a-f]{3}\b/gi) || [];
-  if (!hexes.length) return '';
-  const lum = hexes.map((h) => {
-    const x = h.length === 4 ? h.slice(1).split('').map(c => c + c).join('') : h.slice(1);
-    const [r, g, b] = [0, 2, 4].map(i => parseInt(x.slice(i, i + 2), 16) / 255)
-      .map(c => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4));
-    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
-  });
-  if (lum.every(l => l < 0.06)) return 'dark';
-  if (lum.every(l => l > 0.7)) return 'light';
-  return '';
+/** Remaining weight as it shows in a list: grams, percent, or both, following Settings. */
+export function leftLabel(grams: unknown, percent: number | null, mode: 'grams' | 'percent' | 'both', exact: boolean, locale: string): string {
+  const w = formatWeight(grams, exact, locale);
+  if (typeof grams !== 'number') return percent === null ? '—' : `${percent}%`;
+  return mode === 'percent' && percent !== null ? `${percent}%` : w;
 }

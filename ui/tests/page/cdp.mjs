@@ -7,7 +7,7 @@ import { existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-export const CSP = "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; connect-src 'none'; font-src 'none'";
+export const CSP = "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; connect-src 'none'; font-src data:";
 
 export function findChrome() {
   const env = process.env.CHROME;
@@ -166,8 +166,8 @@ async function type(el, value) { assert(el, 'element to type into'); el.focus();
 const press = (key, shift) => cdp({ op: 'key', key, shift: !!shift });
 async function mouse(el) { assert(el, 'element for a real click'); el.scrollIntoView({ block: 'center' }); await settle(); const r = el.getBoundingClientRect(); await cdp({ op: 'clickAt', x: r.left + r.width / 2, y: r.top + r.height / 2 }); }
 async function answer(which) { await until(dialogOpen, 'dialog'); const el = dialogEl(); await click(q('[data-dlg="' + which + '"]', el)); await until(() => dialogEl() !== el, 'dialog closed'); }
-const yes = () => answer('yes');
-const no = () => answer('no');
+const yes = () => answer('confirm');
+const no = () => answer('cancel');
 const dialogText = () => text(dialogEl());
 `;
 

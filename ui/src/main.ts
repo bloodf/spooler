@@ -10,7 +10,7 @@ document.body.classList.add('orca-ui');
 setHostLanguage(boot.lang);
 followHostTheme();
 const app = createApp(App);
-installOrcaUI(app, 'en');
+installOrcaUI(app, 'en', 'magenta');
 // PrimeVue's own labels (dialog close, select filter…) follow the page language too.
 const prime = app.config.globalProperties.$primevue;
 const english = { ...prime.config.locale };

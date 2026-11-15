@@ -1,36 +1,129 @@
-html { font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 14px; }
-body.orca-ui { margin: 0; color: var(--oui-text, #202731); background: var(--oui-background, #f5f6f8); }
-.orca-ui { font-family: inherit; font-size: 14px; line-height: 1.45; accent-color: var(--p-primary-color); caret-color: var(--p-text-color); text-underline-offset: .2em; }
+/* Orca UI foundation 4 — tokens, element defaults and the few layout/text utilities every plugin shares.
+   Colours come from palette.json through applyOrcaTheme() (--oui-<role>); everything else is defined here. */
+:root {
+  /* Manrope, subset (Latin, weights 400 to 700, tabular figures), embedded below; the system font is the fallback. */
+  --oui-font: 'Manrope', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --oui-mono: ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, Consolas, monospace;
+  /* type scale: label 11 · meta 12 · body 13 · title 15 · readout 20 / 28 / 40 */
+  --oui-text-xs: 11px; --oui-text-sm: 12px; --oui-text-md: 13px; --oui-text-lg: 15px;
+  --oui-text-xl: 20px; --oui-text-2xl: 28px; --oui-text-3xl: 40px;
+  /* spacing: 4 px grid */
+  --oui-s1: 4px; --oui-s2: 8px; --oui-s3: 12px; --oui-s4: 16px; --oui-s5: 20px; --oui-s6: 24px; --oui-s8: 32px;
+  --oui-radius-sm: 4px; --oui-radius: 6px; --oui-radius-lg: 8px; --oui-radius-xl: 12px;
+  --oui-control: 32px; --oui-control-sm: 26px;
+  /* elevation: surfaces step by tone; only overlays cast a shadow */
+  --oui-shadow-panel: 0 1px 2px rgb(24 20 60 / .08), 0 4px 12px rgb(24 20 60 / .05);
+  --oui-shadow-overlay: 0 12px 32px rgb(16 24 40 / .16);
+  --oui-fast: 120ms; --oui-base: 180ms; --oui-ease: cubic-bezier(.2, 0, 0, 1);
+}
+/* Theme-dependent values use .orca-dark, never light-dark(): the build targets rewrite light-dark() in authored CSS into a
+   form that only follows a color-scheme declared in CSS, and applyOrcaTheme() sets it from script. */
+.orca-dark { --oui-shadow-panel: 0 0 0 transparent; --oui-shadow-overlay: 0 12px 32px rgb(0 0 0 / .5); }
+@font-face { font-family: 'Manrope'; src: url('./fonts/Manrope.woff2') format('woff2'); font-weight: 400 700; font-style: normal; font-display: swap; }
+html { font-family: var(--oui-font); font-size: 13px; }
+body.orca-ui { margin: 0; color: var(--oui-text); background: var(--oui-background); }
+.orca-ui { font-family: inherit; font-size: var(--oui-text-md); line-height: 1.4; accent-color: var(--oui-primary); caret-color: var(--oui-text);
+  text-underline-offset: .2em; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
 .orca-ui *, .orca-ui *::before, .orca-ui *::after { box-sizing: border-box; }
 .orca-ui [hidden] { display: none !important; }
 .orca-ui :where(button, input, select, textarea) { font: inherit; }
-.orca-ui :where(h1, h2, h3, p) { margin-block-start: 0; }
-.orca-ui h1 { font-size: 20px; line-height: 1.25; font-weight: 650; }
-.orca-ui h2, .orca-ui h3 { font-size: 16px; line-height: 1.35; font-weight: 600; }
-.orca-ui a { color: var(--p-primary-color); }
-.orca-ui ::selection { color: var(--p-primary-contrast-color); background: var(--p-primary-color); }
-.orca-ui :where(table, output, .oui-number) { font-variant-numeric: tabular-nums; }
-.orca-ui :where(button, a, input, select, textarea, summary, [tabindex]):focus-visible { outline: 2px solid var(--p-primary-color); outline-offset: 3px; }
+.orca-ui :where(h1, h2, h3, h4, p, dl, dd, ul, ol, figure) { margin: 0; }
+.orca-ui :where(h1) { font-size: var(--oui-text-lg); line-height: 1.3; font-weight: 650; letter-spacing: -.005em; }
+.orca-ui :where(h2, h3) { font-size: var(--oui-text-md); line-height: 1.4; font-weight: 650; }
+.orca-ui a { color: var(--oui-primary); }
+.orca-ui ::selection { color: var(--oui-on-primary); background: var(--oui-primary); }
+.orca-ui :where(table, output, .oui-num, .oui-number, .p-inputnumber-input) { font-variant-numeric: tabular-nums; }
+.orca-ui :where(button, a, input, select, textarea, summary, [tabindex]):focus-visible { outline: 2px solid var(--oui-primary); outline-offset: 2px; }
 .orca-ui :where(input, select, textarea) { scroll-margin-block: 80px; }
-.oui-header { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; padding: 12px 16px; background: var(--oui-surface); border-bottom: 1px solid var(--oui-border); }
-.oui-header h1 { margin: 0; }
-.oui-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
-.oui-panel { padding: 16px; background: var(--oui-surface); border: 1px solid var(--oui-border); border-radius: 12px; }
-.oui-field { display: grid; gap: 6px; min-width: 0; }
-.oui-field > label { font-weight: 600; }
-.oui-meta { color: var(--oui-muted); font-size: 12px; }
+
+/* Text roles */
+.oui-label { font-size: var(--oui-text-xs); line-height: 1.3; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--oui-muted); }
+.oui-meta { font-size: var(--oui-text-sm); line-height: 1.4; color: var(--oui-muted); }
 .oui-muted { color: var(--oui-muted); }
-.oui-result { font-size: 28px; line-height: 1.2; font-weight: 650; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
-.oui-result[data-incomplete='true'] { color: var(--oui-muted); }
-.oui-section { margin-block: 24px; }
-.oui-empty { padding: 24px; display: grid; gap: 12px; justify-items: start; }
-.oui-empty > * { margin: 0; }
+.oui-strong { font-weight: 600; }
+.oui-mono { font-family: var(--oui-mono); font-size: .94em; }
+.oui-truncate { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.oui-error-detail { white-space: pre-wrap; overflow-wrap: anywhere; font-family: var(--oui-mono); font-size: var(--oui-text-sm); }
+.oui-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+/* Layout */
+.oui-page { container: oui-page / inline-size; display: grid; gap: var(--oui-s3); padding: var(--oui-s3) var(--oui-s4) var(--oui-s6); align-content: start; }
+.oui-stack { display: grid; gap: var(--oui-s3); align-content: start; min-width: 0; }
+.oui-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--oui-s2); min-width: 0; }
+.oui-spacer { flex: 1 1 0; }
+.oui-divider { height: 1px; border: 0; margin: 0; background: var(--oui-border); }
+.oui-well { background: var(--oui-inset); border-radius: var(--oui-radius); }
+/* A row of object cards (slots, toolheads) that is 4, 2 or 1 across and never 3 + 1: the column minimum jumps between
+   a quarter, a half and the full width at the two thresholds. No container query, so it works at any nesting. */
+.oui-cards { --oui-cards-gap: var(--oui-s2); display: grid; gap: var(--oui-cards-gap);
+  grid-template-columns: repeat(auto-fit, minmax(clamp(25% - var(--oui-cards-gap), (var(--oui-cards-4, 900px) - 100%) * 999,
+    clamp(50% - var(--oui-cards-gap), (var(--oui-cards-2, 440px) - 100%) * 999, 100%)), 1fr)); }
+.oui-field { display: grid; gap: var(--oui-s1); min-width: 0; }
+.oui-field > label { font-size: var(--oui-text-sm); font-weight: 600; color: var(--oui-muted); }
 .oui-table-wrap { max-width: 100%; overflow: auto; }
-.oui-error-detail { white-space: pre-wrap; overflow-wrap: anywhere; font-family: ui-monospace, monospace; font-size: 12px; }
-@media (max-width: 720px) { .oui-header, .oui-panel { padding: 12px; } .oui-toolbar { row-gap: 12px; } }
+
+/* Tone: any element with data-tone gets a colour (--oui-tone), its tint (--oui-tone-soft) and the colour that sits on
+   it when it is a solid fill (--oui-tone-on). Tiles, chips, strips, sparks and bars read these three, so a hue is chosen
+   once per element and every combination it produces is in the contrast check. */
+:where([data-tone]) { --oui-tone: var(--oui-muted); --oui-tone-soft: var(--oui-raised); --oui-tone-on: var(--oui-surface); }
+[data-tone='accent'] { --oui-tone: var(--oui-primary); --oui-tone-soft: var(--oui-primary-soft); --oui-tone-on: var(--oui-on-primary); }
+[data-tone='teal'] { --oui-tone: var(--oui-teal); --oui-tone-soft: var(--oui-teal-soft); --oui-tone-on: var(--oui-on-teal); }
+[data-tone='sky'] { --oui-tone: var(--oui-sky); --oui-tone-soft: var(--oui-sky-soft); --oui-tone-on: var(--oui-on-sky); }
+[data-tone='cobalt'] { --oui-tone: var(--oui-cobalt); --oui-tone-soft: var(--oui-cobalt-soft); --oui-tone-on: var(--oui-on-cobalt); }
+[data-tone='violet'] { --oui-tone: var(--oui-violet); --oui-tone-soft: var(--oui-violet-soft); --oui-tone-on: var(--oui-on-violet); }
+[data-tone='magenta'] { --oui-tone: var(--oui-magenta); --oui-tone-soft: var(--oui-magenta-soft); --oui-tone-on: var(--oui-on-magenta); }
+[data-tone='lime'] { --oui-tone: var(--oui-lime); --oui-tone-soft: var(--oui-lime-soft); --oui-tone-on: var(--oui-on-lime); }
+[data-tone='orange'] { --oui-tone: var(--oui-orange); --oui-tone-soft: var(--oui-orange-soft); --oui-tone-on: var(--oui-on-orange); }
+[data-tone='success'] { --oui-tone: var(--oui-success); --oui-tone-soft: var(--oui-success-bg); --oui-tone-on: var(--oui-on-state); }
+[data-tone='warn'] { --oui-tone: var(--oui-warning); --oui-tone-soft: var(--oui-warning-bg); --oui-tone-on: var(--oui-on-state); }
+[data-tone='danger'] { --oui-tone: var(--oui-danger); --oui-tone-soft: var(--oui-danger-bg); --oui-tone-on: var(--oui-on-state); }
+[data-tone='info'] { --oui-tone: var(--oui-info); --oui-tone-soft: var(--oui-info-bg); --oui-tone-on: var(--oui-on-state); }
+
+/* On the band: the app bar and hero blocks are filled with the plugin's accent (--oui-band, the same in both themes) and
+   everything on them is white. Buttons there do not follow the preset (its colours are resolved at the root), so the
+   few that are allowed on a band are restyled here. */
+.oui-on-band { --oui-text: var(--oui-on-band); --oui-muted: var(--oui-on-band); --oui-primary: var(--oui-on-band); --oui-on-primary: var(--oui-band); --oui-primary-soft: rgb(255 255 255 / .18);
+  --oui-border: rgb(255 255 255 / .26); --oui-raised: rgb(255 255 255 / .16);
+  --oui-inset: rgb(0 0 0 / .2); --oui-control-border: rgb(255 255 255 / .7); color: var(--oui-on-band); background: var(--oui-band); }
+.oui-on-band [data-tone], .oui-on-band .oui-tile { --oui-tone: var(--oui-on-band); --oui-tone-soft: rgb(255 255 255 / .18); --oui-tone-on: var(--oui-band); }
+.oui-on-band .oui-tile { color: var(--oui-on-band); background: rgb(255 255 255 / .18); }
+.orca-ui .oui-on-band :where(button, a, input, [tabindex]):focus-visible { outline-color: var(--oui-on-band); }
+.orca-ui .oui-on-band .p-button-secondary { color: var(--oui-on-band); background: rgb(255 255 255 / .16); border-color: rgb(255 255 255 / .34); }
+.orca-ui .oui-on-band .p-button-secondary:not(:disabled):hover { color: var(--oui-on-band); background: rgb(255 255 255 / .26); border-color: var(--oui-on-band); }
+.orca-ui .oui-on-band .p-button-secondary.p-button-text { background: none; border-color: transparent; }
+.orca-ui .oui-on-band .p-button-danger { box-shadow: 0 0 0 2px var(--oui-on-band); }
+
+/* A hero block: the one strongly coloured block of a page (with .oui-on-band), or its grey/tinted stand-in when the value
+   in it is stale or incomplete. */
+.oui-hero { display: grid; gap: var(--oui-s3); min-width: 0; padding: var(--oui-s4); border-radius: var(--oui-radius-lg); }
+.oui-hero[data-tone] { background: var(--oui-tone-soft); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--oui-tone) 40%, transparent); }
+
+/* A small tag for a fact on an object (material, "use first", a count): neutral, or toned. State is OuiStatus, not a chip. */
+.oui-chip { display: inline-flex; align-items: center; gap: var(--oui-s1); height: 20px; padding: 0 6px; border-radius: var(--oui-radius-sm);
+  font-size: var(--oui-text-xs); font-weight: 600; letter-spacing: .02em; white-space: nowrap; color: var(--oui-muted); background: var(--oui-raised);
+  box-shadow: inset 0 0 0 1px var(--oui-border); }
+.oui-chip[data-tone] { color: var(--oui-tone); background: var(--oui-tone-soft); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--oui-tone) 30%, transparent); }
+.oui-chip[data-solid] { color: var(--oui-tone-on); background: var(--oui-tone); box-shadow: none; }
+
+/* PrimeVue adjustments the preset cannot express */
 /* PrimeVue 5 puts the label weight on the .p-button root, which bolds slot content; keep it on the label as in 4.x. */
-.orca-ui .p-button { font-weight: normal; }
+.orca-ui .p-button { font-weight: normal; line-height: 18px; white-space: nowrap; }
 .orca-ui .p-button-label { font-weight: var(--p-button-label-font-weight, 600); }
+.orca-ui .p-button:disabled, .orca-ui .p-disabled { cursor: not-allowed; }
+.orca-ui :where(.p-inputtext, .p-select-label) { line-height: 18px; }
+.orca-ui .p-datatable-column-title { letter-spacing: .05em; text-transform: uppercase; }
+.orca-ui .p-datatable-thead > tr > th { position: sticky; top: 0; z-index: 1; white-space: nowrap; }
+.orca-ui .p-progressbar-value { border-radius: 4px; }
+/* A disabled toggle group still shows which option is chosen. */
+.orca-ui .p-togglebutton.p-togglebutton-checked:is(:disabled, .p-disabled) { color: var(--oui-on-primary); }
+.orca-ui .p-datatable-tbody > tr:last-child > td { border-bottom-width: 0; }
+.orca-ui .p-datatable-tbody > tr > td { vertical-align: middle; }
+.orca-ui :where(th, td).oui-num, .orca-ui :where(th, td).oui-end { text-align: end; }
+.orca-ui th.oui-num .p-datatable-column-header-content, .orca-ui th.oui-end .p-datatable-column-header-content { justify-content: flex-end; }
+.orca-ui .p-dialog { border: 1px solid var(--oui-border); }
+.orca-ui .p-tablist-tab-list { height: 100%; }
+.orca-ui .p-tab { display: inline-flex; align-items: center; white-space: nowrap; }
+
 /* Accessibility preferences must win over PrimeVue's runtime-injected component styles. */
 @media (prefers-reduced-motion: reduce) {
   .orca-ui *, .orca-ui *::before, .orca-ui *::after {

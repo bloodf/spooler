@@ -1,4 +1,4 @@
-import { computed, reactive } from 'vue';
+import { computed, reactive, watch } from 'vue';
 import * as bridge from '../core/bridge';
 import { boot } from '../core/boot';
 import { t } from '../core/i18n';
@@ -193,6 +193,14 @@ function onMessage(d: any): void {
     }
   }
 }
+
+// ------------------------------------------------------------------ page actions (app bar and list toolbar)
+export function refresh(): void { bridge.postMain({ type: 'refresh' }); note('pending', t('list.refreshing'), 'refresh'); }
+watch(() => m.loadedAt, () => { if (pending('refresh')) note('success', t('list.refreshed'), 'refresh'); });
+watch(() => m.loadError, e => { if (e && pending('refresh')) note('error', t('list.readFailedAt', { error: e }), 'refresh'); });
+export function syncPresets(): void { note('pending', t('list.syncing'), 'send'); bridge.postMain({ type: 'sync_presets' }); }
+export function sendEdits(): void { note('pending', t('list.sending'), 'send'); bridge.postMain({ type: 'send' }); }
+export const openSettings = (): void => bridge.postMain({ type: 'settings' });
 
 export function pollLive(): void {
   if (m.liveOn && m.showPrinterTab && m.tab === 'printer' && m.view === 'main') bridge.postMain({ type: 'live' });
