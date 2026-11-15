@@ -201,6 +201,13 @@ test('weights and grams fields validate before sending (no blank grams)', `
   await press('Enter');
   const use = sentOf('spool_action').find(m => m.action === 'use');
   eq(use.grams, '12.5', 'decimal comma accepted');
+  await click(q('[data-spool="1"] [data-act="sp-menu"]'));
+  await click(btn('Use filament', card(1)));
+  for (const bad of ['0', '-3', '100001']) {
+    await type(q('#sc-in-1'), bad);
+    assert(q('[data-spool="1"] [data-act="sp-go"]').disabled && text(card(1)).includes('above 0'), bad + ' refused before sending');
+  }
+  eq(sentOf('spool_action').filter(m => m.action === 'use').length, 1, 'nothing more sent');
 `);
 
 // ------------------------------------------------------------------ status, errors, empty states (F10, S01, S02, B-20)

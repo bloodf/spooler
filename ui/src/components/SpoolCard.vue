@@ -11,7 +11,7 @@ import { m, inUse, dupes, plateSlots, pending } from '../state/main';
 import { menu, openMenu, closeMenu, setMode, sendAction } from '../state/menu';
 import { ask } from '../core/dialog';
 import { t, locale } from '../core/i18n';
-import { barFill, driedDays, driedOld, formatWeight, lowLevel, noteText, originalWeight, percentLeft, shown, swatch, swatchCols, swatchMain,
+import { barFill, driedDays, gramsValid, driedOld, formatWeight, lowLevel, noteText, originalWeight, percentLeft, shown, swatch, swatchCols, swatchMain,
   tagUids, type Spool } from '../logic/spools';
 
 const props = defineProps<{ spool: Spool; inStack?: boolean }>();
@@ -60,7 +60,8 @@ watch(() => [open.value, menu.mode], async ([o]) => {   // the keyboard goes to 
 function close() { closeMenu(); void nextTick(() => more.value?.$el.focus()); }
 const hint = computed(() => (menu.mode === 'move' ? t('menu.location') : menu.mode === 'weigh' ? t('menu.scale') : t('menu.used')));
 const locations = computed(() => [...new Set([...m.locations, ...m.spools.map(x => x.location)])].filter(Boolean).sort() as string[]);
-const gramsOk = computed(() => menu.mode === 'move' || (menu.val.trim() !== '' && Number.isFinite(Number(menu.val.replace(',', '.'))) && Number(menu.val.replace(',', '.')) >= 0));
+// The plugin takes 0 < grams <= 100,000 for a weight or a use (MAX_GRAMS): refuse the rest here, with the reason.
+const gramsOk = computed(() => menu.mode === 'move' || gramsValid(menu.val));
 
 async function archive() {
   if (!await ask({ title: t('menu.archive'), text: t('confirm.archive', { name: name.value, id: s.value.id }), yes: t('menu.archive'), no: t('common.goBack') })) return;
