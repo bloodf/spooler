@@ -132,5 +132,79 @@ class LegacyWindowAfterCloseTest(unittest.TestCase):
         self.assertEqual(got, [{"type": "x"}])
 
 
+class HistoryOriginTest(unittest.TestCase):
+    """Spool ids are only unique inside one Spoolman: history booked on another isn't counted here.
+    Entries from before Spooler noted the Spoolman (no origin) are kept and still shown."""
+
+    def setUp(self):
+        self.dir = tempfile.TemporaryDirectory()
+        self.addCleanup(self.dir.cleanup)
+        patches = [mock.patch.object(sp, "HISTORY_FILE", Path(self.dir.name) / "history.json"),
+                   mock.patch.object(sp, "get_settings", lambda: {"stats": {"on": True, "cur": "gbp"},
+                                                                  "spoolman_url": "http://a:7912/", "low_stock_grams": 0}),
+                   mock.patch.object(sp, "plate_spools", return_value=[])]
+        for p in patches:
+            p.start()
+            self.addCleanup(p.stop)
+        now = time.time()
+        self.entries = [
+            {"id": "old", "time": now - 2 * DAY, "name": "legacy", "printer": "P", "result": "finished", "pct": 100,
+             "rows": [{"spool": 1, "grams": 10.0, "label": "L", "material": "PLA", "colour": "", "cost": None}]},
+            {"id": "a", "time": now - 1 * DAY, "name": "on A", "printer": "P", "result": "finished", "pct": 100,
+             "origin": "http://a:7912",
+             "rows": [{"spool": 1, "grams": 20.0, "label": "A1", "material": "PLA", "colour": "", "cost": None}]},
+            {"id": "b", "time": now - 1 * DAY, "name": "on B", "printer": "P", "result": "finished", "pct": 100,
+             "origin": "http://b:7912",
+             "rows": [{"spool": 1, "grams": 500.0, "label": "B1", "material": "PETG", "colour": "", "cost": None}]},
+        ]
+        sp.HISTORY_FILE.write_text(json.dumps(self.entries), encoding="utf-8")
+
+    def test_stats_count_this_spoolman_and_legacy_only(self):
+        out = sp.stats_data("30")
+        self.assertEqual(out["grams"], 30.0)
+        self.assertEqual({h["name"] for h in out["history"]}, {"legacy", "on A"})
+
+    def test_spool_detail_doesnt_mix_servers(self):
+        out = sp.spool_detail(1)
+        self.assertEqual(out["grams"], 30.0)
+        self.assertEqual([p["name"] for p in out["prints"]], ["on A", "legacy"])
+
+    def test_export_is_scoped_too(self):
+        with mock.patch.object(sp, "DATA_DIR", Path(self.dir.name)), mock.patch.object(sp, "open_url"):
+            out = sp.export_history("all")
+        text = Path(out["path"]).read_text(encoding="utf-8-sig")
+        self.assertIn("on A", text)
+        self.assertIn("legacy", text)
+        self.assertNotIn("on B", text)
+
+    def test_file_is_not_rewritten_by_reading(self):
+        before = sp.HISTORY_FILE.read_bytes()
+        sp.stats_data("all")
+        sp.spool_detail(1)
+        self.assertEqual(sp.HISTORY_FILE.read_bytes(), before)
+
+    def test_new_bookings_are_tagged_and_other_servers_kept(self):
+        entry = {"id": "n", "time": time.time(), "name": "new", "printer": "P", "result": "finished", "pct": 100,
+                 "origin": "http://a:7912", "rows": [{"spool": 2, "grams": 5.0, "state": "booked", "label": "x"}]}
+        sp.hist_note(entry, {})
+        saved = json.loads(sp.HISTORY_FILE.read_text(encoding="utf-8"))
+        self.assertEqual({e["id"] for e in saved}, {"old", "a", "b", "n"})
+        self.assertEqual(next(e for e in saved if e["id"] == "n")["origin"], "http://a:7912")
+        self.assertNotIn("origin", next(e for e in saved if e["id"] == "old"))
+
+
+class WeeklyRateTest(unittest.TestCase):
+    def test_short_history_is_not_spread_over_four_weeks(self):
+        now = time.time()
+        hist = [{"time": now - 3 * DAY, "rows": [{"spool": 1, "grams": 40.0}]}]
+        self.assertEqual(sp.weekly_rates(hist, now), {1: 40.0})
+
+    def test_two_weeks_of_history(self):
+        now = time.time()
+        hist = [{"time": now - 14 * DAY, "rows": [{"spool": 1, "grams": 30.0}]},
+                {"time": now - 1 * DAY, "rows": [{"spool": 1, "grams": 10.0}]}]
+        self.assertAlmostEqual(sp.weekly_rates(hist, now)[1], 20.0, places=3)
+
+
 if __name__ == "__main__":
     unittest.main()

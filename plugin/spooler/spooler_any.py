@@ -5353,6 +5353,13 @@ def hist_load() -> list[dict]:
     return [e for e in data if isinstance(e, dict)] if isinstance(data, list) else []
 
 
+def hist_here(hist: list[dict]) -> list[dict]:
+    """The history of the Spoolman in Settings: spool ids are only unique inside one server. Entries
+    booked before Spooler noted the Spoolman (no "origin") can't be told apart and stay in."""
+    here = clean_url(get_settings().get("spoolman_url"))
+    return [e for e in hist if not e.get("origin") or clean_url(e["origin"]) == here]
+
+
 def _hex(sp: dict) -> str:
     f = sp.get("filament") or {}
     cs = [c for c in (_hex6(x) for x in str(f.get("multi_color_hexes") or "").split(",")) if c]
@@ -5390,7 +5397,8 @@ def hist_note(entry: dict, by_id: dict) -> None:
     if rows:
         hist.append({"id": entry["id"], "time": entry.get("time") or time.time(), "name": entry.get("name") or "",
                      "printer": entry.get("printer") or "", "result": entry.get("result") or "",
-                     "pct": entry.get("pct"), "rows": rows})
+                     "pct": entry.get("pct"), "rows": rows,
+                     **({"origin": entry["origin"]} if entry.get("origin") else {})})
         hist.sort(key=lambda e: e.get("time") or 0)
     elif old is None:
         return
@@ -5431,12 +5439,16 @@ def period_start(period: object, now: float) -> float:
 
 
 def weekly_rates(hist: list[dict], now: float) -> dict:
-    """Grams per week each spool used over the last 4 weeks, by spool id."""
+    """Grams per week each spool used over the last 4 weeks, by spool id. A history younger than
+    that is divided by the weeks it covers (at least one), not by 4: 40 g in the first 3 days is
+    40 g a week, not 10."""
+    first = min((e.get("time") or now for e in hist), default=now)
+    weeks = min(4.0, max(1.0, (now - first) / (7 * 86400)))
     rate: dict = {}
     for e in hist:
         if (e.get("time") or 0) >= now - 28 * 86400:
             for r in e["rows"]:
-                rate[r["spool"]] = rate.get(r["spool"], 0) + r["grams"] / 4
+                rate[r["spool"]] = rate.get(r["spool"], 0) + r["grams"] / weeks
     return rate
 
 
@@ -5449,7 +5461,7 @@ def spool_detail(spool_id: object) -> dict:
     url = clean_url(get_settings().get("spoolman_url"))
     code = stats_currency()
     with _usage_lock:
-        hist = hist_load()
+        hist = hist_here(hist_load())
     prints = []
     for e in reversed(hist):
         for r in e["rows"]:
@@ -5474,7 +5486,7 @@ def export_history(period: object) -> dict:
     now = time.time()
     start = period_start(period, now)
     with _usage_lock:
-        hist = [e for e in hist_load() if (e.get("time") or 0) >= start]
+        hist = [e for e in hist_here(hist_load()) if (e.get("time") or 0) >= start]
     folder = DATA_DIR / "exports"
     path = folder / time.strftime("history-%Y%m%d-%H%M.csv", time.localtime(now))
     try:
@@ -5519,7 +5531,7 @@ def stats_data(period: object) -> dict:
     url = clean_url(get_settings().get("spoolman_url"))
     code = stats_currency()
     with _usage_lock:
-        hist = hist_load()
+        hist = hist_here(hist_load())
     now = time.time()
     lt = time.localtime(now)
     sel = [e for e in hist if (e.get("time") or 0) >= period_start(period, now)]
