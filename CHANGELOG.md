@@ -3,6 +3,20 @@
 Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); entries before
 0.9.0 are Spoolio's.
 
+## [0.27.0] - 2026-11-15
+
+### Changed
+- A new look for the whole page, shared with the other Orca plugins: a magenta bar on top with the Spooler mark, the spool source and when it was last read, and the tabs (Spools, Printer, Stats and Settings, which is now a tab instead of a button). Refresh and Sync Presets sit at the right of the bar. Panels have coloured headers with icons, states are coloured chips, and the page uses the Manrope font.
+- Spools is now a list with a detail beside it. Each spool is one row with its drawn spool in the filament's colours, material, location, state chips and what is left; spools of one filament fold into one row with a ×n chip that opens to its spools. Picking a row shows that spool beside the list (under it in a narrow window): how much is left and about how long it lasts, its facts, its use per week, its last prints and every action that was in the card's menu (set weight from scale, use filament, set grams left, move, notes, mark dried, add spools of this filament, open in Spoolman, archive). Close the detail with its × button.
+- The spool pictures are drawn instead of using fifteen images, so they stay sharp at any zoom and show multi-colour filaments side by side.
+- Printer: each slot, toolhead and external spool is a card with its colour, spool and amount left; print progress is one block with the percentage, time left and finish time.
+- Stats: tiles with icons for the totals, and the charts use the page's colour set instead of ten fixed colours, in both themes.
+- Settings: an index of sections on the left that follows the scroll, the settings in two columns, and one bar at the bottom with Cancel and Save. The setup guide, the empty and error states and the stale-list warning use the same look; the empty states have the Spooler shelf illustration.
+- New Spooler mark (a spool seen from the side) in the tab icon, the page and the README art.
+
+### Fixed
+- The actions panel of a spool card could draw outside its card. The actions now live in the spool's detail.
+
 ## [0.26.0] - 2026-11-14
 
 ### Added
