@@ -2,6 +2,7 @@
 
 import importlib.util
 import os
+import socket
 import sys
 import tempfile
 import types
@@ -47,10 +48,28 @@ def _stub_orca() -> types.ModuleType:
 
 _HOME = tempfile.mkdtemp(prefix="spooler-tests-")
 
+# No test may reach a real printer, Spoolman or Moonraker. Every outgoing connection the plugin (or
+# urllib, http.client, ssl and ftplib under it) makes goes through socket.create_connection, so the
+# guard sits there, installed once by load() for the whole run whatever the test order. Loopback stays
+# open for the fake servers some tests start on 127.0.0.1.
+LOOPBACK = ("127.0.0.1", "::1", "localhost")
+_real_create_connection = socket.create_connection
+
+
+def guarded_create_connection(address, *args, **kwargs):
+    if not (isinstance(address, tuple) and address and address[0] in LOOPBACK):
+        raise AssertionError(f"network forbidden in these tests: {address!r}")
+    return _real_create_connection(address, *args, **kwargs)
+
+
+def install_network_guard() -> None:
+    socket.create_connection = guarded_create_connection
+
 
 def load():
     """(plugin module, stub orca module). The plugin's settings and log go to a temporary
-    folder, never to a real OrcaSlicer install."""
+    folder, never to a real OrcaSlicer install, and the network guard is on."""
+    install_network_guard()
     for key in ("HOME", "APPDATA", "XDG_CONFIG_HOME"):
         os.environ[key] = _HOME
     orca = _stub_orca()

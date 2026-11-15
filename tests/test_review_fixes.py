@@ -28,12 +28,7 @@ def stored(data):
     return json.dumps(json.dumps(data))
 
 
-def no_network(*args, **kwargs):
-    raise AssertionError("network forbidden in these tests")
-
-
-sp.urllib.request.urlopen = no_network
-sp.socket.create_connection = no_network
+# Network is refused for the whole run by plugin_loader's guard (loopback only).
 
 
 class Settings:
@@ -398,6 +393,35 @@ class UsageTest(unittest.TestCase):
         self.entry(state="unknown", row_state="unknown")
         sp.usage_action({"type": "usage_resolve", "run": "job", "slot": 1, "outcome": "applied"})
         self.assertEqual(self.stored_entry()["state"], "booked")
+
+    def test_zero_grams_settles_the_row_without_a_request(self):
+        """The page lets a slot be set to 0 g (nothing used from it): the print must still finish
+        booking, not stay "not booked" for good."""
+        entry = {"id": "job", "state": "pending", "origin": "http://a.invalid", "rows": [
+            {"state": "open", "slot": 1, "spool": 1, "grams": 10.0, "label": "x"},
+            {"state": "open", "slot": 2, "spool": None, "grams": 4.0, "label": ""}]}
+        sp.USAGE_FILE.write_text(json.dumps({"prints": [entry]}), encoding="utf-8")
+        with self.use():
+            sp.usage_book("job", [{"slot": 1, "grams": 10}, {"slot": 2, "grams": 0}])
+        stored = self.stored_entry()
+        self.assertEqual(self.ledger, [(1, 10.0)])
+        self.assertEqual([r["state"] for r in stored["rows"]], ["booked", "booked"])
+        self.assertEqual((stored["rows"][1]["grams"], stored["state"]), (0.0, "booked"))
+        hist = json.loads(sp.HISTORY_FILE.read_text(encoding="utf-8"))
+        self.assertEqual([r["spool"] for r in hist[0]["rows"]], [1], "nothing booked, nothing in the history")
+        calls = []
+        with mock.patch.object(sp, "spoolman_at_least", return_value=True), \
+                mock.patch.object(sp, "spoolman_unuse", side_effect=lambda *a: calls.append(a)):
+            sp.usage_undo("job")
+        self.assertEqual(calls, [(1, 10.0)], "undo sends only what was booked")
+        self.assertEqual(self.stored_entry()["state"], "undone")
+
+    def test_out_of_range_grams_are_still_skipped(self):
+        self.entry()
+        with self.use():
+            sp.usage_book("job", [{"slot": 1, "grams": -1}])
+            sp.usage_book("job", [{"slot": 1, "grams": 5001}])
+        self.assertEqual((self.ledger, self.stored_entry()["state"]), ([], "pending"))
 
     def test_crash_while_sending_reads_back_as_unknown(self):
         self.entry(row_state="sending")

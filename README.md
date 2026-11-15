@@ -123,9 +123,11 @@ Illustrative project artwork. [Credits and licenses](docs/related-plugins/README
   colour family from swatches, sit above the list.
 - **Act on a spool from its card (Spoolman).** The ***⋯*** button on each spool card opens its
   actions: ***Set Weight From Scale*** (weigh the spool and enter the gross weight), ***Use
-  Filament*** (subtract grams by hand), ***Move*** (pick one of Spoolman's locations or type a new
-  one), ***Archive*** / ***Unarchive***, ***Add Spool of This Filament*** and ***Open in
-  Spoolman***. Archiving and adding ask for a second click; so does moving a spool off a U1
+  Filament*** (subtract grams by hand), ***Set Grams Left*** (type the filament left when you have
+  no scale, 0 for an empty spool), ***Add a Note*** / ***Edit Note*** (the spool's Spoolman
+  comment, say "dry before use"; empty removes it), ***Move*** (pick one of Spoolman's locations or
+  type a new one), ***Archive*** / ***Unarchive***, ***Add Spool of This Filament*** (1 to 20 at
+  once, for a multi-pack) and ***Open in Spoolman***. Archiving and adding ask for a second click; so does moving a spool off a U1
   toolhead's location, since that unlinks it in u1control. ***Show archived*** in the filters
   lists archived spools, dimmed; they still never count for presets, the filament check or the
   printer slots.
@@ -161,7 +163,9 @@ Illustrative project artwork. [Credits and licenses](docs/related-plugins/README
   - **Single-extruder Klipper printers (e.g. Sovol SV06 with Klipper):** the spool Moonraker's
     Spoolman integration has marked as active. ***Change Spool*** on the card picks another
     non-archived spool and ***Clear*** unsets it, so Moonraker books the next print to the right
-    spool. Not offered on the U1 or on filament changers, which manage their own spools.
+    spool. While the printer prints or is paused it asks first, since Moonraker would then book the
+    rest of that print to the new spool. Not offered on the U1 or on filament changers, which
+    manage their own spools.
   - **Anycubic Kobra X (and other Anycubic printers in LAN mode):** each slot of the multi-colour
     box (ACE) and the external spool, matched to your Spoolman spools by material and colour.
     Turn on LAN mode on the printer and put its IP address in the printer preset's host field.

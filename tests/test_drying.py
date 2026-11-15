@@ -106,7 +106,7 @@ class FieldAndActionTest(Store):
             return current if (method, path) == ("GET", "spool/7") else {}
 
         with mock.patch.object(sp, "spoolman_call", fake), mock.patch.object(sp, "ensure_fields"), \
-                mock.patch.object(sp, "spoolman_version", lambda: version), \
+                mock.patch.object(sp, "spoolman_version", lambda fresh=False: version), \
                 mock.patch.object(sp, "today", lambda: datetime.date(2026, 11, 11)):
             result = sp.spool_action({"action": action, "id": 7})
         return result, [c for c in calls if c[0] == "PATCH"]
