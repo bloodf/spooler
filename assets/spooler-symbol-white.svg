@@ -1,11 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 256 256" role="img" aria-labelledby="title desc">
 <title id="title">Spooler white symbol</title>
 <desc id="desc">Spooler white symbol</desc>
-<g fill="none" stroke-linecap="round" stroke-linejoin="round">
-<path d="M188.36 107.66A77 77 0 1 1 116 57H216M201 42L216 57L201 72" stroke="#FFFFFF" stroke-width="16"/>
-<path d="M85.59 103.59A43 43 0 0 1 146.41 103.59" stroke="#FFFFFF" stroke-width="14"/>
-<path d="M157.53 122.87A43 43 0 0 1 127.13 175.53" stroke="#FFFFFF" stroke-width="14"/>
-<path d="M104.87 175.53A43 43 0 0 1 74.47 122.87" stroke="#FFFFFF" stroke-width="14"/>
-<circle cx="116" cy="134" r="14" stroke="#FFFFFF" stroke-width="10"/>
-</g>
+<g transform="scale(10.667)" fill="none" stroke="#FFFFFF" stroke-linecap="round"><circle cx="11" cy="13" r="6.1" stroke-width="4.4"/><circle cx="11" cy="13" r="1.5" fill="#FFFFFF" stroke="none"/><path d="M16.2 6.6c2.6.5 4.3-.7 5.3-3.1" stroke-width="2.2"/></g>
 </svg>

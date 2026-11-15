@@ -6262,14 +6262,14 @@ LOGO_DATA_URI = (
     "Ii8+CjwvZz4KPC9zdmc+Cg=="
 )
 
-# White line-art tab icon: the Spooler symbol (spool rim flowing into an arrow). get_icon() must return the
-# path of an image file; SVG markup or a data: URI shows no icon.
+# White tab icon: the Spooler mark (a spool seen from the side, its filament leaving it), as on the page's
+# app bar. get_icon() must return the path of an image file; SVG markup or a data: URI shows no icon.
 TAB_ICON_SVG = (
     '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" '
-    'fill="none" stroke="#FFFFFF" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">'
-    '<path d="M18.05 10.43A7.5 7.5 0 1 1 11 5.5H21"/>'
-    '<path d="M18.5 3L21 5.5L18.5 8"/>'
-    '<circle cx="11" cy="13" r="2.75"/>'
+    'fill="none" stroke="#FFFFFF" stroke-linecap="round">'
+    '<circle cx="11" cy="13" r="6.1" stroke-width="4.4"/>'
+    '<circle cx="11" cy="13" r="1.5" fill="#FFFFFF" stroke="none"/>'
+    '<path d="M16.2 6.6c2.6.5 4.3-.7 5.3-3.1" stroke-width="2.2"/>'
     '</svg>'
 )
 TAB_ICON_FILE = DATA_DIR / "spooler_tab.svg"
