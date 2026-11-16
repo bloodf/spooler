@@ -176,6 +176,34 @@ class SaveTest(KlipperCase):
                            "units": [{"kind": "tool", "slots": ["3"]}]}])
         self.assertEqual(self.settings["moon_slots"]["spoolman"][PID]["gates"], ["2", None])
 
+    def test_hidden_slots_survive_a_save(self):
+        self.assign(tools=["1", "2", "3", "4"], gates=["4"])
+        sp._moon_found[PID] = {"tools": 2, "managed": False}
+        entry = self.entry()
+        self.assertEqual(len(entry["units"]), 2)
+        sp.save_printers([entry])
+        saved = self.settings["moon_slots"]["spoolman"][PID]
+        self.assertEqual(saved["tools"], ["1", "2", "3", "4"])  # T3, T4 hidden, not dropped
+        self.assertEqual(saved["gates"], [None])  # spool 4 already on T4
+
+    def test_unpolled_or_managed_printer_keeps_its_slots(self):
+        self.assign(gates=["1", "2"])
+        entry = self.entry()  # never polled
+        self.assertTrue(entry["managed"])
+        self.assertEqual(sp.fill_printers([entry]), [])
+        sp.save_printers([entry])
+        self.assertEqual(self.settings["moon_slots"]["spoolman"][PID]["gates"], ["1", "2"])
+
+    def test_empty_status_keeps_the_toolhead_count(self):
+        sp._moon_found[PID] = {"tools": 4, "managed": False}
+        self.moonraker({})
+        sp.moon_poll(BASE)
+        self.assertEqual(sp._moon_found[PID]["tools"], 4)
+
+    def test_bad_units_do_not_stop_the_save(self):
+        sp.save_printers([dict(AUTO, units=["x", None, {"kind": "gate", "slots": ["1"]}])])
+        self.assertEqual(self.settings["moon_slots"]["spoolman"][PID]["gates"], ["1"])
+
     def test_only_preset_printers_take_slots(self):
         self.assertEqual(sp.parse_moon_slots([{"id": "p1", "units": [{"kind": "gate", "slots": ["1"]}]}], set()), {})
 
@@ -219,6 +247,13 @@ class SliceFillTest(KlipperCase):
         self.assign(tools=["2", None])
         sp._moon_found[PID] = {"tools": 2, "managed": False}
         sp.slice_fill([self.slot(1, "PETG", "#0000FF")], BASE, SPOOLS)
+        self.assertEqual(sp._slice_picks, [])
+
+    def test_new_slice_voids_the_last_questions(self):
+        sp._moon_found[PID] = {"tools": 2, "managed": False}
+        sp.slice_fill([self.slot(1, "PETG", "#0000FF")], BASE, SPOOLS)
+        self.assign(tools=[None, None], slice_fill=False)
+        sp.slice_fill([self.slot(1, "PLA", "#FF0000")], BASE, SPOOLS)
         self.assertEqual(sp._slice_picks, [])
 
     def test_leave_as_it_is(self):

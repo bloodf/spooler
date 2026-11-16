@@ -194,6 +194,7 @@ function onMessage(d: any): void {
       // Spooler changed the saved printers itself (a slice filled the toolheads): take them, or the next edit saves over it.
       if (typeof d.printers_rev === 'number' && d.printers_rev !== m.printersRev) { m.printersRev = d.printers_rev; if (Array.isArray(d.printers)) m.cfg = d.printers; }
       if (Array.isArray(d.slice_picks)) m.slicePicks = d.slice_picks;
+      if (Array.isArray(d.printer_presets)) m.printerPresets = d.printer_presets;
       const key = liveSig(d.live);
       if (key !== m.liveKey) { m.liveKey = key; m.live = d.live; }
       if (d.usage) setUsage(d.usage, false);
