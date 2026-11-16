@@ -2,7 +2,7 @@
 import { computed } from 'vue';
 import InputText from 'primevue/inputtext';
 import Select from 'primevue/select';
-import MultiSelect from 'primevue/multiselect';
+import Checkbox from 'primevue/checkbox';
 import ToggleSwitch from 'primevue/toggleswitch';
 import EditorNumber from './EditorNumber.vue';
 import type { FieldDef } from '../logic/editor';
@@ -18,11 +18,14 @@ const whole = computed(() => kind.value.startsWith('integer'));
 const range = computed<(number | null)[]>(() => (Array.isArray(model.value) ? model.value as (number | null)[] : [null, null]));
 const setEnd = (i: number, v: number | null) => { const next = [...range.value]; next[i] = v; model.value = next; };
 const label = computed(() => props.def.name || props.def.key);
+const picked = computed<string[]>(() => (Array.isArray(model.value) ? model.value as string[] : []));
+const toggle = (c: string, on: boolean) => { model.value = on ? [...picked.value.filter(x => x !== c), c] : picked.value.filter(x => x !== c); };
 </script>
 <template>
   <ToggleSwitch v-if="kind === 'boolean'" :input-id="id" :model-value="model === true" :aria-describedby="describedby" @update:model-value="v => (model = v)" />
-  <MultiSelect v-else-if="kind === 'choice' && def.multi_choice" :input-id="id" :model-value="(model as string[] | null) ?? []" :options="options" option-label="label" option-value="value"
-               display="chip" :invalid="invalid" @update:model-value="v => (model = v)" />
+  <span v-else-if="kind === 'choice' && def.multi_choice" :id="id" class="ex-multi" role="group" :aria-label="label">
+    <label v-for="c in def.choices ?? []" :key="c" class="ex-pick"><Checkbox :model-value="picked.includes(c)" binary @update:model-value="v => toggle(c, v)" />{{ c }}</label>
+  </span>
   <Select v-else-if="kind === 'choice'" :input-id="id" :model-value="model ?? null" :options="options" option-label="label" option-value="value" show-clear
           :invalid="invalid" @update:model-value="v => (model = v ?? null)" />
   <EditorNumber v-else-if="kind === 'integer' || kind === 'float'" :id="id" :model-value="(model as number | null) ?? null" :unit="def.unit" :digits="whole ? 0 : 4"
@@ -36,5 +39,7 @@ const label = computed(() => props.def.name || props.def.key);
              :aria-describedby="describedby" @update:model-value="v => (model = v)" />
 </template>
 <style>
+.ex-multi { display: flex; flex-wrap: wrap; gap: var(--oui-s2) var(--oui-s4); }
+.ex-pick { display: inline-flex; align-items: center; gap: var(--oui-s2); }
 .ex-range { flex: 1 1 220px; display: flex; align-items: center; gap: var(--oui-s2); min-width: 0; }
 </style>

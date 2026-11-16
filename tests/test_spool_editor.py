@@ -17,6 +17,7 @@ FIELDS = {
                  {"key": "tags", "name": "Tags", "field_type": "choice", "choices": ["x", "y"], "multi_choice": True},
                  {"key": "shrink", "name": "Shrink", "field_type": "float", "unit": "%"},
                  {"key": "layers", "name": "Layers", "field_type": "integer_range"},
+                 {"key": "spools", "name": "Spools per box", "field_type": "integer"},
                  {"key": "orca_settings", "name": "Orca settings", "field_type": "text"}],
 }
 FILAMENT = {"id": 9, "name": "Black", "material": "PLA", "color_hex": "111111", "density": 1.24, "diameter": 1.75,
@@ -99,6 +100,7 @@ class EditorTest(Settings):
         self.assertIn("#21", result["text"])
         self.assertIn("422", result["text"])
         self.assertEqual([w[1] for w in writes], ["filament", "spool"])
+        self.assertEqual(result["filament"], 21, "the page offers the new filament, so a retry adds no second one")
 
     def test_edit_sends_only_the_changed_fields(self):
         result, writes = self.run_action({"action": "save", "id": 7,
@@ -110,7 +112,7 @@ class EditorTest(Settings):
     def test_edit_saves_filament_properties_to_the_filament(self):
         result, writes = self.run_action({"action": "save", "id": 7, "spool": {},
                                           "filament": {"color_hex": "FF8800", "settings_extruder_temp": 220, "vendor": "Polymaker"},
-                                          "was": {"filament": {"color_hex": "111111", "settings_extruder_temp": None, "vendor": "Acme"}}})
+                                          "was": {"filament": {"id": 9, "color_hex": "111111", "settings_extruder_temp": None, "vendor": "Acme"}}})
         self.assertTrue(result["ok"], result)
         self.assertEqual(writes, [("PATCH", "filament/9", {"color_hex": "FF8800", "settings_extruder_temp": 220, "vendor_id": 4,
                                                            "multi_color_hexes": None, "multi_color_direction": None})])
@@ -123,9 +125,9 @@ class EditorTest(Settings):
         self.assertEqual(writes, [("PATCH", "spool/7", {"comment": "new"})])
         self.assertIn("location", result["text"])
 
-    def test_older_spoolman_gets_the_whole_extra_map_back(self):
+    def test_spoolman_before_0_22_gets_the_whole_extra_map_back(self):
         result, writes = self.run_action({"action": "save", "id": 7, "spool": {"extra": {"dryer": None, "sealed": False}},
-                                          "was": {"spool": {"extra": {"dryer": '"Box 1"'}}}}, Spoolman(version="0.22.1"))
+                                          "was": {"spool": {"extra": {"dryer": '"Box 1"'}}}}, Spoolman(version="0.21.0"))
         self.assertTrue(result["ok"], result)
         self.assertEqual(writes, [("PATCH", "spool/7", {"extra": {"dried": '"2026-11-10"', "sealed": "false"}})],
                          "the dried date stays; the cleared field goes")
@@ -134,6 +136,67 @@ class EditorTest(Settings):
         _, writes = self.run_action({"action": "save", "id": 7, "spool": {"extra": {"dryer": None}},
                                      "was": {"spool": {"extra": {"dryer": '"Box 1"'}}}})
         self.assertEqual(writes, [("PATCH", "spool/7", {"extra": {"dryer": None}})])
+
+    def test_spoolman_0_22_to_0_25_gets_only_the_changed_keys_and_cant_empty_one(self):
+        result, writes = self.run_action({"action": "save", "id": 7, "spool": {"extra": {"sealed": True}},
+                                          "was": {"spool": {"extra": {}}}}, Spoolman(version="0.25.3"))
+        self.assertEqual(writes, [("PATCH", "spool/7", {"extra": {"sealed": "true"}})])
+        result, writes = self.run_action({"action": "save", "id": 7, "spool": {"location": "B", "extra": {"dryer": None}},
+                                          "was": {"spool": {"location": "Shelf A", "extra": {"dryer": '"Box 1"'}}}}, Spoolman(version="0.25.3"))
+        self.assertFalse(result["ok"])
+        self.assertIn("0.26", result["text"])
+        self.assertEqual(writes, [], "nothing, not even the location")
+
+    def test_unknown_version_writes_no_extra_field(self):
+        result, writes = self.run_action({"action": "save", "id": 7, "spool": {"extra": {"sealed": True}},
+                                          "was": {"spool": {"extra": {}}}}, Spoolman(version="?"))
+        self.assertFalse(result["ok"])
+        self.assertEqual(writes, [])
+
+    def test_colour_changes_send_the_whole_colour_group(self):
+        multi = {**SPOOL, "filament": {**FILAMENT, "color_hex": None, "multi_color_hexes": "FF0000,00FF00",
+                                       "multi_color_direction": "longitudinal"}}
+        _, writes = self.run_action({"action": "save", "id": 7, "filament": {"multi_color_hexes": "FF0000,0000FF"},
+                                     "was": {"filament": {"id": 9, "multi_color_hexes": "FF0000,00FF00"}}}, Spoolman(spool=multi))
+        self.assertEqual(writes, [("PATCH", "filament/9", {"multi_color_hexes": "FF0000,0000FF", "color_hex": None,
+                                                           "multi_color_direction": "longitudinal"})])
+        _, writes = self.run_action({"action": "save", "id": 7, "filament": {"multi_color_direction": "coaxial"},
+                                     "was": {"filament": {"id": 9, "multi_color_direction": "longitudinal"}}}, Spoolman(spool=multi))
+        self.assertEqual(writes, [("PATCH", "filament/9", {"multi_color_direction": "coaxial", "color_hex": None,
+                                                           "multi_color_hexes": "FF0000,00FF00"})])
+
+    def test_grams_left_and_starting_weight_cant_be_emptied(self):
+        for key in ("remaining_weight", "initial_weight"):
+            result, writes = self.run_action({"action": "save", "id": 7, "spool": {key: None}, "was": {"spool": {key: 500.0}}})
+            self.assertFalse(result["ok"], key)
+            self.assertEqual(writes, [])
+
+    def test_a_new_starting_weight_keeps_the_grams_left_shown(self):
+        _, writes = self.run_action({"action": "save", "id": 7, "spool": {"initial_weight": 1200, "remaining_weight": 500},
+                                     "was": {"spool": {"initial_weight": 1000.0, "remaining_weight": 500.0}}})
+        self.assertEqual(writes, [("PATCH", "spool/7", {"initial_weight": 1200.0, "remaining_weight": 500.0})])
+
+    def test_filament_changes_never_land_on_a_filament_the_spool_moved_to(self):
+        moved = {**SPOOL, "filament": {**FILAMENT, "id": 12}}
+        result, writes = self.run_action({"action": "save", "id": 7, "spool": {"location": "B"},
+                                          "filament": {"settings_extruder_temp": 230},
+                                          "was": {"spool": {"location": "Shelf A"}, "filament": {"id": 9, "settings_extruder_temp": None}}},
+                                         Spoolman(spool=moved))
+        self.assertEqual(writes, [("PATCH", "spool/7", {"location": "B"})])
+        self.assertIn("settings_extruder_temp", result["text"])
+
+    def test_a_refused_spool_after_its_filament_says_the_filament_was_saved(self):
+        result, writes = self.run_action({"action": "save", "id": 7, "spool": {"location": "B"}, "filament": {"name": "Jet"},
+                                          "was": {"spool": {"location": "Shelf A"}, "filament": {"id": 9, "name": "Black"}}},
+                                         Spoolman(fail="spool/7"))
+        self.assertFalse(result["ok"])
+        self.assertIn("filament", result["text"])
+        self.assertEqual([w[1] for w in writes], ["filament/9", "spool/7"])
+
+    def test_whole_numbers_go_as_integers(self):
+        _, writes = self.run_action({"action": "create", "spool": {}, "filament": {"density": 1.2, "diameter": 1.75,
+                                                                                 "extra": {"spools": 3.0, "layers": [1.0, None]}}})
+        self.assertEqual(writes[0][2]["extra"], {"spools": "3", "layers": "[1, null]"})
 
     def test_nothing_changed_writes_nothing(self):
         result, writes = self.run_action({"action": "save", "id": 7, "spool": {"location": "Shelf A"},
@@ -161,7 +224,7 @@ class EditorTest(Settings):
                         {"density": 1.2, "diameter": 1.75, "extra": {"tags": ["z"]}},
                         {"density": 1.2, "diameter": 1.75, "extra": {"layers": [1.5, 2]}},
                         {"density": 1.2, "diameter": 1.75, "extra": {"orca_settings": "{}"}},
-                        {"density": 1.2, "diameter": 1.75, "id": 3}, "PLA"]
+                        {"density": 1.2, "diameter": 1.75, "id": 3}, {"density": 1.2, "diameter": 1.75, "weight": 0}, "PLA"]
         for filament in bad_filament:
             result, writes = self.run_action({"action": "create", "spool": {}, "filament": filament})
             self.assertFalse(result["ok"], filament)

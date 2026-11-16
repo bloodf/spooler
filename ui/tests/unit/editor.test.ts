@@ -73,6 +73,8 @@ test('problems: density and diameter required, no more left than at the start, I
   const withDate = { ...s, extra: { bought: '16/11/2026' } };
   assert.deepEqual(problems(withDate, null, { spool: [def('bought')], filament: [] }, false), { 'spool.bought': 'date' });
   assert.deepEqual(problems({ ...s, extra: { bought: '2026-11-16' } }, null, { spool: [def('bought')], filament: [] }, false), {});
+  const had = { ...s, initial_weight: 1000, remaining_weight: 400 };
+  assert.deepEqual(problems({ ...had, remaining_weight: null }, null, { spool: [], filament: [] }, false, had), { remaining_weight: 'required' }, 'an edit can’t empty grams left');
 });
 
 test('a new filament gets its material’s usual density', () => {

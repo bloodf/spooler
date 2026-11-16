@@ -125,8 +125,11 @@ export function wasOf(raw: Raw | undefined, changes: Raw): Raw {
 export type Problem = 'required' | 'tooMuch' | 'date';
 /** What stops a save, by field: density and diameter are required for a filament; a new spool can't start with less
  * than is left; a date field holds a date. */
-export function problems(spool: SpoolForm, filament: FilamentForm | null, defs: { spool: FieldDef[]; filament: FieldDef[] }, adding: boolean): Record<string, Problem> {
+export function problems(spool: SpoolForm, filament: FilamentForm | null, defs: { spool: FieldDef[]; filament: FieldDef[] }, adding: boolean,
+  base?: SpoolForm): Record<string, Problem> {
   const out: Record<string, Problem> = {};
+  // Spoolman works with a spool's weights: one it has can be changed, not emptied.
+  for (const k of ['initial_weight', 'remaining_weight'] as const) if (!adding && base && base[k] !== null && spool[k] === null) out[k] = 'required';
   if (filament) for (const k of ['diameter', 'density'] as const) if (!(typeof filament[k] === 'number' && (filament[k] as number) > 0)) out[k] = 'required';
   if (adding && spool.initial_weight !== null && spool.remaining_weight !== null && spool.remaining_weight > spool.initial_weight) out.remaining_weight = 'tooMuch';
   const dates = (extra: Extra, list: FieldDef[], prefix: string) => {

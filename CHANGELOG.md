@@ -10,7 +10,7 @@ Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); 
 - A pencil beside each spool's name, in the list and in its detail, opens Edit Spool. Changes to the spool are saved to that spool; changes to the filament (colour, temperatures, density and so on) are saved to the filament in Spoolman, and the editor says how many other spools share it.
 - Your own Spoolman extra fields, for spools and filaments, can be filled in there with the input their type calls for: a switch for yes/no, a menu for a choice, a number box with its unit for numbers (two for a range), text otherwise. Spooler's own fields stay hidden.
 - A live preview of the spool, drawn like the list's reels, shows its colours, name and amount left as you type.
-- Only the fields you changed are sent, after reading the spool from Spoolman again: a field someone changed in Spoolman while you were editing keeps Spoolman's value, and the result says which. Spoolman's refusals show in the editor, which stays open. Decimals typed or pasted with a point work in every language.
+- Only the fields you changed are sent, after reading the spool from Spoolman again: a field someone changed in Spoolman while you were editing keeps Spoolman's value, and the result says which. Spoolman's refusals show in the editor, which stays open; if a new filament was made but the spool was refused, trying again uses that filament instead of making a second one. Emptying an extra field needs Spoolman 0.26 or newer; older versions say so and nothing is written. Decimals typed or pasted with a point work in every language.
 
 ## [0.28.0] - 2026-11-16
 

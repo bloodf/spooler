@@ -43,6 +43,12 @@ watch(data, d => {
   source.value = (d.filaments ?? []).length ? 'existing' : 'new';
   pickId.value = null; tried.value = false; suggested = null;
 }, { immediate: true });
+// The new filament was made but Spoolman refused the spool: it is an existing filament now, picked for the retry.
+watch(() => editor.made, id => {
+  if (id == null || !editor.data) return;
+  editor.data.filaments = [...(editor.data.filaments ?? []), { ...previewFilament(ff.value), id }];
+  source.value = 'existing'; pickId.value = id;
+});
 // A new filament gets the usual density of its material until the user types another.
 watch(() => ff.value.material, mat => {
   const d = densityFor(mat);
@@ -55,8 +61,9 @@ const filaments = computed(() => ((data.value?.filaments ?? []) as Raw[])
   .sort((a, b) => a.label.localeCompare(b.label, locale.value)));
 const picked = computed(() => filaments.value.find(o => o.value === pickId.value)?.f ?? null);
 const withFilament = computed(() => !adding.value || source.value === 'new');
-const issues = computed(() => problems(sf.value, withFilament.value ? ff.value : null, defs.value, adding.value));
-const err = (key: string) => (tried.value || key === 'remaining_weight') && issues.value[key] ? t(`editor.problem.${issues.value[key]}` as any) : undefined;
+const baseSpool = computed(() => (raw.value ? spoolForm(raw.value, defs.value.spool) : undefined));
+const issues = computed(() => problems(sf.value, withFilament.value ? ff.value : null, defs.value, adding.value, baseSpool.value));
+const err = (key: string) => (tried.value || key === 'remaining_weight' || key === 'initial_weight') && issues.value[key] ? t(`editor.problem.${issues.value[key]}` as any) : undefined;
 const shared = computed(() => m.spools.filter(s => rawFil.value?.id != null && s.filament?.id === rawFil.value.id && s.id !== editor.id).length);
 const title = computed(() => (adding.value ? t('editor.addTitle') : t('editor.editTitle', { id: editor.id })));
 
@@ -92,13 +99,15 @@ async function save() {
     return;
   }
   const sCh = changed(spool, spoolPayload(spoolForm(raw.value, defs.value.spool), defs.value.spool));
+  // Spoolman keeps the used grams: a new starting weight alone would move the grams left, so those go with it.
+  if ('initial_weight' in sCh && spool.remaining_weight !== null) sCh.remaining_weight = spool.remaining_weight;
   const fCh = changed(filamentPayload(ff.value, defs.value.filament), filamentPayload(filamentForm(rawFil.value, defs.value.filament), defs.value.filament));
   if (!Object.keys(sCh).length && !Object.keys(fCh).length) { editor.open = false; note('info', t('editor.noChanges'), 'spool-action'); return; }
   // A new location unlinks a U1 toolhead bound by its location: asked first, as the detail's Move does.
   const listed = m.spools.find(s => s.id === editor.id);
   if ('location' in sCh && listed?.u1_bound && !await ask({ title: t('menu.move'), text: t('confirm.unlink', { location: listed.location }),
     yes: t('confirm.unlinkYes'), no: t('common.goBack'), danger: true })) return;
-  submitEditor({ action: 'save', spool: sCh, filament: fCh, was: { spool: wasOf(raw.value, sCh), filament: wasOf(rawFil.value, fCh) } });
+  submitEditor({ action: 'save', spool: sCh, filament: fCh, was: { spool: wasOf(raw.value, sCh), filament: { ...wasOf(rawFil.value, fCh), id: rawFil.value?.id ?? null } } });
 }
 </script>
 
@@ -126,8 +135,8 @@ async function save() {
 
           <section v-if="!adding || step === 2" class="se-sec" :aria-label="t('editor.stepSpool')">
             <h3 v-if="!adding" class="oui-label se-h">{{ t('editor.stepSpool') }}</h3>
-            <OuiFormRow :label="t('editor.initial')" for="se-initial" :hint="t('editor.initialHelp')">
-              <EditorNumber id="se-initial" v-model="sf.initial_weight" :min="0" :max="100000" :digits="1" unit="g" /></OuiFormRow>
+            <OuiFormRow :label="t('editor.initial')" for="se-initial" :hint="t('editor.initialHelp')" :error="err('initial_weight')">
+              <EditorNumber id="se-initial" v-model="sf.initial_weight" :min="0" :max="100000" :digits="1" unit="g" :invalid="!!err('initial_weight')" /></OuiFormRow>
             <OuiFormRow :label="t('editor.remaining')" for="se-left" :error="err('remaining_weight')">
               <EditorNumber id="se-left" v-model="sf.remaining_weight" :min="0" :max="100000" :digits="1" unit="g" :invalid="!!err('remaining_weight')" /></OuiFormRow>
             <OuiFormRow :label="t('menu.location')" for="se-loc">

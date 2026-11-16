@@ -51,14 +51,15 @@ const FIELDS = {spool: [{key: 'dryer', name: 'Dryer', field_type: 'text', order:
   filament: [{key: 'grade', name: 'Grade', field_type: 'choice', choices: ['A', 'B'], order: 1}, {key: 'shrink', name: 'Shrink', field_type: 'float', unit: '%', order: 2}, {key: 'orca_settings', name: 'Orca settings', field_type: 'text'}]};
 const FILS = [{id: 5, name: 'Black', material: 'PLA', color_hex: '111111', density: 1.24, diameter: 1.75, weight: 1000, vendor: {id: 1, name: 'Acme'}, extra: {grade: '"A"'}},
   {id: 8, name: 'Blue', material: 'PETG', color_hex: '2850a8', density: 1.27, diameter: 1.75, vendor: {id: 1, name: 'Acme'}}];
-const editorData = spool => ({type: 'action_result', action: 'editor', ok: true, text: '', editor: {fields: FIELDS, filaments: FILS, vendors: ['Acme', 'Polymaker'], spool: spool || null}});
+const editorRef = () => lastOf('spool_action').ref;
+const editorData = (spool, ref) => ({type: 'action_result', action: 'editor', ok: true, text: '', ref: ref ?? editorRef(), editor: {fields: FIELDS, filaments: FILS, vendors: ['Acme', 'Polymaker'], spool: spool || null}});
 // The editor's answer, then its open transition: the dialog moves the focus inside once it has entered, which would take
 // keys typed before that away from their field.
 async function loaded(spool) {
   await post(editorData(spool));
   await until(() => dialogEl() && !/enter|leave/.test(dialogEl().className) && dialogEl().contains(document.activeElement), 'editor open and focused');
 }
-const RAW1 = {...SPOOLS[0], extra: {dryer: '"Box 1"', dried: '"2026-11-10"'}, filament: FILS[0]};
+const RAW1 = {...SPOOLS[0], remaining_weight: 734.5678, extra: {dryer: '"Box 1"', dried: '"2026-11-10"'}, filament: FILS[0]};
 const stackText = () => [q('[data-stack]'), ...qa('tr.sp-child')].map(vis).join(' ');
 `;
 
@@ -800,7 +801,7 @@ test('B-21/B-24: focus ring on group heads is visible; reduced motion honoured',
 test('editor: add a spool of an existing filament, with typed extra fields and a live preview', `
   await spools(SPOOLS);
   await click(byTest('add-spool'));
-  eq(lastOf('spool_action'), {type: 'spool_action', action: 'editor', origin: 3}, 'the editor asks the plugin for Spoolman\\'s fields');
+  eq(lastOf('spool_action'), {type: 'spool_action', action: 'editor', origin: 3, ref: 1}, 'the editor asks the plugin for Spoolman\\'s fields');
   assert(dialogOpen() && text(dialogEl()).includes('Loading'), 'loading until the answer');
   await loaded();
   assert(text(dialogEl()).includes('Step 1 of 2'), 'guided: step 1');
@@ -818,8 +819,8 @@ test('editor: add a spool of an existing filament, with typed extra fields and a
   await type(q('#se-sx-dryer'), 'Box 3');
   await click(byTest('editor-save'));
   eq(lastOf('spool_action'), {type: 'spool_action', origin: 3, action: 'create', filament_id: 5,
-    spool: {remaining_weight: 750, location: 'Shelf C', archived: false, extra: {dryer: 'Box 3', sealed: true}}}, 'create: only filled fields');
-  await post({type: 'action_result', action: 'create', ok: true, text: 'Added spool #44.'});
+    spool: {remaining_weight: 750, location: 'Shelf C', archived: false, extra: {dryer: 'Box 3', sealed: true}}, ref: 1}, 'create: only filled fields');
+  await post({type: 'action_result', action: 'create', ok: true, text: 'Added spool #44.', ref: editorRef()});
   await until(() => !dialogOpen(), 'the editor closes');
   assert(text(document.body).includes('Added spool #44.'), 'the result is shown');
 `);
@@ -855,16 +856,21 @@ test('editor: a new filament in German, decimals typed with a point, two colours
   await click(byTest('editor-save'));
   eq(lastOf('spool_action'), {type: 'spool_action', origin: 3, action: 'create', spool: {initial_weight: 1000, remaining_weight: 1000, archived: false},
     filament: {vendor: 'Polymaker', name: 'Galaxy', material: 'PETG', multi_color_hexes: 'FF0000,FF0000', multi_color_direction: 'coaxial', diameter: 2.85, density: 1.27,
-      extra: {grade: 'B', shrink: 0.4}}}, 'create with a new filament');
+      extra: {grade: 'B', shrink: 0.4}}, ref: 1}, 'create with a new filament');
+  await post({type: 'action_result', action: 'create', ok: false, text: 'Filament #21 angelegt, aber Spoolman hat die Spule abgelehnt', filament: 21, ref: 1});
+  assert(dialogOpen() && text(byTest('editor-error')).includes('#21'), 'the refusal stays visible');
+  await click(byTest('editor-save'));
+  const retry = lastOf('spool_action');
+  eq([retry.action, retry.filament_id, 'filament' in retry], ['create', 21, false], 'the retry uses the filament made, not a second one');
 `, { lang: 'de' });
 test('editor: edit sends only changes, says the filament is shared, and keeps a refusal visible', `
   await spools(SPOOLS, {display: {...DEFAULTS, group_same: false}});
   await open(1);
   assert(byTest('detail-edit'), 'a pencil beside the name in the detail');
   await click(q('[data-edit="1"]'));
-  eq(lastOf('spool_action'), {type: 'spool_action', action: 'editor', id: 1, origin: 3}, 'the editor reads the spool again');
-  await post(editorData({...RAW1, id: 2}));
-  assert(!q('#se-loc'), 'an answer for another spool is ignored');
+  eq(lastOf('spool_action'), {type: 'spool_action', action: 'editor', id: 1, origin: 3, ref: 1}, 'the editor reads the spool again');
+  await post(editorData({...RAW1, id: 2}, editorRef() - 1));
+  assert(!q('#se-loc'), 'an answer for an editor opened before is ignored');
   await loaded(RAW1);
   assert(text(byTest('editor-shared')).includes('1 other spool'), 'shared filament note: ' + text(byTest('editor-shared')));
   eq(q('#se-loc').value, 'Shelf A', 'the form opens with Spoolman\\'s values');
@@ -873,16 +879,17 @@ test('editor: edit sends only changes, says the filament is shared, and keeps a 
   await type(q('#se-noz'), '215');
   await click(byTest('editor-save'));
   eq(lastOf('spool_action'), {type: 'spool_action', origin: 3, id: 1, action: 'save', spool: {location: 'Dry box'}, filament: {settings_extruder_temp: 215},
-    was: {spool: {location: 'Shelf A'}, filament: {settings_extruder_temp: null}}}, 'only what changed, with what Spoolman held');
-  await post({type: 'action_result', action: 'save', ok: false, text: 'Spoolman refused it (HTTP 422): density'});
+    was: {spool: {location: 'Shelf A'}, filament: {settings_extruder_temp: null, id: 5}}, ref: 1}, 'only what changed, with what Spoolman held');
+  await post({type: 'action_result', action: 'save', ok: false, text: 'Spoolman refused it (HTTP 422): density', ref: editorRef()});
   assert(dialogOpen() && text(byTest('editor-error')).includes('HTTP 422'), 'the refusal stays visible in the editor');
   await click(byTest('editor-cancel'));
   await until(() => !dialogOpen(), 'closed');
   await click(q('[data-edit="1"]'));
   await loaded(RAW1);
   const before = sentOf('spool_action').length;
+  q('#se-left').focus(); await settle(); q('#se-left').blur(); await settle();
   await click(byTest('editor-save'));
-  eq(sentOf('spool_action').length, before, 'no change: nothing sent');
+  eq(sentOf('spool_action').length, before, 'no change (734.5678 g shown as 734.6 and left) : nothing sent');
   await until(() => !dialogOpen(), 'closed');
   assert(text(document.body).includes('Nothing changed'), 'and it says so');
 `);
