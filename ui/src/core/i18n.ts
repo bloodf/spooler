@@ -23,8 +23,8 @@ function readPref(): LangPref {
 
 export const langPref = ref<LangPref>(readPref());
 const hostLang = ref<unknown>(null);
-export const locale = computed<Locale>(() => resolveLocale(langPref.value, hostLang.value, navigator.languages ?? [navigator.language]));
-export const autoLocale = computed<Locale>(() => resolveLocale('auto', hostLang.value, navigator.languages ?? [navigator.language]));
+export const locale = computed<Locale>(() => resolveLocale(langPref.value, hostLang.value));
+export const autoLocale = computed<Locale>(() => resolveLocale('auto', hostLang.value));
 
 export function setHostLanguage(value: unknown): void { hostLang.value = value; }
 export function setLangPref(value: LangPref): void {

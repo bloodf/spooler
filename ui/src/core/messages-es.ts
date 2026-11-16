@@ -68,7 +68,7 @@ export const es: Record<MessageKey, string> = {
   'menu.archive': 'Archivar', 'menu.unarchive': 'Desarchivar', 'menu.add': 'Añadir un carrete de este filamento', 'menu.dried': 'Marcar como secado hoy',
   'menu.clearDried': 'Borrar fecha de secado', 'menu.open': 'Abrir en Spoolman', 'menu.location': 'Ubicación', 'menu.scale': 'Carrete en la báscula, en g',
   'menu.used': 'Gramos usados', 'menu.gramsHelp': 'Gramos, más de 0. Spoolman se actualiza al guardar.', 'menu.gramsInvalid': 'Introduce un número de gramos mayor que 0, hasta 100.000.',
-  'menu.remain': 'Fijar gramos restantes', 'menu.remainLabel': 'Filamento restante, en g', 'menu.remainHelp': 'Filamento neto que queda, sin el peso del carrete; 0 para un carrete vacío.',
+  'menu.remain': 'Fijar gramos restantes', 'menu.remainLabel': 'Filamento restante, en g', 'menu.remainHelp': 'Filamento neto que queda, sin contar el propio carrete; 0 para un carrete vacío.',
   'menu.remainInvalid': 'Introduce los gramos restantes, de 0 a 100.000.',
   'menu.addNote': 'Añadir una nota', 'menu.editNote': 'Editar nota', 'menu.noteLabel': 'Nota', 'menu.noteHelp': 'Se guarda como comentario del carrete en Spoolman; déjala vacía para quitarla.',
   'menu.addYes': 'Añadir', 'menu.addCount': 'Cuántos carretes', 'menu.addCountInvalid': 'Añade de 1 a 20 carretes cada vez.',
@@ -228,7 +228,7 @@ export const es: Record<MessageKey, string> = {
   'bambu.experimental': 'Experimental: usa el servicio en la nube no oficial de Bambu, que Bambu puede cambiar en cualquier momento. Spooler nunca guarda tu contraseña.',
   'lang.title': 'Idioma', 'lang.label': 'Idioma de la página', 'lang.auto': 'Automático ({current})', 'lang.en': 'English', 'lang.pt-BR': 'Português (Brasil)',
   'lang.es': 'Español', 'lang.de': 'Deutsch', 'lang.zh-CN': '简体中文',
-  'lang.help': 'Automático sigue el idioma de OrcaSlicer y, después, el del sistema. Tu elección se guarda con los ajustes de Spooler.',
+  'lang.help': 'Automático sigue el idioma de OrcaSlicer o, si Spooler no lo tiene, el inglés. Tu elección se guarda con los ajustes de Spooler.',
 
   'wiz.count': 'Paso {n} de {total}', 'wiz.skip': 'Saltar la guía', 'wiz.back': 'Atrás', 'wiz.next': 'Siguiente', 'wiz.finish': 'Guardar y terminar',
   'wiz.needTest': 'Siguiente se desbloquea cuando la prueba de conexión se supera.',

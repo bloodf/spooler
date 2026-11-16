@@ -10,6 +10,9 @@ Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); 
 - The messages Spooler writes itself are in your language too: the filament check after slicing, the low-stock notice, spool action results, Bambu Cloud sign-in errors, Sync Presets, Send to Spoolman, and the Load Printer Filaments and Keep Slots Synced results. This now includes Brazilian Portuguese, where they were English before. Spool, filament, vendor and colour names stay as Spoolman has them.
 - Numbers, weights, money and dates are written the way each language writes them, for example "1.380 g" and "41,20 €" in German, and Bambu print stages use OrcaSlicer's own wording.
 
+### Fixed
+- The grams of a print to book take "2.5" typed or pasted as 2.5 g in every language. With a German, Spanish or Portuguese system the "." was dropped and it became 25 g; the field now also writes its number the way the page's language does.
+
 ## [0.27.1] - 2026-11-15
 
 ### Fixed

@@ -87,18 +87,13 @@ test('locale tags', () => {
   assert.equal(normalizeLocale(42), null);
 });
 
-test('explicit choice, then host, then browser, then English', () => {
-  assert.equal(resolveLocale('en', 'pt_BR', ['pt-BR']), 'en');
-  assert.equal(resolveLocale('auto', 'pt_BR', ['en-US']), 'pt-BR');
-  assert.equal(resolveLocale('auto', 'fr', ['it', 'pt-PT']), 'pt-BR');
-  assert.equal(resolveLocale('auto', null, ['fr']), 'en');
-  assert.equal(resolveLocale('auto', 'es', ['en-US']), 'es');
-  assert.equal(resolveLocale('auto', 'de', ['en-US']), 'de');
-  assert.equal(resolveLocale('auto', 'zh_CN', ['en-US']), 'zh-CN');
-  assert.equal(resolveLocale('auto', 'zh_TW', ['en-US']), 'zh-CN');
-  assert.equal(resolveLocale('auto', 'ko', ['ja', 'de-CH', 'es']), 'de', 'the first browser language the page has');
-  assert.equal(resolveLocale('auto', 'xx', []), 'en');
-  for (const pref of ['es', 'de', 'zh-CN'] as const) assert.equal(resolveLocale(pref, 'pt_BR', ['en-US']), pref, 'the manual choice wins');
+// The same cases as tests/test_i18n.py (test_auto_language_matches_the_page): page and Python texts agree.
+const AUTO_CASES: [unknown, string][] = [['pt_BR', 'pt-BR'], ['es_ES', 'es'], ['de', 'de'], ['zh_CN', 'zh-CN'], ['zh_TW', 'zh-CN'], ['en_GB', 'en'],
+  ['fr_FR', 'en'], ['ko', 'en'], ['', 'en'], [null, 'en']];
+
+test('explicit choice, then the host language, then English (never the browser)', () => {
+  for (const [host, want] of AUTO_CASES) assert.equal(resolveLocale('auto', host), want, String(host));
+  for (const pref of ['en', 'es', 'de', 'zh-CN'] as const) assert.equal(resolveLocale(pref, 'pt_BR'), pref, 'the manual choice wins');
 });
 
 test('a saved choice is only taken when the page has that language', () => {

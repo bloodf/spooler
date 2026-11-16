@@ -586,6 +586,27 @@ test('booking: grams editable and required, chosen spool sent with origin; undo 
   await click(q('[data-usage="unbook"]'));
   eq(lastOf('usage_undo'), {type: 'usage_undo', run: 'b'}, 'undo sent');
 `);
+for (const [host, shown, pasted] of [['en', '2.5 g', '7.5 g'], ['de', '2,5 g', '7,5 g'], ['es', '2,5 g', '7,5 g'], ['pt_BR', '2,5 g', '7,5 g']]) {
+  test(`usage grams: "2.5" typed and "7.5" pasted keep their decimal in ${host}`, `
+  const usage = {enabled: true, mode: 'ask', prints: [{id: 'a', name: 'Benchy', printer: 'X1', result: 'finished', time: Date.now() / 1000, state: 'pending',
+    rows: [{slot: 1, grams: 12.3, label: 'Acme Black', spool: 1, material: 'PLA'}]}]};
+  await spools(SPOOLS, {usage});
+  await tab('printer');
+  if (!q('#us-list')) await click(q('.us-toggle'));
+  const input = () => q('[data-run="a"] .us-g input');
+  await type(input(), '2.5');
+  input().blur(); await settle();
+  eq(input().value, ${JSON.stringify(shown)}, 'typed');
+  await click(q('[data-run="a"] [data-usage="book"]'));
+  eq(lastOf('usage_book').rows[0].grams, 2.5, 'typed value booked');
+  await post({type: 'usage', usage});
+  const data = new DataTransfer(); data.setData('text', '7.5');
+  input().focus(); input().select();
+  input().dispatchEvent(new ClipboardEvent('paste', {clipboardData: data, bubbles: true, cancelable: true}));
+  input().blur(); await settle();
+  eq(input().value, ${JSON.stringify(pasted)}, 'pasted');
+  `, { lang: host });
+}
 test('plate check: rows, attention pill, recheck and dismiss', `
   await spools(SPOOLS);
   await post({type: 'plate', time: '10:00', rows: [{status: 'short', colour: '111111', slots: 'T1', name: 'Black', meta: 'Acme', fill: .4, spool_colour: '111111', need_pct: .6,

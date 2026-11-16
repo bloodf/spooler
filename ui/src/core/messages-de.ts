@@ -228,7 +228,7 @@ export const de: Record<MessageKey, string> = {
   'bambu.experimental': 'Experimentell: Dies nutzt den inoffiziellen Cloud-Dienst von Bambu, den Bambu jederzeit ändern kann. Spooler speichert Ihr Passwort nie.',
   'lang.title': 'Sprache', 'lang.label': 'Sprache der Seite', 'lang.auto': 'Automatisch ({current})', 'lang.en': 'English', 'lang.pt-BR': 'Português (Brasil)',
   'lang.es': 'Español', 'lang.de': 'Deutsch', 'lang.zh-CN': '简体中文',
-  'lang.help': 'Automatisch folgt der Sprache von OrcaSlicer, dann der des Systems. Ihre Auswahl wird mit den Einstellungen von Spooler gespeichert.',
+  'lang.help': 'Automatisch folgt der Sprache von OrcaSlicer oder, wenn Spooler sie nicht hat, Englisch. Ihre Auswahl wird mit den Einstellungen von Spooler gespeichert.',
 
   'wiz.count': 'Schritt {n} von {total}', 'wiz.skip': 'Assistenten überspringen', 'wiz.back': 'Zurück', 'wiz.next': 'Weiter', 'wiz.finish': 'Speichern & fertig',
   'wiz.needTest': 'Weiter wird freigegeben, sobald der Verbindungstest bestanden ist.',

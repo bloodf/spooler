@@ -14,10 +14,10 @@ export function normalizeLocale(value: unknown): Locale | null {
   return BY_LANGUAGE[value.trim().toLowerCase().split(/[-_]/)[0]] ?? null;
 }
 
-/** Explicit choice first, then the host's language, then the browser's, then English. */
-export function resolveLocale(pref: LangPref, host: unknown, browser: readonly string[]): Locale {
+/** Explicit choice first, then the host's language, then English: the same rule as the plugin's own texts (text_language). */
+export function resolveLocale(pref: LangPref, host: unknown): Locale {
   if (isLocale(pref)) return pref;
-  return normalizeLocale(host) ?? browser.map(normalizeLocale).find((l): l is Locale => !!l) ?? 'en';
+  return normalizeLocale(host) ?? 'en';
 }
 
 export function interpolate(text: string, params?: Record<string, unknown>): string {

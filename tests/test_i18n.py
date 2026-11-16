@@ -153,7 +153,7 @@ class FormatTest(unittest.TestCase):
             self.assertEqual(sp._join(["#1", "#2", "#3"]), "#1, #2 und #3")
             self.assertEqual(sp._sentences(["A.", "B."]), "A. B.")
         with Language("zh-CN"):
-            self.assertEqual(sp._join(["#1", "#2", "#3"]), "#1、#2和#3")
+            self.assertEqual(sp._join(["#1", "#2", "#3"]), "#1、#2 和 #3")
             self.assertEqual(sp._sentences(["甲。", "乙。"]), "甲。乙。")
             self.assertEqual(sp.fit_text("甲" * 30 + "。" + "乙" * 30 + "。", 50), "甲" * 30 + "。（另有 1 条，见日志）")
 
@@ -192,6 +192,15 @@ class MessageTest(unittest.TestCase):
             row = sp.plate_rows([self.short()])[0]
         self.assertEqual((row["slots"], row["headline"], row["name"]), ("Slot 2", "Nicht genug", "Black"))
         self.assertEqual(row["detail"], "100,0 g benötigt · 20,0 g übrig")
+
+    def test_auto_language_matches_the_page(self):
+        # The same cases as ui/tests/unit/i18n.test.ts (AUTO_CASES): an unsupported OrcaSlicer language is English in both.
+        cases = [("pt_BR", "pt-BR"), ("es_ES", "es"), ("de", "de"), ("zh_CN", "zh-CN"), ("zh_TW", "zh-CN"), ("en_GB", "en"),
+                 ("fr_FR", "en"), ("ko", "en"), ("", "en"), (None, "en")]
+        with Language("en"), mock.patch.object(sp, "ui_language", return_value="auto"):
+            for host, want in cases:
+                with mock.patch.object(sp, "host_language", return_value=host):
+                    self.assertEqual(sp.text_language(fresh=True), want, host)
 
     def test_action_results_and_stages(self):
         with Language("zh-CN"):

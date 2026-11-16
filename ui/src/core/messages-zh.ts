@@ -228,7 +228,7 @@ export const zhCN: Record<MessageKey, string> = {
   'bambu.experimental': '实验性功能：使用 Bambu 的非官方云服务，Bambu 随时可能更改该服务。Spooler 绝不保存您的密码。',
   'lang.title': '语言', 'lang.label': '页面语言', 'lang.auto': '自动（{current}）', 'lang.en': 'English', 'lang.pt-BR': 'Português (Brasil)',
   'lang.es': 'Español', 'lang.de': 'Deutsch', 'lang.zh-CN': '简体中文',
-  'lang.help': '自动会先跟随 OrcaSlicer 的语言，其次是系统语言。您的选择会随 Spooler 的设置一起保存。',
+  'lang.help': '自动会跟随 OrcaSlicer 的语言；Spooler 不支持该语言时使用英语。您的选择会随 Spooler 的设置一起保存。',
 
   'wiz.count': '第 {n} 步，共 {total} 步', 'wiz.skip': '跳过向导', 'wiz.back': '上一步', 'wiz.next': '下一步', 'wiz.finish': '保存并完成',
   'wiz.needTest': '连接测试通过后才能进入下一步。',
