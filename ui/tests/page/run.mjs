@@ -52,6 +52,9 @@ const FIELDS = {spool: [{key: 'dryer', name: 'Dryer', field_type: 'text', order:
 const FILS = [{id: 5, name: 'Black', material: 'PLA', color_hex: '111111', density: 1.24, diameter: 1.75, weight: 1000, vendor: {id: 1, name: 'Acme'}, extra: {grade: '"A"'}},
   {id: 8, name: 'Blue', material: 'PETG', color_hex: '2850a8', density: 1.27, diameter: 1.75, vendor: {id: 1, name: 'Acme'}}];
 const editorData = spool => ({type: 'action_result', action: 'editor', ok: true, text: '', editor: {fields: FIELDS, filaments: FILS, vendors: ['Acme', 'Polymaker'], spool: spool || null}});
+// Fields with a datalist: its suggestion popup (browser chrome, not the page) can swallow keys in headless Chrome, so it is
+// detached before typing; the field itself is typed with real keys.
+async function fill(el, value) { assert(el, 'field to fill'); el.removeAttribute('list'); await type(el, value); }
 const RAW1 = {...SPOOLS[0], extra: {dryer: '"Box 1"', dried: '"2026-11-10"'}, filament: FILS[0]};
 const stackText = () => [q('[data-stack]'), ...qa('tr.sp-child')].map(vis).join(' ');
 `;
@@ -806,7 +809,7 @@ test('editor: add a spool of an existing filament, with typed extra fields and a
   assert(text(dialogEl()).includes('Step 2 of 2') && !byTest('editor-filament'), 'step 2: the spool');
   await type(q('#se-left'), '750');
   assert(text(byTest('preview-weight')).includes('750 g of 1,000 g'), 'preview weight: ' + text(byTest('preview-weight')));
-  await type(q('#se-loc'), 'Shelf C');
+  await fill(q('#se-loc'), 'Shelf C');
   assert(q('#se-sx-dryer') && q('#se-sx-sealed') && !q('#se-sx-dried'), 'the user\\'s fields with their inputs; Spooler\\'s own stay out');
   await click(q('#se-sx-sealed'));
   await type(q('#se-sx-dryer'), 'Box 3');
@@ -823,7 +826,7 @@ test('editor: a new filament in German, decimals typed with a point, two colours
   await post(editorData());
   await click(btn('Neues Filament'));
   assert(byTest('editor-filament'), 'new filament fields');
-  await type(q('#se-vendor'), 'Polymaker');
+  await fill(q('#se-vendor'), 'Polymaker');
   await type(q('#se-name'), 'Galaxy');
   await type(q('#se-mat'), 'PETG');
   eq(q('#se-den').value, '1,27 g/cm³', 'the material\\'s usual density');
@@ -863,7 +866,7 @@ test('editor: edit sends only changes, says the filament is shared, and keeps a 
   assert(text(byTest('editor-shared')).includes('1 other spool'), 'shared filament note: ' + text(byTest('editor-shared')));
   eq(q('#se-loc').value, 'Shelf A', 'the form opens with Spoolman\\'s values');
   eq(q('#se-sx-dryer').value, 'Box 1', 'extra text decoded');
-  await type(q('#se-loc'), 'Dry box');
+  await fill(q('#se-loc'), 'Dry box');
   await type(q('#se-noz'), '215');
   await click(byTest('editor-save'));
   eq(lastOf('spool_action'), {type: 'spool_action', origin: 3, id: 1, action: 'save', spool: {location: 'Dry box'}, filament: {settings_extruder_temp: 215},
@@ -885,7 +888,7 @@ test('editor: a new location for a spool linked to a U1 toolhead asks first', `
   await spools([...SPOOLS, bound], {display: {...DEFAULTS, group_same: false}});
   await click(q('[data-edit="3"]'));
   await post(editorData({...bound, filament: FILS[0]}));
-  await type(q('#se-loc'), 'Shelf C');
+  await fill(q('#se-loc'), 'Shelf C');
   await click(byTest('editor-save'));
   await until(() => q('[data-dlg="cancel"]'), 'unlink confirmation');
   await click(q('[data-dlg="cancel"]'));
