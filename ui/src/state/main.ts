@@ -12,7 +12,7 @@ export interface UsagePrint { id: string; name: string; printer: string; result:
 export interface Usage { enabled: boolean; mode: 'ask' | 'auto' | 'off'; prints: UsagePrint[]; notice?: string }
 export interface PlateRow { status: string; colour: string; slots: string; name: string; meta: string; fill: number; spool_colour: string;
   need_pct: number; headline: string; detail: string; ids: number[]; first: number }
-export interface CalibChange { key: string; old: string; new: string }
+export interface CalibChange { key: string; old: string; new: string; unit?: string }
 export interface CalibAsk { name: string; changes: CalibChange[] }
 export interface Note { id: number; kind: 'error' | 'unknown' | 'success' | 'info' | 'pending'; text: string; key?: string; at: number }
 
@@ -148,7 +148,7 @@ function render(p: any): void {
   if (typeof p.show_printer_tab === 'boolean') m.showPrinterTab = p.show_printer_tab;
   m.liveOn = p.live_ok === true;
   if (p.usage) setUsage(p.usage, false);
-  if (Array.isArray(p.calibration)) m.calibration = p.calibration;
+  if (Array.isArray(p.calibration)) setCalibration(p.calibration);
   if (p.progress) m.progress = p.progress;
   if (p.stats) m.stats = p.stats;
   if (m.liveOn) pollLive();
@@ -169,7 +169,7 @@ function onMessage(d: any): void {
   switch (d.type) {
     case 'spools': render(d); break;
     case 'plate': m.plate = Array.isArray(d.rows) && d.rows.length ? { rows: d.rows, time: d.time } : null; listeners.plate.forEach(h => h()); break;
-    case 'calibration': m.calibration = Array.isArray(d.asks) ? d.asks : []; break;
+    case 'calibration': setCalibration(Array.isArray(d.asks) ? d.asks : []); break;
     case 'plate_clear': m.plate = null; listeners.plate.forEach(h => h()); break;
     case 'usage': m.usageNotice = d.usage?.notice || ''; setUsage(d.usage, true); if (m.tab === 'stats') askStats(); break;
     case 'spool_detail': listeners.detail.forEach(h => h(d.detail)); break;
@@ -206,6 +206,12 @@ watch(() => m.loadedAt, () => { if (pending('refresh')) note('success', t('list.
 watch(() => m.loadError, e => { if (e && pending('refresh')) note('error', t('list.readFailedAt', { error: e }), 'refresh'); });
 export function syncPresets(): void { note('pending', t('list.syncing'), 'send'); bridge.postMain({ type: 'sync_presets' }); }
 export function sendEdits(): void { note('pending', t('list.sending'), 'send'); bridge.postMain({ type: 'send' }); }
+/** Waiting calibrated values; a new one is also announced in the status region (the panel itself isn't a live region). */
+function setCalibration(asks: CalibAsk[]): void {
+  const known = new Set(m.calibration.map(a => a.name));
+  if (asks.some(a => !known.has(a.name))) note('info', t('cal.announce'));
+  m.calibration = asks;
+}
 /** Save or Skip one waiting set of calibrated values (only Save writes to Spoolman). */
 export function answerCalibration(name: string, save: boolean): void {
   if (save) note('pending', t('cal.saving'), 'send');

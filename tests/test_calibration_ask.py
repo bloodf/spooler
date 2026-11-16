@@ -30,7 +30,6 @@ class AskTest(unittest.TestCase):
         self.base = base
         self.copy(filament_flow_ratio="0.95", pressure_advance="0.035")
         sp._recent_filaments.clear()
-        sp._calib_asks.clear()
         self.settings = {}
         self.sent, self.notices, self.page = [], [], []
         self.reply = {"type": "sent", "ok": True, "text": "Sent."}
@@ -54,7 +53,6 @@ class AskTest(unittest.TestCase):
         for patch in self.patches:
             patch.stop()
         orca.host.preset_bundle = None
-        sp._calib_asks.clear()
 
     def copy(self, **values):
         presets = [Preset(SPOOLER, self.base), Preset("My Black", dict(self.base, filament_settings_id="y", **values))]
@@ -80,8 +78,8 @@ class AskTest(unittest.TestCase):
         self.assertEqual(len(self.notices), 1)
         self.assertIn(NAME, self.notices[0])
         asks = [{"name": NAME, "changes": [
-            {"key": "filament_flow_ratio", "old": "0.98", "new": "0.95"},
-            {"key": "pressure_advance", "old": "0.04", "new": "0.035"}]}]
+            {"key": "filament_flow_ratio", "old": "0.98", "new": "0.95", "unit": ""},
+            {"key": "pressure_advance", "old": "0.04", "new": "0.035", "unit": ""}]}]
         self.assertEqual(sp.calibration_asks(), asks)
         self.assertEqual(self.page, [{"type": "calibration", "asks": asks}])
 
@@ -112,7 +110,7 @@ class AskTest(unittest.TestCase):
         self.assertEqual((sp.calibration_asks(), self.notices), ([], []))
         self.copy(filament_flow_ratio="0.93", pressure_advance="0.035")  # one value changed again
         self.save_copy()
-        self.assertEqual(sp.calibration_asks()[0]["changes"][0], {"key": "filament_flow_ratio", "old": "0.98", "new": "0.93"})
+        self.assertEqual(sp.calibration_asks()[0]["changes"][0], {"key": "filament_flow_ratio", "old": "0.98", "new": "0.93", "unit": ""})
         self.assertEqual(len(self.notices), 1)
 
     def test_a_save_forgets_an_earlier_skip(self):
@@ -122,6 +120,22 @@ class AskTest(unittest.TestCase):
         self.save_copy()
         self.answer("calibration_save")
         self.assertEqual(self.settings["calibration_skipped"], {})
+
+    def test_a_waiting_change_set_outlasts_a_restart(self):
+        self.save_copy()
+        self.assertEqual(self.settings["calibration_asks"],
+                         {NAME: {"filament_flow_ratio": ["0.95", "0.98"], "pressure_advance": ["0.035", "0.04"]}})
+        self.settings = json.loads(json.dumps(self.settings))  # as read back from the file
+        self.assertEqual([ask["name"] for ask in sp.calibration_asks()], [NAME])
+        self.answer("calibration_save")
+        self.assertEqual(self.sent[0][1]["filament_flow_ratio"], ("0.95", "0.98"))
+        self.assertEqual(self.settings["calibration_asks"], {})
+
+    def test_units_and_unreadable_entries(self):
+        self.settings["calibration_asks"] = {NAME: {"filament_max_volumetric_speed": ["21", "18"], "rm -rf": ["1", "2"],
+                                                    "pressure_advance": "bad"}, "Other": "bad"}
+        self.assertEqual(sp.calibration_asks(), [{"name": NAME, "changes": [
+            {"key": "filament_max_volumetric_speed", "old": "18", "new": "21", "unit": "mm³/s"}]}])
 
     def test_an_unknown_change_set_does_nothing(self):
         posted = self.answer("calibration_save")
