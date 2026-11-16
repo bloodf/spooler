@@ -6,6 +6,11 @@ Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); 
 ## [Unreleased]
 
 ### Added
+- Add and edit spools without leaving OrcaSlicer. "Add Spool" above the spool list (and in the empty list) walks you through it: pick a filament Spoolman already has to restock it, or make a new one (manufacturer, name, material, one or several colours, diameter, density, nozzle and bed temperatures, filament and empty spool weight), then fill in the spool (starting weight, grams left, location, lot, price, note, archived). The density fills in for common materials.
+- A pencil beside each spool's name, in the list and in its detail, opens Edit Spool. Changes to the spool are saved to that spool; changes to the filament (colour, temperatures, density and so on) are saved to the filament in Spoolman, and the editor says how many other spools share it.
+- Your own Spoolman extra fields, for spools and filaments, can be filled in there with the input their type calls for: a switch for yes/no, a menu for a choice, a number box with its unit for numbers (two for a range), text otherwise. Spooler's own fields stay hidden.
+- A live preview of the spool, drawn like the list's reels, shows its colours, name and amount left as you type.
+- Only the fields you changed are sent, after reading the spool from Spoolman again: a field someone changed in Spoolman while you were editing keeps Spoolman's value, and the result says which. Spoolman's refusals show in the editor, which stays open; if a new filament was made but the spool was refused, trying again uses that filament instead of making a second one. Emptying an extra field needs Spoolman 0.26 or newer; older versions say so and nothing is written. Decimals typed or pasted with a point work in every language.
 - Klipper printers with several toolheads (up to eight: extruder, extruder1 ... extruder7) show each toolhead on the Printer tab, and you choose the spool on each, as on a PrusaLink or OctoPrint printer. The Snapmaker U1 works as before.
 - A Klipper printer whose MMU doesn't report its gates can have up to 16 gates set on the Printer tab, with the spool on each. Happy Hare and AFC gates that the printer reports are still read from it and can't be changed here. The toolheads and gates to set appear once Spooler has read the printer.
 - After a slice for a Klipper printer, each filament's matching spool is put on its toolhead (or gate), as already done for PrusaLink and OctoPrint. A spool put on a slot is taken off any other slot it was on. Bambu printers and printer-reported gates are left alone.
@@ -13,6 +18,10 @@ Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); 
 
 ### Changed
 - When a sliced filament matches several spools, Spooler now asks which one is loaded instead of leaving the slot as it is, for PrusaLink, OctoPrint and Klipper printers.
+
+### Fixed
+- On Spoolman 0.22 to 0.25, Clear Dried Date did nothing: the spool kept its dried date while Spooler said it was cleared. These versions can't remove the date, so Spooler now says so and writes nothing; Spoolman 0.26 or newer removes it as before.
+- On Spoolman 0.22 to 0.25, Mark Dried Today and Send to Spoolman sent back every extra field of the spool or filament, as read just before, instead of only the one they change, so a change made in Spoolman in between could be undone. They now send only their own field; only Spoolman older than 0.22, which replaces the whole map, still gets it whole.
 
 ## [0.28.0] - 2026-11-16
 

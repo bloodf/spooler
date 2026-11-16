@@ -1,6 +1,7 @@
 """0.18: drying tracker (the dried date on a spool, its card chip and menu actions) and the
 drying reminder in the after-slice notice, with days per material saved in Settings."""
 
+import copy
 import datetime
 import json
 import tempfile
@@ -8,6 +9,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
+import spoolman_rules as rules
 from plugin_loader import load
 
 sp, orca = load()
@@ -99,11 +101,16 @@ class FieldAndActionTest(Store):
         self.assertEqual([c for c in calls if c[0] == "POST"], [])
 
     def act(self, action, current, version=(0, 26, 0)):
+        """Run the action against a Spoolman that applies the PATCH as that version does
+        (tests/spoolman_rules.py); self.state is the spool afterwards."""
         calls = []
+        self.state = copy.deepcopy(current)
 
         def fake(method, path, body=None):
             calls.append((method, path, body))
-            return current if (method, path) == ("GET", "spool/7") else {}
+            if (method, path) == ("PATCH", "spool/7") and version:
+                rules.patch_spool(self.state, body, ".".join(map(str, version)))
+            return copy.deepcopy(current) if (method, path) == ("GET", "spool/7") else {}
 
         with mock.patch.object(sp, "spoolman_call", fake), mock.patch.object(sp, "ensure_fields"), \
                 mock.patch.object(sp, "spoolman_version", lambda fresh=False: version), \
@@ -123,23 +130,36 @@ class FieldAndActionTest(Store):
         self.assertTrue(result["ok"], result)
         self.assertEqual(patches, [("PATCH", "spool/7", {"extra": {"dried": None}})])
 
-    # Before 0.26.0 a PATCH's extra replaced the whole map: the other fields are read again and sent back.
-    def test_older_spoolman_keeps_the_other_extra_fields(self):
+    # Before 0.22.0 a PATCH's extra replaced the whole map: the other fields are read again and sent back.
+    def test_spoolman_before_0_22_keeps_the_other_extra_fields(self):
         current = {"id": 7, "extra": {"tag": '"04A1"', "orca_flow_ratio": "0.98", "dried": '"2025-01-01T00:00:00+00:00"'}}
-        result, patches = self.act("dried", current, version=(0, 25, 0))
+        result, patches = self.act("dried", current, version=(0, 21, 0))
         self.assertTrue(result["ok"], result)
         self.assertEqual(patches, [("PATCH", "spool/7", {"extra": {
             "tag": '"04A1"', "orca_flow_ratio": "0.98", "dried": '"2026-11-11T00:00:00+00:00"'}})])
-        result, patches = self.act("clear_dried", current, version=(0, 23, 1))
+        result, patches = self.act("clear_dried", current, version=(0, 21, 0))
         self.assertTrue(result["ok"], result)
-        self.assertEqual(patches, [("PATCH", "spool/7", {"extra": {"tag": '"04A1"', "orca_flow_ratio": "0.98"}})])
+        self.assertEqual(self.state["extra"], {"tag": '"04A1"', "orca_flow_ratio": "0.98"})
+
+    # From 0.22.0 to 0.25.x extra is merged key by key but a null is refused: the date can be set with
+    # its own key only, and can't be removed (sending the map without it would leave it in place).
+    def test_spoolman_0_22_to_0_25_sets_only_its_field_and_says_it_cant_remove_it(self):
+        current = {"id": 7, "extra": {"tag": '"04A1"', "orca_flow_ratio": "0.98", "dried": '"2025-01-01T00:00:00+00:00"'}}
+        result, patches = self.act("dried", current, version=(0, 25, 0))
+        self.assertTrue(result["ok"], result)
+        self.assertEqual(patches, [("PATCH", "spool/7", {"extra": {"dried": '"2026-11-11T00:00:00+00:00"'}})])
+        self.assertEqual(self.state["extra"]["tag"], '"04A1"')
+        result, patches = self.act("clear_dried", current, version=(0, 23, 1))
+        self.assertEqual((result["ok"], patches), (False, []))
+        self.assertIn("0.26", result["text"])
+        self.assertIn("dried", self.state["extra"])
 
     def test_unknown_version_or_unreadable_extras_write_nothing(self):
         result, patches = self.act("dried", {"id": 7, "extra": {"tag": '"04A1"'}}, version=None)
         self.assertEqual((result["ok"], patches), (False, []))
         self.assertIn("Nothing was written", result["text"])
         for bad in ({"id": 7}, {"id": 7, "extra": ["x"]}, {"id": 7, "extra": {"tag": 5}}, None):
-            result, patches = self.act("clear_dried", bad, version=(0, 25, 0))
+            result, patches = self.act("clear_dried", bad, version=(0, 21, 0))
             self.assertEqual((result["ok"], patches), (False, []), bad)
 
     def test_needs_spoolman_and_a_spool(self):

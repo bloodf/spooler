@@ -119,12 +119,12 @@ class LocationTest(Snapshot):
         # The page's wording ("Spool linked by U1 Control", review X05) is a page scenario now (ui/tests/page/run.mjs).
 
     def test_only_the_cards_move_action_writes_a_spool_location(self):
-        # Outside the Spools tab's card actions (which the user starts, with a second click when a
-        # move unlinks a toolhead), every Spoolman write is a filament PATCH, a spool use PUT or
-        # the used-weight PATCH of an undo.
+        # Outside the Spools tab's card actions and Edit Spool (which the user starts, with a second
+        # click when a move unlinks a toolhead), every Spoolman write is a filament PATCH, a spool use
+        # PUT or the used-weight PATCH of an undo.
         action = inspect.getsource(sp._spool_write)
         self.assertIn('"location"', action)
-        source = PLUGIN.read_text(encoding="utf-8").replace(action, "")
+        source = PLUGIN.read_text(encoding="utf-8").replace(action, "").replace(inspect.getsource(sp.editor_save), "")
         writes = re.findall(r'"(PATCH|POST|PUT|DELETE)",\s*f?"([^"]+)"', source)
         self.assertTrue(writes)
         for method, path in writes:

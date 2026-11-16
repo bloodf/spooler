@@ -3,11 +3,11 @@ import { computed } from 'vue';
 import Column from 'primevue/column';
 import DataTable from 'primevue/datatable';
 import { OuiIcon, OuiLevel, OuiSpool, materialTone } from '../../shared/src/components';
-import { chevronDown, chevronRight, mapPin } from '../../shared/src/icons';
+import { chevronDown, chevronRight, edit, mapPin } from '../../shared/src/icons';
 import SpoolChips from './SpoolChips.vue';
 import { boot } from '../core/boot';
 import { m, dupes } from '../state/main';
-import { pickSpool } from '../state/menu';
+import { pickSpool, openEditor } from '../state/menu';
 import { t, tn, locale } from '../core/i18n';
 import { formatWeight, leftLabel, levelTone, lowLevel, noteText, originalWeight, percentLeft, shown, spoolPaint, totals, type Spool, type Totals } from '../logic/spools';
 
@@ -64,7 +64,9 @@ function onRow(r: Row) { if (r.kind === 'stack') emit('stack', r.key); else pick
           <div class="sp-spool-id">
             <p class="sp-name" :title="name(r)"><span class="oui-truncate oui-strong">{{ name(r) }}</span>
               <button v-if="r.kind === 'stack'" type="button" class="oui-chip oui-num st-head" :aria-expanded="r.open" :aria-label="t('stack.toggle', { n: r.items.length, name: name(r) })" @click.stop="emit('stack', r.key)">
-                <span class="st-count">×{{ r.items.length }}</span><OuiIcon :icon="r.open ? chevronDown : chevronRight" :size="12" /></button></p>
+                <span class="st-count">×{{ r.items.length }}</span><OuiIcon :icon="r.open ? chevronDown : chevronRight" :size="12" /></button>
+              <button v-else-if="m.source === 'spoolman'" type="button" class="sp-edit" :aria-label="t('editor.editTitle', { id: r.spool.id })" :title="t('editor.editTitle', { id: r.spool.id })"
+                      :data-edit="r.spool.id" @click.stop="openEditor(r.spool.id)"><OuiIcon :icon="edit" :size="13" /></button></p>
             <p v-if="meta(r) || note(r)" class="oui-meta oui-truncate"><span class="sc-subtext">{{ meta(r) }}</span><span v-if="note(r)" class="sc-note" :title="note(r)">{{ meta(r) ? ' · ' : '' }}{{ note(r) }}</span></p>
             <span v-if="r.kind === 'spool'" class="sp-narrow"><span v-if="fil(r).material && shown(m.disp, 'material')" class="oui-chip" :data-tone="materialTone(fil(r).material)">{{ fil(r).material }}</span><SpoolChips :spool="r.spool" /></span>
           </div>
@@ -108,6 +110,8 @@ function onRow(r: Row) { if (r.kind === 'stack') emit('stack', r.key); else pick
 .sp-archived .sp-spool { opacity: .72; }
 .sp-spool-id { display: grid; gap: 1px; min-width: 0; }
 .sp-name { display: flex; align-items: center; gap: var(--oui-s2); min-width: 0; }
+.sp-edit { flex: none; display: inline-grid; place-items: center; width: 24px; height: 24px; padding: 0; border: 0; border-radius: var(--oui-radius); color: var(--oui-muted); background: none; cursor: pointer; }
+.sp-edit:hover { color: var(--oui-text); background: var(--oui-primary-soft); }
 .orca-ui .st-head { flex: none; border: 0; cursor: pointer; font: inherit; font-size: var(--oui-text-xs); font-weight: 600; }
 .sp-left { display: grid; gap: 4px; }
 .sp-loc { display: flex; align-items: center; gap: 5px; min-width: 0; }
