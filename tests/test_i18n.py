@@ -115,7 +115,7 @@ class ChoiceTest(unittest.TestCase):
         self.assertEqual(self.host("zh_TW"), "zh-CN")
         self.assertEqual(self.host("ja"), "en")
         self.assertEqual(self.host("es"), "es")
-        self.assertEqual(sp.tr("Unknown spool action."), "Acción de bobina desconocida.")
+        self.assertEqual(sp.tr("Unknown spool action."), "Acción de carrete desconocida.")
         sp.save_ui_language("zh-CN")
         self.assertEqual(sp.text_language(), "zh-CN")   # saved: at once, without a new page
         self.assertEqual(sp.tr("No spool chosen."), "未选择料盘。")
@@ -172,7 +172,7 @@ class MessageTest(unittest.TestCase):
         expect = {
             "en": "Spooler: not enough filament loaded in the AMS. Slot 2 (Black) needs 100.0 g of filament but the spool has 20.0 g.",
             "pt-BR": "Spooler: filamento insuficiente carregado no AMS. Slot 2 (Black) precisa de 100,0 g de filamento, mas a bobina tem 20,0 g.",
-            "es": "Spooler: no hay suficiente filamento cargado en el AMS. Ranura 2 (Black) necesita 100,0 g de filamento, pero la bobina tiene 20,0 g.",
+            "es": "Spooler: no hay suficiente filamento cargado en el AMS. La ranura 2 (Black) necesita 100,0 g de filamento, pero el carrete tiene 20,0 g.",
             "de": "Spooler: nicht genug Filament im AMS geladen. Slot 2 (Black) braucht 100,0 g Filament, aber die Spule hat 20,0 g.",
             "zh-CN": "Spooler：AMS 中装入的耗材丝不足。槽位 2（Black）需要 100.0 g 耗材丝，但料盘有 20.0 g。",
         }
@@ -180,6 +180,12 @@ class MessageTest(unittest.TestCase):
             with Language(lang):
                 kind, notice = sp.plate_notice([self.short()])
                 self.assertEqual((kind, notice), ("warning", text), lang)
+
+    def test_no_spool_sentence_in_chinese(self):
+        unknown = sp.check_group({"slot": self.SLOT, "pool": 0, "used": [self.SLOT]}, [], 10)
+        with Language("zh-CN"):
+            kind, notice = sp.plate_notice([unknown])
+        self.assertEqual((kind, notice), ("info", "Spooler：未找到槽位 2（Acme PLA 111111）的料盘，因此未检查。"))
 
     def test_plate_rows_and_spool_data_stay_as_spoolman_has_them(self):
         with Language("de"):
@@ -192,7 +198,7 @@ class MessageTest(unittest.TestCase):
             self.assertEqual(sp.tr("Spool #{id} moved to {location}.", id=4, location="Shelf A"), "料盘 #4 已移至 Shelf A。")
             self.assertEqual(sp.stage_text(26), "暂停（AMS 断开）")
         with Language("es"):
-            self.assertEqual(sp.stage_text(2), "Precalentando la cama")
+            self.assertEqual(sp.stage_text(2), "Precalentamiento de la cama")
             self.assertIsNone(sp.stage_text(999))
             self.assertEqual(sp.account_text({"user": "a@b.c", "region": "china"}), "Sesión iniciada como a@b.c (China)")
         with Language("de"):

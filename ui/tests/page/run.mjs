@@ -718,7 +718,7 @@ test('X04: pt-BR from the host: tabs, empty states, weights and dialogs in Portu
   assert(text(byTest('empty-no-url')).includes('O Spoolman ainda não foi configurado'), 'empty state');
 `, { lang: 'pt_BR' });
 for (const [host, lang, nav, weights, empty] of [
-  ['es', 'es', 'Bobinas', '1380 g de 2000 g', 'Spoolman aún no está configurado'],
+  ['es', 'es', 'Carretes', '1380 g de 2000 g', 'Spoolman aún no está configurado'],
   ['de', 'de', 'Spulen', '1.380 g von 2.000 g', 'Spoolman ist noch nicht eingerichtet'],
   ['zh_CN', 'zh-CN', '料盘', '1,380 g / 2,000 g', 'Spoolman 尚未设置'],
   ['zh_TW', 'zh-CN', '料盘', '1,380 g / 2,000 g', 'Spoolman 尚未设置'],
