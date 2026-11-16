@@ -4,9 +4,9 @@ field changed in Spoolman meanwhile keeps Spoolman's value."""
 
 import json
 import unittest
-import urllib.error
 from unittest import mock
 
+import spoolman_rules as rules
 from test_spool_actions import Settings, sp
 
 FIELDS = {
@@ -27,7 +27,8 @@ SPOOL = {"id": 7, "remaining_weight": 500.0, "initial_weight": 1000.0, "location
 
 
 class Spoolman:
-    """A stand-in Spoolman: answers GETs from its state and records every write."""
+    """A stand-in Spoolman: answers GETs from its state, records every write and applies it the way
+    Spoolman does (tests/spoolman_rules.py), refusing what Spoolman refuses."""
 
     def __init__(self, spool=None, version="0.26.0", fail=None):
         self.spool = json.loads(json.dumps(spool or SPOOL))
@@ -37,12 +38,18 @@ class Spoolman:
         if method != "GET":
             self.writes.append((method, path, body))
             if self.fail and path == self.fail:
-                raise urllib.error.HTTPError(path, 422, "Unprocessable", {}, None)
+                raise rules.refuse(422, "remaining_weight can only be used if initial_weight is set")
+            if path == "filament":
+                rules.check_filament_body(body)
+            elif path == f"filament/{self.spool['filament']['id']}":
+                rules.patch_filament(self.spool["filament"], body, self.version)
+            elif path == "spool/7":
+                rules.patch_spool(self.spool, body, self.version)
             return {"id": {"vendor": 3, "filament": 21, "spool": 44}.get(path, 0)}
         if path.startswith("field/"):
             return FIELDS[path[6:]]
-        return {"info": {"version": self.version}, "vendor": [{"id": 2, "name": "Acme"}, {"id": 4, "name": "Polymaker"}],
-                "filament": [FILAMENT], "spool/7": self.spool}[path]
+        return json.loads(json.dumps({"info": {"version": self.version}, "vendor": [{"id": 2, "name": "Acme"}, {"id": 4, "name": "Polymaker"}],
+                                      "filament": [FILAMENT], "spool/7": self.spool}[path]))
 
 
 class EditorTest(Settings):
@@ -141,8 +148,10 @@ class EditorTest(Settings):
         result, writes = self.run_action({"action": "save", "id": 7, "spool": {"extra": {"sealed": True}},
                                           "was": {"spool": {"extra": {}}}}, Spoolman(version="0.25.3"))
         self.assertEqual(writes, [("PATCH", "spool/7", {"extra": {"sealed": "true"}})])
+        server = Spoolman(version="0.25.3")
         result, writes = self.run_action({"action": "save", "id": 7, "spool": {"location": "B", "extra": {"dryer": None}},
-                                          "was": {"spool": {"location": "Shelf A", "extra": {"dryer": '"Box 1"'}}}}, Spoolman(version="0.25.3"))
+                                          "was": {"spool": {"location": "Shelf A", "extra": {"dryer": '"Box 1"'}}}}, server)
+        self.assertIn("dryer", server.spool["extra"], "this Spoolman can't remove it")
         self.assertFalse(result["ok"])
         self.assertIn("0.26", result["text"])
         self.assertEqual(writes, [], "nothing, not even the location")
@@ -156,12 +165,14 @@ class EditorTest(Settings):
     def test_colour_changes_send_the_whole_colour_group(self):
         multi = {**SPOOL, "filament": {**FILAMENT, "color_hex": None, "multi_color_hexes": "FF0000,00FF00",
                                        "multi_color_direction": "longitudinal"}}
-        _, writes = self.run_action({"action": "save", "id": 7, "filament": {"multi_color_hexes": "FF0000,0000FF"},
-                                     "was": {"filament": {"id": 9, "multi_color_hexes": "FF0000,00FF00"}}}, Spoolman(spool=multi))
+        result, writes = self.run_action({"action": "save", "id": 7, "filament": {"multi_color_hexes": "FF0000,0000FF"},
+                                          "was": {"filament": {"id": 9, "multi_color_hexes": "FF0000,00FF00"}}}, Spoolman(spool=multi))
+        self.assertTrue(result["ok"], result)
         self.assertEqual(writes, [("PATCH", "filament/9", {"multi_color_hexes": "FF0000,0000FF", "color_hex": None,
                                                            "multi_color_direction": "longitudinal"})])
-        _, writes = self.run_action({"action": "save", "id": 7, "filament": {"multi_color_direction": "coaxial"},
-                                     "was": {"filament": {"id": 9, "multi_color_direction": "longitudinal"}}}, Spoolman(spool=multi))
+        result, writes = self.run_action({"action": "save", "id": 7, "filament": {"multi_color_direction": "coaxial"},
+                                          "was": {"filament": {"id": 9, "multi_color_direction": "longitudinal"}}}, Spoolman(spool=multi))
+        self.assertTrue(result["ok"], result)
         self.assertEqual(writes, [("PATCH", "filament/9", {"multi_color_direction": "coaxial", "color_hex": None,
                                                            "multi_color_hexes": "FF0000,00FF00"})])
 
@@ -172,9 +183,12 @@ class EditorTest(Settings):
             self.assertEqual(writes, [])
 
     def test_a_new_starting_weight_keeps_the_grams_left_shown(self):
-        _, writes = self.run_action({"action": "save", "id": 7, "spool": {"initial_weight": 1200, "remaining_weight": 500},
-                                     "was": {"spool": {"initial_weight": 1000.0, "remaining_weight": 500.0}}})
+        server = Spoolman()
+        result, writes = self.run_action({"action": "save", "id": 7, "spool": {"initial_weight": 1200, "remaining_weight": 500},
+                                     "was": {"spool": {"initial_weight": 1000.0, "remaining_weight": 500.0}}}, server)
+        self.assertTrue(result["ok"], result)
         self.assertEqual(writes, [("PATCH", "spool/7", {"initial_weight": 1200.0, "remaining_weight": 500.0})])
+        self.assertEqual(server.spool["remaining_weight"], 500.0, "Spoolman still has the grams left the form showed")
 
     def test_filament_changes_never_land_on_a_filament_the_spool_moved_to(self):
         moved = {**SPOOL, "filament": {**FILAMENT, "id": 12}}

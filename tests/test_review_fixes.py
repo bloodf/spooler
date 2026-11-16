@@ -16,6 +16,7 @@ import urllib.error
 from pathlib import Path
 from unittest import mock
 
+import spoolman_rules as rules
 from fake_bundle import U1
 from plugin_loader import load
 
@@ -184,8 +185,8 @@ class OriginTest(unittest.TestCase):
 class Server:
     """A Spoolman filament endpoint whose data can change between the requests of one send."""
 
-    def __init__(self, version, merge):
-        self.version, self.merge, self.gets, self.hooks, self.patches = version, merge, 0, {}, []
+    def __init__(self, version):
+        self.version, self.gets, self.hooks, self.patches = version, 0, {}, []
         self.filament = {"id": 7, "name": "X", "material": "PLA", "extra": {
             "orca_settings": stored({"*": {"filament_flow_ratio": "0.98", "pressure_advance": "0.04"}}),
             "other": json.dumps("old")}}
@@ -203,10 +204,7 @@ class Server:
             return answer
         if (method, path) == ("PATCH", "filament/7"):
             self.patches.append(copy.deepcopy(body))
-            extra = body.pop("extra", None)
-            if extra is not None:
-                self.filament["extra"] = {**self.filament["extra"], **extra} if self.merge else dict(extra)
-            self.filament.update(body)
+            rules.patch_filament(self.filament, body, self.version)  # as that Spoolman version does
         return {}
 
     def settings(self):
@@ -228,27 +226,35 @@ class SendMergeTest(unittest.TestCase):
             return sp.send_changes("X @Snapmaker U1", changes, {})
 
     def test_merging_spoolman_gets_only_orca_settings(self):
-        server = Server("0.27.1", merge=True)
+        server = Server("0.27.1")
         server.hooks[2] = lambda f: f["extra"].update(other=json.dumps("concurrent-new"))  # after the last read
         self.send(server, filament_flow_ratio=("0.95", "0.98"))
         self.assertEqual(list(server.patches[0]["extra"]), ["orca_settings"])
         self.assertEqual(json.loads(server.filament["extra"]["other"]), "concurrent-new")
         self.assertEqual(server.settings()[U1], {"filament_flow_ratio": "0.95"})
 
+    def test_spoolman_0_22_to_0_25_merges_too_and_gets_only_orca_settings(self):
+        # Spoolman merges extra key by key from 0.22.0: re-sending the other fields would only race other writers.
+        server = Server("0.25.0")
+        server.hooks[2] = lambda f: f["extra"].update(other=json.dumps("concurrent-new"))  # after the last read
+        self.send(server, filament_flow_ratio=("0.95", "0.98"))
+        self.assertEqual(list(server.patches[0]["extra"]), ["orca_settings"])
+        self.assertEqual(json.loads(server.filament["extra"]["other"]), "concurrent-new")
+
     def test_older_spoolman_gets_the_fields_as_read_just_before(self):
-        server = Server("0.25.0", merge=False)
+        server = Server("0.21.0")
         server.hooks[1] = lambda f: f["extra"].update(other=json.dumps("concurrent-new"))  # between the reads
         self.send(server, filament_flow_ratio=("0.95", "0.98"))
         self.assertEqual(json.loads(server.filament["extra"]["other"]), "concurrent-new")
         self.assertIn("other", server.patches[0]["extra"])
 
     def test_unknown_version_is_treated_as_replacing(self):
-        server = Server("dev", merge=False)
+        server = Server("dev")
         self.send(server, filament_flow_ratio=("0.95", "0.98"))
         self.assertIn("other", server.patches[0]["extra"])
 
     def test_same_setting_changed_in_spoolman_meanwhile_is_kept(self):
-        server = Server("0.27.1", merge=True)
+        server = Server("0.27.1")
 
         def spoolman_edit(f):
             data = json.loads(json.loads(f["extra"]["orca_settings"]))
@@ -262,7 +268,7 @@ class SendMergeTest(unittest.TestCase):
         self.assertNotIn("Sent", text)
 
     def test_removal_in_spoolman_meanwhile_is_kept(self):
-        server = Server("0.27.1", merge=True)
+        server = Server("0.27.1")
 
         def spoolman_removes(f):
             data = json.loads(json.loads(f["extra"]["orca_settings"]))
@@ -274,7 +280,7 @@ class SendMergeTest(unittest.TestCase):
         self.assertNotIn("pressure_advance", server.settings()["*"])
 
     def test_field_made_unreadable_meanwhile_is_not_overwritten(self):
-        server = Server("0.27.1", merge=True)
+        server = Server("0.27.1")
         server.hooks[1] = lambda f: f["extra"].update(orca_settings=json.dumps("not json {"))
         with self.assertRaisesRegex(RuntimeError, "isn't a JSON object"):
             self.send(server, filament_flow_ratio=("0.95", "0.98"))

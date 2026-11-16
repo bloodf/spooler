@@ -2245,11 +2245,11 @@ def _send_changes(name: str, changes: dict, snapshot: dict) -> str:
                 patch.pop(NATIVE_KEYS.get(key), None)
         kept.sort()
         value = json.dumps(json.dumps(data))
-        if spoolman_at_least(SPOOLMAN_EXTRA_MERGE, fresh=True):
-            # Spoolman merges extra key by key: send only the one field this changes.
+        if spoolman_at_least(SPOOLMAN_EXTRA_PARTIAL, fresh=True):
+            # Spoolman merges extra key by key (from 0.22): send only the one field this changes.
             patch["extra"] = {ORCA_SETTINGS_FIELD: value}
         else:
-            # Older Spoolman replaces the whole extra map, so every field goes back, as just read.
+            # Older (or unread) Spoolman may replace the whole extra map, so every field goes back, as just read.
             patch["extra"] = {**(fresh.get("extra") or {}), ORCA_SETTINGS_FIELD: value}
     if patch:
         spoolman_call("PATCH", f"filament/{int(fid)}", patch)
@@ -5079,6 +5079,8 @@ def today() -> datetime.date:
 
 DRIED_NO_VERSION = ("Spooler couldn't read Spoolman's version, so it can't tell whether changing the dried date "
                     "would erase this spool's other extra fields. Nothing was written; check the connection and try again.")
+DRIED_NO_CLEAR = ("This Spoolman can't remove a spool's dried date; Spoolman 0.26 or newer can. Nothing was written; "
+                  "mark it dried again to change the date.")
 DRIED_NO_EXTRA = ("Spooler couldn't read this spool's extra fields, and this Spoolman version replaces all of them "
                   "on a change. Nothing was written.")
 
@@ -5086,16 +5088,19 @@ DRIED_NO_EXTRA = ("Spooler couldn't read this spool's extra fields, and this Spo
 def _dried_extra(sid: int, value: str | None) -> dict | str:
     """The extra map to PATCH for the dried date, or why nothing may be written.
 
-    From Spoolman 0.26.0 the map is merged key by key: only the dried key is sent (null removes it).
-    Before, a PATCH replaced the whole map, so the spool's extra fields are read again and sent back
-    whole, with only the dried key changed. A change made by someone else between that read and the
-    PATCH can still be lost there: Spoolman's PATCH has no precondition.
+    From Spoolman 0.22.0 the map is merged key by key: only the dried key is sent. Only from 0.26.0
+    does a null remove it, so on 0.22 to 0.25 the date can be set but not removed. Before 0.22 a
+    PATCH replaced the whole map, so the spool's extra fields are read again and sent back whole,
+    with only the dried key changed. A change made by someone else between that read and the PATCH
+    can still be lost there: Spoolman's PATCH has no precondition.
     """
     version = spoolman_version(fresh=True)
     if version is None:
         return tr(DRIED_NO_VERSION)
-    if version >= SPOOLMAN_EXTRA_MERGE:
+    if version >= SPOOLMAN_EXTRA_MERGE or (version >= SPOOLMAN_EXTRA_PARTIAL and value is not None):
         return {DRIED_FIELD: value}
+    if version >= SPOOLMAN_EXTRA_PARTIAL:
+        return tr(DRIED_NO_CLEAR)
     spool = spoolman_call("GET", f"spool/{sid}")
     extra = spool.get("extra") if isinstance(spool, dict) else None
     if not isinstance(extra, dict) or not all(isinstance(k, str) and isinstance(v, str) for k, v in extra.items()):
@@ -7280,6 +7285,12 @@ _TEXT_ROWS: dict[str, tuple[str, str, str, str]] = {
         "Se añadieron {count} carretes del mismo filamento: {spools}.",
         "{count} Spulen mit demselben Filament hinzugefügt: {spools}.",
         "已添加 {count} 个相同耗材丝的料盘：{spools}。",
+    ),
+    "This Spoolman can't remove a spool's dried date; Spoolman 0.26 or newer can. Nothing was written; mark it dried again to change the date.": (
+        "Este Spoolman não consegue remover a data de secagem de uma bobina; o Spoolman 0.26 ou mais recente consegue. Nada foi gravado; marque como secada de novo para mudar a data.",
+        "Este Spoolman no puede quitar la fecha de secado de un carrete; Spoolman 0.26 o posterior sí puede. No se guardó nada; márcalo como secado de nuevo para cambiar la fecha.",
+        "Dieses Spoolman kann das Trocknungsdatum einer Spule nicht entfernen; Spoolman 0.26 oder neuer kann es. Es wurde nichts geschrieben; markiere sie erneut als getrocknet, um das Datum zu ändern.",
+        "此 Spoolman 无法移除料盘的烘干日期；Spoolman 0.26 或更新版本可以。未写入任何内容；再次标记为已烘干即可更改日期。",
     ),
     "The value for {field} isn't valid; nothing was written.": (
         "O valor de {field} não é válido; nada foi gravado.",

@@ -12,6 +12,10 @@ Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); 
 - A live preview of the spool, drawn like the list's reels, shows its colours, name and amount left as you type.
 - Only the fields you changed are sent, after reading the spool from Spoolman again: a field someone changed in Spoolman while you were editing keeps Spoolman's value, and the result says which. Spoolman's refusals show in the editor, which stays open; if a new filament was made but the spool was refused, trying again uses that filament instead of making a second one. Emptying an extra field needs Spoolman 0.26 or newer; older versions say so and nothing is written. Decimals typed or pasted with a point work in every language.
 
+### Fixed
+- On Spoolman 0.22 to 0.25, Clear Dried Date did nothing: the spool kept its dried date while Spooler said it was cleared. These versions can't remove the date, so Spooler now says so and writes nothing; Spoolman 0.26 or newer removes it as before.
+- On Spoolman 0.22 to 0.25, Mark Dried Today and Send to Spoolman sent back every extra field of the spool or filament, as read just before, instead of only the one they change, so a change made in Spoolman in between could be undone. They now send only their own field; only Spoolman older than 0.22, which replaces the whole map, still gets it whole.
+
 ## [0.28.0] - 2026-11-16
 
 ### Added
