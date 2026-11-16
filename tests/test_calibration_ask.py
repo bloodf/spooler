@@ -2,6 +2,8 @@
 (Automatically) or left alone (Never). Nothing here touches a network: Spoolman is a mock."""
 
 import json
+import threading
+import time
 import types
 import unittest
 from unittest import mock
@@ -214,6 +216,66 @@ class UnsavedEditsTest(unittest.TestCase):
         self.assertEqual(self.started, [("X @Snapmaker U1", {"filament_flow_ratio": ("0.95", "0.98"),
                                                              "filament_notes": ('"dry 4 h"', '""')})])
         self.assertEqual(sp.calibration_asks(), [])
+
+
+class LockTest(unittest.TestCase):
+    def test_a_prompt_added_while_another_is_put_back_is_not_lost(self):
+        # A failed Save's worker puts its set back while the UI thread adds another: without the
+        # lock both read the same prompts and the later write drops the other one.
+        settings = {"calibration_asks": {"A": {"filament_flow_ratio": ["0.95", "0.98"]}}}
+        started = threading.Barrier(2)
+
+        def get():
+            return json.loads(json.dumps(settings))
+
+        def put(new):
+            time.sleep(0.05)  # widen the window between reading and writing
+            settings.clear()
+            settings.update(new)
+            return True
+
+        def start_send(post, edits=None, auto=False):
+            started.wait()
+            post({"type": "sent", "ok": False, "text": "refused"})
+
+        with mock.patch.object(sp, "get_settings", get), mock.patch.object(sp, "save_settings", put), \
+                mock.patch.object(sp, "start_send", start_send), mock.patch.object(sp, "push_notice"), \
+                mock.patch.object(sp, "send_plate_message"):
+            worker = threading.Thread(target=sp.answer_calibration, args=({"type": "calibration_save", "name": "A"}, lambda _: None))
+            worker.start()
+            started.wait()
+            sp.offer_calibration("B", {"pressure_advance": ("0.035", "0.04")})
+            worker.join()
+            self.assertEqual(sorted(ask["name"] for ask in sp.calibration_asks()), ["A", "B"])
+
+
+class UnknownVersionTest(unittest.TestCase):
+    def ticks(self, error):
+        calls, posted = [], []
+
+        def send(name, changes, snapshot):
+            calls.append(changes)
+            raise error
+
+        orca.host.preset_bundle = lambda: bundle({"filament_notes": '"dry 4 h"'})
+        try:
+            with mock.patch.object(sp, "source", return_value="spoolman"), \
+                    mock.patch.object(sp, "get_settings", return_value={"save_calibration": "auto"}), \
+                    mock.patch.object(sp, "refresh_snapshot", return_value={}), \
+                    mock.patch.object(sp, "spawn", lambda work, **_: work()), \
+                    mock.patch.object(sp, "send_changes", send), mock.patch.object(sp.log, "exception"), \
+                    mock.patch.dict(sp._auto, {"seen": None, "sent": None, "busy": False, "kept": {}}):
+                for _ in range(6):
+                    sp.auto_send(posted.append)
+        finally:
+            orca.host.preset_bundle = None
+        return len(calls), len(posted)
+
+    def test_an_unreadable_version_is_reported_once_not_every_tick(self):
+        self.assertEqual(self.ticks(sp.VersionUnknown("no version")), (1, 1))
+
+    def test_other_failures_are_still_tried_again(self):
+        self.assertGreater(self.ticks(RuntimeError("timed out"))[0], 1)
 
 
 class ConfigImportTest(unittest.TestCase):
