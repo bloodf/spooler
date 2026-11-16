@@ -552,6 +552,49 @@ test('network printer: PrusaLink link form, toolheads, and a slice-filled toolhe
   assert(q('.pp [data-spool="1"]'), 'the toolhead shows the spool the slice put on it');
   assert(vis(q('.pp')).includes('T1'), 'toolheads are named T1, T2');
 `);
+test('Klipper printer: hand-set gates, toolheads, slice fill switch and presets per printer', `
+  const voron = {id: 'auto-v', name: 'Voron', auto: true, kind: 'moonraker', ip: 'http://10.0.0.9', units: [], has_code: true};
+  const mk4 = {id: 'mk4', name: 'MK4', type: 'prusalink', ip: '10.0.0.5', has_code: true, units: [{kind: 'tool', slots: [null]}]};
+  await spools(SPOOLS, {printers: [voron, mk4], printer_presets: ['Voron 0.4', 'MK4 0.4'], slice_map: {}});
+  await tab('printer');
+  const kc = () => q('.pp:has([data-test="klipper-slots"])');
+  assert(kc(), 'Klipper printer offers hand-set slots');
+  await pick(q('[data-test="gate-count"]'), '6');
+  const saved = lastOf('printers').printers.find(p => p.id === 'auto-v');
+  eq(saved.units, [{kind: 'gate', slots: [null, null, null, null, null, null]}], 'six gates saved');
+  assert(vis(kc()).includes('MMU gates') && qa('[data-act="assign"]', kc()).length === 6, 'gates shown to assign');
+  await click(qa('[data-act="assign"]', kc())[1]);
+  await until(() => q('[data-pick="2"]'));
+  await click(q('[data-pick="2"]'));
+  eq(lastOf('printers').printers.find(p => p.id === 'auto-v').units[0].slots[1], '2', 'spool on gate 2');
+  await click(q('[data-test="klipper-fill"] input') || q('[data-test="klipper-fill"]'));
+  eq(lastOf('printers').printers.find(p => p.id === 'auto-v').slice_fill, false, 'slice fill off');
+  assert(qa('[data-test="presets"]').length === 2, 'two fillable printers: each asks for its presets');
+  q('.p-multiselect', kc()).click();
+  await until(() => qa('.p-multiselect-overlay [role=option]').length === 2, 'presets listed');
+  await mouse(qa('.p-multiselect-overlay [role=option]').find(o => text(o).includes('Voron 0.4')));
+  eq(lastOf('slice_map'), {type: 'slice_map', map: {'Voron 0.4': 'auto-v'}}, 'preset given to the Voron');
+  await press('Escape'); await settle();
+  await post({type: 'live', live: {links: {}, printers: []}, printers_rev: 5, printers: [{...voron, units: [{kind: 'tool', slots: ['1']}, {kind: 'tool', slots: [null]}]}, mk4]});
+  assert(vis(kc()).includes('T2') && !q('[data-test="gate-count"]'), 'two extruders: toolheads, no gate count');
+  await spools(SPOOLS, {printers: [{...voron, managed: true}], printer_presets: []});
+  assert(!q('[data-test="klipper-slots"]') && !q('[data-test="presets"]'), 'printer reporting its own gates: read-only, nothing to set');
+`);
+test('slice pick: several matching spools ask which one, answer or leave it', `
+  const voron = {id: 'auto-v', name: 'Voron', auto: true, kind: 'moonraker', ip: 'http://10.0.0.9', units: [{kind: 'gate', slots: [null, null, null]}]};
+  const pk = n => ({printer: 'auto-v', name: 'Voron', n, unit: 0, slot: n - 1, material: 'PLA', colour: '111111', spools: [1, 2]});
+  await spools(SPOOLS, {printers: [voron], slice_picks: [pk(1), pk(3)]});
+  await until(() => q('[data-test="slice-pick"]'), 'asks');
+  const d = () => vis(q('[data-test="slice-pick"]'));
+  assert(d().includes('Gate 1') && d().includes('Filament 1') && d().includes('Voron'), 'names the slot: ' + d());
+  assert(q('[data-test="slice-pick"] [data-pick="1"]') && q('[data-test="slice-pick"] [data-pick="2"]'), 'both spools offered');
+  await click(q('[data-test="slice-pick"] [data-pick="2"]'));
+  eq(lastOf('slice_pick'), {type: 'slice_pick', printer: 'auto-v', n: 1, spool: 2}, 'answer sent');
+  await until(() => d().includes('Filament 3'), 'next pick');
+  await click(byTest('pick-leave'));
+  eq(lastOf('slice_pick'), {type: 'slice_pick', printer: 'auto-v', n: 3, spool: null}, 'left as it is');
+  await until(() => !q('[data-test="slice-pick"]'), 'closed');
+`);
 test('unknown booking asks the user instead of offering Book; resolve sends the answer', `
   await spools(SPOOLS, {usage: {enabled: true, mode: 'ask', prints: [{id: 'job', name: 'Benchy', printer: 'X1', result: 'finished', pct: 100, time: Date.now() / 1000, state: 'unknown',
     rows: [{slot: 1, grams: 10, label: 'PLA', state: 'unknown', op: 'book', error: 'check'}]}]}});

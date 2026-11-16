@@ -3,7 +3,7 @@ import * as bridge from '../core/bridge';
 import { m, note, on, pollLive } from './main';
 import { t } from '../core/i18n';
 import { ask } from '../core/dialog';
-import { addUnit, newPrinterId, type ManualPrinter, type PrinterType, type UnitKind } from '../logic/printers';
+import { addUnit, mapPresets, newPrinterId, withGates, type ManualPrinter, type PrinterType, type SlicePick, type UnitKind } from '../logic/printers';
 
 // Manual printers are edited as new arrays (never in place) and saved whole, as the previous page did.
 export const ui = reactive({ picking: null as null | { p: string; u?: number; s?: number; moon?: boolean }, renaming: '', linkOpen: '' });
@@ -26,6 +26,19 @@ export const removeUnit = (id: string, ui_: number) => update(id, p => ({ ...p, 
 export const removePrinter = (id: string) => savePrinters(m.cfg.filter(p => p.id !== id));
 export const setSlot = (id: string, u: number, s: number, spool: string | null) => update(id, p => ({
   ...p, units: p.units.map((x, i) => (i === u ? { ...x, slots: x.slots.map((v, j) => (j === s ? spool : v)) } : x)) }));
+
+export const setGates = (id: string, n: number) => update(id, p => withGates(p, n));
+export const setSliceFill = (id: string, on: boolean) => update(id, p => ({ ...p, slice_fill: on }));
+/** Which OrcaSlicer printer presets a slice fills this printer for. */
+export function setPresets(id: string, presets: string[]): void {
+  m.sliceMap = mapPresets(m.sliceMap, id, presets);
+  bridge.postMain({ type: 'slice_map', map: { ...m.sliceMap } });
+}
+/** The answer to a slice pick: a spool for the slot, or null to leave it as it is. */
+export function answerPick(pick: SlicePick, spool: number | null): void {
+  m.slicePicks = m.slicePicks.filter(x => x !== pick);
+  bridge.postMain({ type: 'slice_pick', printer: pick.printer, n: pick.n, spool });
+}
 
 export interface LinkForm { type: PrinterType; ip: string; serial: string; user: string; code: string; slice_fill: boolean }
 

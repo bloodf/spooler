@@ -5,6 +5,7 @@ import InputText from 'primevue/inputtext';
 import Password from 'primevue/password';
 import Select from 'primevue/select';
 import Checkbox from 'primevue/checkbox';
+import MultiSelect from 'primevue/multiselect';
 import { OuiIcon, OuiPanel, OuiStatus, type OuiState } from '../../shared/src/components';
 import { edit, link as linkIcon, plus, printer as printerIcon, trash, x } from '../../shared/src/icons';
 import LiveUnits from './LiveUnits.vue';
@@ -12,10 +13,10 @@ import SpoolSlot from './SpoolSlot.vue';
 import SpoolPicker from './SpoolPicker.vue';
 import { m, words } from '../state/main';
 import { showSpool } from '../state/menu';
-import { ui, rename, addUnitTo, removeUnit, removePrinter, setSlot, saveLink } from '../state/printers';
+import { ui, rename, addUnitTo, removeUnit, removePrinter, setSlot, saveLink, setGates, setSliceFill, setPresets } from '../state/printers';
 import { ask } from '../core/dialog';
 import { t } from '../core/i18n';
-import { LIVE_STALE, MAX_UNITS, isNet, unitLabel, type ManualPrinter, type ManualUnit, type PrinterType } from '../logic/printers';
+import { LIVE_STALE, MAX_GATES, MAX_UNITS, fillable, isKlipperManual, isNet, unitLabel, type ManualPrinter, type ManualUnit, type PrinterType } from '../logic/printers';
 
 // A printer Spooler knows: found in OrcaSlicer's printer presets (auto) or added by hand with its AMS units and
 // slots. With Live Link, a Bambu printer itself is read (read-only); otherwise the slots are the user's assignment.
@@ -26,6 +27,16 @@ const lv = computed(() => m.live.printers.find(x => x.link === p.value.id) ?? nu
 const link = computed(() => m.live.links?.[p.value.id] ?? '');
 const live = computed(() => !!lv.value && link.value === 'live');
 const net = computed(() => isNet(p.value));
+// A Klipper printer that reports neither its toolheads' spools nor MMU gates: the spools are set here, by hand.
+const klipper = computed(() => isKlipperManual(p.value));
+const handSet = computed(() => klipper.value && p.value.units.length > 0);
+const tools = computed(() => p.value.units.filter(u => u.kind === 'tool').length);
+const gates = computed(() => p.value.units.find(u => u.kind === 'gate')?.slots.length ?? 0);
+const gateOptions = computed(() => Array.from({ length: MAX_GATES + 1 }, (_, n) => ({ value: n, label: n ? String(n) : t('printer.noGates') })));
+// With two or more printers a slice can fill, each says which OrcaSlicer printer presets are its own.
+const askPresets = computed(() => (net.value || klipper.value) && fillable(m.cfg).length > 1 && fillable(m.cfg).some(x => x.id === p.value.id));
+const presetOptions = computed(() => [...new Set([...m.printerPresets, ...Object.keys(m.sliceMap)])]);
+const myPresets = computed(() => Object.entries(m.sliceMap).filter(([, v]) => v === p.value.id).map(([k]) => k));
 const editable = computed(() => !live.value || net.value);
 const byId = computed(() => new Map(m.spools.filter(s => !s.archived).map(s => [String(s.id), s])));
 // The link's state, as a chip; a printer with no link says how many of its slots are assigned instead.
@@ -81,7 +92,21 @@ function closePicker(u: number, s: number) {
   ui.picking = null;
   void nextTick(() => (document.querySelector(`[data-focus-key="assign:${p.value.id}:${u}:${s}"]`) as HTMLElement | null)?.focus());
 }
-const slotLabel = (u: ManualUnit, si: number) => (u.kind === 'ext' ? 'E' : u.kind === 'tool' ? unitLabel(p.value, u, words.value) : String(si + 1));
+// The slot cards in rows: one per unit; a Klipper printer's toolheads share one row, like a live printer's.
+interface Cell { u: number; s: number; unit: ManualUnit; id: string | number | null }
+const rows = computed(() => {
+  const out: { key: string; label: string; remove: number; cells: Cell[] }[] = [];
+  p.value.units.forEach((unit, u) => {
+    const cells = unit.slots.map((id, s) => ({ u, s, unit, id }));
+    const last = out[out.length - 1];
+    if (p.value.auto && unit.kind === 'tool' && last?.key === 'tools') last.cells.push(...cells);
+    else out.push({ key: p.value.auto && unit.kind === 'tool' ? 'tools' : String(u), label: p.value.auto && unit.kind === 'tool' ? t('printer.toolheads') : unitLabel(p.value, unit, words.value),
+      remove: p.value.auto ? -1 : u, cells });
+  });
+  return out;
+});
+const slotName = (c: Cell) => (c.unit.kind === 'ext' ? t('printer.theExternal') : c.unit.kind === 'gate' ? t('printer.gateN', { n: c.s + 1 }) : c.unit.kind === 'tool' ? slotLabel(c.unit, c.s) : t('printer.slotN', { n: c.s + 1 }));
+const slotLabel = (u: ManualUnit, si: number) => (u.kind === 'gate' ? String(si + 1) : u.kind === 'ext' ? 'E' : u.kind === 'tool' ? unitLabel(p.value, u, words.value) : String(si + 1));
 const toolOf = (u: ManualUnit) => { const n = u.kind === 'tool' ? p.value.units.filter(x => x.kind === 'tool').indexOf(u) + 1 : 0; return n >= 1 && n <= 4 ? n as 1 | 2 | 3 | 4 : undefined; };
 </script>
 
@@ -119,28 +144,42 @@ const toolOf = (u: ManualUnit) => { const n = u.kind === 'tool' ? p.value.units.
         <p v-if="form.type !== 'bambu'" class="oui-meta pp-full">{{ t('printer.netNote') }}</p>
       </form>
 
-      <LiveUnits v-if="live && lv && !net" :lv="lv" :link="p.id" />
-      <template v-else-if="!p.auto">
-        <template v-for="(u, ui_) in p.units" :key="ui_">
-          <div class="oui-row pp-unit"><h3 class="oui-label">{{ unitLabel(p, u, words) }}</h3><span class="oui-spacer" />
-            <Button severity="secondary" text size="small" :label="t('printer.removeUnit', { unit: unitLabel(p, u, words) })" @click="dropUnit(ui_)" /></div>
+      <LiveUnits v-if="live && lv && !net && !handSet" :lv="lv" :link="p.id" />
+      <template v-else-if="!p.auto || handSet">
+        <template v-for="r in rows" :key="r.key">
+          <div class="oui-row pp-unit"><h3 class="oui-label">{{ r.label }}</h3><span class="oui-spacer" />
+            <Button v-if="r.remove >= 0" severity="secondary" text size="small" :label="t('printer.removeUnit', { unit: r.label })" @click="dropUnit(r.remove)" /></div>
           <div class="oui-cards">
-            <SpoolSlot v-for="(id, si) in u.slots" :key="si" :label="slotLabel(u, si)" :tool="toolOf(u)" :spool="id ? byId.get(String(id)) : null" :missing="!!id && !byId.get(String(id))">
-              <SpoolPicker v-if="isPicking(ui_, si)" exclude-taken :label="t('printer.assign')" @pick="id2 => pick(ui_, si, id2)" @close="closePicker(ui_, si)" />
+            <SpoolSlot v-for="c in r.cells" :key="c.u + ':' + c.s" :label="slotLabel(c.unit, c.s)" :tool="toolOf(c.unit)" :spool="c.id ? byId.get(String(c.id)) : null" :missing="!!c.id && !byId.get(String(c.id))">
+              <SpoolPicker v-if="isPicking(c.u, c.s)" exclude-taken :label="t('printer.assign')" @pick="id2 => pick(c.u, c.s, id2)" @close="closePicker(c.u, c.s)" />
               <template #actions>
-                <template v-if="id">
-                  <Button v-if="byId.get(String(id))" severity="secondary" text size="small" :label="t('printer.openSpool')" @click="showSpool(Number(id))" />
-                  <Button severity="secondary" text size="small" :aria-label="t('printer.clearSlot', { n: si + 1 })" :title="t('printer.clearSlot', { n: si + 1 })"
-                          :data-focus-key="`clear:${p.id}:${ui_}:${si}`" @click="setSlot(p.id, ui_, si, null)"><template #icon><OuiIcon :icon="x" :size="14" /></template></Button>
+                <template v-if="c.id">
+                  <Button v-if="byId.get(String(c.id))" severity="secondary" text size="small" :label="t('printer.openSpool')" @click="showSpool(Number(c.id))" />
+                  <Button severity="secondary" text size="small" :aria-label="t('printer.clearSlot', { n: c.s + 1 })" :title="t('printer.clearSlot', { n: c.s + 1 })"
+                          :data-focus-key="`clear:${p.id}:${c.u}:${c.s}`" @click="setSlot(p.id, c.u, c.s, null)"><template #icon><OuiIcon :icon="x" :size="14" /></template></Button>
                 </template>
-                <Button v-else severity="secondary" size="small" :label="t('printer.assign')" :aria-expanded="isPicking(ui_, si)" :data-focus-key="`assign:${p.id}:${ui_}:${si}`"
-                        :aria-label="t('printer.assignLabel', { slot: u.kind === 'ext' ? t('printer.theExternal') : t('printer.slotN', { n: si + 1 }), printer: p.name })"
-                        data-act="assign" @click="ui.picking = isPicking(ui_, si) ? null : { p: p.id, u: ui_, s: si }"><template #icon><OuiIcon :icon="plus" :size="14" /></template></Button>
+                <Button v-else severity="secondary" size="small" :label="t('printer.assign')" :aria-expanded="isPicking(c.u, c.s)" :data-focus-key="`assign:${p.id}:${c.u}:${c.s}`"
+                        :aria-label="t('printer.assignLabel', { slot: slotName(c), printer: p.name })"
+                        data-act="assign" @click="ui.picking = isPicking(c.u, c.s) ? null : { p: p.id, u: c.u, s: c.s }"><template #icon><OuiIcon :icon="plus" :size="14" /></template></Button>
               </template>
             </SpoolSlot>
           </div>
         </template>
       </template>
+      <div v-if="klipper" class="pp-klipper oui-well" data-test="klipper-slots">
+        <div v-if="tools < 2" class="oui-field"><label :for="`gates-${p.id}`">{{ t('printer.gateCount') }}</label>
+          <Select :model-value="gates" :input-id="`gates-${p.id}`" :options="gateOptions" option-label="label" option-value="value" data-test="gate-count"
+                  @update:model-value="n => setGates(p.id, n)" /></div>
+        <span v-if="handSet" class="oui-row"><Checkbox :model-value="p.slice_fill !== false" binary :input-id="`kfill-${p.id}`" data-test="klipper-fill" @update:model-value="v => setSliceFill(p.id, v)" />
+          <label :for="`kfill-${p.id}`">{{ t('printer.sliceFillSlots') }}</label></span>
+        <p class="oui-meta pp-full">{{ tools >= 2 ? t('printer.klipperToolsNote') : t('printer.gatesNote') }}</p>
+      </div>
+      <div v-if="askPresets" class="oui-field pp-presets" data-test="presets">
+        <label :for="`presets-${p.id}`">{{ t('printer.presets') }}</label>
+        <MultiSelect :model-value="myPresets" :input-id="`presets-${p.id}`" :options="presetOptions" :placeholder="t('printer.presetsAuto')" filter display="chip" :max-selected-labels="3"
+                     :aria-label="t('printer.presetsLabel', { printer: p.name })" @update:model-value="v => setPresets(p.id, v)" />
+        <p class="oui-meta">{{ t('printer.presetsHelp') }}</p>
+      </div>
       <p v-if="noteText" class="oui-meta pp-note">{{ noteText }}</p>
     </div>
 
@@ -164,4 +203,7 @@ const toolOf = (u: ManualUnit) => { const n = u.kind === 'tool' ? p.value.units.
 .pp-lab { font-size: var(--oui-text-sm); font-weight: 600; color: var(--oui-muted); }
 .pp-full { grid-column: 1 / -1; }
 .pp-note { max-width: 96ch; }
+.pp-klipper { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--oui-s3); padding: var(--oui-s3); align-items: end; }
+.pp-presets { max-width: 60ch; }
+.pp-presets .p-multiselect { width: 100%; }
 </style>

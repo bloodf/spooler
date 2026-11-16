@@ -3,6 +3,17 @@
 Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); entries before
 0.9.0 are Spoolio's.
 
+## [Unreleased]
+
+### Added
+- Klipper printers with several toolheads (up to eight: extruder, extruder1 ... extruder7) show each toolhead on the Printer tab, and you choose the spool on each, as on a PrusaLink or OctoPrint printer. The Snapmaker U1 works as before.
+- A Klipper printer whose MMU doesn't report its gates can have up to 16 gates set on the Printer tab, with the spool on each. Happy Hare and AFC gates that the printer reports are still read from it and can't be changed here.
+- After a slice for a Klipper printer, each filament's matching spool is put on its toolhead (or gate), as already done for PrusaLink and OctoPrint. A spool put on a slot is taken off any other slot it was on. Bambu printers and printer-reported gates are left alone.
+- With two or more of these printers, each one on the Printer tab says which OrcaSlicer printer presets slice for it; a preset not chosen goes by its host address as before. Each Klipper printer has its own switch to turn the slice fill off.
+
+### Changed
+- When a sliced filament matches several spools, Spooler now asks which one is loaded instead of leaving the slot as it is, for PrusaLink, OctoPrint and Klipper printers.
+
 ## [0.28.0] - 2026-11-16
 
 ### Added

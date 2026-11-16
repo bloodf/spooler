@@ -9,6 +9,7 @@ import SpoolsView from './components/SpoolsView.vue';
 import PrinterView from './components/PrinterView.vue';
 import StatsView from './components/StatsView.vue';
 import ConfirmDialog from './components/ConfirmDialog.vue';
+import SlicePick from './components/SlicePick.vue';
 import SettingsView from './settings/SettingsView.vue';
 import { leave, saved } from './settings/state';
 import * as bridge from './core/bridge';
@@ -89,6 +90,7 @@ const state = computed<{ state: OuiState; label: string; text: string }>(() => {
       <SettingsView v-if="boot.mode === 'tab'" v-show="m.view === 'settings'" role="tabpanel" aria-labelledby="oui-tab-settings" />
     </template>
     <ConfirmDialog />
+    <SlicePick v-if="!settingsOnly" />
   </div>
 </template>
 

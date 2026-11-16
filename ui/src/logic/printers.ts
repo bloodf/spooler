@@ -6,15 +6,36 @@ export interface LivePrinter { id?: string; link?: string; name: string; heads?:
   age?: number; spool_set?: boolean; job?: Job | null }
 export interface Job { state: string; name?: string; pct?: number; stage?: string; layer?: number; layers?: number; left?: number | null;
   took?: number; end?: number; tray?: { unit: number | string; slot: number } | null }
-export type UnitKind = 'ams' | 'ht' | 'ext' | 'tool';
+export type UnitKind = 'ams' | 'ht' | 'ext' | 'tool' | 'gate';
 export type PrinterType = 'bambu' | 'prusalink' | 'octoprint';
 export interface ManualUnit { kind: UnitKind; slots: (string | number | null)[] }
 export interface ManualPrinter { id: string; name: string; auto?: boolean; kind?: string; ip?: string; serial?: string; has_code?: boolean; units: ManualUnit[];
-  type?: PrinterType; user?: string; slice_fill?: boolean }
+  type?: PrinterType; user?: string; slice_fill?: boolean; managed?: boolean }
+/** A filament of the last slice that matches several spools: which one goes on the printer's slot. */
+export interface SlicePick { printer: string; name: string; n: number; unit: number; slot: number; material: string; colour: string; spools: number[] }
 
 /** PrusaLink and OctoPrint printers: read over HTTP, toolheads assigned by hand, prints always asked before booking. */
 export const isNet = (p: ManualPrinter) => p.type === 'prusalink' || p.type === 'octoprint';
 export const MAX_UNITS = 8;
+export const MAX_GATES = 16;
+
+/** A Klipper printer found from the presets whose toolheads or MMU gates are set by hand (it reports neither). */
+export const isKlipperManual = (p: ManualPrinter) => !!p.auto && p.kind === 'moonraker' && !p.managed;
+/** The printers a slice can fill: PrusaLink and OctoPrint printers with an address, and those Klipper printers. */
+export const fillable = (cfg: ManualPrinter[]) => cfg.filter(p => (isNet(p) && !!p.ip) || isKlipperManual(p));
+/** The printer with its MMU gates resized to n (0 removes them); the spools on the gates that stay are kept. */
+export function withGates(p: ManualPrinter, n: number): ManualPrinter {
+  const count = Math.max(0, Math.min(MAX_GATES, Math.floor(n) || 0));
+  const old = p.units.find(u => u.kind === 'gate')?.slots ?? [];
+  const rest = p.units.filter(u => u.kind !== 'gate');
+  return { ...p, units: count ? [...rest, { kind: 'gate', slots: Array.from({ length: count }, (_, i) => old[i] ?? null) }] : rest };
+}
+/** {preset: printer id} with the presets given to printer id (and taken off any other printer). */
+export function mapPresets(map: Record<string, string>, id: string, presets: string[]): Record<string, string> {
+  const next = Object.fromEntries(Object.entries(map).filter(([, v]) => v !== id));
+  for (const name of presets) next[name] = id;
+  return next;
+}
 
 export const KINDS: Record<string, number> = { tool: 1, ams: 4, ht: 1, ext: 1 };
 export const RANK: Record<string, number> = { tool: 0, ams: 1, ht: 2, ext: 3 };
@@ -25,7 +46,7 @@ export const PROG_STATES: Record<string, { cls: string; fill: string }> = {
   PAUSE: { cls: 'warn', fill: 'warn' }, FINISH: { cls: 'ok', fill: 'ok' }, FAILED: { cls: 'bad', fill: 'bad' },
 };
 
-export interface Words { ams: string; ht: string; ext: string; slot: (unit: string, n: number) => string; head: (n: number) => string; externalShort: string }
+export interface Words { ams: string; ht: string; ext: string; gate: string; gateN: (n: number) => string; slot: (unit: string, n: number) => string; head: (n: number) => string; externalShort: string }
 
 export function unitLabel(p: ManualPrinter, u: ManualUnit, w: Words): string {
   const same = p.units.filter(x => x.kind === u.kind);
@@ -33,6 +54,7 @@ export function unitLabel(p: ManualPrinter, u: ManualUnit, w: Words): string {
   if (u.kind === 'tool') return w.head(n);
   if (u.kind === 'ams') return `${w.ams} ${n}`;
   if (u.kind === 'ht') return same.length > 1 ? `${w.ht} ${n}` : w.ht;
+  if (u.kind === 'gate') return w.gate;
   return w.ext;
 }
 
@@ -55,7 +77,7 @@ export function computeInUse(live: LivePrinter[], cfg: ManualPrinter[], w: Words
   }
   for (const p of cfg || []) {
     (p.units || []).forEach(u => u.slots.forEach((id, si) => {
-      const where = u.kind === 'ext' ? w.externalShort : u.kind === 'ht' || u.kind === 'tool' ? unitLabel(p, u, w) : w.slot(unitLabel(p, u, w), si + 1);
+      const where = u.kind === 'ext' ? w.externalShort : u.kind === 'gate' ? w.gateN(si + 1) : u.kind === 'ht' || u.kind === 'tool' ? unitLabel(p, u, w) : w.slot(unitLabel(p, u, w), si + 1);
       if (id && !found.has(String(id))) found.set(String(id), `${p.name} · ${where}`);
     }));
   }

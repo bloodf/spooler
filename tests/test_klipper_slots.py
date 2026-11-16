@@ -1,0 +1,270 @@
+"""Klipper printers found from the presets: toolheads (extruder ... extruder7) and MMU gates set by hand,
+slice fill for them, the pick when a filament matches several spools, and the preset-to-printer choice.
+Moonraker is mocked; nothing here talks to a printer."""
+
+import unittest
+from unittest import mock
+
+from plugin_loader import load
+
+sp, orca = load()
+
+
+def spool(sid, material, colour, name):
+    return {"id": sid, "remaining_weight": 500.0, "initial_weight": 1000.0,
+            "filament": {"id": 100 + sid, "name": name, "material": material, "color_hex": colour, "vendor": {"name": "Acme"}}}
+
+
+SPOOLS = [spool(1, "PLA", "FF0000", "Red PLA"), spool(2, "PETG", "0000FF", "Blue PETG"),
+          spool(3, "PETG", "0000FF", "Blue PETG"), spool(4, "ABS", "00FF00", "Green ABS")]
+BASE = "http://10.0.0.9"
+PID = "auto-10-0-0-9"
+AUTO = {"id": PID, "name": "Voron", "units": [], "ip": BASE, "serial": "", "kind": "moonraker", "auto": True}
+
+
+def extruders(n):
+    return {name: ({"temperature": 25.0} if i < n else {}) for i, name in enumerate(sp.MOON_EXTRUDERS)}
+
+
+class KlipperCase(unittest.TestCase):
+    """A Klipper printer at BASE found from a preset, settings in memory, Spoolman as the source."""
+
+    def setUp(self):
+        self.settings = {"printers": {"spoolman": []}}
+        self.paths = []
+        patches = [mock.patch.object(sp, "get_settings", lambda: self.settings),
+                   mock.patch.object(sp, "save_settings", return_value=True),
+                   mock.patch.object(sp, "source", return_value="spoolman"),
+                   mock.patch.object(sp, "prune_codes"), mock.patch.object(sp, "_local_sync")]
+        for p in patches:
+            p.start()
+            self.addCleanup(p.stop)
+        sp._auto_printers[:] = [dict(AUTO)]
+        sp._moon_found.clear()
+        sp._slice_picks.clear()
+        sp._spool_cache["spools"] = SPOOLS
+        self.addCleanup(sp._auto_printers.clear)
+        self.addCleanup(sp._moon_found.clear)
+        self.addCleanup(sp._slice_picks.clear)
+        self.addCleanup(sp._spool_cache.__setitem__, "spools", [])
+
+    def moonraker(self, status, lanes=None, active=None):
+        """Mock Moonraker: printer objects status, the lane_data namespace (None: absent), the active spool."""
+        def get(base, path):
+            self.paths.append(path)
+            if "lane_data" in path:
+                if lanes is None:
+                    raise sp.urllib.error.HTTPError(base + path, 404, "Namespace 'lane_data' not found", {}, None)
+                return {"namespace": "lane_data", "key": None, "value": lanes}
+            if path == "/server/spoolman/spool_id":
+                return {"spool_id": active}
+            return {"status": status}
+        patch = mock.patch.object(sp, "_moon_get", get)
+        patch.start()
+        self.addCleanup(patch.stop)
+
+    def assign(self, tools=(), gates=(), slice_fill=True):
+        self.settings["moon_slots"] = {"spoolman": {PID: {"tools": list(tools), "gates": list(gates), "slice_fill": slice_fill}}}
+
+    def entry(self):
+        return next(p for p in sp.printers_cfg() if p["id"] == PID)
+
+
+class PollTest(KlipperCase):
+    def test_query_asks_for_every_extruder_and_nothing_else_is_sent(self):
+        self.moonraker(extruders(1), active=None)
+        sp.moon_poll(BASE)
+        query = self.paths[0]
+        self.assertTrue(query.startswith("/printer/objects/query?"))
+        for name in ("extruder=temperature", "extruder1=temperature", "extruder7=temperature"):
+            self.assertIn(name, query)
+        self.assertNotIn("gcode", query.lower())
+
+    def test_single_extruder_keeps_moonrakers_active_spool(self):
+        self.moonraker(extruders(1), active=4)
+        doc, heads = sp.moon_poll(BASE)
+        self.assertFalse(heads)
+        self.assertEqual(doc["print"]["vt_tray"]["spool_id"], 4)
+        self.assertEqual(sp._moon_found[PID], {"tools": 1, "managed": False})
+        self.assertEqual(self.entry()["units"], [])
+
+    def test_four_extruders_show_toolheads_set_by_hand(self):
+        self.assign(tools=["1", None, "4"])
+        self.moonraker(extruders(4), active=2)
+        doc, heads = sp.moon_poll(BASE)
+        self.assertTrue(heads)
+        self.assertNotIn("vt_tray", doc["print"])  # the toolheads stand in for the active spool
+        trays = doc["print"]["ams"]["ams"][0]["tray"]
+        self.assertEqual([t.get("spool_id") for t in trays], [1, None, 4, None])
+        self.assertFalse(doc["u1"])  # booked like any Klipper printer, not left to u1control
+        self.assertEqual([u["kind"] for u in self.entry()["units"]], ["tool"] * 4)
+
+    def test_eight_extruders_at_most(self):
+        self.moonraker(extruders(8))
+        sp.moon_poll(BASE)
+        self.assertEqual(len(self.entry()["units"]), 8)
+
+    def test_gates_set_by_hand_in_units_of_four(self):
+        self.assign(gates=["1", None, None, None, "3", None])
+        self.moonraker(extruders(1), active=4)
+        doc, heads = sp.moon_poll(BASE)
+        self.assertFalse(heads)
+        self.assertNotIn("vt_tray", doc["print"])
+        units = doc["print"]["ams"]["ams"]
+        self.assertEqual([[t.get("spool_id") for t in u["tray"]] for u in units], [[1, None, None, None], [3, None]])
+
+    def test_happy_hare_lane_data_wins_over_gates_set_by_hand(self):
+        self.assign(gates=["1", "2"])
+        lanes = {"lane0": {"lane": 0, "material": "PETG", "color": "#0000FF", "spool_id": 3}}
+        self.moonraker(extruders(1), lanes=lanes)
+        doc, _ = sp.moon_poll(BASE)
+        self.assertEqual(doc["print"]["ams"]["ams"][0]["tray"][0]["spool_id"], 3)
+        self.assertTrue(sp._moon_found[PID]["managed"])
+        self.assertEqual(self.entry()["units"], [])  # read-only: nothing to set by hand
+        self.assertTrue(self.entry()["managed"])
+
+    def test_u1_unchanged(self):
+        self.assign(tools=["1", "2", "3", "4"])
+        status = {"print_task_config": {"filament_exist": [True, False], "filament_type": ["PLA", ""],
+                                        "filament_color_rgba": ["FF0000FF", ""], "filament_spool_id": [4, 0]},
+                  **extruders(2)}
+        self.moonraker(status)
+        doc, heads = sp.moon_poll(BASE)
+        self.assertTrue(heads and doc["u1"])
+        self.assertEqual([t.get("spool_id") for t in doc["print"]["ams"]["ams"][0]["tray"]], [4, None])
+
+    def test_found_change_reaches_the_page(self):
+        self.moonraker(extruders(2))
+        before = sp._printers_rev["n"]
+        sp.moon_poll(BASE)
+        sp.moon_poll(BASE)
+        self.assertEqual(sp._printers_rev["n"], before + 1)
+
+    def test_live_state_sizes_the_toolheads(self):
+        self.assign(tools=["1", "2"])
+        self.moonraker(extruders(2))
+        doc, heads = sp.moon_poll(BASE)
+        sp.live_apply(PID, "Voron", doc, link=PID, full=True)
+        with sp._live_lock:
+            sp.moon_mark(PID, doc, heads)
+        self.addCleanup(sp._live["printers"].pop, PID, None)
+        live = next(p for p in sp.live_snapshot()["printers"] if p["id"] == PID)
+        self.assertTrue(live["heads"])
+        self.assertEqual(len(live["units"][0]["trays"]), 2)
+        self.assertFalse(live["spool_set"])
+
+
+class SaveTest(KlipperCase):
+    def test_page_saves_klipper_slots_beside_manual_printers(self):
+        sp._moon_found[PID] = {"tools": 2, "managed": False}
+        page = [{"id": "mk4", "name": "MK4", "type": "prusalink", "ip": "10.0.0.5", "units": [{"kind": "tool", "slots": ["1"]}]},
+                dict(AUTO, units=[{"kind": "tool", "slots": ["1"]}, {"kind": "tool", "slots": ["2"]}], slice_fill=False)]
+        sp.save_printers(page)
+        saved = self.settings["moon_slots"]["spoolman"][PID]
+        self.assertEqual(saved["tools"], [None, "2"])  # spool 1 already sits on the MK4
+        self.assertFalse(saved["slice_fill"])
+        self.assertEqual([p["id"] for p in self.settings["printers"]["spoolman"]], ["mk4"])
+
+    def test_gate_count_is_capped(self):
+        sp.save_printers([dict(AUTO, units=[{"kind": "gate", "slots": [None] * 40}])])
+        self.assertEqual(len(self.settings["moon_slots"]["spoolman"][PID]["gates"]), sp.MOON_GATES)
+
+    def test_printer_missing_from_the_save_keeps_its_slots(self):
+        self.assign(gates=["2", "3"])
+        sp._auto_printers.clear()
+        sp.save_printers([{"id": "mk4", "name": "MK4", "type": "prusalink", "ip": "10.0.0.5",
+                           "units": [{"kind": "tool", "slots": ["3"]}]}])
+        self.assertEqual(self.settings["moon_slots"]["spoolman"][PID]["gates"], ["2", None])
+
+    def test_only_preset_printers_take_slots(self):
+        self.assertEqual(sp.parse_moon_slots([{"id": "p1", "units": [{"kind": "gate", "slots": ["1"]}]}], set()), {})
+
+
+class SliceFillTest(KlipperCase):
+    def slot(self, n, material, colour):
+        return {"n": n, "grams": 5.0, "preset": "", "colour": colour, "material": material, "vendor": ""}
+
+    def saved(self):
+        return self.settings["moon_slots"]["spoolman"][PID]
+
+    def test_klipper_toolheads_filled(self):
+        sp._moon_found[PID] = {"tools": 2, "managed": False}
+        self.assertTrue(sp.slice_fill([self.slot(2, "PLA", "#FF0000")], BASE, SPOOLS))
+        self.assertEqual(self.saved()["tools"], [None, "1"])
+
+    def test_klipper_gates_filled_and_spool_moved_off_another_printer(self):
+        self.settings["printers"]["spoolman"] = [{"id": "x1", "name": "X1", "type": "bambu", "ip": "10.0.0.7",
+                                                  "units": [{"kind": "ams", "slots": ["4", None, None, None]}]}]
+        self.assign(gates=[None, None, None])
+        sp._moon_found[PID] = {"tools": 1, "managed": False}
+        self.assertTrue(sp.slice_fill([self.slot(3, "ABS", "#00FF00")], BASE, SPOOLS))
+        self.assertEqual(self.saved()["gates"], [None, None, "4"])
+        self.assertEqual(self.settings["printers"]["spoolman"][0]["units"][0]["slots"], [None, None, None, None])
+
+    def test_several_matches_ask_and_the_answer_is_set(self):
+        sp._moon_found[PID] = {"tools": 2, "managed": False}
+        self.assertFalse(sp.slice_fill([self.slot(1, "PETG", "#0000FF")], BASE, SPOOLS))
+        self.assertEqual(len(sp._slice_picks), 1)
+        pick = sp._slice_picks[0]
+        self.assertEqual((pick["printer"], pick["n"], sorted(pick["spools"])), (PID, 1, [2, 3]))
+        self.assertIn("slice_picks", sp.printer_state())
+        self.assertFalse(sp.slice_pick({"printer": PID, "n": 1, "spool": 4}))  # not one of the matches
+        self.assertEqual(sp._slice_picks, [])
+        sp.slice_fill([self.slot(1, "PETG", "#0000FF")], BASE, SPOOLS)
+        self.assertTrue(sp.slice_pick({"printer": PID, "n": 1, "spool": 3}))
+        self.assertEqual(self.saved()["tools"], ["3", None])
+        self.assertEqual(sp._slice_picks, [])
+
+    def test_slot_already_holding_a_match_is_not_asked(self):
+        self.assign(tools=["2", None])
+        sp._moon_found[PID] = {"tools": 2, "managed": False}
+        sp.slice_fill([self.slot(1, "PETG", "#0000FF")], BASE, SPOOLS)
+        self.assertEqual(sp._slice_picks, [])
+
+    def test_leave_as_it_is(self):
+        sp._moon_found[PID] = {"tools": 2, "managed": False}
+        sp.slice_fill([self.slot(1, "PETG", "#0000FF")], BASE, SPOOLS)
+        self.assertFalse(sp.slice_pick({"printer": PID, "n": 1, "spool": None}))
+        self.assertEqual(sp._slice_picks, [])
+
+    def test_net_printers_ask_too(self):
+        self.settings["printers"]["spoolman"] = [{"id": "mk4", "name": "MK4", "type": "prusalink", "ip": "10.0.0.5",
+                                                  "units": [{"kind": "tool", "slots": [None]}]}]
+        sp.slice_fill([self.slot(1, "PETG", "#0000FF")], "http://10.0.0.5", SPOOLS)
+        self.assertEqual(sp._slice_picks[0]["printer"], "mk4")
+        self.assertTrue(sp.slice_pick({"printer": "mk4", "n": 1, "spool": 2}))
+        self.assertEqual(self.settings["printers"]["spoolman"][0]["units"][0]["slots"], ["2"])
+
+    def test_printer_reporting_its_own_gates_is_left_alone(self):
+        sp._moon_found[PID] = {"tools": 1, "managed": True}
+        self.assign(gates=[None, None])
+        self.assertFalse(sp.slice_fill([self.slot(1, "PLA", "#FF0000")], BASE, SPOOLS))
+        self.assertEqual(sp._slice_picks, [])
+
+    def test_switch_off(self):
+        self.assign(tools=[None, None], slice_fill=False)
+        sp._moon_found[PID] = {"tools": 2, "managed": False}
+        self.assertFalse(sp.slice_fill([self.slot(1, "PLA", "#FF0000")], BASE, SPOOLS))
+
+    def test_preset_chosen_for_a_printer_beats_the_address(self):
+        self.settings["printers"]["spoolman"] = [{"id": "mk4", "name": "MK4", "type": "prusalink", "ip": "10.0.0.5",
+                                                  "units": [{"kind": "tool", "slots": [None]}]}]
+        sp._moon_found[PID] = {"tools": 2, "managed": False}
+        sp.save_slice_map({"My MK4": "mk4", "": "x", "bad": 3})
+        self.assertEqual(self.settings["slice_map"], {"My MK4": "mk4"})
+        self.assertTrue(sp.slice_fill([self.slot(1, "PLA", "#FF0000")], BASE, SPOOLS, preset="My MK4"))
+        self.assertEqual(self.settings["printers"]["spoolman"][0]["units"][0]["slots"], ["1"])
+        # Another preset still goes by its address.
+        self.assertTrue(sp.slice_fill([self.slot(2, "ABS", "#00FF00")], BASE, SPOOLS, preset="Voron preset"))
+        self.assertEqual(self.saved()["tools"], [None, "4"])
+
+    def test_ctx_passes_the_preset(self):
+        ctx = mock.Mock()
+        ctx.config_value.side_effect = lambda key: {"print_host": "", "printer_settings_id": "My MK4"}.get(key)
+        with mock.patch.object(sp, "spawn") as spawn:
+            sp.slice_fill_ctx(ctx, [self.slot(1, "PLA", "#FF0000")])
+        self.assertEqual(spawn.call_args.args[4], "My MK4")
+
+
+if __name__ == "__main__":
+    unittest.main()
