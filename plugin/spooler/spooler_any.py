@@ -3724,7 +3724,9 @@ def moon_set_spool(pid: object, spool_id: object, confirmed: bool = False) -> di
     base = link["ip"]
     try:
         doc, heads = moon_poll(base)  # read again: the printer decides, not the page
-        if heads or "vt_tray" not in doc["print"]:
+        # A printer that once reported its own spools (U1, lane_data, Happy Hare) keeps them, even when one
+        # answer comes back empty: never set Moonraker's active spool on it.
+        if heads or "vt_tray" not in doc["print"] or (_moon_found.get(str(pid)) or {}).get("managed"):
             with _live_lock:
                 moon_mark(str(pid), doc, heads)
             return {"ok": False, "text": tr("{printer} manages its own spools; Spooler only reads them.", printer=link["name"])}

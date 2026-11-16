@@ -191,6 +191,23 @@ class PollTest(KlipperCase):
         doc, _ = sp.moon_poll(BASE)
         self.assertTrue(doc["hh"])
 
+    def test_no_active_spool_post_to_a_managed_printer_on_an_empty_poll(self):
+        sp._local[PID] = {"link": {"kind": "moonraker", "ip": BASE, "name": "Voron"}, "stop": None, "thread": None}
+        self.addCleanup(sp._local.pop, PID, None)
+        self.addCleanup(sp._live["printers"].pop, PID, None)
+        for found in ({"tools": 4, "managed": True, "u1": True, "hh": False},     # Snapmaker U1
+                      {"tools": 1, "managed": True, "u1": False, "hh": False},    # lane_data
+                      {"tools": 1, "managed": True, "u1": False, "hh": True}):    # Happy Hare
+            sp._moon_found[PID] = found
+            sp._live["printers"][PID] = {"spool_set": True}  # the page saw a single-extruder card
+            self.moonraker({}, lanes=None, active=None)  # one empty answer: it looks single-extruder
+            posted = []
+            with mock.patch.object(sp, "_moon_post", side_effect=lambda *a: posted.append(a) or {}), \
+                 mock.patch.object(sp, "live_apply"):
+                result = sp.moon_set_spool(PID, 1)
+            self.assertFalse(result["ok"], found)
+            self.assertEqual(posted, [], found)
+
     def test_found_change_reaches_the_page(self):
         self.moonraker(extruders(2))
         before = sp._printers_rev["n"]
