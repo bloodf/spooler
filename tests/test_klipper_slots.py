@@ -85,7 +85,7 @@ class PollTest(KlipperCase):
         doc, heads = sp.moon_poll(BASE)
         self.assertFalse(heads)
         self.assertEqual(doc["print"]["vt_tray"]["spool_id"], 4)
-        self.assertEqual(sp._moon_found[PID], {"tools": 1, "managed": False})
+        self.assertEqual(sp._moon_found[PID], {"tools": 1, "managed": False, "u1": False})
         self.assertEqual(self.entry()["units"], [])
 
     def test_four_extruders_show_toolheads_set_by_hand(self):
@@ -132,6 +132,31 @@ class PollTest(KlipperCase):
         doc, heads = sp.moon_poll(BASE)
         self.assertTrue(heads and doc["u1"])
         self.assertEqual([t.get("spool_id") for t in doc["print"]["ams"]["ams"][0]["tray"]], [4, None])
+
+    def test_u1_stays_read_only_after_an_empty_answer(self):
+        self.assign(tools=["1", "2", "3", "4"])
+        u1 = {"print_task_config": {"filament_exist": [True] * 4, "filament_type": ["PLA"] * 4,
+                                    "filament_color_rgba": ["FF0000FF"] * 4}, **extruders(4)}
+        self.moonraker(u1)
+        sp.moon_poll(BASE)
+        patch = mock.patch.object(sp, "_moon_get", lambda base, path: {"status": {}} if "objects" in path else {})
+        patch.start()
+        self.addCleanup(patch.stop)
+        doc, _ = sp.moon_poll(BASE)
+        self.assertTrue(doc["u1"])  # book_ok stays off: u1control books the U1
+        self.assertTrue(self.entry()["managed"])
+        self.assertEqual(self.entry()["units"], [])
+        self.assertEqual(sp.fill_printers(sp.printers_cfg()), [])
+
+    def test_lane_data_printer_stays_read_only_when_lanes_go_missing(self):
+        self.assign(gates=["1"])
+        self.moonraker(extruders(1), lanes={"l": {"lane": 0, "material": "PLA", "color": "#FF0000"}})
+        sp.moon_poll(BASE)
+        patch = mock.patch.object(sp, "moon_lanes", return_value={})
+        patch.start()
+        self.addCleanup(patch.stop)
+        sp.moon_poll(BASE)
+        self.assertTrue(self.entry()["managed"])
 
     def test_found_change_reaches_the_page(self):
         self.moonraker(extruders(2))
@@ -236,10 +261,13 @@ class SliceFillTest(KlipperCase):
         pick = sp._slice_picks[0]
         self.assertEqual((pick["printer"], pick["n"], sorted(pick["spools"])), (PID, 1, [2, 3]))
         self.assertIn("slice_picks", sp.printer_state())
-        self.assertFalse(sp.slice_pick({"printer": PID, "n": 1, "spool": 4}))  # not one of the matches
+        self.assertFalse(sp.slice_pick({"printer": PID, "n": 1, "slice": pick["slice"], "spool": 4}))  # not a match
         self.assertEqual(sp._slice_picks, [])
         sp.slice_fill([self.slot(1, "PETG", "#0000FF")], BASE, SPOOLS)
-        self.assertTrue(sp.slice_pick({"printer": PID, "n": 1, "spool": 3}))
+        # An answer to the earlier slice's question doesn't settle this one.
+        self.assertFalse(sp.slice_pick({"printer": PID, "n": 1, "slice": pick["slice"], "spool": 3}))
+        self.assertEqual(len(sp._slice_picks), 1)
+        self.assertTrue(sp.slice_pick({"printer": PID, "n": 1, "slice": sp._slice_picks[0]["slice"], "spool": 3}))
         self.assertEqual(self.saved()["tools"], ["3", None])
         self.assertEqual(sp._slice_picks, [])
 
@@ -259,7 +287,7 @@ class SliceFillTest(KlipperCase):
     def test_leave_as_it_is(self):
         sp._moon_found[PID] = {"tools": 2, "managed": False}
         sp.slice_fill([self.slot(1, "PETG", "#0000FF")], BASE, SPOOLS)
-        self.assertFalse(sp.slice_pick({"printer": PID, "n": 1, "spool": None}))
+        self.assertFalse(sp.slice_pick({"printer": PID, "n": 1, "slice": sp._slice_picks[0]["slice"], "spool": None}))
         self.assertEqual(sp._slice_picks, [])
 
     def test_net_printers_ask_too(self):
@@ -267,7 +295,7 @@ class SliceFillTest(KlipperCase):
                                                   "units": [{"kind": "tool", "slots": [None]}]}]
         sp.slice_fill([self.slot(1, "PETG", "#0000FF")], "http://10.0.0.5", SPOOLS)
         self.assertEqual(sp._slice_picks[0]["printer"], "mk4")
-        self.assertTrue(sp.slice_pick({"printer": "mk4", "n": 1, "spool": 2}))
+        self.assertTrue(sp.slice_pick({"printer": "mk4", "n": 1, "slice": sp._slice_picks[0]["slice"], "spool": 2}))
         self.assertEqual(self.settings["printers"]["spoolman"][0]["units"][0]["slots"], ["2"])
 
     def test_printer_reporting_its_own_gates_is_left_alone(self):

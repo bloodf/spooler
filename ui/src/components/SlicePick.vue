@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, watch } from 'vue';
 import Dialog from 'primevue/dialog';
 import Button from 'primevue/button';
 import { OuiSwatch } from '../../shared/src/components';
@@ -22,6 +22,8 @@ const slot = computed(() => {
 });
 const spools = computed(() => (pick.value?.spools ?? []).map(id => m.spools.find(s => s.id === id)).filter((s): s is Spool => !!s && !s.archived));
 function answer(spool: number | null) { if (pick.value) answerPick(pick.value, spool); }
+// None of its spools is in the list any more (archived or deleted): nothing to choose, so the slot is left as it is.
+watch([pick, spools], () => { if (pick.value && m.spools.length && !spools.value.length) answer(null); });
 </script>
 <template>
   <Dialog :visible="!!pick" modal :header="pick ? t('pick.title', { slot }) : ''" :draggable="false" data-test="slice-pick"

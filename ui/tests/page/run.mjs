@@ -582,18 +582,21 @@ test('Klipper printer: hand-set gates, toolheads, slice fill switch and presets 
 `);
 test('slice pick: several matching spools ask which one, answer or leave it', `
   const voron = {id: 'auto-v', name: 'Voron', auto: true, kind: 'moonraker', ip: 'http://10.0.0.9', units: [{kind: 'gate', slots: [null, null, null]}]};
-  const pk = n => ({printer: 'auto-v', name: 'Voron', n, unit: 0, slot: n - 1, material: 'PLA', colour: '111111', spools: [1, 2]});
+  const pk = n => ({printer: 'auto-v', name: 'Voron', n, slice: 7, unit: 0, slot: n - 1, material: 'PLA', colour: '111111', spools: [1, 2]});
   await spools(SPOOLS, {printers: [voron], slice_picks: [pk(1), pk(3)]});
   await until(() => q('[data-test="slice-pick"]'), 'asks');
   const d = () => vis(q('[data-test="slice-pick"]'));
   assert(d().includes('Gate 1') && d().includes('Filament 1') && d().includes('Voron'), 'names the slot: ' + d());
   assert(q('[data-test="slice-pick"] [data-pick="1"]') && q('[data-test="slice-pick"] [data-pick="2"]'), 'both spools offered');
   await click(q('[data-test="slice-pick"] [data-pick="2"]'));
-  eq(lastOf('slice_pick'), {type: 'slice_pick', printer: 'auto-v', n: 1, spool: 2}, 'answer sent');
+  eq(lastOf('slice_pick'), {type: 'slice_pick', printer: 'auto-v', n: 1, slice: 7, spool: 2}, 'answer sent');
   await until(() => d().includes('Filament 3'), 'next pick');
   await click(byTest('pick-leave'));
-  eq(lastOf('slice_pick'), {type: 'slice_pick', printer: 'auto-v', n: 3, spool: null}, 'left as it is');
+  eq(lastOf('slice_pick'), {type: 'slice_pick', printer: 'auto-v', n: 3, slice: 7, spool: null}, 'left as it is');
   await until(() => !q('[data-test="slice-pick"]'), 'closed');
+  await post({type: 'live', live: {links: {}, printers: []}, slice_picks: [{...pk(2), spools: [99]}]});
+  await until(() => lastOf('slice_pick').n === 2, 'no spool left to choose: left as it is without asking');
+  eq(lastOf('slice_pick').spool, null, 'answered null');
 `);
 test('unknown booking asks the user instead of offering Book; resolve sends the answer', `
   await spools(SPOOLS, {usage: {enabled: true, mode: 'ask', prints: [{id: 'job', name: 'Benchy', printer: 'X1', result: 'finished', pct: 100, time: Date.now() / 1000, state: 'unknown',

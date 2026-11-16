@@ -116,7 +116,7 @@ export const zhCN: Record<MessageKey, string> = {
   'printer.gateCount': '手动设置的 MMU 通道',
   'printer.noGates': '无',
   'printer.sliceFillSlots': '根据切片结果填充',
-  'printer.gatesNote': '用于不报告其通道的 MMU。Happy Hare 和 AFC 会报告自己的通道，Spooler 会读取它们。为这台打印机切片后，第 n 种耗材丝放到第 n 个通道。',
+  'printer.gatesNote': '用于不报告其通道的 MMU。Happy Hare 和 AFC 会通过 Moonraker 的 lane_data 报告自己的通道，Spooler 会读取它们。为这台打印机切片后，第 n 种耗材丝放到第 n 个通道。',
   'printer.klipperToolsNote': 'Klipper 会报告这些工具头，但不报告其料盘：请在这里设置。为这台打印机切片后，第 n 种耗材丝放到第 n 个工具头。',
   'printer.presets': 'OrcaSlicer 打印机预设',
   'printer.presetsAuto': '按预设的主机地址',

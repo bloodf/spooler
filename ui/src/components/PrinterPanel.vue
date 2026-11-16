@@ -35,7 +35,8 @@ const gates = computed(() => p.value.units.find(u => u.kind === 'gate')?.slots.l
 const gateOptions = computed(() => Array.from({ length: MAX_GATES + 1 }, (_, n) => ({ value: n, label: n ? String(n) : t('printer.noGates') })));
 // With two or more printers a slice can fill, each says which OrcaSlicer printer presets are its own.
 const askPresets = computed(() => (net.value || klipper.value) && fillable(m.cfg).length > 1 && fillable(m.cfg).some(x => x.id === p.value.id));
-const presetOptions = computed(() => [...new Set([...m.printerPresets, ...Object.keys(m.sliceMap)])]);
+// OrcaSlicer's presets now, plus this printer's own choices so one renamed or deleted since can still be removed.
+const presetOptions = computed(() => [...new Set([...m.printerPresets, ...myPresets.value])]);
 const myPresets = computed(() => Object.entries(m.sliceMap).filter(([, v]) => v === p.value.id).map(([k]) => k));
 const editable = computed(() => !live.value || net.value);
 const byId = computed(() => new Map(m.spools.filter(s => !s.archived).map(s => [String(s.id), s])));

@@ -12,7 +12,7 @@ export interface ManualUnit { kind: UnitKind; slots: (string | number | null)[] 
 export interface ManualPrinter { id: string; name: string; auto?: boolean; kind?: string; ip?: string; serial?: string; has_code?: boolean; units: ManualUnit[];
   type?: PrinterType; user?: string; slice_fill?: boolean; managed?: boolean }
 /** A filament of the last slice that matches several spools: which one goes on the printer's slot. */
-export interface SlicePick { printer: string; name: string; n: number; unit: number; slot: number; material: string; colour: string; spools: number[] }
+export interface SlicePick { printer: string; name: string; n: number; slice: number; unit: number; slot: number; material: string; colour: string; spools: number[] }
 
 /** PrusaLink and OctoPrint printers: read over HTTP, toolheads assigned by hand, prints always asked before booking. */
 export const isNet = (p: ManualPrinter) => p.type === 'prusalink' || p.type === 'octoprint';

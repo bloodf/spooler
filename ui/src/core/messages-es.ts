@@ -116,7 +116,7 @@ export const es: Record<MessageKey, string> = {
   'printer.gateCount': 'Gates del MMU puestos a mano',
   'printer.noGates': 'Ninguno',
   'printer.sliceFillSlots': 'Rellenar a partir del laminado',
-  'printer.gatesNote': 'Para un MMU que no informa de sus gates. Happy Hare y AFC informan de los suyos, y Spooler lee esos. Tras un laminado para esta impresora, el filamento n va al gate n.',
+  'printer.gatesNote': 'Para un MMU que no informa de sus gates. Happy Hare y AFC informan de los suyos mediante el lane_data de Moonraker, y Spooler lee esos. Tras un laminado para esta impresora, el filamento n va al gate n.',
   'printer.klipperToolsNote': 'Klipper informa de estos cabezales pero no de sus carretes: ponlos aquí. Tras un laminado para esta impresora, el filamento n va al cabezal n.',
   'printer.presets': 'Perfiles de impresora de OrcaSlicer',
   'printer.presetsAuto': 'Por la dirección del host del perfil',
