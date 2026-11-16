@@ -63,12 +63,8 @@ jobs:
             exit 1
           fi
 
-      - name: Render the Orca Cloud store image
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y librsvg2-bin
-          rsvg-convert -w 512 -h 512 assets/spooler-store.svg \
-            -o spooler-store-image.png
+      - name: Copy the Orca Cloud store image
+        run: cp assets/orca-cloud/spooler-tile.png spooler-store-image.png
 
       - name: Create draft release
         env:
