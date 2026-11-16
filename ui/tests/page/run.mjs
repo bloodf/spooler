@@ -658,6 +658,28 @@ test('stats tiles, shelf, waste, failed marker, history and export', `
 `);
 
 // ------------------------------------------------------------------ settings and wizard (test_wizard, test_display, test_drying)
+test('calibrated values from a saved copy wait for Save or Skip', `
+  const ASK = {name: 'Acme PLA Black @U1', changes: [{key: 'filament_flow_ratio', old: '0.98', new: '0.95'}, {key: 'filament_ironing_flow', old: '', new: '15%'}]};
+  await spools(SPOOLS, {calibration: [ASK]});
+  const box = () => byTest('calibration');
+  await until(box, 'prompt shown');
+  assert(text(box()).includes('Acme PLA Black @U1') && text(box()).includes('Nothing is written to Spoolman until you save'), 'names the filament: ' + text(box()));
+  eq(qa('[data-test=calibration] tbody tr').map(r => vis(r)), ['Flow ratio 0.98 0.95', 'filament_ironing_flow — 15%'], 'each setting: old and new');
+  eq(sentOf('calibration_save').length + sentOf('calibration_skip').length, 0, 'nothing sent before an answer');
+  await click(byTest('cal-skip'));
+  eq(lastOf('calibration_skip'), {type: 'calibration_skip', name: 'Acme PLA Black @U1'}, 'skip names the change set');
+  assert(!box(), 'skipped: gone');
+  await post({type: 'calibration', asks: [ASK]});
+  await click(byTest('cal-save'));
+  eq(lastOf('calibration_save'), {type: 'calibration_save', name: 'Acme PLA Black @U1'}, 'save names the change set');
+  assert(text(q('.sa [role=status]')).includes('Saving calibrated values'), 'saving announced');
+  assert(byTest('cal-save').disabled, 'no second save while one runs');
+  await post({type: 'sent', ok: true, text: 'Sent filament_flow_ratio to Spoolman.'});
+  await post({type: 'calibration', asks: []});
+  assert(!box() && text(q('.sa [role=status]')).includes('Sent filament_flow_ratio'), 'saved: gone, result shown');
+  await spools(SPOOLS);
+  assert(!box(), 'a list without asks shows none');
+`);
 test('settings: one switch per Display option, drying table, save waits for a passing test', `
   await until(() => byTest('settings-btn'));
   await click(byTest('settings-btn'));
@@ -677,9 +699,12 @@ test('settings: one switch per Display option, drying table, save waits for a pa
   await click(q('#d-diameter'));
   assert(!q('#auto-keep').checked, 'automatic Keep Slots Synced is off by default');
   await click(q('#auto-keep'));
+  assert(q('#cal-ask').checked, 'calibrated values: ask first by default');
+  await click(q('#cal-auto'));
   await click(byTest('save'));
   const s = lastOf('save');
-  eq([s.view, s.display.diameter, s.drying['NYLON CF'], s.drying.HIPS, s.url, s.auto_keep_slots], ['settings', true, 0, 9, 'http://spoolman:7912', true], 'saved');
+  eq([s.view, s.display.diameter, s.drying['NYLON CF'], s.drying.HIPS, s.url, s.auto_keep_slots, s.save_calibration],
+    ['settings', true, 0, 9, 'http://spoolman:7912', true, 'auto'], 'saved');
 `);
 test('settings: leaving with unsaved edits asks; going back keeps them', `
   await post({type: 'show_view', view: 'settings', url: 'http://s:7912', source: 'spoolman', low_stock: 100, display: DEFAULTS, drying: {}, progress: {}, stats: {}});

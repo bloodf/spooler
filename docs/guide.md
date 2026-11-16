@@ -93,8 +93,10 @@ you to send again or discard. Colour, vendor, material and name are changed in S
 only by hand, set `"auto_send": false` in Spooler's settings file.
 
 OrcaSlicer's Save on a Spooler preset makes a separate copy that no longer follows Spoolman. Spooler
-sends that copy's changed calibration settings to Spoolman, so the Spooler preset has them after its
-next rebuild.
+shows that copy's changed calibration settings at the top of the Spooler tab, with Spoolman's value
+and the new one. Save to Spoolman writes them, so the Spooler preset has them after its next rebuild;
+Skip leaves Spoolman alone and isn't asked again for the same values. Settings > Spool source >
+"Save calibrated values to Spoolman" can make this Automatically or Never instead.
 
 ## Spools tab
 

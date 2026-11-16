@@ -224,7 +224,7 @@ class SavedCopyTest(unittest.TestCase):
         self.sent = []
         self.patches = [mock.patch.object(sp, "start_send", lambda post, edits=None, auto=False: self.sent.append(edits)),
                         mock.patch.object(sp, "source", return_value="spoolman"),
-                        mock.patch.object(sp, "get_settings", return_value={})]
+                        mock.patch.object(sp, "get_settings", return_value={"save_calibration": "auto"})]
         for patch in self.patches:
             patch.start()
 
@@ -287,7 +287,7 @@ class SavedCopyTest(unittest.TestCase):
         self.assertEqual(self.sent, [])
 
     def test_turned_off_in_settings(self):
-        with mock.patch.object(sp, "get_settings", return_value={"send_saved_copies": False}):
+        with mock.patch.object(sp, "get_settings", return_value={"save_calibration": "never"}):
             self.event("PresetSelected", SPOOLER, "filament")
             self.event("PresetSaved", "My Black", "new")
         self.assertEqual(self.sent, [])

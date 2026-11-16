@@ -3,6 +3,12 @@
 Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); entries before
 0.9.0 are Spoolio's.
 
+## [Unreleased]
+
+### Changed
+- Saving a copy of a Spooler preset with changed calibration values (flow ratio, pressure advance and the others Spooler keeps in Spoolman) no longer writes them to Spoolman on its own. Spooler shows which filament it is, each setting's value in Spoolman and the new one, and writes nothing until you press Save to Spoolman. Skip leaves Spoolman as it is, and Spooler doesn't ask again about the same values for that filament until they change.
+- Settings > Spool source has "Save calibrated values to Spoolman": Ask first (the default), Automatically (the old behaviour) or Never. If you had turned off sending saved copies, it starts on Never.
+
 ## [0.28.0] - 2026-11-16
 
 ### Added

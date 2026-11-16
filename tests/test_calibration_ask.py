@@ -1,0 +1,161 @@
+"""Calibrated values from a saved copy are asked about before they reach Spoolman (Ask), sent at once
+(Automatically) or left alone (Never). Nothing here touches a network: Spoolman is a mock."""
+
+import json
+import types
+import unittest
+from unittest import mock
+
+from fake_bundle import Preset
+from plugin_loader import load
+
+sp, orca = load()
+
+SPOOLER = "_local/spooler/Acme PLA Black @Snapmaker U1"
+NAME = "Acme PLA Black @Snapmaker U1"
+
+
+class Filaments:
+    def __init__(self, presets):
+        self.presets = {p.name: p for p in presets}
+
+    def find_preset(self, name):
+        return self.presets.get(name)
+
+
+class AskTest(unittest.TestCase):
+    def setUp(self):
+        base = {"inherits": "Generic PLA @U1", "filament_flow_ratio": "0.98", "pressure_advance": "0.04",
+                "filament_settings_id": "x", "filament_vendor": "Acme", "default_filament_colour": "#000000"}
+        self.base = base
+        self.copy(filament_flow_ratio="0.95", pressure_advance="0.035")
+        sp._recent_filaments.clear()
+        sp._calib_asks.clear()
+        self.settings = {}
+        self.sent, self.notices, self.page = [], [], []
+        self.reply = {"type": "sent", "ok": True, "text": "Sent."}
+
+        def start_send(post, edits=None, auto=False):
+            self.sent.append(edits)
+            post(dict(self.reply))
+
+        self.patches = [
+            mock.patch.object(sp, "start_send", start_send),
+            mock.patch.object(sp, "source", return_value="spoolman"),
+            mock.patch.object(sp, "get_settings", lambda: dict(self.settings)),
+            mock.patch.object(sp, "save_settings", lambda s: self.settings.update(s) or True),
+            mock.patch.object(sp, "push_notice", lambda kind, text: self.notices.append(text)),
+            mock.patch.object(sp, "send_plate_message", self.page.append),
+        ]
+        for patch in self.patches:
+            patch.start()
+
+    def tearDown(self):
+        for patch in self.patches:
+            patch.stop()
+        orca.host.preset_bundle = None
+        sp._calib_asks.clear()
+
+    def copy(self, **values):
+        presets = [Preset(SPOOLER, self.base), Preset("My Black", dict(self.base, filament_settings_id="y", **values))]
+        orca.host.preset_bundle = lambda: types.SimpleNamespace(filaments=Filaments(presets))
+
+    def save_copy(self):
+        events = types.SimpleNamespace(PresetSelected="sel", PresetSaved="saved")
+        with mock.patch.object(orca, "LifecycleEvent", events, create=True), \
+                mock.patch.object(sp, "refresh_snapshot", lambda: None):
+            plugin = sp.SpoolerLoadFilaments()
+            plugin.on_lifecycle_event("sel", types.SimpleNamespace(name=SPOOLER, msg="filament"))
+            plugin.on_lifecycle_event("sel", types.SimpleNamespace(name="My Black", msg="filament"))
+            plugin.on_lifecycle_event("saved", types.SimpleNamespace(name="My Black", msg="new"))
+
+    def answer(self, kind):
+        posted = []
+        sp.answer_calibration({"type": kind, "name": NAME}, posted.append)
+        return posted
+
+    def test_ask_is_the_default_and_writes_nothing(self):
+        self.save_copy()
+        self.assertEqual(self.sent, [])
+        self.assertEqual(len(self.notices), 1)
+        self.assertIn(NAME, self.notices[0])
+        asks = [{"name": NAME, "changes": [
+            {"key": "filament_flow_ratio", "old": "0.98", "new": "0.95"},
+            {"key": "pressure_advance", "old": "0.04", "new": "0.035"}]}]
+        self.assertEqual(sp.calibration_asks(), asks)
+        self.assertEqual(self.page, [{"type": "calibration", "asks": asks}])
+
+    def test_save_sends_the_change_set(self):
+        self.save_copy()
+        posted = self.answer("calibration_save")
+        self.assertEqual(self.sent, [(NAME, {"filament_flow_ratio": ("0.95", "0.98"),
+                                             "pressure_advance": ("0.035", "0.04")})])
+        self.assertEqual(posted, [self.reply, {"type": "calibration", "asks": []}])
+        self.assertEqual(sp.calibration_asks(), [])
+
+    def test_a_failed_save_keeps_asking(self):
+        self.reply = {"type": "sent", "ok": False, "text": "Spoolman is not reachable."}
+        self.save_copy()
+        posted = self.answer("calibration_save")
+        self.assertEqual(len(self.sent), 1)
+        self.assertEqual([ask["name"] for ask in posted[-1]["asks"]], [NAME])
+
+    def test_skip_writes_nothing_and_is_not_asked_again_for_the_same_values(self):
+        self.save_copy()
+        posted = self.answer("calibration_skip")
+        self.assertEqual(self.sent, [])
+        self.assertEqual(posted, [{"type": "calibration", "asks": []}])
+        self.assertEqual(self.settings["calibration_skipped"],
+                         {NAME: {"filament_flow_ratio": "0.95", "pressure_advance": "0.035"}})
+        self.notices.clear()
+        self.save_copy()  # the same values saved again
+        self.assertEqual((sp.calibration_asks(), self.notices), ([], []))
+        self.copy(filament_flow_ratio="0.93", pressure_advance="0.035")  # one value changed again
+        self.save_copy()
+        self.assertEqual(sp.calibration_asks()[0]["changes"][0], {"key": "filament_flow_ratio", "old": "0.98", "new": "0.93"})
+        self.assertEqual(len(self.notices), 1)
+
+    def test_a_save_forgets_an_earlier_skip(self):
+        self.save_copy()
+        self.answer("calibration_skip")
+        self.copy(filament_flow_ratio="0.93")
+        self.save_copy()
+        self.answer("calibration_save")
+        self.assertEqual(self.settings["calibration_skipped"], {})
+
+    def test_an_unknown_change_set_does_nothing(self):
+        posted = self.answer("calibration_save")
+        self.assertEqual((self.sent, posted), ([], [{"type": "calibration", "asks": []}]))
+
+    def test_automatically_sends_without_asking(self):
+        self.settings["save_calibration"] = "auto"
+        self.save_copy()
+        self.assertEqual([edits[0] for edits in self.sent], [NAME])
+        self.assertEqual(sp.calibration_asks(), [])
+
+    def test_never_neither_asks_nor_sends(self):
+        self.settings["save_calibration"] = "never"
+        self.save_copy()
+        self.assertEqual((self.sent, self.notices, sp.calibration_asks()), ([], [], []))
+
+
+class ModeSettingTest(unittest.TestCase):
+    def read(self, saved):
+        with mock.patch.object(sp, "SETTINGS_FILE") as path:
+            path.read_text.return_value = json.dumps(saved)
+            return sp.get_settings()["save_calibration"]
+
+    def test_default_and_older_setting(self):
+        self.assertEqual(self.read({}), "ask")
+        self.assertEqual(self.read({"send_saved_copies": False}), "never")
+        self.assertEqual(self.read({"send_saved_copies": True}), "ask")
+        self.assertEqual(self.read({"send_saved_copies": False, "save_calibration": "auto"}), "auto")
+
+    def test_only_known_modes(self):
+        self.assertEqual(sp.parse_calibration_mode("auto"), "auto")
+        self.assertEqual(sp.parse_calibration_mode("yes"), "ask")
+        self.assertEqual(sp.CONFIG_KEYS["save_calibration"]("never"), "never")
+
+
+if __name__ == "__main__":
+    unittest.main()
