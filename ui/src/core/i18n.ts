@@ -1,28 +1,30 @@
 import { computed, ref } from 'vue';
 import { en, ptBR, type MessageKey } from './messages';
-import { interpolate, resolveLocale, type LangPref, type Locale } from './i18n-core';
+import { es } from './messages-es';
+import { de } from './messages-de';
+import { zhCN } from './messages-zh';
+import { formatMoney, interpolate, isLocale, resolveLocale, type LangPref, type Locale } from './i18n-core';
 import { boot } from './boot';
 
 const PREF_KEY = 'spooler.lang';
-const dicts: Record<Locale, Record<MessageKey, string>> = { en, 'pt-BR': ptBR };
+const dicts: Record<Locale, Record<MessageKey, string>> = { en, 'pt-BR': ptBR, es, de, 'zh-CN': zhCN };
 
 // The explicit choice lives in the plugin's settings (boot "pref"); localStorage is only a fallback cache.
 let persist: (value: LangPref) => void = () => {};
 export function onLangPref(fn: (value: LangPref) => void): void { persist = fn; }
 function readPref(): LangPref {
   const fromHost = (boot as { pref?: unknown }).pref;
-  if (fromHost === 'en' || fromHost === 'pt-BR') return fromHost;
-  if (fromHost === 'auto') return 'auto';
+  if (isLocale(fromHost) || fromHost === 'auto') return fromHost;
   try {
     const v = localStorage.getItem(PREF_KEY);
-    return v === 'en' || v === 'pt-BR' ? v : 'auto';
+    return isLocale(v) ? v : 'auto';
   } catch { return 'auto'; }
 }
 
 export const langPref = ref<LangPref>(readPref());
 const hostLang = ref<unknown>(null);
-export const locale = computed<Locale>(() => resolveLocale(langPref.value, hostLang.value, navigator.languages ?? [navigator.language]));
-export const autoLocale = computed<Locale>(() => resolveLocale('auto', hostLang.value, navigator.languages ?? [navigator.language]));
+export const locale = computed<Locale>(() => resolveLocale(langPref.value, hostLang.value));
+export const autoLocale = computed<Locale>(() => resolveLocale('auto', hostLang.value));
 
 export function setHostLanguage(value: unknown): void { hostLang.value = value; }
 export function setLangPref(value: LangPref): void {
@@ -47,6 +49,8 @@ export function tMaybe(key: string, fallback: string, params?: Record<string, un
 export const fmt = {
   number: (v: number, digits = 0) => new Intl.NumberFormat(locale.value, { maximumFractionDigits: digits, minimumFractionDigits: digits }).format(v),
   grams: (v: number | null | undefined) => (v == null ? '? g' : `${new Intl.NumberFormat(locale.value, { maximumFractionDigits: 0 }).format(Math.round(v))} g`),
+  /** A currency amount with the plugin's sign ("€", "CHF "), placed as the language does. */
+  money: (sign: string, v: number) => formatMoney(sign, fmt.number(v, 2), locale.value),
   bytes(b: number | null | undefined): string {
     if (b == null) return '';
     const nf = (x: number, d: number) => new Intl.NumberFormat(locale.value, { maximumFractionDigits: d }).format(x);

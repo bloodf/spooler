@@ -44,7 +44,7 @@ function exportCsv() { exporting.value = true; exportNote.value = null; bridge.p
 const periods = computed(() => (['30', '90', 'year', 'all'] as const).map(v => ({ value: v, label: t(`stats.period.${v}`) })));
 const w = (g: number) => (g >= 1000 ? `${fmt.number(g / 1000, 2)} kg` : `${fmt.number(Math.round(g))} g`);
 const split = (text: string) => { const i = text.lastIndexOf(' '); return i < 0 ? { value: text, unit: '' } : { value: text.slice(0, i), unit: text.slice(i + 1) }; };
-const money = (v: unknown) => (typeof v === 'number' ? (data.value?.sign ?? '') + fmt.number(v, 2) : '—');
+const money = (v: unknown) => (typeof v === 'number' ? fmt.money(data.value?.sign ?? '', v) : '—');
 const col = (c?: string) => (c ? '#' + c : null);
 const date = (unix: number) => {
   const d = new Date(unix * 1000), now = new Date(), day = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
@@ -186,6 +186,8 @@ const soonLabel = (s: any) => {
 .stv-weeks { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: var(--oui-s2); height: 168px; margin-bottom: var(--oui-s2); }
 .stv-week { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; justify-items: center; gap: 3px; min-width: 0; text-align: center; }
 .stv-wv, .stv-wl { white-space: nowrap; font-size: var(--oui-text-xs); }
+/* "Diese Woche" is wider than a week's column in a narrow dock: the label may take two lines. */
+.stv-wl { white-space: normal; line-height: 1.15; }
 .stv-bar { align-self: end; display: flex; flex-direction: column-reverse; gap: 1px; width: 72%; max-width: 44px; padding: 2px; border-radius: 4px 4px 0 0;
   background: var(--oui-raised); box-shadow: inset 0 0 0 1px var(--oui-border); overflow: hidden; }
 /* A thin edge in the text colour keeps a near-black or near-white filament visible against the frame in either theme. */

@@ -94,6 +94,9 @@ const state = computed<{ state: OuiState; label: string; text: string }>(() => {
 
 <style>
 html, body, #app { min-height: 100%; }
+/* Manrope has Latin glyphs only. Chinese text takes the system's Simplified Chinese font, named here so a Japanese or
+   Traditional Chinese one isn't picked first for the shared Han characters. */
+html:lang(zh-CN) { --oui-font: 'Manrope', 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', 'Noto Sans SC', 'Source Han Sans SC', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
 .sp-shell { min-height: 100vh; }
 .oui-page > [role='tabpanel'] { min-width: 0; }
 /* Narrow bar (the 380 px dock): the page actions keep their icons and drop their words; the state keeps its chip. */

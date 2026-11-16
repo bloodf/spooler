@@ -11,6 +11,7 @@ import { m, usageState, type UsagePrint } from '../state/main';
 import { t, tn, fmt, locale } from '../core/i18n';
 import { formatWeight, shown } from '../logic/spools';
 import { rememberOpener, restoreFocus } from '../core/dialog';
+import { decimalKeys } from '../core/decimal';
 
 // Filament usage booking: what each print used, booked to the spool in each slot (ask / auto / off).
 // A row whose result is unknown is never sent again by itself: the user checks Spoolman and says what happened.
@@ -37,6 +38,8 @@ const result = (p: UsagePrint) => (p.result === 'finished' ? t('usage.finished')
 const edits = reactive<Record<string, Record<number, { grams?: number | null; spool?: number | null }>>>({});
 watch(() => m.usage.prints, ps => { for (const id of Object.keys(edits)) if (!ps.some(p => p.id === id && p.state === 'pending')) delete edits[id]; });
 const edit = (p: UsagePrint, slot: number) => ((edits[p.id] ??= {})[slot] ??= {});
+// "2.5" typed or pasted is 2.5 g in every language, not 25 (see core/decimal).
+const gramKeys = decimalKeys(() => locale.value);
 const gramsOf = (p: UsagePrint, r: { slot: number; grams: number }) => (edits[p.id]?.[r.slot]?.grams !== undefined ? edits[p.id][r.slot].grams : r.grams);
 const spoolOptions = (material?: string) => {
   const mat = String(material || '').toLowerCase();
@@ -104,7 +107,8 @@ const left = (id?: number | null) => m.spools.find(s => s.id === id)?.remaining_
                 :placeholder="t('usage.choose')" :aria-label="t('usage.chooseFor', { n: r.slot })" class="us-sel" @update:model-value="v => (edit(p, r.slot).spool = v)" />
                 <OuiStatus state="warn" variant="plain">{{ t('usage.notIdentified') }}</OuiStatus></template>
             </span>
-            <span v-if="r.state !== 'booked'" class="us-g"><InputNumber :model-value="gramsOf(p, r)" size="small" :min="0" :max="5000" :max-fraction-digits="1" :use-grouping="false" suffix=" g"
+            <span v-if="r.state !== 'booked'" class="us-g" @keypress.capture="gramKeys.onKeypress" @paste.capture="gramKeys.onPaste"><InputNumber
+              :model-value="gramsOf(p, r)" size="small" :min="0" :max="5000" :max-fraction-digits="1" :use-grouping="false" :locale="locale" suffix=" g"
               :aria-label="t('usage.gramsFor', { n: r.slot })" :invalid="typeof gramsOf(p, r) !== 'number'"
               @input="e => (edit(p, r.slot).grams = typeof e.value === 'number' ? e.value : null)" @update:model-value="v => (edit(p, r.slot).grams = v)" /></span>
           </template>

@@ -1,5 +1,6 @@
-// Every visible string of the Spooler pages, in English and Brazilian Portuguese. Texts produced in Python
-// (Spoolman errors, plate check rows, action results) are shown as they come, inside these.
+// Every visible string of the Spooler pages, in English and Brazilian Portuguese; Spanish, German and Simplified Chinese
+// are in messages-es.ts, messages-de.ts and messages-zh.ts. Texts produced in Python (Spoolman errors, plate check rows,
+// action results) are worded there in the same language (tr() in spooler_any.py) and shown as they come, inside these.
 export const en = {
   'common.cancel': 'Cancel', 'common.close': 'Close', 'common.dismiss': 'Dismiss', 'common.goBack': 'Go back', 'common.loading': 'Loading…',
   'common.ok': 'OK', 'common.retry': 'Try again', 'common.save': 'Save', 'common.unknownError': 'Unknown error',
@@ -225,7 +226,8 @@ export const en = {
   'bambu.signedOut': 'Signed out', 'bambu.connected': 'Connected to Bambu Cloud', 'bambu.notConnected': 'Not connected: {why}', 'bambu.failed': 'connection failed',
   'bambu.experimental': 'Experimental: this uses Bambu’s unofficial cloud service, which Bambu can change at any time. Spooler never stores your password.',
   'lang.title': 'Language', 'lang.label': 'Page language', 'lang.auto': 'Automatic ({current})', 'lang.en': 'English', 'lang.pt-BR': 'Português (Brasil)',
-  'lang.help': 'Automatic follows OrcaSlicer’s language, then the system’s. Your choice is saved with Spooler’s settings.',
+  'lang.es': 'Español', 'lang.de': 'Deutsch', 'lang.zh-CN': '简体中文',
+  'lang.help': 'Automatic follows OrcaSlicer’s language, or English when Spooler doesn’t have it. Your choice is saved with Spooler’s settings.',
 
   'wiz.count': 'Step {n} of {total}', 'wiz.skip': 'Skip the guide', 'wiz.back': 'Back', 'wiz.next': 'Next', 'wiz.finish': 'Save & finish',
   'wiz.needTest': 'Next unlocks once the connection test passes.',
@@ -468,7 +470,8 @@ export const ptBR: Record<MessageKey, string> = {
   'bambu.signedOut': 'Desconectado', 'bambu.connected': 'Conectado à Bambu Cloud', 'bambu.notConnected': 'Sem conexão: {why}', 'bambu.failed': 'a conexão falhou',
   'bambu.experimental': 'Experimental: usa o serviço de nuvem não oficial da Bambu, que ela pode mudar a qualquer momento. O Spooler nunca guarda sua senha.',
   'lang.title': 'Idioma', 'lang.label': 'Idioma da página', 'lang.auto': 'Automático ({current})', 'lang.en': 'English', 'lang.pt-BR': 'Português (Brasil)',
-  'lang.help': 'Automático segue o idioma do OrcaSlicer e depois o do sistema. A escolha é salva com os ajustes do Spooler.',
+  'lang.es': 'Español', 'lang.de': 'Deutsch', 'lang.zh-CN': '简体中文',
+  'lang.help': 'Automático segue o idioma do OrcaSlicer ou, se o Spooler não o tiver, o inglês. A escolha é salva com os ajustes do Spooler.',
 
   'wiz.count': 'Passo {n} de {total}', 'wiz.skip': 'Pular o guia', 'wiz.back': 'Voltar', 'wiz.next': 'Próximo', 'wiz.finish': 'Salvar e concluir',
   'wiz.needTest': 'Próximo é liberado quando o teste de conexão passar.',

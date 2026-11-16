@@ -34,6 +34,8 @@ function dismiss() { m.plate = null; bridge.postMain({ type: 'plate_dismiss' });
   </OuiPanel>
 </template>
 <style>
+/* Longer labels (German) wrap the actions under the title instead of pushing past a narrow dock. */
+[data-test='plate'] > .oui-panel-head { flex-wrap: wrap; }
 .pl-rows { list-style: none; padding: 0; display: grid; gap: var(--oui-s3); }
 .pl-row { display: grid; grid-template-columns: 14px minmax(0, 1.4fr) minmax(64px, 1fr) minmax(0, 1.4fr); gap: var(--oui-s3); align-items: center; }
 .pl-who, .pl-res { display: grid; gap: 1px; min-width: 0; overflow-wrap: anywhere; }

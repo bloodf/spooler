@@ -14,7 +14,7 @@ export interface Boot {
   view: 'main' | 'settings';
   version: string;
   lang: string | null;
-  pref?: 'auto' | 'en' | 'pt-BR';
+  pref?: 'auto' | 'en' | 'pt-BR' | 'es' | 'de' | 'zh-CN';
   low_stock_default: number;
   refresh_ms: number;
   display_defaults: Record<string, boolean>;

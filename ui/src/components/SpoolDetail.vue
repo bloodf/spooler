@@ -31,7 +31,7 @@ const original = computed(() => originalWeight(s.value));
 const level = computed(() => lowLevel(s.value.remaining_weight, m.low));
 const stale = computed(() => !!m.loadError);
 const canAct = computed(() => m.source === 'spoolman');
-const money = (v: unknown) => (typeof v === 'number' ? (detail.value?.sign ?? '') + fmt.number(v, 2) : '—');
+const money = (v: unknown) => (typeof v === 'number' ? fmt.money(detail.value?.sign ?? '', v) : '—');
 
 // The amount, big: grams (or the percentage, when Settings asks for it), with the rest as its sub line.
 const amount = computed(() => {
