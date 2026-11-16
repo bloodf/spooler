@@ -1,4 +1,4 @@
-import { reactive } from 'vue';
+import { reactive, watch } from 'vue';
 import * as bridge from '../core/bridge';
 import { m, note, on, setTab } from './main';
 import { t } from '../core/i18n';
@@ -7,7 +7,7 @@ import { t } from '../core/i18n';
 // spool the user picked; with none picked the list shows its first spool until the user closes the detail.
 // Every action is sent with the list origin it was chosen from, so the plugin refuses it if the source changed.
 export type MenuMode = '' | 'weigh' | 'use' | 'remain' | 'note' | 'move';
-export const menu = reactive({ id: null as number | null, picks: 0, auto: true, shown: null as number | null, mode: '' as MenuMode, val: '', detail: null as any });
+export const menu = reactive({ id: null as number | null, picks: 0, auto: true, shown: null as number | null, from: '', mode: '' as MenuMode, val: '', detail: null as any });
 on('detail', d => { if (d && menu.shown === d.id) menu.detail = d; });
 
 export function pickSpool(id: number): void {
@@ -28,11 +28,27 @@ let waiting: number | null = null;
 function askDetail(id: number): void {
   clearTimeout(settle);
   waiting = null;
-  if (menu.shown === id) bridge.postMain({ type: 'spool_detail', id });
+  // Still the spool shown, from the source it was shown for, and that source has a history (Spoolman only).
+  if (menu.shown === id && menu.from === m.source && m.source === 'spoolman') bridge.postMain({ type: 'spool_detail', id });
 }
+/**
+ * The shown spool changed in Spoolman (an action of ours settled, or a newer list arrived): ask its history and
+ * "Lasts about" again. The old answer stays on screen until the new one comes, and a burst (an action's result,
+ * then the list it refreshes) makes one request.
+ */
+export function refreshDetail(): void {
+  const id = menu.shown;
+  if (id == null || menu.from !== m.source || m.source !== 'spoolman') return;
+  clearTimeout(settle);
+  waiting = id;
+  settle = setTimeout(() => askDetail(id), DETAIL_SETTLE_MS);
+}
+on('actionOk', refreshDetail);
+watch(() => m.loadedAt, refreshDetail);
+/** Ids are only unique within one source: a spool shown for another source is a different spool. */
 export function shownSpool(id: number | null): void {
-  if (menu.shown === id) return;
-  Object.assign(menu, { shown: id, mode: '', val: '', detail: null });
+  if (menu.shown === id && menu.from === m.source) return;
+  Object.assign(menu, { shown: id, from: m.source, mode: '', val: '', detail: null });
   clearTimeout(settle);
   waiting = null;
   if (id == null || m.source !== 'spoolman') return;

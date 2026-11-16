@@ -110,7 +110,8 @@ const selected = computed<Spool | null>(() => {
   const top = rows.value[0];
   return top.kind === 'stack' ? top.items[0] : top.spool;
 });
-watch(() => selected.value?.id ?? null, shownSpool, { immediate: true });
+// Keyed on the source too: the same id from another source is another spool, shown afresh.
+watch(() => [selected.value?.id ?? null, m.source] as const, ([id]) => shownSpool(id), { immediate: true });
 // Where the detail sits under the list (narrow), an explicit pick takes the keyboard and the eye to its heading.
 watch(() => menu.picks, async () => {
   await nextTick();

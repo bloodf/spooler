@@ -3,6 +3,12 @@
 Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); entries before
 0.9.0 are Spoolio's.
 
+## [0.27.1] - 2026-11-15
+
+### Fixed
+- A spool's detail now updates its print history and "Lasts about" after one of its actions goes through and whenever the spool list is read again, instead of keeping what it showed when the spool was first picked.
+- Switching the spool source between Spoolman and Bambu Cloud with the same spool number shown could leave the detail on "Loading…". The detail now treats it as a different spool and asks only Spoolman for a history.
+
 ## [0.27.0] - 2026-11-15
 
 ### Changed
