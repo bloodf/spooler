@@ -31,6 +31,27 @@ and asks OrcaSlicer to reload it:
 
 Only keys that exist in OrcaSlicer's `PrintConfig.cpp` go into a preset: one unknown key makes
 OrcaSlicer refuse the whole bundle.
+`preset_problem()` checks each preset before the bundle is written (known keys only, every value a list
+of text, number settings one finite number, percentage or `nil`); a preset that fails is left out and
+logged instead of taking the bundle down.
+
+Settings > Presets (`presets` in the settings file, `parse_presets()`) changes two things:
+
+- **Per spool** (`per_spool`): `spool_profile_names()` makes one preset per spool not archived,
+  `<filament> #<spool id> @<printer>`, for the printers `spool_targets()` gives it: the spool's
+  `use_with` extra field (a JSON list of printer presets, or names typed in Spoolman's form), else the
+  printer it is loaded on (`loaded_targets()`: Printer tab slots and Live Link trays, matched to a
+  printer preset by host address), else every printer. Preset names are then keyed
+  `(filament id, printer preset, spool id)`; `profiles.json` keeps one preset per filament and printer
+  (the lowest-numbered spool's). Send Preset Edits still writes to the filament, which every spool of it
+  shares. Switching renames every preset: OrcaSlicer refuses a reload that removes or renames the
+  selected preset while it has unsaved changes ("A modified selected preset was removed or renamed"),
+  and the usual back-off retries it.
+- **Advanced tuning** (`tuning`, `materials`): per material (`tuning_for()`, the longest row name the
+  material starts with), the base preset to inherit (`tuned_parent()`, by the name before "@", on each
+  printer that has it, else `best_parent()`) and `TUNING_KEYS` values, set before the filament's
+  calibration fields and `orca_settings`, which win. Off, `profile_files()` makes exactly the presets
+  it made before.
 
 ## Changes the other way
 
