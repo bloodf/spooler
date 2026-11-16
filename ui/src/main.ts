@@ -2,6 +2,7 @@ import { createApp, watch } from 'vue';
 import { installOrcaUI } from '../shared/src';
 import { boot } from './core/boot';
 import { locale, setHostLanguage } from './core/i18n';
+import { primeLabels } from './core/prime-locale';
 import { followHostTheme } from './core/theme';
 import { primeVueOptions } from '../shared/src';
 import App from './App.vue';
@@ -16,6 +17,7 @@ const prime = app.config.globalProperties.$primevue;
 const english = { ...prime.config.locale };
 watch(locale, l => {
   document.documentElement.lang = l;
-  prime.config.locale = { ...english, ...(primeVueOptions(l).locale ?? {}) } as NonNullable<typeof prime.config.locale>;
+  const own = l === 'pt-BR' ? primeVueOptions(l).locale : primeLabels[l];
+  prime.config.locale = { ...english, ...(own ?? {}), aria: { ...english.aria, ...((own?.aria as object | undefined) ?? {}) } } as NonNullable<typeof prime.config.locale>;
 }, { immediate: true });
 app.mount('#app');

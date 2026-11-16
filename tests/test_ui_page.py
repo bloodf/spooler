@@ -115,8 +115,10 @@ class Embedded(unittest.TestCase):
             self.assertEqual(sp.ui_language(), "pt-BR")
             sp.save_ui_language("xx")
             self.assertEqual(sp.ui_language(), "pt-BR")
+            self.assertEqual(sp.text_language(), "pt-BR")   # Python's own texts follow the choice at once
         finally:
             sp.save_settings(settings)
+            sp.text_language(fresh=True)
 
 
 class Logic(unittest.TestCase):

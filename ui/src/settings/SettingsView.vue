@@ -14,6 +14,7 @@ import * as bridge from '../core/bridge';
 import { boot } from '../core/boot';
 import { m } from '../state/main';
 import { t, tn, langPref, setLangPref, autoLocale, onLangPref } from '../core/i18n';
+import { LOCALES } from '../core/i18n-core';
 import type { LangPref } from '../core/i18n-core';
 import { form, saving, dirty, ready, saveWhy, update, save, checkUpdate, startSettings, openWizard, wizard, leave } from './state';
 
@@ -54,8 +55,8 @@ function removeMat(name: string) { const { [name]: _gone, ...rest } = form.dryin
 const setDays = (name: string, v: number | null) => { form.drying = { ...form.drying, [name]: v && v > 0 ? Math.min(3650, Math.round(v)) : 0 }; };
 
 const currencies = computed(() => [{ v: 'spoolman', label: t('set.cur.spoolman', { code: form.cur_code }) }, { v: 'gbp', label: '£ GBP' }, { v: 'eur', label: '€ EUR' }, { v: 'usd', label: '$ USD' }]);
-const langOptions = computed(() => [{ value: 'auto', label: t('lang.auto', { current: t(`lang.${autoLocale.value}` as any) }) },
-  { value: 'en', label: t('lang.en') }, { value: 'pt-BR', label: t('lang.pt-BR') }]);
+const langOptions = computed(() => [{ value: 'auto', label: t('lang.auto', { current: t(`lang.${autoLocale.value}`) }) },
+  ...LOCALES.map(value => ({ value, label: t(`lang.${value}`) }))]);
 const setDisp = (k: string, v: unknown) => { form.display = { ...form.display, [k]: !!v }; };
 
 // The index beside the sections; the source flags itself until it passed a test (Save waits for it).
