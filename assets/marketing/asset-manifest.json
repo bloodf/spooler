@@ -1,0 +1,723 @@
+{
+  "note": "Written by scripts/store_images/render.py. Sources are the generated artwork at its native size; exports carry a screenshot of the plugin's page with demo data in the source's empty square. Exports without a source are plain screenshots of that page.",
+  "sources": [
+    {
+      "file": "assets/marketing/source/spooler-workshop-cover-en.png",
+      "width": 1672,
+      "height": 941,
+      "bytes": 1754025,
+      "sha256": "28946244985730d9177e4bf26c5e03bc4f8037b390f154f81fac12671d5c6f37"
+    },
+    {
+      "file": "assets/marketing/source/spooler-workshop-feature-01-stock-en.png",
+      "width": 1672,
+      "height": 941,
+      "bytes": 1830612,
+      "sha256": "62fa71f2611c11e66bf0536c79c40852a166a0d6c6298c084a17d83feb50b9fd"
+    },
+    {
+      "file": "assets/marketing/source/spooler-workshop-feature-01-stock-pt-BR.png",
+      "width": 1672,
+      "height": 941,
+      "bytes": 1768838,
+      "sha256": "0ed43dee8634b93bcee4e63ed59c9798d6fede0da3e74124c76efc965b23e5cb"
+    },
+    {
+      "file": "assets/marketing/source/spooler-workshop-feature-02-presets-en.png",
+      "width": 1672,
+      "height": 941,
+      "bytes": 1822219,
+      "sha256": "174fbf7b40bf115d5176382dcfb3e435e9b0bae9c41f912a10407ffce858752c"
+    },
+    {
+      "file": "assets/marketing/source/spooler-workshop-feature-02-presets-pt-BR.png",
+      "width": 1672,
+      "height": 941,
+      "bytes": 1802811,
+      "sha256": "703aa37683c04b6b2ca9af3090a00b5e7707cede85456515d491d4931bc17fb6"
+    },
+    {
+      "file": "assets/marketing/source/spooler-workshop-feature-03-slots-en.png",
+      "width": 1672,
+      "height": 941,
+      "bytes": 1755764,
+      "sha256": "bfd98ff9f84726e48c59b417a9391f781074a3cf849e512942494afff69dc6e4"
+    },
+    {
+      "file": "assets/marketing/source/spooler-workshop-feature-03-slots-pt-BR.png",
+      "width": 1672,
+      "height": 941,
+      "bytes": 1779292,
+      "sha256": "7880c032ca9e60b0402e73de562ff666c8832b3f0b3fb655edeb7955a88c449b"
+    },
+    {
+      "file": "assets/marketing/source/spooler-workshop-feature-04-check-en.png",
+      "width": 1672,
+      "height": 941,
+      "bytes": 1748184,
+      "sha256": "0d6900481fb16cb58263c4bfa4113a4ba634d136b2665779f828e88f1db90c86"
+    },
+    {
+      "file": "assets/marketing/source/spooler-workshop-feature-04-check-pt-BR.png",
+      "width": 1672,
+      "height": 941,
+      "bytes": 1732186,
+      "sha256": "343f9a5a5a49d2a3c0d0854d72dd60322b50b43ba785c9107fc2cc2a85d111b3"
+    },
+    {
+      "file": "assets/marketing/source/spooler-workshop-hero-dark-en.png",
+      "width": 1672,
+      "height": 941,
+      "bytes": 1782923,
+      "sha256": "76be7646827d41fb271e67ff1e567e4ff6caf84bfea885636786e748fe7f63c2"
+    },
+    {
+      "file": "assets/marketing/source/spooler-workshop-hero-dark-pt-BR.png",
+      "width": 1672,
+      "height": 941,
+      "bytes": 1739835,
+      "sha256": "ad356de9333bab5ff56d7ec9d04af2f844cf3c932e8a38a3117cc1184597471f"
+    },
+    {
+      "file": "assets/marketing/source/spooler-workshop-hero-light-en.png",
+      "width": 1672,
+      "height": 941,
+      "bytes": 1752585,
+      "sha256": "002ccaf887eeabfbe18a8fff5a0a86336c2ad3091f76d4321d816d22d6de7d40"
+    },
+    {
+      "file": "assets/marketing/source/spooler-workshop-hero-light-pt-BR.png",
+      "width": 1672,
+      "height": 941,
+      "bytes": 1728544,
+      "sha256": "0f134377f3000f61dfb0d37c6d8240fb5e3d3a902ff977b071e1392c76402228"
+    },
+    {
+      "file": "assets/marketing/source/spooler-workshop-main-pt-BR.png",
+      "width": 1672,
+      "height": 941,
+      "bytes": 1756723,
+      "sha256": "5ed679730f5856ce098c31bd9285bc0412146aecd1ce54f59167444788de09b6"
+    },
+    {
+      "file": "assets/marketing/source/spooler-workshop-main-square-en.png",
+      "width": 1254,
+      "height": 1254,
+      "bytes": 1819262,
+      "sha256": "0c55ef042ecd1209d8414465b188597ca45c74b57cda7d50d674594058fb5662"
+    },
+    {
+      "file": "assets/marketing/source/spooler-workshop-main-square-pt-BR.png",
+      "width": 1254,
+      "height": 1254,
+      "bytes": 1837820,
+      "sha256": "459a8e59683b83b30ab8a6507b2f0cf5165e61191b9adb94b425e2c81d1d5f43"
+    },
+    {
+      "file": "assets/marketing/source/spooler-workshop-social-preview-en.png",
+      "width": 1774,
+      "height": 887,
+      "bytes": 1825891,
+      "sha256": "7cb94a1d92b490501b99e99831cb991e3887dee9d9d60138e6c4aa980c3185a4"
+    },
+    {
+      "file": "assets/marketing/source/spooler-workshop-social-preview-pt-BR.png",
+      "width": 1774,
+      "height": 887,
+      "bytes": 1766109,
+      "sha256": "f486deaaeb9ceee23a516088ef9427579839b4f6c0940d05ff4094bae803f62d"
+    },
+    {
+      "file": "assets/marketing/source/spooler-workshop-tile.png",
+      "width": 1254,
+      "height": 1254,
+      "bytes": 1249510,
+      "sha256": "eced9dcdbabbea2b0bac72998bf7c9dc47185074b92723318733d4ff02c45845"
+    }
+  ],
+  "exports": [
+    {
+      "file": "assets/orca-cloud/spooler-tile.png",
+      "use": "Orca Cloud store tile",
+      "source": "assets/marketing/source/spooler-workshop-tile.png",
+      "operation": "scaled",
+      "width": 512,
+      "height": 512,
+      "bytes": 203458,
+      "sha256": "119d83e23e4ca9c19153bf99aada0c6797a34b360e76dacceb37b464af55abc3",
+      "date": "2026-11-16"
+    },
+    {
+      "file": "assets/orca-cloud/spooler-main-en.png",
+      "use": "Orca Cloud main image",
+      "screen": "left",
+      "theme": "dark",
+      "language": "en",
+      "source": "assets/marketing/source/spooler-workshop-cover-en.png",
+      "square_in_source": [
+        885,
+        101,
+        1597,
+        787
+      ],
+      "square": [
+        847,
+        97,
+        1528,
+        752
+      ],
+      "operation": "scaled; page screenshot (left, dark, en, 681x655 at 2x) placed in the empty square, corners rounded 13.4 px",
+      "width": 1600,
+      "height": 900,
+      "bytes": 1317629,
+      "sha256": "3dfee90412d5c5b9d220eb3e2b780caaba5bc213b1f8046fca812eeef329003e",
+      "date": "2026-11-16"
+    },
+    {
+      "file": "assets/orca-cloud/spooler-main-square-en.png",
+      "use": "Orca Cloud square image",
+      "screen": "left",
+      "theme": "dark",
+      "language": "en",
+      "source": "assets/marketing/source/spooler-workshop-main-square-en.png",
+      "square_in_source": [
+        679,
+        449,
+        1204,
+        967
+      ],
+      "square": [
+        488,
+        323,
+        864,
+        694
+      ],
+      "operation": "scaled; page screenshot (left, dark, en, 677x668 at 2x) placed in the empty square, corners rounded 10.0 px",
+      "width": 900,
+      "height": 900,
+      "bytes": 860653,
+      "sha256": "7b1fa3d6902fd497b3be817d5be64690d70be0e426df4d3ad7b17999c56f1fb8",
+      "date": "2026-11-16"
+    },
+    {
+      "file": "assets/orca-cloud/spooler-feature-01-stock-en.png",
+      "use": "Orca Cloud gallery image",
+      "screen": "stock",
+      "theme": "dark",
+      "language": "en",
+      "source": "assets/marketing/source/spooler-workshop-feature-01-stock-en.png",
+      "square_in_source": [
+        885,
+        101,
+        1596,
+        788
+      ],
+      "square": [
+        847,
+        97,
+        1527,
+        753
+      ],
+      "operation": "scaled; page screenshot (stock, dark, en, 680x656 at 2x) placed in the empty square, corners rounded 9.6 px",
+      "width": 1600,
+      "height": 900,
+      "bytes": 1357387,
+      "sha256": "a179061506c90a789a7214cc09d74f4e7b35198cd8a01071348480526f3e965a",
+      "date": "2026-11-16"
+    },
+    {
+      "file": "assets/orca-cloud/spooler-feature-02-presets-en.png",
+      "use": "Orca Cloud gallery image",
+      "screen": "presets",
+      "theme": "dark",
+      "language": "en",
+      "source": "assets/marketing/source/spooler-workshop-feature-02-presets-en.png",
+      "square_in_source": [
+        884,
+        102,
+        1597,
+        788
+      ],
+      "square": [
+        846,
+        98,
+        1528,
+        753
+      ],
+      "operation": "scaled; page screenshot (presets, dark, en, 682x655 at 2x) placed in the empty square, corners rounded 13.4 px",
+      "width": 1600,
+      "height": 900,
+      "bytes": 1365913,
+      "sha256": "11b11a9d05ab408d8ad6491b75482dca9499f28ff07424a13ba53d3fb7d8c7f5",
+      "date": "2026-11-16"
+    },
+    {
+      "file": "assets/orca-cloud/spooler-feature-03-slots-en.png",
+      "use": "Orca Cloud gallery image",
+      "screen": "slots",
+      "theme": "dark",
+      "language": "en",
+      "source": "assets/marketing/source/spooler-workshop-feature-03-slots-en.png",
+      "square_in_source": [
+        885,
+        102,
+        1597,
+        787
+      ],
+      "square": [
+        847,
+        98,
+        1528,
+        752
+      ],
+      "operation": "scaled; page screenshot (slots, dark, en, 681x654 at 2x) placed in the empty square, corners rounded 9.6 px",
+      "width": 1600,
+      "height": 900,
+      "bytes": 1354799,
+      "sha256": "7c2264ebeca5aa6cabc3ea00bccaf57ea29baedfde4c83ca582f9d91b0804f77",
+      "date": "2026-11-16"
+    },
+    {
+      "file": "assets/orca-cloud/spooler-feature-04-check-en.png",
+      "use": "Orca Cloud gallery image",
+      "screen": "check",
+      "theme": "dark",
+      "language": "en",
+      "source": "assets/marketing/source/spooler-workshop-feature-04-check-en.png",
+      "square_in_source": [
+        885,
+        101,
+        1597,
+        788
+      ],
+      "square": [
+        847,
+        97,
+        1528,
+        753
+      ],
+      "operation": "scaled; page screenshot (check, dark, en, 681x656 at 2x) placed in the empty square, corners rounded 13.4 px",
+      "width": 1600,
+      "height": 900,
+      "bytes": 1357832,
+      "sha256": "8693d40bb5da26567388a419439a55bc8ea96d6203a40e539104772f09c57e00",
+      "date": "2026-11-16"
+    },
+    {
+      "file": "assets/social/spooler-social-preview-en.png",
+      "use": "GitHub social preview",
+      "screen": "left",
+      "theme": "dark",
+      "language": "en",
+      "source": "assets/marketing/source/spooler-workshop-social-preview-en.png",
+      "square_in_source": [
+        984,
+        74,
+        1692,
+        742
+      ],
+      "square": [
+        710,
+        54,
+        1220,
+        535
+      ],
+      "operation": "scaled; page screenshot (left, dark, en, 765x722 at 2x) placed in the empty square, corners rounded 7.2 px",
+      "width": 1280,
+      "height": 640,
+      "bytes": 837252,
+      "sha256": "67f6927920ae5fac104e8401a784b1fed835f6138f4abba8511dc9473e5e333e",
+      "date": "2026-11-16"
+    },
+    {
+      "file": "assets/readme/spooler-hero-dark-en.png",
+      "use": "README hero",
+      "screen": "left",
+      "theme": "dark",
+      "language": "en",
+      "source": "assets/marketing/source/spooler-workshop-hero-dark-en.png",
+      "square_in_source": [
+        885,
+        102,
+        1595,
+        788
+      ],
+      "square": [
+        847,
+        98,
+        1526,
+        753
+      ],
+      "operation": "scaled; page screenshot (left, dark, en, 679x655 at 2x) placed in the empty square, corners rounded 13.4 px",
+      "width": 1600,
+      "height": 900,
+      "bytes": 1339958,
+      "sha256": "c13349ba27eefc84da8e0a7531ab6ea26d3da48fddbec6670c0316078e0c9009",
+      "date": "2026-11-16"
+    },
+    {
+      "file": "assets/readme/spooler-hero-light-en.png",
+      "use": "README hero",
+      "screen": "left",
+      "theme": "light",
+      "language": "en",
+      "source": "assets/marketing/source/spooler-workshop-hero-light-en.png",
+      "square_in_source": [
+        884,
+        101,
+        1599,
+        788
+      ],
+      "square": [
+        846,
+        97,
+        1530,
+        753
+      ],
+      "operation": "scaled; page screenshot (left, light, en, 684x656 at 2x) placed in the empty square, corners rounded 13.4 px",
+      "width": 1600,
+      "height": 900,
+      "bytes": 1343219,
+      "sha256": "5d7ed5c9dc13c233c006ae16a3f1e26db0ebc611b13049512ebf1f154cb18193",
+      "date": "2026-11-16"
+    },
+    {
+      "file": "assets/orca-cloud/spooler-main-pt-BR.png",
+      "use": "Orca Cloud main image",
+      "screen": "left",
+      "theme": "dark",
+      "language": "pt-BR",
+      "source": "assets/marketing/source/spooler-workshop-main-pt-BR.png",
+      "square_in_source": [
+        885,
+        101,
+        1597,
+        787
+      ],
+      "square": [
+        847,
+        97,
+        1528,
+        752
+      ],
+      "operation": "scaled; page screenshot (left, dark, pt-BR, 681x655 at 2x) placed in the empty square, corners rounded 9.6 px",
+      "width": 1600,
+      "height": 900,
+      "bytes": 1323230,
+      "sha256": "0b6a2b4458f0966dad1fbf0bdaa83ebaf6775f00d1e5e60f97f2addb51e78f31",
+      "date": "2026-11-16"
+    },
+    {
+      "file": "assets/orca-cloud/spooler-main-square-pt-BR.png",
+      "use": "Orca Cloud square image",
+      "screen": "left",
+      "theme": "dark",
+      "language": "pt-BR",
+      "source": "assets/marketing/source/spooler-workshop-main-square-pt-BR.png",
+      "square_in_source": [
+        665,
+        421,
+        1202,
+        946
+      ],
+      "square": [
+        478,
+        303,
+        862,
+        678
+      ],
+      "operation": "scaled; page screenshot (left, dark, pt-BR, 691x675 at 2x) placed in the empty square, corners rounded 7.2 px",
+      "width": 900,
+      "height": 900,
+      "bytes": 872230,
+      "sha256": "4b24af4ee74c11c64827331857c40f4623056926a52544c9f77aaf75e4e4748f",
+      "date": "2026-11-16"
+    },
+    {
+      "file": "assets/orca-cloud/spooler-feature-01-stock-pt-BR.png",
+      "use": "Orca Cloud gallery image",
+      "screen": "stock",
+      "theme": "dark",
+      "language": "pt-BR",
+      "source": "assets/marketing/source/spooler-workshop-feature-01-stock-pt-BR.png",
+      "square_in_source": [
+        885,
+        102,
+        1596,
+        787
+      ],
+      "square": [
+        847,
+        98,
+        1527,
+        752
+      ],
+      "operation": "scaled; page screenshot (stock, dark, pt-BR, 680x654 at 2x) placed in the empty square, corners rounded 9.6 px",
+      "width": 1600,
+      "height": 900,
+      "bytes": 1383800,
+      "sha256": "6e54146240f9edfd51690f6981bbf959a56dacceeb8e450117cec4b433710643",
+      "date": "2026-11-16"
+    },
+    {
+      "file": "assets/orca-cloud/spooler-feature-02-presets-pt-BR.png",
+      "use": "Orca Cloud gallery image",
+      "screen": "presets",
+      "theme": "dark",
+      "language": "pt-BR",
+      "source": "assets/marketing/source/spooler-workshop-feature-02-presets-pt-BR.png",
+      "square_in_source": [
+        885,
+        101,
+        1597,
+        788
+      ],
+      "square": [
+        847,
+        97,
+        1528,
+        753
+      ],
+      "operation": "scaled; page screenshot (presets, dark, pt-BR, 681x656 at 2x) placed in the empty square, corners rounded 13.4 px",
+      "width": 1600,
+      "height": 900,
+      "bytes": 1353731,
+      "sha256": "a8b3f187958aefb4a7ae6f13f438e2cd3df2cb85d3e7e098ece15b2003de099e",
+      "date": "2026-11-16"
+    },
+    {
+      "file": "assets/orca-cloud/spooler-feature-03-slots-pt-BR.png",
+      "use": "Orca Cloud gallery image",
+      "screen": "slots",
+      "theme": "dark",
+      "language": "pt-BR",
+      "source": "assets/marketing/source/spooler-workshop-feature-03-slots-pt-BR.png",
+      "square_in_source": [
+        885,
+        101,
+        1596,
+        787
+      ],
+      "square": [
+        847,
+        97,
+        1527,
+        752
+      ],
+      "operation": "scaled; page screenshot (slots, dark, pt-BR, 680x655 at 2x) placed in the empty square, corners rounded 9.6 px",
+      "width": 1600,
+      "height": 900,
+      "bytes": 1351334,
+      "sha256": "5276d681605eb4866a98ec1d35f85a8cea50d2020b7d3b77c07776065b806843",
+      "date": "2026-11-16"
+    },
+    {
+      "file": "assets/orca-cloud/spooler-feature-04-check-pt-BR.png",
+      "use": "Orca Cloud gallery image",
+      "screen": "check",
+      "theme": "dark",
+      "language": "pt-BR",
+      "source": "assets/marketing/source/spooler-workshop-feature-04-check-pt-BR.png",
+      "square_in_source": [
+        884,
+        101,
+        1596,
+        788
+      ],
+      "square": [
+        846,
+        97,
+        1527,
+        753
+      ],
+      "operation": "scaled; page screenshot (check, dark, pt-BR, 681x656 at 2x) placed in the empty square, corners rounded 13.4 px",
+      "width": 1600,
+      "height": 900,
+      "bytes": 1354379,
+      "sha256": "63981b62fe8b6a73d061bf6febe1c60d27a13d86af2827c643c4663959bf7f7d",
+      "date": "2026-11-16"
+    },
+    {
+      "file": "assets/social/spooler-social-preview-pt-BR.png",
+      "use": "GitHub social preview",
+      "screen": "left",
+      "theme": "dark",
+      "language": "pt-BR",
+      "source": "assets/marketing/source/spooler-workshop-social-preview-pt-BR.png",
+      "square_in_source": [
+        989,
+        81,
+        1693,
+        744
+      ],
+      "square": [
+        714,
+        59,
+        1221,
+        536
+      ],
+      "operation": "scaled; page screenshot (left, dark, pt-BR, 760x716 at 2x) placed in the empty square, corners rounded 7.2 px",
+      "width": 1280,
+      "height": 640,
+      "bytes": 822892,
+      "sha256": "ffb04ab8a90540052c808599c4994aba6213cc846337b5397ff098e72be5cbe8",
+      "date": "2026-11-16"
+    },
+    {
+      "file": "assets/readme/spooler-hero-dark-pt-BR.png",
+      "use": "README hero",
+      "screen": "left",
+      "theme": "dark",
+      "language": "pt-BR",
+      "source": "assets/marketing/source/spooler-workshop-hero-dark-pt-BR.png",
+      "square_in_source": [
+        885,
+        101,
+        1597,
+        788
+      ],
+      "square": [
+        847,
+        97,
+        1528,
+        753
+      ],
+      "operation": "scaled; page screenshot (left, dark, pt-BR, 681x656 at 2x) placed in the empty square, corners rounded 13.4 px",
+      "width": 1600,
+      "height": 900,
+      "bytes": 1316093,
+      "sha256": "cb6d07d93d1209d0ba183c8a8076644db24b7f327bfe47a1166849b537d4ba1d",
+      "date": "2026-11-16"
+    },
+    {
+      "file": "assets/readme/spooler-hero-light-pt-BR.png",
+      "use": "README hero",
+      "screen": "left",
+      "theme": "light",
+      "language": "pt-BR",
+      "source": "assets/marketing/source/spooler-workshop-hero-light-pt-BR.png",
+      "square_in_source": [
+        883,
+        100,
+        1598,
+        789
+      ],
+      "square": [
+        845,
+        96,
+        1529,
+        754
+      ],
+      "operation": "scaled; page screenshot (left, light, pt-BR, 684x658 at 2x) placed in the empty square, corners rounded 13.4 px",
+      "width": 1600,
+      "height": 900,
+      "bytes": 1352876,
+      "sha256": "668cbf137333457a8e6d4b78888f417165b94a64f785079e32342c7fb1ad8001",
+      "date": "2026-11-16"
+    },
+    {
+      "file": "assets/readme/spooler-screen-spools-dark-en.png",
+      "use": "README screenshot",
+      "screen": "wide",
+      "theme": "dark",
+      "language": "en",
+      "operation": "page screenshot (wide, dark, en, 1280x720 at 2x)",
+      "width": 2560,
+      "height": 1440,
+      "bytes": 479320,
+      "sha256": "95715825a115d3f9f9ec185b5b844e0a823ce8009d2f48485d7c9ab53432a997",
+      "date": "2026-11-16"
+    },
+    {
+      "file": "assets/readme/spooler-screen-setup-dark-en.png",
+      "use": "README screenshot",
+      "screen": "setup",
+      "theme": "dark",
+      "language": "en",
+      "operation": "page screenshot (setup, dark, en, 1280x720 at 2x)",
+      "width": 2560,
+      "height": 1440,
+      "bytes": 369973,
+      "sha256": "ad6bf4023e313e75bae7f2c901f9714e2bc79f6a814698b2dcb2d10af46612e5",
+      "date": "2026-11-16"
+    },
+    {
+      "file": "assets/readme/spooler-screen-spools-light-en.png",
+      "use": "README screenshot",
+      "screen": "wide",
+      "theme": "light",
+      "language": "en",
+      "operation": "page screenshot (wide, light, en, 1280x720 at 2x)",
+      "width": 2560,
+      "height": 1440,
+      "bytes": 483847,
+      "sha256": "85bb75bf8c8914d0ce2eaa302f7268d0f58eb393b10e50b28bd314a1bdb24423",
+      "date": "2026-11-16"
+    },
+    {
+      "file": "assets/readme/spooler-screen-setup-light-en.png",
+      "use": "README screenshot",
+      "screen": "setup",
+      "theme": "light",
+      "language": "en",
+      "operation": "page screenshot (setup, light, en, 1280x720 at 2x)",
+      "width": 2560,
+      "height": 1440,
+      "bytes": 402768,
+      "sha256": "958e067b55bd7048bbb07e8316d10d42c26b7b7f9b54c43ad86ed751cdd37ef4",
+      "date": "2026-11-16"
+    },
+    {
+      "file": "assets/readme/spooler-screen-spools-dark-pt-BR.png",
+      "use": "README screenshot",
+      "screen": "wide",
+      "theme": "dark",
+      "language": "pt-BR",
+      "operation": "page screenshot (wide, dark, pt-BR, 1280x720 at 2x)",
+      "width": 2560,
+      "height": 1440,
+      "bytes": 475489,
+      "sha256": "9cd28ed0e435ed9a8454669b6227bf1d5b497690e391dd29e0efc16fc87be8da",
+      "date": "2026-11-16"
+    },
+    {
+      "file": "assets/readme/spooler-screen-setup-dark-pt-BR.png",
+      "use": "README screenshot",
+      "screen": "setup",
+      "theme": "dark",
+      "language": "pt-BR",
+      "operation": "page screenshot (setup, dark, pt-BR, 1280x720 at 2x)",
+      "width": 2560,
+      "height": 1440,
+      "bytes": 404301,
+      "sha256": "2cb922068ccf1564c445f80e4d16b88b91c09261ee963fdda5fbf94fafe5be68",
+      "date": "2026-11-16"
+    },
+    {
+      "file": "assets/readme/spooler-screen-spools-light-pt-BR.png",
+      "use": "README screenshot",
+      "screen": "wide",
+      "theme": "light",
+      "language": "pt-BR",
+      "operation": "page screenshot (wide, light, pt-BR, 1280x720 at 2x)",
+      "width": 2560,
+      "height": 1440,
+      "bytes": 479681,
+      "sha256": "1c982dfb6ac8c6c30a0ca24f6d2c7f224c1415ef0fa3dcbf2af1aa3673587d8d",
+      "date": "2026-11-16"
+    },
+    {
+      "file": "assets/readme/spooler-screen-setup-light-pt-BR.png",
+      "use": "README screenshot",
+      "screen": "setup",
+      "theme": "light",
+      "language": "pt-BR",
+      "operation": "page screenshot (setup, light, pt-BR, 1280x720 at 2x)",
+      "width": 2560,
+      "height": 1440,
+      "bytes": 442128,
+      "sha256": "3c52ad063699c2f7586e1742e74b75dc554838d970c9cc1cf7f3326afccb8a87",
+      "date": "2026-11-16"
+    }
+  ]
+}
