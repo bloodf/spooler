@@ -19,11 +19,9 @@
   <a href="#-instalação">Instalação</a> · <a href="#-recursos">Recursos</a> · <a href="#-como-usar">Como usar</a> · <a href="#-perguntas-frequentes">Perguntas</a> · <a href="README.md">English</a>
 </p>
 
-## ✨ O que ele faz
+## ✨ O que faz
 
 O Spooler lê suas bobinas do [Spoolman](https://github.com/Donkie/Spoolman) e as lista em uma aba dentro do OrcaSlicer, cada uma com material, cor, local e gramas restantes. Todo filamento com bobina em estoque vira um perfil de filamento do OrcaSlicer para cada uma das suas impressoras, já na cor certa. A aba Impressora mostra qual bobina está em cada cabeça, trilha ou slot do AMS, e depois de fatiar o Spooler compara o que a mesa precisa com o que resta.
-
-É um fork do [Spoolio](https://github.com/danm1989/spoolio-orcaslicer), de Dan J Moore, que faz a configuração por você: informe o endereço do Spoolman uma vez.
 
 <p align="center">
   <picture>
@@ -42,7 +40,7 @@ Por arquivo:
 2. Coloque-o em uma pasta própria chamada `spooler` dentro do diretório de plugins do OrcaSlicer, um arquivo do Spooler por pasta: `%APPDATA%\OrcaSlicer\orca_plugins\` no Windows, `~/Library/Application Support/OrcaSlicer/orca_plugins/` no macOS, `~/.config/OrcaSlicer/orca_plugins/` no Linux.
 3. Reinicie o OrcaSlicer e marque **Activate** no Spooler. Uma aba **Spooler** aparece na barra superior.
 
-| Você precisa de | Detalhes |
+| Requisito | Detalhe |
 |---|---|
 | OrcaSlicer | 2.5.0 ou mais novo, pelas APIs de perfis para plugins |
 | Uma origem de bobinas | Um servidor [Spoolman](https://github.com/Donkie/Spoolman) acessível, ou uma conta Bambu Cloud (só leitura, experimental) |
@@ -51,26 +49,28 @@ Por arquivo:
 
 [docs/install.md](docs/install.md) mostra cada passo com uma figura (em inglês).
 
+O Spooler é um fork do [Spoolio](https://github.com/danm1989/spoolio-orcaslicer), de Dan J Moore, que acrescenta um guia de configuração. É um projeto independente, sem vínculo com Spoolman, OrcaSlicer, Snapmaker, Sovol, Anycubic ou Bambu Lab e sem o endosso deles.
+
 ## 🧰 Recursos
 
 <table>
   <tr>
     <td width="50%" valign="top">
-      <img src="assets/orca-cloud/spooler-feature-01-stock-pt-BR.png" alt="Arte do Spooler com a lista de bobinas: material, selos de estado e gramas restantes de cada bobina" width="100%">
+      <img src="assets/orca-cloud/spooler-feature-01-stock-pt-BR.png" alt="A lista de bobinas: material, selos de estado e gramas restantes de cada bobina" width="100%">
       <p><b>Todas as bobinas em uma lista</b><br>Material, cor, local e gramas restantes, lidos do Spoolman e atualizados em um ou dois segundos.</p>
     </td>
     <td width="50%" valign="top">
-      <img src="assets/orca-cloud/spooler-feature-02-presets-pt-BR.png" alt="Arte do Spooler com o passo do guia de configuração sobre os perfis: um por filamento e impressora, em Perfis do usuário" width="100%">
+      <img src="assets/orca-cloud/spooler-feature-02-presets-pt-BR.png" alt="O passo do guia de configuração sobre os perfis: um por filamento e impressora, em Perfis do usuário" width="100%">
       <p><b>O estoque vira perfis de filamento</b><br>Um perfil por filamento e impressora em Perfis do usuário, na cor do filamento e com as temperaturas dele.</p>
     </td>
   </tr>
   <tr>
     <td width="50%" valign="top">
-      <img src="assets/orca-cloud/spooler-feature-03-slots-pt-BR.png" alt="Arte do Spooler com a aba Impressora: as quatro cabeças de uma Snapmaker U1, cada uma com sua bobina e os gramas restantes" width="100%">
+      <img src="assets/orca-cloud/spooler-feature-03-slots-pt-BR.png" alt="A aba Impressora: as quatro cabeças de uma Snapmaker U1, cada uma com sua bobina e os gramas restantes" width="100%">
       <p><b>O que há em cada slot</b><br>Cabeças, trilhas e slots do AMS relacionados às suas bobinas, com o perfil que cada um recebe.</p>
     </td>
     <td width="50%" valign="top">
-      <img src="assets/orca-cloud/spooler-feature-04-check-pt-BR.png" alt="Arte do Spooler com o painel Esta placa: dois slots com filamento suficiente e um com 32 g a menos" width="100%">
+      <img src="assets/orca-cloud/spooler-feature-04-check-pt-BR.png" alt="O painel Esta placa: dois slots com filamento suficiente e um com 32 g a menos" width="100%">
       <p><b>Uma conferência a cada fatiamento</b><br>O que a mesa precisa contra o que resta, com um aviso que fica na tela quando uma bobina não dá conta.</p>
     </td>
   </tr>
@@ -98,7 +98,7 @@ O [guia do usuário](docs/guide.md) (em inglês) tem todos os ajustes, as chaves
 ## 🛠️ Como usar
 
 1. Abra a aba **Spooler**. Na primeira vez, o guia de configuração abre sobre os Ajustes.
-2. Em **Escolha a origem**, informe o endereço do Spoolman, por exemplo `http://raspberrypi.local:7912`, e clique em **Testar**. **Próximo** é liberado quando a conexão funciona.
+2. Em **Escolha a origem**, informe o endereço do Spoolman, por exemplo `http://raspberrypi.local:7912`, e clique em **Testar**. **Próximo** fica disponível quando a conexão funciona.
 3. Aceite os pedidos de permissão. O OrcaSlicer pergunta na primeira vez que o Spooler acessa o Spoolman ou uma impressora e na primeira vez que grava perfis. Conceder acesso total uma vez evita as repetições.
 4. Clique em **Salvar e concluir**. A aba **Bobinas** lista o seu estoque.
 5. No seletor de filamento da barra lateral, escolha um filamento em **Perfis do usuário**. O slot fica na cor do filamento.
@@ -137,8 +137,6 @@ O Spooler não tem telemetria nem conta. Ele fala com os servidores que você in
 | Seu computador | Os perfis do OrcaSlicer e o uso de filamento da mesa fatiada | Os perfis dele na pasta de usuário do OrcaSlicer, e ajustes, log, histórico e exportações CSV em `<pasta de dados do OrcaSlicer>/spooler/` |
 
 Os códigos de acesso das impressoras ficam nessa pasta e só vão para a própria impressora. As conexões com impressoras Bambu e Anycubic não verificam o certificado da impressora, porque elas usam certificados autoassinados, então confiam na sua rede local. O carrinho de recompra abre uma busca do filamento no seu navegador, só quando você clica. O Spooler não baixa código nem inicia programas. [SECURITY.md](SECURITY.md) (em inglês) tem a lista completa e como relatar um problema.
-
-<a id="-perguntas-frequentes"></a>
 
 ## ❓ Perguntas frequentes
 
@@ -194,24 +192,22 @@ Cada plugin tem a sua aba. O U1 Control controla a Snapmaker U1 e vincula bobina
 
 Inglês e português do Brasil. A página segue o idioma do OrcaSlicer, e Ajustes > **Idioma** muda isso.
 
-## 🧩 Mais plugins by bloodf
+## 🧩 Mais plugins do bloodf
 
 | | Plugin | O que faz | |
-|---|---|---|---|
-| <img src="https://raw.githubusercontent.com/bloodf/orca_organizer/main/assets/orca-cloud/orca_organizer-tile.png" width="40" alt="Ícone do Organizer"> | 🧩 [Organizer](https://github.com/bloodf/orca_organizer) | Organize as peças pelo contorno real e encha a mesa com mais cópias. | [Instalar](https://cloud.orcaslicer.com/p/5bf381fd42d4) |
-| <img src="https://raw.githubusercontent.com/bloodf/embedder/main/assets/orca-cloud/embedder-tile.png" width="40" alt="Ícone do Embedder"> | 🧲 [Embedder](https://github.com/bloodf/embedder) | Bolsos para ímãs e NFC, com a pausa na camada certa. | [Instalar](https://cloud.orcaslicer.com/p/58222d4f9e52) |
-| <img src="https://raw.githubusercontent.com/bloodf/orca_print_calculator/main/assets/orca-cloud/orca_print_calculator-tile.png" width="40" alt="Ícone do Print Calculator"> | 💰 [Print Calculator](https://github.com/bloodf/orca_print_calculator) | Preço de cada mesa: filamento, energia, mão de obra, taxas e margem. | [Instalar](https://cloud.orcaslicer.com/p/521c07cf6de2) |
-| <img src="assets/orca-cloud/spooler-tile.png" width="40" alt="Ícone do Spooler"> | 🧵 **Spooler** · você está aqui | Seu estoque do Spoolman dentro do OrcaSlicer, com o que resta em cada bobina. | |
-| <img src="https://raw.githubusercontent.com/bloodf/kobracontrol/main/assets/orca-cloud/kobracontrol-tile.png" width="40" alt="Ícone do Kobra Control"> | 🟣 [Kobra Control](https://github.com/bloodf/kobracontrol) | Controle a Anycubic Kobra X pelo OrcaSlicer na sua rede. | [Instalar](https://cloud.orcaslicer.com/p/59c786285255) |
-| <img src="https://raw.githubusercontent.com/bloodf/u1control/main/assets/orca-cloud/u1control-tile.png" width="40" alt="Ícone do U1 Control"> | 🔵 [U1 Control](https://github.com/bloodf/u1control) | Controle a Snapmaker U1 pelo OrcaSlicer: cabeças, câmera, arquivos. | [Instalar](https://cloud.orcaslicer.com/p/55b8c347d443) |
+|:-:|---|---|---|
+| <img src="https://raw.githubusercontent.com/bloodf/orca_organizer/main/assets/orca-cloud/orca_organizer-tile.png" alt="Ícone do Organizer" width="40"> | 🧩 [Organizer](https://github.com/bloodf/orca_organizer) | Organize as peças pelo contorno real e encha a mesa com mais cópias. | [Instalar](https://cloud.orcaslicer.com/p/5bf381fd42d4) |
+| <img src="https://raw.githubusercontent.com/bloodf/embedder/main/assets/orca-cloud/embedder-tile.png" alt="Ícone do Embedder" width="40"> | 🧲 [Embedder](https://github.com/bloodf/embedder) | Bolsos para ímãs e NFC, com a pausa na camada certa. | [Instalar](https://cloud.orcaslicer.com/p/58222d4f9e52) |
+| <img src="https://raw.githubusercontent.com/bloodf/orca_print_calculator/main/assets/orca-cloud/orca_print_calculator-tile.png" alt="Ícone do Print Calculator" width="40"> | 💰 [Print Calculator](https://github.com/bloodf/orca_print_calculator) | Preço de cada mesa: filamento, energia, mão de obra, taxas e margem. | [Instalar](https://cloud.orcaslicer.com/p/521c07cf6de2) |
+| <img src="assets/orca-cloud/spooler-tile.png" alt="Ícone do Spooler" width="40"> | 🧵 **Spooler** · você está aqui | Seu estoque do Spoolman dentro do OrcaSlicer, com o que resta em cada bobina. | |
+| <img src="https://raw.githubusercontent.com/bloodf/kobracontrol/main/assets/orca-cloud/kobracontrol-tile.png" alt="Ícone do Kobra Control" width="40"> | 🟣 [Kobra Control](https://github.com/bloodf/kobracontrol) | Controle a Anycubic Kobra X pelo OrcaSlicer na sua rede. | [Instalar](https://cloud.orcaslicer.com/p/59c786285255) |
+| <img src="https://raw.githubusercontent.com/bloodf/u1control/main/assets/orca-cloud/u1control-tile.png" alt="Ícone do U1 Control" width="40"> | 🔵 [U1 Control](https://github.com/bloodf/u1control) | Controle a Snapmaker U1 pelo OrcaSlicer: cabeças, câmera, arquivos. | [Instalar](https://cloud.orcaslicer.com/p/55b8c347d443) |
 
 Cada plugin funciona sozinho; instalados juntos, compartilham dados onde isso ajuda.
 
-## 🤝 Como contribuir
+## 🤝 Contribuir
 
-Relatos de bugs, dados de impressoras e pull requests são bem-vindos: [relate um bug](https://github.com/bloodf/spooler/issues/new?template=bug_report.yml) ou [peça um recurso](https://github.com/bloodf/spooler/issues/new?template=feature_request.yml). [CONTRIBUTING.md](CONTRIBUTING.md) cobre a preparação, os testes, o build e como experimentar no OrcaSlicer. Em [docs/](docs/), [how-it-works.md](docs/how-it-works.md) percorre o código e [release.md](docs/release.md) cobre as versões e a página no Orca Cloud. Esses documentos estão em inglês. Todos que participam seguem o [código de conduta](CODE_OF_CONDUCT.md).
-
-O Spooler é construído sobre o [Spoolio](https://github.com/danm1989/spoolio-orcaslicer), de Dan J Moore, e agradece ao [Spoolman](https://github.com/Donkie/Spoolman), ao [OrcaSlicer](https://github.com/OrcaSlicer/OrcaSlicer) e ao [q2-offload](https://github.com/cedbossneo/q2-offload). É um projeto independente, sem vínculo com Spoolman, OrcaSlicer, Snapmaker, Sovol, Anycubic ou Bambu Lab e sem o endosso deles.
+Relatos de bugs, dados de impressoras e pull requests são bem-vindos: [relate um bug](https://github.com/bloodf/spooler/issues/new?template=bug_report.yml) ou [peça um recurso](https://github.com/bloodf/spooler/issues/new?template=feature_request.yml). [CONTRIBUTING.md](CONTRIBUTING.md) cobre a preparação, os testes e o build, [docs/](docs/) tem um [roteiro do código](docs/how-it-works.md) e as [notas de versão para mantenedores](docs/release.md), e [NOTICE.md](NOTICE.md) lista os créditos. Esses documentos estão em inglês. Todos que participam seguem o [código de conduta](CODE_OF_CONDUCT.md).
 
 ## 📄 Licença
 

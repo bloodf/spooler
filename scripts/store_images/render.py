@@ -56,6 +56,10 @@ SCENES = {
     "left": {"view": "spools", "script": f"""
         document.querySelector('tr[data-spool="{SHOWN}"]').click();
         await until(function () {{ return document.querySelector('[data-detail="{SHOWN}"] .sd-history'); }});
+        // End the panel at the usage chart: the print history below it would be cut by the square's edge.
+        var heading = document.querySelector('[data-detail="{SHOWN}"] .sd-h');
+        if (heading) {{ heading.nextElementSibling.remove(); heading.remove(); }}
+        document.body.style.paddingBottom = '800px';   // room to scroll the panel to the top, so no list row shows above it
         top(document.querySelector('[data-detail="{SHOWN}"]'));
         document.activeElement.blur();"""},
     # README screenshots: the list with a spool's detail beside it, and the setup guide asking for the address
@@ -72,7 +76,14 @@ SCENES = {
     # "Turn stock into filament presets": the setup guide's step about the presets
     "presets": {"view": "settings", "wizard_step": 3, "script": ""},
     # "See what each slot holds": the printers and their toolheads
-    "slots": {"view": "printer", "display": {"head_rfid": False}, "script": ""},
+    "slots": {"view": "printer", "display": {"head_rfid": False}, "script": """
+        // Show the first printer's toolheads only: its note and the next printer would be cut by the square's edge.
+        var note = document.querySelector('.pp-note');
+        if (note) {
+          var panel = note.closest('.oui-panel');
+          while (panel.nextElementSibling) panel.nextElementSibling.remove();
+          note.remove();
+        }"""},
     # "Check filament before a print": the last slice's check
     "check": {"view": "printer", "plate": True, "script": """
         await until(function () { return document.querySelector('[data-test="plate"]'); });
@@ -98,14 +109,15 @@ def exports() -> list[dict]:
         rows.append({"source": f"spooler-workshop-{main}.png", "file": f"assets/orca-cloud/spooler-main-{lang}.png",
                      "size": (1600, 900), "scene": "left", "theme": "dark", "lang": lang, "use": "Orca Cloud main image"})
         rows.append({"source": f"spooler-workshop-main-square-{lang}.png", "file": f"assets/orca-cloud/spooler-main-square-{lang}.png",
-                     "size": (900, 900), "scene": "left", "theme": "dark", "lang": lang, "page_scale": 1.35,
+                     "size": (900, 900), "scene": "left", "theme": "dark", "lang": lang, "page_scale": 1.8,
                      "use": "Orca Cloud square image"})
         for name, scene in (("01-stock", "stock"), ("02-presets", "presets"), ("03-slots", "slots"), ("04-check", "check")):
             rows.append({"source": f"spooler-workshop-feature-{name}-{lang}.png",
                          "file": f"assets/orca-cloud/spooler-feature-{name}-{lang}.png",
                          "size": (1600, 900), "scene": scene, "theme": "dark", "lang": lang, "use": "Orca Cloud gallery image"})
         rows.append({"source": f"spooler-workshop-social-preview-{lang}.png", "file": f"assets/social/spooler-social-preview-{lang}.png",
-                     "size": (1280, 640), "scene": "left", "theme": "dark", "lang": lang, "use": "GitHub social preview"})
+                     "size": (1280, 640), "scene": "left", "theme": "dark", "lang": lang, "page_scale": 1.5,
+                     "use": "GitHub social preview"})
         for theme in ("dark", "light"):
             rows.append({"source": f"spooler-workshop-hero-{theme}-{lang}.png", "file": f"assets/readme/spooler-hero-{theme}-{lang}.png",
                          "size": (1600, 900), "scene": "left", "theme": theme, "lang": lang, "use": "README hero"})

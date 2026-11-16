@@ -1,6 +1,8 @@
-<!-- Orca Cloud listing text, one block per language. Paste each block into the matching description field. Each block stays under 4000 characters. The four images resolve once this branch is merged to main. -->
+# Orca Cloud description
 
-# English
+Listing text for Spooler on Orca Cloud, one block per language. Paste each block into the matching description field. Each block stays under 4000 characters, and the four images resolve once this branch is merged to main.
+
+## English
 
 ```markdown
 Your Spoolman stock inside OrcaSlicer, with what is left on each spool.
@@ -53,7 +55,7 @@ Each plugin works on its own; installed together they share data where it helps.
 https://github.com/bloodf/spooler (MIT). Based on Spoolio by Dan J Moore. Not affiliated with Spoolman, OrcaSlicer, Snapmaker, Sovol, Anycubic or Bambu Lab.
 ```
 
-# Português (Brasil)
+## Português (Brasil)
 
 ```markdown
 Seu estoque do Spoolman dentro do OrcaSlicer, com o que resta em cada bobina.
@@ -64,7 +66,7 @@ Seu estoque do Spoolman dentro do OrcaSlicer, com o que resta em cada bobina.
 - Um servidor Spoolman que você consiga acessar (ou uma conta Bambu Cloud, somente leitura)
 - Opcional: uma impressora Klipper/Moonraker, Snapmaker U1, Anycubic ou Bambu Lab na sua rede
 
-## O que ele faz
+## O que faz
 
 Lista cada bobina com material, cor, local e gramas restantes.
 Transforma cada filamento em estoque em um perfil de filamento do OrcaSlicer para cada uma das suas impressoras, na cor dele.
@@ -91,7 +93,7 @@ Sem telemetria e sem conta. O Spooler fala só com os servidores que você indic
 
 Inglês e português do Brasil, seguindo o idioma do OrcaSlicer.
 
-## Mais plugins by bloodf
+## Mais plugins do bloodf
 
 - [Organizer](https://cloud.orcaslicer.com/p/5bf381fd42d4): organize as peças pelo contorno real e encha a mesa com mais cópias.
 - [Embedder](https://cloud.orcaslicer.com/p/58222d4f9e52): bolsos para ímãs e NFC, com a pausa na camada certa.

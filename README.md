@@ -23,8 +23,6 @@
 
 Spooler reads your spools from [Spoolman](https://github.com/Donkie/Spoolman) and lists them in a tab inside OrcaSlicer, each with its material, colour, location and grams left. Every filament with a spool in stock becomes an OrcaSlicer filament preset for each of your printers, already in its colour. The Printer tab shows which spool sits in each toolhead, lane or AMS slot, and after a slice Spooler compares what the plate needs with what is left.
 
-It is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer) by Dan J Moore that does the setup for you: enter your Spoolman address once.
-
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/readme/spooler-screen-spools-dark-en.png">
@@ -42,7 +40,7 @@ From a file:
 2. Put it in its own folder called `spooler` inside OrcaSlicer's plugin directory, one Spooler file per folder: `%APPDATA%\OrcaSlicer\orca_plugins\` on Windows, `~/Library/Application Support/OrcaSlicer/orca_plugins/` on macOS, `~/.config/OrcaSlicer/orca_plugins/` on Linux.
 3. Restart OrcaSlicer and tick **Activate** for Spooler. A **Spooler** tab appears in the top bar.
 
-| You need | Details |
+| Requirement | Detail |
 |---|---|
 | OrcaSlicer | 2.5.0 or later, for the plugin preset APIs |
 | A spool source | A [Spoolman](https://github.com/Donkie/Spoolman) server you can reach, or a Bambu Cloud account (read-only, experimental) |
@@ -51,26 +49,28 @@ From a file:
 
 [docs/install.md](docs/install.md) shows each step with a picture.
 
+Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer) by Dan J Moore that adds a setup guide. It is an independent project, not affiliated with or endorsed by Spoolman, OrcaSlicer, Snapmaker, Sovol, Anycubic or Bambu Lab.
+
 ## 🧰 Features
 
 <table>
   <tr>
     <td width="50%" valign="top">
-      <img src="assets/orca-cloud/spooler-feature-01-stock-en.png" alt="Spooler artwork with the spool list: material, state chips and grams left for each spool" width="100%">
+      <img src="assets/orca-cloud/spooler-feature-01-stock-en.png" alt="The spool list: material, state chips and grams left for each spool" width="100%">
       <p><b>Every spool in one list</b><br>Material, colour, location and grams left, read from Spoolman and updated within a second or two.</p>
     </td>
     <td width="50%" valign="top">
-      <img src="assets/orca-cloud/spooler-feature-02-presets-en.png" alt="Spooler artwork with the setup guide's step about presets: one per filament and printer, under User presets" width="100%">
+      <img src="assets/orca-cloud/spooler-feature-02-presets-en.png" alt="The setup guide's step about presets: one per filament and printer, under User presets" width="100%">
       <p><b>Stock becomes filament presets</b><br>One preset per filament and printer under User presets, in the filament's colour and with its temperatures.</p>
     </td>
   </tr>
   <tr>
     <td width="50%" valign="top">
-      <img src="assets/orca-cloud/spooler-feature-03-slots-en.png" alt="Spooler artwork with the Printer tab: the four toolheads of a Snapmaker U1, each with its spool and grams left" width="100%">
+      <img src="assets/orca-cloud/spooler-feature-03-slots-en.png" alt="The Printer tab: the four toolheads of a Snapmaker U1, each with its spool and grams left" width="100%">
       <p><b>What each slot holds</b><br>Toolheads, lanes and AMS slots matched to your spools, with the preset each one gets.</p>
     </td>
     <td width="50%" valign="top">
-      <img src="assets/orca-cloud/spooler-feature-04-check-en.png" alt="Spooler artwork with the This plate panel: two slots with enough filament and one that is 32 g short" width="100%">
+      <img src="assets/orca-cloud/spooler-feature-04-check-en.png" alt="The This plate panel: two slots with enough filament and one that is 32 g short" width="100%">
       <p><b>A check after every slice</b><br>What the plate needs against what is left, with a notice that stays when a spool runs short.</p>
     </td>
   </tr>
@@ -98,7 +98,7 @@ The [user guide](docs/guide.md) has every setting, the supported `orca_settings`
 ## 🛠️ How to use
 
 1. Open the **Spooler** tab. On first run the setup guide opens over Settings.
-2. Under **Choose your source**, enter your Spoolman address, for example `http://raspberrypi.local:7912`, and click **Test**. **Next** unlocks once it connects.
+2. Under **Choose your source**, enter your Spoolman address, for example `http://raspberrypi.local:7912`, and click **Test**. **Next** becomes available once it connects.
 3. Allow the permission prompts. OrcaSlicer asks the first time Spooler reaches Spoolman or a printer and the first time it writes presets. Granting full access once avoids the repeats.
 4. Click **Save & finish**. The **Spools** tab lists your stock.
 5. In the sidebar's filament dropdown, pick a filament under **User presets**. The slot takes the filament's colour.
@@ -195,21 +195,19 @@ English and Brazilian Portuguese. The page follows OrcaSlicer's language, and Se
 ## 🧩 More plugins by bloodf
 
 | | Plugin | What it does | |
-|---|---|---|---|
-| <img src="https://raw.githubusercontent.com/bloodf/orca_organizer/main/assets/orca-cloud/orca_organizer-tile.png" width="40" alt="Organizer tile"> | 🧩 [Organizer](https://github.com/bloodf/orca_organizer) | Arrange parts by their real outline and fill a plate with more copies. | [Install](https://cloud.orcaslicer.com/p/5bf381fd42d4) |
-| <img src="https://raw.githubusercontent.com/bloodf/embedder/main/assets/orca-cloud/embedder-tile.png" width="40" alt="Embedder tile"> | 🧲 [Embedder](https://github.com/bloodf/embedder) | Magnet and NFC pockets, with the pause at the right layer. | [Install](https://cloud.orcaslicer.com/p/58222d4f9e52) |
-| <img src="https://raw.githubusercontent.com/bloodf/orca_print_calculator/main/assets/orca-cloud/orca_print_calculator-tile.png" width="40" alt="Print Calculator tile"> | 💰 [Print Calculator](https://github.com/bloodf/orca_print_calculator) | Price every plate: filament, energy, labour, fees and margin. | [Install](https://cloud.orcaslicer.com/p/521c07cf6de2) |
-| <img src="assets/orca-cloud/spooler-tile.png" width="40" alt="Spooler tile"> | 🧵 **Spooler** · you are here | Your Spoolman stock inside OrcaSlicer, with what is left on each spool. | |
-| <img src="https://raw.githubusercontent.com/bloodf/kobracontrol/main/assets/orca-cloud/kobracontrol-tile.png" width="40" alt="Kobra Control tile"> | 🟣 [Kobra Control](https://github.com/bloodf/kobracontrol) | Run the Anycubic Kobra X from OrcaSlicer over your LAN. | [Install](https://cloud.orcaslicer.com/p/59c786285255) |
-| <img src="https://raw.githubusercontent.com/bloodf/u1control/main/assets/orca-cloud/u1control-tile.png" width="40" alt="U1 Control tile"> | 🔵 [U1 Control](https://github.com/bloodf/u1control) | Run the Snapmaker U1 from OrcaSlicer: toolheads, camera, files. | [Install](https://cloud.orcaslicer.com/p/55b8c347d443) |
+|:-:|---|---|---|
+| <img src="https://raw.githubusercontent.com/bloodf/orca_organizer/main/assets/orca-cloud/orca_organizer-tile.png" alt="Organizer icon" width="40"> | 🧩 [Organizer](https://github.com/bloodf/orca_organizer) | Arrange parts by their real outline and fill a plate with more copies. | [Install](https://cloud.orcaslicer.com/p/5bf381fd42d4) |
+| <img src="https://raw.githubusercontent.com/bloodf/embedder/main/assets/orca-cloud/embedder-tile.png" alt="Embedder icon" width="40"> | 🧲 [Embedder](https://github.com/bloodf/embedder) | Magnet and NFC pockets, with the pause at the right layer. | [Install](https://cloud.orcaslicer.com/p/58222d4f9e52) |
+| <img src="https://raw.githubusercontent.com/bloodf/orca_print_calculator/main/assets/orca-cloud/orca_print_calculator-tile.png" alt="Print Calculator icon" width="40"> | 💰 [Print Calculator](https://github.com/bloodf/orca_print_calculator) | Price every plate: filament, energy, labour, fees and margin. | [Install](https://cloud.orcaslicer.com/p/521c07cf6de2) |
+| <img src="assets/orca-cloud/spooler-tile.png" alt="Spooler icon" width="40"> | 🧵 **Spooler** · you are here | Your Spoolman stock inside OrcaSlicer, with what is left on each spool. | |
+| <img src="https://raw.githubusercontent.com/bloodf/kobracontrol/main/assets/orca-cloud/kobracontrol-tile.png" alt="Kobra Control icon" width="40"> | 🟣 [Kobra Control](https://github.com/bloodf/kobracontrol) | Run the Anycubic Kobra X from OrcaSlicer over your LAN. | [Install](https://cloud.orcaslicer.com/p/59c786285255) |
+| <img src="https://raw.githubusercontent.com/bloodf/u1control/main/assets/orca-cloud/u1control-tile.png" alt="U1 Control icon" width="40"> | 🔵 [U1 Control](https://github.com/bloodf/u1control) | Run the Snapmaker U1 from OrcaSlicer: toolheads, camera, files. | [Install](https://cloud.orcaslicer.com/p/55b8c347d443) |
 
 Each plugin works on its own; installed together they share data where it helps.
 
 ## 🤝 Contributing
 
-Bug reports, printer data and pull requests are welcome: [report a bug](https://github.com/bloodf/spooler/issues/new?template=bug_report.yml) or [request a feature](https://github.com/bloodf/spooler/issues/new?template=feature_request.yml). [CONTRIBUTING.md](CONTRIBUTING.md) covers the setup, the tests, the build and how to try it in OrcaSlicer. In [docs/](docs/), [how-it-works.md](docs/how-it-works.md) is a tour of the code and [release.md](docs/release.md) covers releases and the Orca Cloud listing. Everyone taking part follows the [code of conduct](CODE_OF_CONDUCT.md).
-
-Spooler is built on [Spoolio](https://github.com/danm1989/spoolio-orcaslicer) by Dan J Moore, and owes thanks to [Spoolman](https://github.com/Donkie/Spoolman), [OrcaSlicer](https://github.com/OrcaSlicer/OrcaSlicer) and [q2-offload](https://github.com/cedbossneo/q2-offload). It is an independent project, not affiliated with or endorsed by Spoolman, OrcaSlicer, Snapmaker, Sovol, Anycubic or Bambu Lab.
+Bug reports, printer data and pull requests are welcome: [report a bug](https://github.com/bloodf/spooler/issues/new?template=bug_report.yml) or [request a feature](https://github.com/bloodf/spooler/issues/new?template=feature_request.yml). [CONTRIBUTING.md](CONTRIBUTING.md) covers the setup, the tests and the build, [docs/](docs/) has a [tour of the code](docs/how-it-works.md) and the [release notes for maintainers](docs/release.md), and [NOTICE.md](NOTICE.md) lists the credits. Everyone taking part follows the [code of conduct](CODE_OF_CONDUCT.md).
 
 ## 📄 License
 

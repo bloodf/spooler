@@ -169,8 +169,8 @@
       "operation": "scaled; page screenshot (left, dark, en, 681x655 at 2x) placed in the empty square, corners rounded 13.4 px",
       "width": 1600,
       "height": 900,
-      "bytes": 1330737,
-      "sha256": "822c74aa01797efc23627d7baef51d1440be5fe37c4f06a55d4c60012ce848b7",
+      "bytes": 1317629,
+      "sha256": "3dfee90412d5c5b9d220eb3e2b780caaba5bc213b1f8046fca812eeef329003e",
       "date": "2026-11-16"
     },
     {
@@ -192,11 +192,11 @@
         864,
         694
       ],
-      "operation": "scaled; page screenshot (left, dark, en, 508x501 at 2x) placed in the empty square, corners rounded 10.0 px",
+      "operation": "scaled; page screenshot (left, dark, en, 677x668 at 2x) placed in the empty square, corners rounded 10.0 px",
       "width": 900,
       "height": 900,
-      "bytes": 857238,
-      "sha256": "b9099fe995e65cfae130bd2e859afc9232717a09072045960d346054f13c034d",
+      "bytes": 860653,
+      "sha256": "7b1fa3d6902fd497b3be817d5be64690d70be0e426df4d3ad7b17999c56f1fb8",
       "date": "2026-11-16"
     },
     {
@@ -273,8 +273,8 @@
       "operation": "scaled; page screenshot (slots, dark, en, 681x654 at 2x) placed in the empty square, corners rounded 9.6 px",
       "width": 1600,
       "height": 900,
-      "bytes": 1369632,
-      "sha256": "b7b6c4034b67e3e14ddbac94a137088991d135b830bf002b8384655869e437d5",
+      "bytes": 1354799,
+      "sha256": "7c2264ebeca5aa6cabc3ea00bccaf57ea29baedfde4c83ca582f9d91b0804f77",
       "date": "2026-11-16"
     },
     {
@@ -322,11 +322,11 @@
         1220,
         535
       ],
-      "operation": "scaled; page screenshot (left, dark, en, 510x481 at 2x) placed in the empty square, corners rounded 7.2 px",
+      "operation": "scaled; page screenshot (left, dark, en, 765x722 at 2x) placed in the empty square, corners rounded 7.2 px",
       "width": 1280,
       "height": 640,
-      "bytes": 840273,
-      "sha256": "bf34b4881c441930a52f9cd7e7fdd0a71de75af43e07b3a782c1919ac30ca919",
+      "bytes": 837252,
+      "sha256": "67f6927920ae5fac104e8401a784b1fed835f6138f4abba8511dc9473e5e333e",
       "date": "2026-11-16"
     },
     {
@@ -351,8 +351,8 @@
       "operation": "scaled; page screenshot (left, dark, en, 679x655 at 2x) placed in the empty square, corners rounded 13.4 px",
       "width": 1600,
       "height": 900,
-      "bytes": 1352766,
-      "sha256": "e0a41f3007bebe019df2bf4be63e3df5d0a40c9f13054833f70b29bc64cb08cd",
+      "bytes": 1339958,
+      "sha256": "c13349ba27eefc84da8e0a7531ab6ea26d3da48fddbec6670c0316078e0c9009",
       "date": "2026-11-16"
     },
     {
@@ -377,8 +377,8 @@
       "operation": "scaled; page screenshot (left, light, en, 684x656 at 2x) placed in the empty square, corners rounded 13.4 px",
       "width": 1600,
       "height": 900,
-      "bytes": 1355399,
-      "sha256": "f5313e2607e9513450ce45a75a9219cf3b37a1c1720f7b501e2c1c3ad37c25b1",
+      "bytes": 1343219,
+      "sha256": "5d7ed5c9dc13c233c006ae16a3f1e26db0ebc611b13049512ebf1f154cb18193",
       "date": "2026-11-16"
     },
     {
@@ -403,8 +403,8 @@
       "operation": "scaled; page screenshot (left, dark, pt-BR, 681x655 at 2x) placed in the empty square, corners rounded 9.6 px",
       "width": 1600,
       "height": 900,
-      "bytes": 1330231,
-      "sha256": "ffaab4d6c214ed170c4eee6a228d4199ee933f658a5b1b6273ef0a97e6ac49af",
+      "bytes": 1323230,
+      "sha256": "0b6a2b4458f0966dad1fbf0bdaa83ebaf6775f00d1e5e60f97f2addb51e78f31",
       "date": "2026-11-16"
     },
     {
@@ -426,11 +426,11 @@
         862,
         678
       ],
-      "operation": "scaled; page screenshot (left, dark, pt-BR, 518x506 at 2x) placed in the empty square, corners rounded 7.2 px",
+      "operation": "scaled; page screenshot (left, dark, pt-BR, 691x675 at 2x) placed in the empty square, corners rounded 7.2 px",
       "width": 900,
       "height": 900,
-      "bytes": 864932,
-      "sha256": "4a9b40ffcdb7ccd176876c216dc1245f692a1c2489a39a6dae015b7e2e7295bf",
+      "bytes": 872230,
+      "sha256": "4b24af4ee74c11c64827331857c40f4623056926a52544c9f77aaf75e4e4748f",
       "date": "2026-11-16"
     },
     {
@@ -507,8 +507,8 @@
       "operation": "scaled; page screenshot (slots, dark, pt-BR, 680x655 at 2x) placed in the empty square, corners rounded 9.6 px",
       "width": 1600,
       "height": 900,
-      "bytes": 1366343,
-      "sha256": "a68c73154eabac57105a2f3b805d2acbba97eef4b6efcb35e980a2fbc93f56c0",
+      "bytes": 1351334,
+      "sha256": "5276d681605eb4866a98ec1d35f85a8cea50d2020b7d3b77c07776065b806843",
       "date": "2026-11-16"
     },
     {
@@ -556,11 +556,11 @@
         1221,
         536
       ],
-      "operation": "scaled; page screenshot (left, dark, pt-BR, 507x477 at 2x) placed in the empty square, corners rounded 7.2 px",
+      "operation": "scaled; page screenshot (left, dark, pt-BR, 760x716 at 2x) placed in the empty square, corners rounded 7.2 px",
       "width": 1280,
       "height": 640,
-      "bytes": 813252,
-      "sha256": "e85dc571deaee49b45816d1386123aaa6f3094f3af5f92b5d9f06a64edfe55b2",
+      "bytes": 822892,
+      "sha256": "ffb04ab8a90540052c808599c4994aba6213cc846337b5397ff098e72be5cbe8",
       "date": "2026-11-16"
     },
     {
@@ -585,8 +585,8 @@
       "operation": "scaled; page screenshot (left, dark, pt-BR, 681x656 at 2x) placed in the empty square, corners rounded 13.4 px",
       "width": 1600,
       "height": 900,
-      "bytes": 1323511,
-      "sha256": "3364ca3dab97d8b08168e5a2e6c00d6bbfd3bb78e4624ba7d5e029ba5fec289a",
+      "bytes": 1316093,
+      "sha256": "cb6d07d93d1209d0ba183c8a8076644db24b7f327bfe47a1166849b537d4ba1d",
       "date": "2026-11-16"
     },
     {
@@ -611,8 +611,8 @@
       "operation": "scaled; page screenshot (left, light, pt-BR, 684x658 at 2x) placed in the empty square, corners rounded 13.4 px",
       "width": 1600,
       "height": 900,
-      "bytes": 1360809,
-      "sha256": "035630ae8f334b299775942b8fe25aa7d9b3ab964309f1585db2597403e21759",
+      "bytes": 1352876,
+      "sha256": "668cbf137333457a8e6d4b78888f417165b94a64f785079e32342c7fb1ad8001",
       "date": "2026-11-16"
     },
     {
