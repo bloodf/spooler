@@ -66,3 +66,25 @@ export function sendAction(action: string, extra: Record<string, unknown> = {}):
   note('pending', t('action.sending'), 'spool-action');
   Object.assign(menu, { mode: '', val: '' });
 }
+
+// ------------------------------------------------------------------ spool editor (Add Spool, Edit Spool)
+// The plugin answers "editor" with Spoolman's extra-field definitions, filaments, vendors and (for an edit) the spool as
+// Spoolman has it now; a save or create answers like any card action. The editor stays open on a refusal, showing why.
+export const editor = reactive({ open: false, id: null as number | null, data: null as any, busy: false, error: '' });
+export function openEditor(id: number | null): void {
+  Object.assign(editor, { open: true, id, data: null, busy: false, error: '' });
+  bridge.postMain({ type: 'spool_action', action: 'editor', ...(id == null ? {} : { id }), origin: m.origin });
+}
+export function submitEditor(message: Record<string, unknown>): void {
+  Object.assign(editor, { busy: true, error: '' });
+  bridge.postMain({ type: 'spool_action', origin: m.origin, ...(editor.id == null ? {} : { id: editor.id }), ...message });
+  note('pending', t('action.sending'), 'spool-action');
+}
+on('editor', d => {
+  if (!editor.open) return;
+  if (d.action === 'editor') {
+    if (d.ok && (d.editor?.spool?.id ?? null) !== editor.id) return;   // an answer for an editor opened before this one
+    if (d.ok) editor.data = d.editor; else editor.error = d.text || t('common.unknownError'); return; }
+  editor.busy = false;
+  if (d.ok) editor.open = false; else editor.error = d.text || t('common.unknownError');
+});

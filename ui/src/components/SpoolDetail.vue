@@ -5,11 +5,11 @@ import Column from 'primevue/column';
 import DataTable from 'primevue/datatable';
 import InputText from 'primevue/inputtext';
 import { OuiIcon, OuiKeyValue, OuiLevel, OuiPanel, OuiReadout, OuiSpark, OuiSpool, OuiSwatch, type OuiFact } from '../../shared/src/components';
-import { archive as archiveIcon, external, hourglass, scale, spool as spoolIcon, x } from '../../shared/src/icons';
+import { archive as archiveIcon, edit, external, hourglass, scale, spool as spoolIcon, x } from '../../shared/src/icons';
 import SpoolChips from './SpoolChips.vue';
 import { boot } from '../core/boot';
 import { m, dupes } from '../state/main';
-import { menu, closeDetail, setMode, sendAction, type MenuMode } from '../state/menu';
+import { menu, closeDetail, setMode, sendAction, openEditor, type MenuMode } from '../state/menu';
 import { ask, prompt } from '../core/dialog';
 import { note } from '../state/main';
 import { t, tn, fmt, locale } from '../core/i18n';
@@ -132,7 +132,8 @@ async function save() {
       <OuiSpool v-bind="spoolPaint(f)" :fraction="pct === null ? null : pct / 100" :size="112" />
       <div class="sd-id">
         <SpoolChips :spool="s" band />
-        <p class="sd-name">{{ name }}</p>
+        <p class="sd-name">{{ name }}<Button v-if="canAct" severity="secondary" text rounded size="small" class="sd-edit" :aria-label="t('editor.editTitle', { id: s.id })" :title="t('editor.editTitle', { id: s.id })"
+                  data-test="detail-edit" data-focus-key="edit" @click="openEditor(s.id)"><template #icon><OuiIcon :icon="edit" :size="14" /></template></Button></p>
         <p class="oui-meta sd-sub"><OuiSwatch v-bind="spoolPaint(f)" />{{ [f.vendor?.name, f.material, typeof f.diameter === 'number' ? `${f.diameter} mm` : '', f.color_hex ? '#' + f.color_hex.replace(/^#/, '').toUpperCase() : ''].filter(Boolean).join(' · ') }}</p>
         <div class="sd-amount">
           <OuiReadout :icon="scale" :tone="level === 'out' ? 'danger' : level === 'low' ? 'warn' : 'accent'" :label="t('list.col.left')" :value="amount.value" :unit="amount.unit" :sub="amount.sub" size="lg"
@@ -204,6 +205,7 @@ async function save() {
 .sd-hero { display: flex; flex-wrap: wrap; align-items: center; gap: var(--oui-s4) var(--oui-s5); }
 .sd-id { flex: 1 1 240px; display: grid; gap: var(--oui-s1); min-width: 0; }
 .sd-name { font-size: var(--oui-text-xl); font-weight: 700; line-height: 1.3; overflow-wrap: anywhere; }
+.sd-edit { vertical-align: middle; margin-inline-start: var(--oui-s1); }
 .sd-sub { display: flex; align-items: center; gap: 6px; }
 .sd-amount { display: flex; flex-wrap: wrap; gap: var(--oui-s3) var(--oui-s8); margin-block: var(--oui-s2) var(--oui-s1); }
 .sd-act { margin-top: var(--oui-s4); }
