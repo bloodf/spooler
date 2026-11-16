@@ -3,7 +3,7 @@ export interface Tray { slot?: number; empty?: boolean; type?: string; name?: st
   spool?: number | string | null; profile?: string; linked?: string }
 export interface LiveUnit { id: number | string; kind: string; trays: Tray[] }
 export interface LivePrinter { id?: string; link?: string; name: string; heads?: boolean; unit_label?: string; units: LiveUnit[]; ext?: Tray | null;
-  age?: number; spool_set?: boolean; job?: Job | null }
+  age?: number; spool_set?: boolean; hh?: boolean; job?: Job | null }
 export interface Job { state: string; name?: string; pct?: number; stage?: string; layer?: number; layers?: number; left?: number | null;
   took?: number; end?: number; tray?: { unit: number | string; slot: number } | null }
 export type UnitKind = 'ams' | 'ht' | 'ext' | 'tool' | 'gate';

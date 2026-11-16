@@ -593,6 +593,16 @@ test('Klipper printer: hand-set gates, toolheads, slice fill switch and presets 
   await spools(SPOOLS, {printers: [{...voron, managed: true}], printer_presets: []});
   assert(!q('[data-test="klipper-slots"]') && !q('[data-test="presets"]'), 'printer reporting its own gates: read-only, nothing to set');
 `);
+test('Happy Hare gates are shown read-only with their note', `
+  const hh = {id: 'auto-hh', name: 'Trident HH', auto: true, kind: 'moonraker', ip: 'http://10.0.0.11', units: [], managed: true};
+  await spools(SPOOLS, {printers: [hh], live_ok: true});
+  await tab('printer');
+  await post({type: 'live', live: {links: {'auto-hh': 'live'}, printers: [{id: 'auto-hh', link: 'auto-hh', name: 'Trident HH', heads: false, hh: true, unit_label: 'MMU', age: 0,
+    spool_set: false, ext: null, units: [{id: 0, kind: 'ams', trays: [TRAY, {slot: 1, empty: true}]}]}]}});
+  const hv = vis(q('.pp'));
+  assert(hv.includes('MMU') && hv.includes('Happy Hare reports these gates'), 'gates and note: ' + hv);
+  assert(!q('[data-test="klipper-slots"]') && !q('[data-act="assign"]') && !btn('Change spool'), 'nothing to set by hand');
+`);
 test('slice pick: several matching spools ask which one, answer or leave it', `
   const voron = {id: 'auto-v', name: 'Voron', auto: true, kind: 'moonraker', ip: 'http://10.0.0.9', units: [{kind: 'gate', slots: [null, null, null]}]};
   const pk = n => ({printer: 'auto-v', name: 'Voron', n, slice: 7, unit: 0, slot: n - 1, material: 'PLA', colour: '111111', spools: [1, 2]});

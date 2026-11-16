@@ -63,6 +63,7 @@ function pick(id: number) { ui.picking = null; moonSet(props.link, id); }
         <h3 class="oui-label">{{ t('printer.external') }}</h3>
         <div class="oui-cards"><TrayCard :tray="lv.ext" label="E" :active="!!act && act.unit === 'ext'" /></div>
       </template>
+      <p v-if="lv.hh" class="oui-meta" data-test="hh-note">{{ t('printer.hhNote') }}</p>
       <p v-if="!units.length && !lv.ext" class="oui-meta" role="status">{{ lv.heads ? t('printer.waitingHeads') : t('printer.waitingSlots') }}</p>
     </template>
   </div>

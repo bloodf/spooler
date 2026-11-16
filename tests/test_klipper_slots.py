@@ -85,7 +85,7 @@ class PollTest(KlipperCase):
         doc, heads = sp.moon_poll(BASE)
         self.assertFalse(heads)
         self.assertEqual(doc["print"]["vt_tray"]["spool_id"], 4)
-        self.assertEqual(sp._moon_found[PID], {"tools": 1, "managed": False, "u1": False})
+        self.assertEqual(sp._moon_found[PID], {"tools": 1, "managed": False, "u1": False, "hh": False})
         self.assertEqual(self.entry()["units"], [])
 
     def test_four_extruders_show_toolheads_set_by_hand(self):
@@ -157,6 +157,39 @@ class PollTest(KlipperCase):
         self.addCleanup(patch.stop)
         sp.moon_poll(BASE)
         self.assertTrue(self.entry()["managed"])
+
+    def test_happy_hare_mmu_object_is_read_only_without_lane_data(self):
+        self.assign(gates=["1", "2"])
+        mmu = {"num_gates": 5, "gate_status": [1, 0, 1, -1, 1], "gate_material": ["PETG", "", "ABS", "PLA", ""],
+               "gate_color": ["0000FF", "", "00ff00", "FF0000", ""], "gate_spool_id": [3, -1, -1, -1, -1],
+               "gate_filament_name": ["Blue PETG", "", "", "", ""]}
+        self.moonraker({**extruders(1), "mmu": mmu}, lanes=None, active=4)
+        doc, heads = sp.moon_poll(BASE)
+        self.assertIn("mmu=num_gates,gate_status", self.paths[0])
+        self.assertFalse(heads)
+        self.assertTrue(doc["hh"])
+        self.assertNotIn("vt_tray", doc["print"])
+        units = doc["print"]["ams"]["ams"]
+        self.assertEqual([[t.get("spool_id") for t in u["tray"]] for u in units], [[3, None, 4, 1], [None]])
+        self.assertEqual(units[0]["tray"][1], {"id": "1"})  # reported empty
+        entry = self.entry()
+        self.assertTrue(entry["managed"])
+        self.assertEqual(entry["units"], [])  # no hand-set gates
+        self.assertEqual(sp.fill_printers(sp.printers_cfg()), [])  # never filled from a slice
+        with sp._live_lock:
+            sp.moon_mark(PID, doc, heads)
+
+    def test_happy_hare_without_gate_data_still_read_only(self):
+        self.moonraker({**extruders(1), "mmu": {"enabled": True}})
+        doc, _ = sp.moon_poll(BASE)
+        self.assertTrue(doc["hh"] and self.entry()["managed"])
+        self.assertEqual(doc["print"]["ams"]["ams"], [])
+        # A later empty answer doesn't turn it into a printer to book here.
+        patch = mock.patch.object(sp, "_moon_get", lambda base, path: {"status": {}} if "objects" in path else {})
+        patch.start()
+        self.addCleanup(patch.stop)
+        doc, _ = sp.moon_poll(BASE)
+        self.assertTrue(doc["hh"])
 
     def test_found_change_reaches_the_page(self):
         self.moonraker(extruders(2))
