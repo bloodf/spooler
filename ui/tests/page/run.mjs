@@ -282,11 +282,14 @@ test('the detail asks for history once the list settles; a pick asks at once; ro
   await sleep(400);
   eq(sentOf('spool_detail').slice(before).map(m => m.id), [2], 'one request, for the row shown once typing stopped');
   const el = byTest('search'); el.value = ''; el.dispatchEvent(new Event('input')); await settle();
-  const n = sentOf('spool_detail').length;
-  await open(1);
-  eq([sentOf('spool_detail').length >= n + 1, lastOf('spool_detail').id], [true, 1], 'a pick asks at once');
-  eq(row(1).getAttribute('aria-controls'), 'sp-detail', 'the row controls the detail');
-  assert(q('#sp-detail') === panel(1), 'and the detail is that element');
+  // Spool 1 is the top row again and its request is due after the settle time; pick spool 2, which is not the top
+  // row, so the request the pick sends can't be confused with that one, whenever it fires.
+  const of2 = () => sentOf('spool_detail').filter(m => m.id === 2).length;
+  const n = of2();
+  await open(2);
+  eq([of2(), lastOf('spool_detail').id], [n + 1, 2], 'a pick asks at once');
+  eq(row(2).getAttribute('aria-controls'), 'sp-detail', 'the row controls the detail');
+  assert(q('#sp-detail') === panel(2), 'and the detail is that element');
 `);
 test('N1: the shown spool is asked again when an action settles and when a newer list arrives', `
   await spools(SPOOLS, {display: {...DEFAULTS, group_same: false}});
@@ -295,11 +298,13 @@ test('N1: the shown spool is asked again when an action settles and when a newer
   const asked = () => sentOf('spool_detail').filter(m => m.id === 1).length;
   let n = asked();
   await click(btn('Mark dried today', panel(1)));
-  await post({type: 'action_result', ok: true, action: 'dried', text: 'Spool #1 updated'});
-  await spools(SPOOLS, {display: {...DEFAULTS, group_same: false}});
+  // The result and the list it refreshes, delivered together: they make one request. (Arriving more than the settle
+  // time apart, they would make two; the page only coalesces a burst.)
+  const result = post({type: 'action_result', ok: true, action: 'dried', text: 'Spool #1 updated'});
+  await Promise.all([result, spools(SPOOLS, {display: {...DEFAULTS, group_same: false}})]);
   await until(() => asked() > n, 'asked again after the action');
   await sleep(400);
-  eq(asked(), n + 1, 'the result and the list it refreshes make one request');
+  eq(asked(), n + 1, 'a result and its list arriving together make one request');
   assert(text(panel(1)).includes('Benchy'), 'the old history stays until the new one arrives');
   n = asked();
   await spools([{...SPOOLS[0], remaining_weight: 300}, SPOOLS[1]], {display: {...DEFAULTS, group_same: false}});
