@@ -3,6 +3,13 @@
 Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); entries before
 0.9.0 are Spoolio's.
 
+## [0.28.0] - 2026-11-16
+
+### Added
+- Spooler now speaks Spanish, German and Simplified Chinese, next to English and Brazilian Portuguese. The page follows OrcaSlicer's language on its own (Traditional Chinese gets the Simplified texts, any other language English), and Settings > Language lets you pick Español, Deutsch or 简体中文 instead.
+- The messages Spooler writes itself are in your language too: the filament check after slicing, the low-stock notice, spool action results, Bambu Cloud sign-in errors, Sync Presets, Send to Spoolman, and the Load Printer Filaments and Keep Slots Synced results. This now includes Brazilian Portuguese, where they were English before. Spool, filament, vendor and colour names stay as Spoolman has them.
+- Numbers, weights, money and dates are written the way each language writes them, for example "1.380 g" and "41,20 €" in German, and Bambu print stages use OrcaSlicer's own wording.
+
 ## [0.27.1] - 2026-11-15
 
 ### Fixed
