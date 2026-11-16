@@ -8,6 +8,7 @@ from unittest import mock
 
 from fake_bundle import Preset
 from plugin_loader import load
+from test_send import bundle
 
 sp, orca = load()
 
@@ -151,6 +152,89 @@ class AskTest(unittest.TestCase):
         self.settings["save_calibration"] = "never"
         self.save_copy()
         self.assertEqual((self.sent, self.notices, sp.calibration_asks()), ([], [], []))
+
+
+class UnsavedEditsTest(unittest.TestCase):
+    """The 10 s tick that sends unsaved edits holds calibrated values back unless Automatically."""
+
+    def setUp(self):
+        self.settings, self.started, self.notices, self.page = {}, [], [], []
+        orca.host.preset_bundle = lambda: bundle({"filament_flow_ratio": "0.95", "filament_notes": '"dry 4 h"'})
+        self.patches = [
+            mock.patch.object(sp, "start_send", lambda post, edits=None, auto=False: self.started.append(edits)),
+            mock.patch.object(sp, "source", return_value="spoolman"),
+            mock.patch.object(sp, "get_settings", lambda: dict(self.settings)),
+            mock.patch.object(sp, "save_settings", lambda s: self.settings.update(s) or True),
+            mock.patch.object(sp, "push_notice", lambda kind, text: self.notices.append(text)),
+            mock.patch.object(sp, "send_plate_message", self.page.append),
+            mock.patch.dict(sp._auto, {"seen": None, "sent": None, "busy": False, "kept": {}}),
+        ]
+        for patch in self.patches:
+            patch.start()
+
+    def tearDown(self):
+        for patch in self.patches:
+            patch.stop()
+        orca.host.preset_bundle = None
+
+    def tick(self, times=4):
+        for _ in range(times):
+            sp.auto_send(None)
+
+    def test_ask_sends_the_rest_and_asks_about_the_calibrated_value(self):
+        self.tick()
+        self.assertEqual(self.started, [("X @Snapmaker U1", {"filament_notes": ('"dry 4 h"', '""')})])
+        self.assertEqual(sp.calibration_asks(), [{"name": "X @Snapmaker U1", "changes": [
+            {"key": "filament_flow_ratio", "old": "0.98", "new": "0.95", "unit": ""}]}])
+        self.assertEqual(len(self.notices), 1, "asked once, not every tick")
+
+    def test_only_a_calibrated_value_sends_nothing(self):
+        orca.host.preset_bundle = lambda: bundle({"filament_flow_ratio": "0.95"})
+        self.tick()
+        self.assertEqual(self.started, [])
+        self.assertEqual(len(sp.calibration_asks()), 1)
+
+    def test_skipped_values_are_not_asked_again(self):
+        self.tick()
+        sp.answer_calibration({"type": "calibration_skip", "name": "X @Snapmaker U1"}, lambda _: None)
+        sp._auto.update(seen=None, sent=None)  # as after a send that failed and is tried again
+        self.notices.clear()
+        self.tick()
+        self.assertEqual((sp.calibration_asks(), self.notices), ([], []))
+
+    def test_never_sends_the_rest_only(self):
+        self.settings["save_calibration"] = "never"
+        self.tick()
+        self.assertEqual(self.started, [("X @Snapmaker U1", {"filament_notes": ('"dry 4 h"', '""')})])
+        self.assertEqual((sp.calibration_asks(), self.notices), ([], []))
+
+    def test_automatically_sends_everything(self):
+        self.settings["save_calibration"] = "auto"
+        self.tick()
+        self.assertEqual(self.started, [("X @Snapmaker U1", {"filament_flow_ratio": ("0.95", "0.98"),
+                                                             "filament_notes": ('"dry 4 h"', '""')})])
+        self.assertEqual(sp.calibration_asks(), [])
+
+
+class ConfigImportTest(unittest.TestCase):
+    def test_an_older_config_that_turned_saved_copies_off_means_never(self):
+        settings = {"spoolman_url": "http://sm:7912"}
+
+        class Capability:
+            stored = json.dumps({"send_saved_copies": False, "spoolman_url": "http://sm:7912"})
+
+            def get_config(self):
+                return self.stored
+
+            def save_config(self, text):
+                Capability.stored = text
+                return True
+
+        with mock.patch.object(sp, "get_settings", lambda: dict(settings)), \
+                mock.patch.object(sp, "save_settings", lambda s: settings.update(s) or True), \
+                mock.patch.object(sp, "auto_keep_check"), mock.patch.dict(sp._config, {"last": None}):
+            sp.sync_config(Capability())
+        self.assertEqual(settings["save_calibration"], "never")
 
 
 class ModeSettingTest(unittest.TestCase):

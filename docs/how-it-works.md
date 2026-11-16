@@ -37,7 +37,8 @@ OrcaSlicer refuse the whole bundle.
 OrcaSlicer won't save over a plugin's preset, so edits reach Spoolman in two ways:
 
 - **Unsaved edits** of a Spooler preset are read every 10 seconds while the tab is open
-  (`auto_send()`), and sent once they have stayed the same for one tick.
+  (`auto_send()`), and sent once they have stayed the same for one tick. The calibration keys
+  (`CALIBRATION_KEYS`) are held back and offered on the page unless `save_calibration` is `auto`.
 - **A saved copy** of a Spooler preset (`PresetSaved`) has its changed settings offered on the
   page for Save to Spoolman or Skip (`send_saved_copy()`, `answer_calibration()`). The
   `save_calibration` setting can send them at once (`auto`) or never (`never`) instead.

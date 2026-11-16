@@ -95,7 +95,9 @@ only by hand, set `"auto_send": false` in Spooler's settings file.
 OrcaSlicer's Save on a Spooler preset makes a separate copy that no longer follows Spoolman. Spooler
 shows that copy's changed calibration settings at the top of the Spooler tab, with Spoolman's value
 and the new one. Save to Spoolman writes them, so the Spooler preset has them after its next rebuild;
-Skip leaves Spoolman alone and isn't asked again for the same values. Settings > Spool source >
+Skip leaves Spoolman alone and isn't asked again for the same values. Flow ratio, pressure advance
+and max volumetric speed in unsaved edits wait in the same prompt; other unsaved edits are sent by
+themselves. Settings > Spool source >
 "Save calibrated values to Spoolman" can make this Automatically or Never instead.
 
 ## Spools tab

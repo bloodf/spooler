@@ -5,9 +5,23 @@ Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); 
 
 ## [Unreleased]
 
+### Added
+- Add and edit spools without leaving OrcaSlicer. "Add Spool" above the spool list (and in the empty list) walks you through it: pick a filament Spoolman already has to restock it, or make a new one (manufacturer, name, material, one or several colours, diameter, density, nozzle and bed temperatures, filament and empty spool weight), then fill in the spool (starting weight, grams left, location, lot, price, note, archived). The density fills in for common materials.
+- A pencil beside each spool's name, in the list and in its detail, opens Edit Spool. Changes to the spool are saved to that spool; changes to the filament (colour, temperatures, density and so on) are saved to the filament in Spoolman, and the editor says how many other spools share it.
+- Your own Spoolman extra fields, for spools and filaments, can be filled in there with the input their type calls for: a switch for yes/no, a menu for a choice, a number box with its unit for numbers (two for a range), text otherwise. Spooler's own fields stay hidden.
+- A live preview of the spool, drawn like the list's reels, shows its colours, name and amount left as you type.
+- Only the fields you changed are sent, after reading the spool from Spoolman again: a field someone changed in Spoolman while you were editing keeps Spoolman's value, and the result says which. Spoolman's refusals show in the editor, which stays open; if a new filament was made but the spool was refused, trying again uses that filament instead of making a second one. Emptying an extra field needs Spoolman 0.26 or newer; older versions say so and nothing is written. Decimals typed or pasted with a point work in every language.
+
 ### Changed
 - Saving a copy of a Spooler preset with changed calibration values (flow ratio, pressure advance and the others Spooler keeps in Spoolman) no longer writes them to Spoolman on its own. Spooler shows which filament it is, each setting's value in Spoolman and the new one, and writes nothing until you press Save to Spoolman. Skip leaves Spoolman as it is, and Spooler doesn't ask again about the same values for that filament until they change.
-- Settings > Spool source has "Save calibrated values to Spoolman": Ask first (the default), Automatically (the old behaviour) or Never. If you had turned off sending saved copies, it starts on Never.
+- Unsaved edits of a Spooler preset still reach Spoolman by themselves, except flow ratio, pressure advance and max volumetric speed: those wait in the same prompt. Send Preset Edits to Spoolman still sends everything at once.
+- Settings > Spool source has "Save calibrated values to Spoolman": Ask first (the default), Automatically (the old behaviour) or Never. If you had turned off sending saved copies, in the settings file or in OrcaSlicer's plugin manager, it starts on Never.
+- A prompt waiting for an answer is still there after OrcaSlicer restarts.
+
+### Fixed
+- When Spooler can't read Spoolman's version, Send to Spoolman now says so and writes nothing, instead of sending every extra field of the filament back as read, which on a Spoolman that merges them could undo a change made in between.
+- On Spoolman 0.22 to 0.25, Clear Dried Date did nothing: the spool kept its dried date while Spooler said it was cleared. These versions can't remove the date, so Spooler now says so and writes nothing; Spoolman 0.26 or newer removes it as before.
+- On Spoolman 0.22 to 0.25, Mark Dried Today and Send to Spoolman sent back every extra field of the spool or filament, as read just before, instead of only the one they change, so a change made in Spoolman in between could be undone. They now send only their own field; only Spoolman older than 0.22, which replaces the whole map, still gets it whole.
 
 ## [0.28.0] - 2026-11-16
 

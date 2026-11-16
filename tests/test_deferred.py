@@ -78,7 +78,7 @@ class MoonSpoolWhilePrintingTest(unittest.TestCase):
 
 
 class FreshVersionTest(unittest.TestCase):
-    """A Spoolman downgraded below 0.26 while OrcaSlicer runs: the write that depends on the version
+    """A Spoolman downgraded below 0.22 (where a PATCH replaces the whole extra map) while OrcaSlicer runs: the write that depends on the version
     reads it again, so a one-key extra PATCH can't wipe the spool's other fields."""
 
     def setUp(self):
@@ -86,7 +86,7 @@ class FreshVersionTest(unittest.TestCase):
         self.addCleanup(sp._versions.clear)
 
     def test_dried_date_reads_the_version_each_time(self):
-        versions = iter(["0.26.0", "0.25.3"])
+        versions = iter(["0.26.0", "0.21.0"])
         calls = []
 
         def call(method, path, body=None):
@@ -112,7 +112,7 @@ class FreshVersionTest(unittest.TestCase):
     def test_send_changes_checks_the_version_fresh(self):
         src = Path(sp.__file__).read_text(encoding="utf-8")
         body = src[src.index("def _send_changes"):src.index("def native_value")]
-        self.assertIn("spoolman_at_least(SPOOLMAN_EXTRA_MERGE, fresh=True)", body)
+        self.assertIn("spoolman_version(fresh=True)", body)
 
 
 class LinkStatusOwnerTest(unittest.TestCase):
