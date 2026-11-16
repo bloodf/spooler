@@ -5364,6 +5364,8 @@ def _merge_edit(changes: dict, was: dict, now: dict) -> tuple[dict, list, dict]:
         if key == "extra":
             continue
         old = was.get(key)
+        if value == old:
+            continue  # sent along, not changed by the user (a starting weight's grams left)
         has = (now.get("vendor") or {}).get("name") if key == "vendor" else now.get(key)
         if has != old and has != value:
             kept.append(key)
@@ -5423,9 +5425,10 @@ def editor_save(sid: int, data: dict) -> dict:
     else:
         f_patch, f_kept, f_extra = _merge_edit(fil_changes, was_fil, filament)
         kept += f_kept
-    if "initial_weight" in s_patch and spool_changes.get("remaining_weight") is not None:
-        # Spoolman keeps the used grams and works out what is left: send the grams left the form shows too.
-        s_patch["remaining_weight"] = spool_changes["remaining_weight"]
+    if "initial_weight" in s_patch and "remaining_weight" not in s_patch and now.get("remaining_weight") is not None:
+        # Spoolman keeps the used grams and works out what is left, so a new starting weight alone would
+        # move the grams left: they go along as Spoolman has them now, use booked meanwhile included.
+        s_patch["remaining_weight"] = now["remaining_weight"]
     if s_extra or f_extra:
         version = spoolman_version(fresh=True)
         if s_extra:

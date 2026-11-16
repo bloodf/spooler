@@ -190,6 +190,17 @@ class EditorTest(Settings):
         self.assertEqual(writes, [("PATCH", "spool/7", {"initial_weight": 1200.0, "remaining_weight": 500.0})])
         self.assertEqual(server.spool["remaining_weight"], 500.0, "Spoolman still has the grams left the form showed")
 
+    def test_a_new_starting_weight_keeps_use_booked_meanwhile(self):
+        # The editor read 500 g left; a print then used 30 g in Spoolman. The new starting weight
+        # must not bring the 30 g back, nor claim a kept value the user never changed.
+        server = Spoolman(spool={**SPOOL, "remaining_weight": 470.0})
+        result, writes = self.run_action({"action": "save", "id": 7, "spool": {"initial_weight": 1200, "remaining_weight": 500},
+                                          "was": {"spool": {"initial_weight": 1000.0, "remaining_weight": 500.0}}}, server)
+        self.assertTrue(result["ok"], result)
+        self.assertEqual(writes, [("PATCH", "spool/7", {"initial_weight": 1200.0, "remaining_weight": 470.0})])
+        self.assertEqual(server.spool["remaining_weight"], 470.0)
+        self.assertNotIn("Kept", result["text"])
+
     def test_filament_changes_never_land_on_a_filament_the_spool_moved_to(self):
         moved = {**SPOOL, "filament": {**FILAMENT, "id": 12}}
         result, writes = self.run_action({"action": "save", "id": 7, "spool": {"location": "B"},
