@@ -5,9 +5,13 @@ Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); 
 
 ## [Unreleased]
 
+### Changed
+
+- Spooler's filament presets are now standalone copies: each one holds its parent preset's whole set of settings (with Spooler's values on top) instead of inheriting them, and has a `filament_id` of its own (`SPL` plus a short hash of its filament, printer and, with presets per spool, spool). OrcaSlicer's "sync from AMS" only loads standalone presets, so this is what lets Kobra Control and U1 Control have it load the Spooler preset of a linked spool. Copies are refreshed whenever Spooler rewrites its presets and on Sync Presets, which also re-reads the parent presets. Existing presets are converted the next time they are written and keep their names, so projects still find them. The preset's description says which preset it was copied from.
+
 ### Fixed
 
-- With presets per spool, `profiles.json` also lists each spool's own preset under `"spools"`, so U1 Control and Kobra Control pick that spool's preset rather than the one of its filament's lowest-numbered spool. The file keeps version 1 and its `"filaments"` map; with presets per filament it is unchanged.
+- With presets per spool, `profiles.json` also lists each spool's own preset under `"spools"`, so U1 Control and Kobra Control pick that spool's preset rather than the one of its filament's lowest-numbered spool. It also lists each standalone preset's `filament_id` under `"ids"` (OrcaSlicer's plugin API doesn't show it). The file keeps version 1 and its `"filaments"` map.
 
 ## [0.29.0] - 2026-11-17
 

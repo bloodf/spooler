@@ -1001,8 +1001,9 @@ def load_spools() -> dict:
 
 # --- Filament profiles -------------------------------------------------------------------
 # For each of your printers, one OrcaSlicer filament preset per Spoolman filament, written as a
-# local preset bundle and hot-reloaded. Each one inherits the closest preset OrcaSlicer already
-# has for that printer (so the printer's own tuning is kept), is limited to that printer, and
+# local preset bundle and hot-reloaded. Each one is a standalone copy of the closest preset
+# OrcaSlicer already has for that printer (so the printer's own tuning is kept), refreshed on every
+# rewrite and on Sync Presets, with a filament_id of its own (see flat_preset), is limited to that printer, and
 # carries the filament's colour, vendor, temperatures, density, diameter and cost (the filament's
 # price, else its spools' prices). It shows up under "User presets" in the sidebar's filament
 # dropdown.
@@ -1061,7 +1062,7 @@ PROFILE_RETRY = 300  # seconds before a refused set of presets is offered again
 _profiles: dict = {"names": {}, "error": "", "count": 0, "failed": ("", 0.0), "gen": None}
 _profile_lock = threading.Lock()
 _ui_snap: dict = {}
-_parent_cache: dict = {"key": None, "parents": []}
+_parent_cache: dict = {"key": None, "parents": [], "configs": {}}
 
 
 def _material_key(material: object) -> str:
@@ -1548,7 +1549,8 @@ def spool_profile_names(spools: list[dict], printers: list[dict], loaded: dict) 
 # OrcaSlicer refuses the whole bundle over one key it doesn't know or one value of the wrong shape,
 # so every preset is checked before it is written: these keys only, each a list of text (but
 # compatible_printers_condition, text), number settings one number, percentage or "nil" each.
-PRESET_META = frozenset({"type", "name", "from", "instantiation", "inherits", "version"})
+PRESET_META = frozenset({"type", "name", "from", "instantiation", "inherits", "version", "filament_id",
+                         "description"})
 PRESET_KEYS = frozenset({"compatible_printers", "compatible_printers_condition", "filament_settings_id",
                          "default_filament_colour", "filament_vendor", *ORCA_SETTINGS_KEYS})
 PRESET_TEXT = frozenset({"compatible_printers", "filament_settings_id", "default_filament_colour",
@@ -1566,6 +1568,8 @@ def preset_problem(preset: dict) -> str:
         if key in PRESET_META or key == "compatible_printers_condition":
             if not isinstance(value, str):
                 return f"{key} is not text"
+        elif isinstance(value, str) and preset.get("inherits") == "":
+            continue  # a standalone copy: the parent's own setting, as OrcaSlicer itself serialized it
         elif key not in PRESET_KEYS:
             return f"{key} is not a filament setting"
         elif not isinstance(value, list) or not value or not all(isinstance(v, str) for v in value):
@@ -1573,6 +1577,58 @@ def preset_problem(preset: dict) -> str:
         elif key not in PRESET_TEXT and not all(v == "nil" or _finite_text(v) for v in value):
             return f"{key} is not a number"
     return ""
+
+
+# A preset that inherits a system preset can't be loaded by OrcaSlicer's "sync from AMS": it only
+# loads base presets (PresetCollection::get_preset_base(), which is the preset itself for a user
+# preset whose "inherits" is empty), matched by filament_id (PresetBundle::sync_ams_list). So each
+# preset is written flat: the parent's whole config, then Spooler's values, "inherits" empty, and a
+# filament_id of its own that printer agents report for a tray holding that spool.
+FLAT_SKIP = frozenset({"inherits", "compatible_printers", "compatible_printers_condition",
+                       "filament_settings_id", "filament_id", "name", "version", "from", "instantiation",
+                       "type", "setting_id", "description", "url", "is_custom_defined", "renamed_from",
+                       "includes"})
+FILAMENT_ID_PREFIX = "SPL"  # no OrcaSlicer system preset id starts with it (theirs: OF..., GF..., ...)
+
+
+def spooler_filament_id(key: tuple) -> str:
+    """The filament_id of the preset for a (filament id, printer preset[, spool id]) key: stable across
+    rewrites, different for every key."""
+    return FILAMENT_ID_PREFIX + hashlib.sha256("|".join(map(str, key)).encode("utf-8")).hexdigest()[:10].upper()
+
+
+def flat_preset(preset: dict, parent_config: dict, key: tuple) -> dict:
+    """preset (profile_preset's, which inherits its parent) as a root preset: the parent's settings
+    (parent_config: {key: OrcaSlicer's serialized text}) under Spooler's own. A Spooler value of one item
+    is repeated for every nozzle variant the parent has, as OrcaSlicer does for a preset that inherits."""
+    flat = {k: v for k, v in parent_config.items() if k not in FLAT_SKIP and isinstance(v, str)}
+    for k, v in preset.items():
+        parent = flat.get(k)
+        if isinstance(v, list) and len(v) == 1 and k not in PRESET_TEXT and isinstance(parent, str):
+            v = v * max(1, len(parent.split(",")))
+        flat[k] = v
+    flat.update(inherits="", filament_id=spooler_filament_id(key),
+                description=f"Spooler: standalone copy of {preset['inherits']}, refreshed on Sync Presets")
+    return flat
+
+
+def parent_configs(filaments, parents: list[dict], targets: set, cache: dict) -> dict:
+    """{parent name: {key: serialized text}} for the parent candidates usable on these printers, read
+    once per name into cache (system presets don't change while OrcaSlicer runs). UI thread."""
+    for candidate in parents:
+        name = candidate["name"]
+        if name in cache or (candidate["printers"] and not targets & set(candidate["printers"])):
+            continue
+        preset = filaments.find_preset(name)
+        if preset is None:
+            continue
+        values = {}
+        for key in preset.config_keys():
+            value = preset.config_value(key)
+            if value is not None:
+                values[str(key)] = str(value)
+        cache[name] = values
+    return dict(cache)
 
 
 def profile_files(spools: list[dict], snapshot: dict, opts: dict | None = None,
@@ -1599,6 +1655,11 @@ def profile_files(spools: list[dict], snapshot: dict, opts: dict | None = None,
         if not parent:
             continue
         preset = profile_preset(filaments[fid], name, parent, target, spool_cost_per_kg(fid, spools), tune)
+        config = (snapshot.get("configs") or {}).get(parent)
+        if config:
+            preset = flat_preset(preset, config, key)
+        else:  # its settings weren't read: still a valid preset, but sync from AMS loads its parent
+            _report(f"Preset {name} parent", f"settings of {parent} not read; it inherits them")
         problem = preset_problem(preset)
         _report(f"Preset {name}", problem or None)  # logged once, not on every sync
         if problem:
@@ -1686,8 +1747,10 @@ def profile_snapshot() -> dict | None:
         printers = target_printers(bundle)
         selected = _root_printer(bundle.printers, bundle.printers.selected_preset())
         current = bundle.current_filament_preset_names()
+        configs = parent_configs(filaments, _parent_cache["parents"], {p["target"] for p in printers},
+                                 _parent_cache["configs"])
         snap = {"names": set(filaments.preset_names()), "parents": _parent_cache["parents"],
-                "printers": printers, "selected": selected,
+                "configs": configs, "printers": printers, "selected": selected,
                 "folder": profile_user_folder(bundle, _orca_data_dir()),
                 "host": moon_base(bundle.full_config_value("print_host")),
                 # The printer presets, for the Printer tab's "which preset is which printer" choice.
@@ -1867,7 +1930,9 @@ def _install_profiles(root: Path, snapshot: dict, files: dict, digest: str, forc
 #                     "filaments": {"<filament id>": {"<printer label>": "_local/spooler/<preset>"}},
 #                     "spools": {"<spool id>": {"<printer label>": "_local/spooler/<preset>"}}}
 #                    "spools" is there only with presets per spool: each spool's own preset, which readers
-#                    use before the filament's.
+#                    use before the filament's. "ids": {"_local/spooler/<preset>": "<filament_id>"}, the
+#                    filament_id of each standalone preset, which OrcaSlicer's plugin API doesn't show:
+#                    printer agents report it so OrcaSlicer's sync from AMS loads that preset.
 #   keep_slots.json: {"active": true, "printer": "<label>", "ts": <unix s>} while Keep Slots Synced
 #                    runs, refreshed every pass; {"active": false, "ts": ...} once it stops.
 BRIDGE_PROFILES = "profiles.json"
@@ -1903,12 +1968,17 @@ def spool_map(by_key: dict, printers: list[dict]) -> dict:
     return out
 
 
-def publish_profiles(by_key: dict, printers: list[dict]) -> None:
+def publish_profiles(by_key: dict, printers: list[dict], files: dict | None = None) -> None:
     """Write profiles.json when the presets changed (or it is missing). Never raises."""
     doc = {"filaments": profile_map(by_key, printers)}
     spools = spool_map(by_key, printers)
     if spools:
         doc["spools"] = spools
+    ids = {PROFILE_PREFIX + name: (files or {}).get(f"{name}.json", {}).get("filament_id")
+           for name in sorted(by_key.values())}
+    ids = {name: fid for name, fid in ids.items() if fid}
+    if ids:
+        doc["ids"] = ids
     path = bridge_dir() / BRIDGE_PROFILES
     if doc == _bridge["profiles"] and path.exists():
         return
@@ -2187,7 +2257,7 @@ def profile_sync(spools: list[dict], snapshot: dict | None, force: bool = False)
                 raise OriginChanged()
             _profiles.update(names=by_key, count=len(files), error="", failed=("", 0.0),
                              gen=pinned[1] if pinned else None)
-            publish_profiles(by_key, snapshot.get("printers") or [])
+            publish_profiles(by_key, snapshot.get("printers") or [], files)
             _report("Profile sync", None)
         except Exception as exc:
             _profiles.update(error=str(exc), failed=(digest, time.monotonic()))
@@ -2224,6 +2294,7 @@ def start_preset_sync(post) -> None:
     if source() != "spoolman":
         post({"type": "sent", "ok": False, "text": tr("Syncing presets needs Spoolman as the source.")})
         return
+    _parent_cache["configs"] = {}  # read every parent's settings again: an updated one is copied anew
     snapshot = refresh_snapshot()
     if snapshot is None:
         post({"type": "sent", "ok": False, "text": tr("Could not read OrcaSlicer's presets.")})

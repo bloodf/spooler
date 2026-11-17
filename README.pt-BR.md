@@ -78,7 +78,7 @@ O Spooler é um fork do [Spoolio](https://github.com/danm1989/spoolio-orcaslicer
 
 | | Recurso | O que você tem |
 |---|---|---|
-| | Perfis por impressora | Cada perfil herda o perfil mais próximo que o OrcaSlicer já tem para aquela impressora e soma cor, fabricante, temperaturas de bico e mesa, densidade, diâmetro e custo do Spoolman. Exemplo: `3D Procer PLA Pérola @Snapmaker U1`. |
+| | Perfis por impressora | Cada perfil é uma cópia independente do perfil mais próximo que o OrcaSlicer já tem para aquela impressora (atualizada no Sync Presets) e soma cor, fabricante, temperaturas de bico e mesa, densidade, diâmetro e custo do Spoolman. Exemplo: `3D Procer PLA Pérola @Snapmaker U1`. |
 | | Ajustes calibrados | Um campo JSON `orca_settings` no filamento do Spoolman, por impressora ou `*` para todas, mais os campos **Flow ratio**, **Pressure advance** e **Max volumetric speed** no formulário de filamento do Spoolman. |
 | | As edições voltam | Altere um perfil do Spooler no OrcaSlicer e ele é enviado ao Spoolman em alguns segundos, ou na hora com **Enviar edições do perfil ao Spoolman**. |
 | | Busca e filtros | A busca encontra nome, local, lote e comentário, e `#12` acha a bobina 12. Filtros de material e cor, agrupamento, ordenação e **Cor mais próxima**, que lista as 12 bobinas mais parecidas. |

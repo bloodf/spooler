@@ -44,8 +44,9 @@ filament's colour, so there are no colours to edit and no profiles to clone.
 "Your printers" are the printers behind every printer preset with a host address (Printer settings >
 Connection), plus the printer currently selected.
 
-Each preset inherits the closest preset OrcaSlicer already has for that printer, so the printer's
-own tuning is kept: Snapmaker SnapSpeed spools on the U1 get `Snapmaker PLA SnapSpeed @U1`, other
+Each preset is a standalone copy of the closest preset OrcaSlicer already has for that printer, so
+the printer's own tuning is kept (the copy is refreshed whenever Spooler rewrites the presets and on
+Sync Presets, and its description says what it was copied from): Snapmaker SnapSpeed spools on the U1 get `Snapmaker PLA SnapSpeed @U1`, other
 PLA gets `Generic PLA @U1 0.4 nozzle`, silk gets the silk preset, and so on. The vendor's own preset
 wins when OrcaSlicer has one.
 
