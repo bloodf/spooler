@@ -84,6 +84,10 @@ const sections = computed<OuiSettingsSection[]>(() => [
       <OuiFormSection id="s-src" :icon="spoolman" tone="magenta" :title="t('set.source')" :description="t('set.guideText')">
         <template #actions><Button severity="secondary" size="small" :label="t('set.openGuide')" data-test="open-guide" data-focus-key="open-guide" @click="openWizard" /></template>
         <div class="set-pad"><SourceBlock v-if="!wizard.open" /><p v-else class="oui-meta">{{ t('set.inGuide') }}</p></div>
+        <OuiFormRow v-if="form.source === 'spoolman'" :label="t('set.calibration')" :hint="t('set.calibrationHelp')">
+          <div class="oui-row" role="radiogroup" :aria-label="t('set.calibration')" data-test="save-calibration"><span v-for="v in ['ask', 'auto', 'never'] as const" :key="v" class="oui-row set-opt">
+            <RadioButton v-model="form.save_calibration" :input-id="`cal-${v}`" name="save-calibration" :value="v" /><label :for="`cal-${v}`">{{ t(`set.calibration.${v}`) }}</label></span></div>
+        </OuiFormRow>
       </OuiFormSection>
 
       <OuiFormSection id="s-reorder" :icon="store" tone="lime" :title="t('set.reorder')">

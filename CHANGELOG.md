@@ -17,7 +17,14 @@ Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); 
 - Settings > Presets says that OrcaSlicer won't reload renamed Spooler presets while the selected one has unsaved changes, and what to do.
 - Every preset is checked against the settings and value types OrcaSlicer takes before the set is written. One that fails is left out and named in spooler.log, so it can't make OrcaSlicer refuse all the others.
 
+### Changed
+- Saving a copy of a Spooler preset with changed calibration values (flow ratio, pressure advance and the others Spooler keeps in Spoolman) no longer writes them to Spoolman on its own. Spooler shows which filament it is, each setting's value in Spoolman and the new one, and writes nothing until you press Save to Spoolman. Skip leaves Spoolman as it is, and Spooler doesn't ask again about the same values for that filament until they change.
+- Unsaved edits of a Spooler preset still reach Spoolman by themselves, except flow ratio, pressure advance and max volumetric speed: those wait in the same prompt. Send Preset Edits to Spoolman still sends everything at once.
+- Settings > Spool source has "Save calibrated values to Spoolman": Ask first (the default), Automatically (the old behaviour) or Never. If you had turned off sending saved copies, in the settings file or in OrcaSlicer's plugin manager, it starts on Never.
+- A prompt waiting for an answer is still there after OrcaSlicer restarts.
+
 ### Fixed
+- When Spooler can't read Spoolman's version, Send to Spoolman now says so and writes nothing, instead of sending every extra field of the filament back as read, which on a Spoolman that merges them could undo a change made in between.
 - On Spoolman 0.22 to 0.25, Clear Dried Date did nothing: the spool kept its dried date while Spooler said it was cleared. These versions can't remove the date, so Spooler now says so and writes nothing; Spoolman 0.26 or newer removes it as before.
 - On Spoolman 0.22 to 0.25, Mark Dried Today and Send to Spoolman sent back every extra field of the spool or filament, as read just before, instead of only the one they change, so a change made in Spoolman in between could be undone. They now send only their own field; only Spoolman older than 0.22, which replaces the whole map, still gets it whole.
 

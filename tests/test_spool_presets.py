@@ -6,6 +6,7 @@ import copy
 import json
 import math
 import tempfile
+import threading
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -87,6 +88,19 @@ class ParseTest(unittest.TestCase):
             self.assertEqual(sp.presets_settings(), {"per_spool": True, "tuning": False,
                                                      "materials": {"PLA": {"pressure_advance": 0.03}}})
             self.assertEqual(sp.get_settings()["spoolman_url"], "http://spoolman:7912")
+
+
+    def test_concurrent_updates_keep_each_other(self):
+
+        with tempfile.TemporaryDirectory() as tmp, \
+                mock.patch.object(sp, "SETTINGS_FILE", Path(tmp) / "s.json"), mock.patch.object(sp, "OLD_SETTINGS", Path(tmp) / "x"):
+            sp.save_settings({})
+            threads = [threading.Thread(target=sp.update_settings, args=({f"k{i}": i},)) for i in range(20)]
+            for thread in threads:
+                thread.start()
+            for thread in threads:
+                thread.join()
+            self.assertEqual({k: v for k, v in sp.get_settings().items() if k.startswith("k")}, {f"k{i}": i for i in range(20)})
 
 
 class OffIsTodayTest(unittest.TestCase):
