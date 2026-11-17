@@ -845,51 +845,6 @@ test('settings: one switch per Display option, drying table, save waits for a pa
   eq([s.view, s.display.diameter, s.drying['NYLON CF'], s.drying.HIPS, s.url, s.auto_keep_slots, s.save_calibration],
     ['settings', true, 0, 9, 'http://spoolman:7912', true, 'auto'], 'saved');
 `);
-test('settings: the source is a requirement row; Check again runs the test', `
-  await until(() => byTest('settings-btn'));
-  await click(byTest('settings-btn'));
-  await post({type: 'show_view', view: 'settings', url: 'http://spoolman:7912', source: 'spoolman', low_stock: 100, display: DEFAULTS, drying: {}, progress: {}, stats: {}});
-  const req = () => byTest('conn-status');
-  await until(() => req() && req().dataset.status === 'checking', 'checking on open: ' + (req() && req().dataset.status));
-  assert(text(req()).includes('Spoolman') && text(req()).includes('books filament use'), 'names it and why');
-  await post({type: 'test_result', source: 'spoolman', ok: false, url: 'http://spoolman:7912', error: 'Connection refused', view: 'settings'});
-  await until(() => req().dataset.status === 'missing', 'missing');
-  assert(text(req()).includes('Not reachable') && text(req()).includes('Connection refused'), 'status and why: ' + text(req()));
-  const link = q('a.oui-req-link', req());
-  assert(link && link.href === 'https://github.com/Donkie/Spoolman', 'how to get it');
-  const before = sentOf('test').length;
-  await click(btn('Check again', req()));
-  eq(sentOf('test').length, before + 1, 'Check again sends the test');
-  eq(lastOf('test'), {type: 'test', source: 'spoolman', url: 'http://spoolman:7912', view: 'settings'}, 'the same test');
-  await until(() => req().dataset.status === 'checking', 'checking');
-  await post({type: 'test_result', source: 'spoolman', ok: true, url: 'http://spoolman:7912', version: '0.22', view: 'settings'});
-  await until(() => req().dataset.status === 'found', 'found');
-  assert(text(req()).includes('Connected') && !q('a.oui-req-link', req()), 'connected, no install line');
-  await type(q('#url'), 'x');
-  await until(() => req().dataset.status === 'unknown', 'an edited address waits for Test');
-`);
-test('settings: the Bambu Cloud row follows the connection: signed out, connected, unreachable, checking', `
-  await until(() => byTest('settings-btn'));
-  await click(byTest('settings-btn'));
-  await post({type: 'show_view', view: 'settings', url: '', source: 'bambu', low_stock: 100, display: DEFAULTS, drying: {}, progress: {}, stats: {}});
-  const req = () => byTest('bambu-status');
-  await until(() => req(), 'Bambu Cloud row');
-  assert(text(req()).includes('Bambu Cloud') && !text(req()).includes(' x '), 'a real row, not a placeholder: ' + text(req()));
-  await post({type: 'test_result', source: 'bambu', ok: false, signin: true, error: 'sign in first', view: 'settings'});
-  await until(() => req().dataset.status === 'missing', 'signed out is missing: ' + req().dataset.status);
-  assert(text(req()).includes('Not signed in'), 'says not signed in: ' + text(req()));
-  await post({type: 'test_result', source: 'bambu', ok: true, account: 'me@example.com', view: 'settings'});
-  await until(() => req().dataset.status === 'found', 'found');
-  assert(text(req()).includes('Connected'), 'connected: ' + text(req()));
-  await post({type: 'test_result', source: 'bambu', ok: false, signin: false, error: 'timed out', view: 'settings'});
-  await until(() => req().dataset.status === 'missing', 'unreachable is missing');
-  assert(text(req()).includes('Not reachable') && !text(req()).includes('Not signed in'), 'signed in but not reachable: ' + text(req()));
-  const before = sentOf('test').length;
-  await click(btn('Check again', req()));
-  eq(sentOf('test').length, before + 1, 'Check again sends the Bambu check');
-  eq(lastOf('test').source, 'bambu', 'the Bambu check');
-  await until(() => req().dataset.status === 'checking', 'checking');
-`);
 test('settings: leaving with unsaved edits asks; going back keeps them', `
   await post({type: 'show_view', view: 'settings', url: 'http://s:7912', source: 'spoolman', low_stock: 100, display: DEFAULTS, drying: {}, progress: {}, stats: {}});
   await click(q('#show-cart'));
@@ -936,6 +891,58 @@ test('low-stock preview lists the spools under the typed weight', `
   await spools([{...SPOOLS[0], remaining_weight: 50}, SPOOLS[1]]);
   await post({type: 'show_view', view: 'settings', url: 'x', source: 'spoolman', low_stock: 100, display: DEFAULTS, drying: {}, progress: {}, stats: {}});
   assert(text(q('#s-reorder').closest('section')).includes('1 spool is under 100 g'), 'preview');
+`);
+test('requirements: one block, the source row says why and how to install it; Check again asks the plugin', `
+  await until(() => byTest('requirements'));
+  await post({type: 'test_result', source: 'spoolman', ok: false, url: '', error: 'No Spoolman URL configured yet',
+    requirements: [{id: 'spoolman', status: 'missing', details: 'No Spoolman URL configured yet'}]});
+  const sec = byTest('requirements'), reqRow = () => byTest('req-row');
+  eq(qa('[data-test="requirements"]').length, 1, 'one Requirements block');
+  eq(qa('.oui-req').length, 1, 'one requirement row on the page');
+  assert(reqRow().dataset.status === 'missing' && text(reqRow()).includes('Missing') && text(reqRow()).includes('No Spoolman URL configured yet'), 'missing, with the reason');
+  assert(['docker run', 'Sync Presets', 'macOS', 'Windows', 'Linux'].every(s => text(sec).includes(s)), 'why, and how per OS');
+  const link = q('a.oui-req-link', reqRow());
+  assert(link && link.href === 'https://github.com/Donkie/Spoolman', 'install link');
+  await click(link);
+  eq(sentOf('spoolman_help').length, 1, 'install guide opened by the plugin');
+  await click(btn('Check again', reqRow()));
+  eq(sentOf('requirements').length, 1, 'check again asked');
+  eq(reqRow().dataset.status, 'checking', 'checking');
+  await post({type: 'test_result', source: 'spoolman', ok: true, url: 'http://spoolman:7912', version: '0.22',
+    requirements: [{id: 'spoolman', status: 'ok', details: '0.22'}]});
+  assert(reqRow().dataset.status === 'found' && text(reqRow()).includes('Connected') && !q('a.oui-req-link', reqRow()) && !text(sec).includes('docker run'), 'found: no install help');
+  await post({type: 'test_result', source: 'spoolman', ok: false, url: 'http://spoolman:7912', error: 'Could not reach Spoolman (timed out)',
+    requirements: [{id: 'spoolman', status: 'unreachable', details: 'Could not reach Spoolman (timed out)'}]});
+  assert(text(reqRow()).includes('Not reachable') && text(reqRow()).includes('timed out'), 'reached before: not reachable, with the error');
+  assert(!q('a.oui-req-link', reqRow()) && !text(sec).includes('docker run'), 'no install guide for a server that ran before');
+`, { mode: 'settings' });
+test('requirements: Bambu Cloud row: not signed in, connected, not reachable', `
+  await until(() => byTest('requirements'));
+  const reqRow = () => byTest('req-row');
+  await post({type: 'test_result', source: 'bambu', ok: false, signin: true, error: 'Signed out',
+    requirements: [{id: 'bambu', status: 'missing', details: 'Signed out', signin: true}]});
+  assert(text(reqRow()).includes('Bambu Cloud') && text(reqRow()).includes('Not signed in') && text(reqRow()).includes('Choose your source'), 'signed out: how to sign in');
+  assert(!q('a.oui-req-link', reqRow()) && !byTest('req-how'), 'no Spoolman install help');
+  await post({type: 'test_result', source: 'bambu', ok: true, account: 'me@example.com',
+    requirements: [{id: 'bambu', status: 'ok', details: 'me@example.com'}]});
+  assert(reqRow().dataset.status === 'found' && text(reqRow()).includes('Connected') && text(reqRow()).includes('me@example.com'), 'connected');
+  await post({type: 'test_result', source: 'bambu', ok: false, error: 'timed out',
+    requirements: [{id: 'bambu', status: 'unreachable', details: 'timed out'}]});
+  assert(text(reqRow()).includes('Not reachable') && !text(reqRow()).includes('Not signed in'), 'signed in but not reachable');
+`, { mode: 'settings' });
+test('spool actions: one failed read keeps them; two in a row turn them off with the reason; a good read brings them back', `
+  const grouped = {display: {...DEFAULTS, group_same: false}};
+  await spools(SPOOLS, grouped);
+  await open(1);
+  assert(!byTest('spool-actions').disabled && !byTest('actions-off'), 'on');
+  const readFails = () => post({type: 'spools', ok: false, origin: 3, error: 'SYNTHETIC OFFLINE', error_code: 'read_failed'});
+  await readFails();
+  assert(byTest('stale') && !byTest('spool-actions').disabled && !byTest('actions-off') && !byTest('sync').disabled, 'one failure: a blip, actions stay');
+  await readFails();
+  assert(byTest('spool-actions').disabled && text(byTest('actions-off')).includes('couldn’t be read'), 'off, with the reason');
+  assert(byTest('sync').disabled, 'Sync off too');
+  await spools(SPOOLS, grouped);
+  assert(!byTest('spool-actions').disabled && !byTest('actions-off') && !byTest('sync').disabled, 'back');
 `);
 
 // ------------------------------------------------------------------ language, theme, layout

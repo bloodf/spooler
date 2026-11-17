@@ -4,8 +4,7 @@ import InputText from 'primevue/inputtext';
 import Password from 'primevue/password';
 import Select from 'primevue/select';
 import RadioButton from 'primevue/radiobutton';
-import { computed } from 'vue';
-import { OuiBanner, OuiIcon, OuiRequirement } from '../../shared/src/components';
+import { OuiBanner, OuiIcon } from '../../shared/src/components';
 import { plug } from '../../shared/src/icons';
 import { boot } from '../core/boot';
 import { t } from '../core/i18n';
@@ -15,25 +14,8 @@ import { form, conn, bambu, test, checkBambu, bambuSend, setSource, onUrlInput }
 // (experimental, unofficial service); the password is never stored and the field is cleared after sending.
 const regions = [{ value: 'global', label: 'Global' }, { value: 'china', label: 'China' }];
 function signIn() { bambuSend('password', { account: bambu.email, password: bambu.password, region: bambu.region }); bambu.password = ''; }
-// What the chosen source needs, as a requirement row: found (connected), missing, checking or not tested yet.
-// "Check again" is the same check as Test (Spoolman) or the Bambu connection check.
-type Kind = 'ok' | 'pending' | 'idle' | 'error';
-const SPOOLMAN_SITE = 'https://github.com/Donkie/Spoolman';
-const STATUS = { ok: 'found', error: 'missing', pending: 'checking' } as const;
-const smReq = computed(() => {
-  const status = conn.kind === 'idle' ? 'unknown' as const : STATUS[conn.kind as Exclude<Kind, 'idle'>];
-  return { status, label: t(({ found: 'req.connected', missing: 'req.unreachable', checking: 'req.checking', unknown: 'req.untested' } as const)[status]) };
-});
-// Bambu Cloud: connected once verified; while a sign-in or check is out, checking; signed out (the login or code pane),
-// or a check that asks for a sign-in, is "Not signed in"; signed in but the check failed is "Not reachable".
-const bbReq = computed(() => {
-  const signedOut = bambu.pane !== 'in';
-  const status = bambu.kind === 'pending' ? 'checking' as const : bambu.kind === 'ok' && bambu.verified ? 'found' as const
-    : bambu.kind === 'error' || signedOut ? 'missing' as const : 'unknown' as const;
-  const label = status === 'checking' ? 'req.checking' : status === 'found' ? 'req.connected' : status === 'unknown' ? 'req.untested'
-    : signedOut ? 'req.signedOut' : 'req.unreachable';
-  return { status, label: t(label) };
-});
+const tone = (k: string) => (k === 'ok' ? 'success' : k === 'error' ? 'error' : 'neutral');
+// Whether the source is there at all, with how to get it, is the Requirements section (SettingsView).
 </script>
 <template>
   <div class="sb">
@@ -47,9 +29,7 @@ const bbReq = computed(() => {
       <form class="oui-row" @submit.prevent="test">
         <InputText id="url" v-model="form.url" class="sb-url oui-mono" :placeholder="boot.settings.default_url" autocomplete="off" aria-describedby="conn-status" @input="onUrlInput" />
         <Button type="submit" severity="secondary" :label="t('src.test')" data-test="test"><template #icon><OuiIcon :icon="plug" :size="14" /></template></Button></form>
-      <div id="conn-status" class="sb-req" aria-live="polite"><OuiRequirement name="Spoolman" :why="t('req.spoolmanWhy')" :status="smReq.status" :status-label="smReq.label"
-        :detail="conn.text" :install-text="t('req.spoolmanInstall')" :install-url="SPOOLMAN_SITE" install-label="github.com/Donkie/Spoolman"
-        :check-label="t('req.check')" data-test="conn-status" @check="test" /></div>
+      <div id="conn-status" aria-live="polite"><OuiBanner :tone="tone(conn.kind)" :title="conn.text" data-test="conn-status" /></div>
     </template>
     <template v-else>
       <div v-if="bambu.pane === 'in'" class="oui-row"><span class="oui-meta">{{ t('bambu.account') }}</span><strong>{{ bambu.account || t('bambu.signedOut') }}</strong>
@@ -68,8 +48,7 @@ const bbReq = computed(() => {
           <Button severity="secondary" :label="t('common.goBack')" @click="bambu.pane = 'login'" />
           <Button v-if="!bambu.tfa" text :label="t('bambu.resend')" @click="bambuSend('resend')" /></div>
       </form>
-      <div class="sb-req" aria-live="polite"><OuiRequirement name="Bambu Cloud" :why="t('req.bambuWhy')" :status="bbReq.status" :status-label="bbReq.label"
-        :detail="bambu.text || undefined" :install-text="t('req.bambuInstall')" :check-label="t('req.check')" data-test="bambu-status" @check="checkBambu" /></div>
+      <div aria-live="polite"><OuiBanner v-if="bambu.text" :tone="tone(bambu.kind)" :title="bambu.text" data-test="bambu-status" /></div>
     </template>
     <OuiBanner :show="form.source === 'bambu'" tone="warn" :title="t('bambu.experimental')" dismissible dismiss-key="bambu-experimental" :close-label="t('common.close')" data-test="bambu-experimental" />
   </div>
@@ -81,5 +60,4 @@ const bbReq = computed(() => {
 .sb-url { flex: 1 1 260px; min-width: 0; }
 .sb-login { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: var(--oui-s2); align-items: end; }
 .sb-full { grid-column: 1 / -1; margin: 0; }
-.sb-req { border-radius: var(--oui-radius-lg); box-shadow: inset 0 0 0 1px var(--oui-border); }
 </style>

@@ -27,6 +27,7 @@ export const m = reactive({
   source: 'spoolman' as string,
   loadError: '',
   errorCode: '',
+  readFails: 0,   // failed reads in a row: one can be a blip, so a shown list keeps its actions until the second
   loadedAt: 0,
   profiles: {} as { count?: number; error?: string },
   low: boot.low_stock_default,
@@ -111,11 +112,12 @@ export const plateSlots = computed(() => {
 export const plateAttention = computed(() => (m.plate?.rows ?? []).filter(r => ['barely', 'mixed', 'short'].includes(r.status)).length);
 export const usageAttention = computed(() => m.usage.enabled && m.usage.prints.some(p => p.state === 'pending' || p.state === 'unknown'));
 export const statsOn = computed(() => m.stats.on && m.usage.enabled);
-/** S02: why actions that need the spool source are off ('' when they can run). */
+/** S02: why actions that need the spool source are off ('' when they can run). A source that failed two reads in a
+ * row turns them off too, even with the old list still shown; the next good read turns them back on. */
 export const sourceOff = computed(() => {
   if (!m.received) return t('status.waitingList');
   if (m.errorCode === 'no_url') return t('list.noUrl.short');
-  if (m.loadError && !m.spools.length) return t('list.readFailed.short');
+  if (m.loadError && (!m.spools.length || m.readFails >= 2)) return t('list.readFailed.short');
   return '';
 });
 
@@ -129,6 +131,7 @@ export const on = <K extends keyof typeof listeners>(k: K, h: Parameters<(typeof
 function render(p: any): void {
   m.received = true;
   m.peers = { u1control: !!p.peers?.u1control };
+  m.readFails = p.ok ? 0 : m.readFails + 1;
   if (!p.ok) {
     m.loadError = p.error || t('common.unknownError');
     m.errorCode = p.error_code || 'read_failed';
