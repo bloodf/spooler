@@ -13,7 +13,7 @@ from pathlib import Path
 from unittest import mock
 
 import spoolman_rules as rules
-from fake_bundle import SV06, U1
+from fake_bundle import FIXTURES, SV06, U1
 from test_profiles import (
     CONFIG_KEYS,
     META_KEYS,
@@ -203,6 +203,16 @@ class OffIsTodayTest(unittest.TestCase):
             self.assertEqual(sp.profile_files(SPOOLS, snapshot()), before)
         self.assertEqual(sp.profile_digest(before[0]), sp.profile_digest(sp.profile_files(SPOOLS, snapshot(), OFF)[0]))
         self.assertTrue(all(len(key) == 2 for key in before[1]))
+
+    def test_off_matches_what_spooler_made_before_this_change(self):
+        # tests/fixtures/presets_before_tuning.json: the presets and profiles.json map that Spooler made for
+        # these spools before presets per spool and Advanced tuning existed (main at 9025bff).
+        golden = json.loads((FIXTURES / "presets_before_tuning.json").read_text(encoding="utf-8"))
+        files, by_key = sp.profile_files(SPOOLS, snapshot(), OFF)
+        self.assertEqual(files, golden["files"])
+        self.assertEqual(list(files), list(golden["files"]))
+        mapped = sp.profile_map(by_key, snapshot()["printers"])
+        self.assertEqual(json.dumps(mapped), json.dumps(golden["profile_map"]), "same profiles.json, same order")
 
     def test_profiles_json_keeps_its_order(self):
         # As before: by filament id as text, then printer; so an upgrade doesn't rewrite profiles.json.
