@@ -107,6 +107,13 @@ class OffersTest(Settings):
         self.assertEqual(sp.rfid_skipped_count(), 0)
         self.assertIn(("p1", 0, 0, MATTE), self.tags())
 
+    def test_a_skip_by_the_chip_uid_holds_once_the_tray_uuid_shows(self):
+        sp._live["printers"]["p1"]["units"][0][0]["tray_uuid"] = "0" * 32   # the first report: only the chip uid
+        self.assertEqual(sp.rfid_offers()[0]["tag"], "5E2A41C900000100")
+        self.assertTrue(sp.rfid_skip("p1", "5E2A41C900000100"))
+        sp._live["printers"]["p1"]["units"][0][0]["tray_uuid"] = MATTE
+        self.assertEqual(self.tags(), [("p1", "ext", 0, SILK)])
+
     def test_skip_refuses_what_isnt_a_printer_and_a_tag(self):
         for pid, tag in ((None, MATTE), ("", MATTE), ("x" * 65, MATTE), ("p1", "nope"), ("p1", None), ("p1", ["A" * 16])):
             self.assertFalse(sp.rfid_skip(pid, tag), (pid, tag))
@@ -139,7 +146,7 @@ class Spoolman:
 
     def __call__(self, method, path, body=None):
         if method == "GET":
-            return json.loads(json.dumps({"field/spool": self.fields, "field/filament": [], "spool": self.spools, "vendor": []}[path]))
+            return json.loads(json.dumps({"field/spool": self.fields, "field/filament": [], "spool?allow_archived=true": self.spools, "vendor": []}[path]))
         self.writes.append((method, path, body))
         if path.startswith("field/spool/"):
             self.fields.append({"key": path.rsplit("/", 1)[1], **body})
@@ -185,6 +192,13 @@ class CreateTest(Settings):
         result, server = self.create({"filament_id": 9, "tag": BASIC, "spool": {}}, Spoolman(spools=[LINKED]))
         self.assertFalse(result["ok"])
         self.assertIn("#3", result["text"])
+        self.assertEqual(server.writes, [])
+
+    def test_an_archived_spool_with_the_tag_stops_the_add(self):
+        result, server = self.create({"filament_id": 9, "tag": BASIC, "spool": {}}, Spoolman(spools=[{**LINKED, "archived": True}]))
+        self.assertFalse(result["ok"])
+        self.assertIn("#3", result["text"])
+        self.assertIn("unarchive", result["text"])
         self.assertEqual(server.writes, [])
 
     def test_a_tag_field_of_another_type_stops_the_add(self):

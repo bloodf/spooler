@@ -34,17 +34,18 @@ function skip(o: RfidOffer) {
 </script>
 <template>
   <OuiPanel v-if="offers.length" :title="tn('rfid.title', offers.length)" :icon="rfid" tone="magenta" data-test="rfid">
-    <ul class="rf-rows">
+    <ul class="rf-rows" aria-live="polite">
       <li v-for="o in offers" :key="o.printer + ':' + o.tag" class="rf-row" data-test="rfid-offer">
         <OuiSwatch v-bind="paint(o)" :size="18" />
         <span class="rf-what"><strong>{{ t('rfid.offer', { where: where(o) }) }}</strong><span class="oui-meta">{{ line(o) }}</span></span>
         <span class="rf-act">
-          <Button size="small" :label="t('rfid.add')" :disabled="!!sourceOff" data-test="rfid-add" @click="openEditor(null, { offer: o, where: where(o) })">
+          <Button size="small" :label="t('rfid.add')" :disabled="!!sourceOff" data-test="rfid-add" :aria-label="`${t('rfid.add')}: ${where(o)}`" @click="openEditor(null, { offer: o, where: where(o) })">
             <template #icon><OuiIcon :icon="plus" :size="14" /></template></Button>
-          <Button severity="secondary" text size="small" :label="t('rfid.skip')" :title="t('rfid.skipHelp')" data-test="rfid-skip" @click="skip(o)" />
+          <Button severity="secondary" text size="small" :label="t('rfid.skip')" :aria-label="`${t('rfid.skip')}: ${where(o)}`" aria-describedby="rf-skip-help" data-test="rfid-skip" @click="skip(o)" />
         </span>
       </li>
     </ul>
+    <template #footer><p id="rf-skip-help" class="oui-meta">{{ t('rfid.skipHelp') }}</p></template>
   </OuiPanel>
 </template>
 <style>

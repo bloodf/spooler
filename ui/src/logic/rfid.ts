@@ -27,11 +27,13 @@ export function rfidPrefill(o: RfidOffer): RfidPrefill {
   return { tag: o.tag, filament, spool: { initial_weight: o.weight, remaining_weight: leftGrams(o) } };
 }
 
-/** The Spoolman filament this spool restocks: Bambu Lab, the same material and the same colours; one named like the tray wins. */
+/** The Spoolman filament this spool restocks: Bambu Lab, the same material and the same colours, and only when that is one filament,
+ * or one of them is named like the tray. Bambu lines share colours (Basic and Matte black), so several unnamed fits pick none. */
 export function matchFilament(filaments: Raw[] | undefined, o: RfidOffer): number | null {
   const want = o.colours.map(norm).join(',');
   const fits = (filaments ?? []).filter(f => typeof f.id === 'number' && norm(f.vendor?.name) === norm(BAMBU)
     && norm(f.material) === norm(o.type) && want !== '' && cols(f).join(',') === want);
-  const named = fits.find(f => norm(f.name).includes(norm(o.name)));
-  return (named ?? fits[0])?.id ?? null;
+  const named = fits.filter(f => norm(f.name).includes(norm(o.name)));
+  const one = named.length === 1 ? named : fits.length === 1 ? fits : [];
+  return one[0]?.id ?? null;
 }

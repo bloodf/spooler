@@ -52,6 +52,9 @@ test('an existing Bambu Lab filament of the same material and colour is picked; 
   assert.equal(matchFilament(fils, { ...OFFER, type: 'PETG' }), null, 'another material');
   assert.equal(matchFilament(fils, { ...OFFER, colours: [] }), null, 'no colour reported');
   assert.equal(matchFilament(undefined, OFFER), null);
+  const plain = [{ ...fils[0], id: 6, name: 'Charcoal' }, { ...fils[0], id: 7, name: 'Black' }];
+  assert.equal(matchFilament(plain, OFFER), null, 'two fits, neither named like the tray: none picked');
+  assert.equal(matchFilament([fils[1], { ...fils[1], id: 9 }], OFFER), null, 'two named alike: none picked');
 });
 
 test('a multi-colour filament matches only the same colours in the same order', () => {
