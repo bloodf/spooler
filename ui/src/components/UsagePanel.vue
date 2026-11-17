@@ -4,7 +4,7 @@ import Button from 'primevue/button';
 import Select from 'primevue/select';
 import Dialog from 'primevue/dialog';
 import InputNumber from 'primevue/inputnumber';
-import { OuiBanner, OuiIcon, OuiPanel, OuiStatus, OuiSwatch } from '../../shared/src/components';
+import { OuiIcon, OuiPanel, OuiStatus, OuiSwatch } from '../../shared/src/components';
 import { chevronDown, chevronRight, clipboard, undo as undoIcon } from '../../shared/src/icons';
 import * as bridge from '../core/bridge';
 import { m, usageState, type UsagePrint } from '../state/main';
@@ -56,12 +56,12 @@ function book(p: UsagePrint) {
     const e = edits[p.id]?.[r.slot] ?? {};
     return { slot: r.slot, grams: Number(gramsOf(p, r)), ...(e.spool ? { spool: String(e.spool) } : {}) };
   });
-  usageState.booking = p.id; m.usageNotice = '';
+  usageState.booking = p.id;
   bridge.postMain({ type: 'usage_book', run: p.id, rows, origin: m.origin });
 }
 function resolve(p: UsagePrint, slot: number, outcome: 'applied' | 'not_applied') {
   if (busy.value) return;
-  usageState.booking = p.id; m.usageNotice = '';
+  usageState.booking = p.id;
   bridge.postMain({ type: 'usage_resolve', run: p.id, slot, outcome });
 }
 function setMode(mode: string) { m.usage = { ...m.usage, mode: mode as any }; bridge.postMain({ type: 'usage_mode', mode }); }
@@ -78,7 +78,6 @@ const left = (id?: number | null) => m.spools.find(s => s.id === id)?.remaining_
       <label id="us-mode-l" class="oui-meta us-mode-l">{{ t('usage.whenDone') }}</label>
       <Select :model-value="m.usage.mode" size="small" :options="modes" option-label="label" option-value="value" aria-labelledby="us-mode-l" @update:model-value="setMode" />
     </template>
-    <div v-if="m.usageNotice" class="us-pad"><OuiBanner tone="error" :title="m.usageNotice" /></div>
     <button v-if="list.length" type="button" class="us-toggle" :aria-expanded="open" aria-controls="us-list" @click="open = !open">
       <OuiIcon :icon="open ? chevronDown : chevronRight" :size="14" /><strong>{{ t('usage.recent') }}</strong>
       <span class="oui-meta">{{ tn('usage.lastN', list.length) }}</span><OuiStatus v-if="todo" state="pending">{{ tn('usage.toBook', todo) }}</OuiStatus></button>

@@ -2,7 +2,7 @@
 
 For the agent rolling 4.0.0 out to one plugin. `DESIGN.md` is the specification (what a page should look like and why); this file is the procedure. The reference screen for each plugin is in `ui-foundation/gallery/screens/` and its screenshots in `ui-foundation/evidence-4.0.0/after/`: build the plugin's page to match its reference, with the plugin's real data and every control it has today.
 
-Current release: **4.1.0** (4.0.1 with the photo spool back in `OuiSpool`, see README; 4.0.1 was 4.0.0 plus `OuiSlot #amount`, page-language number formatting in `OuiSlot`, and `attrs`/`attention` on `OuiTab`; nothing removed). Vendor the latest snapshot; the check prints its version's file count and passes only on an unmodified copy.
+Current release: **4.2.0** (toasts, dismissible banners and `OuiRequirement`, see README; 4.1.0 was 4.0.1 with the photo spool back in `OuiSpool`, full-height pages and settings tabs; 4.0.1 was 4.0.0 plus `OuiSlot #amount`, page-language number formatting in `OuiSlot`, and `attrs`/`attention` on `OuiTab`; nothing removed). Vendor the latest snapshot; the check prints its version's file count and passes only on an unmodified copy.
 
 One rule above the others: **do not patch the vendored copy.** `ui/shared/` must stay byte-identical to the release (its check fails otherwise). If the foundation is wrong or lacks something, report it to the session lead; a fix ships as 4.0.1 for all six plugins.
 

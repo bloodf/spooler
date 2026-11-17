@@ -194,8 +194,7 @@ const sections = computed<OuiSettingsSection[]>(() => [
           <Select :model-value="langPref" :options="langOptions" option-label="label" option-value="value" :aria-label="t('lang.label')" data-test="lang"
                   @update:model-value="setLangPref($event as LangPref)" /></OuiFormRow>
         <OuiFormRow :label="t('set.version', { v: boot.version })">
-          <span v-if="!update.newer" class="oui-meta" role="status">{{ update.text }}</span>
-          <Button v-else size="small" :label="t('set.newer', { v: update.newer })" @click="bridge.postSettings({ type: 'release' })" />
+          <Button v-if="update.newer" size="small" :label="t('set.newer', { v: update.newer })" @click="bridge.postSettings({ type: 'release' })" />
           <Button severity="secondary" size="small" :label="t('set.checkUpdate')" :loading="update.busy" @click="checkUpdate"><template #icon><OuiIcon :icon="info" :size="14" /></template></Button>
         </OuiFormRow>
         <p class="oui-meta set-pad set-log">{{ t('set.log', { path: boot.settings.log_path }) }}</p>

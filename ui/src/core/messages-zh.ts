@@ -286,6 +286,7 @@ export const zhCN: Record<MessageKey, string> = {
   'bambu.signingOut': '正在退出登录…', 'bambu.resending': '正在发送新的验证码…', 'bambu.verifying': '正在验证您的验证码…', 'bambu.signInFailed': '登录失败',
   'bambu.signedOut': '已退出登录', 'bambu.connected': '已连接到 Bambu Cloud', 'bambu.notConnected': '未连接：{why}', 'bambu.failed': '连接失败',
   'bambu.experimental': '实验性功能：使用 Bambu 的非官方云服务，Bambu 随时可能更改该服务。Spooler 绝不保存您的密码。',
+  'req.connected': '已连接', 'req.unreachable': '无法连接', 'req.checking': '正在检查…', 'req.untested': '未测试', 'req.signedOut': '未登录', 'req.check': '重新检查', 'req.spoolmanWhy': 'Spooler 从这里读取您的料盘，并在这里记录耗材用量。', 'req.spoolmanInstall': 'Spoolman 作为独立服务器运行在您的网络中。请启动它，或安装它：', 'req.bambuWhy': 'Spooler 从您的 Bambu Lab 账户读取料盘。', 'req.bambuInstall': '请在上方用您的 Bambu Lab 账户登录。',
   'lang.title': '语言', 'lang.label': '页面语言', 'lang.auto': '自动（{current}）', 'lang.en': 'English', 'lang.pt-BR': 'Português (Brasil)',
   'lang.es': 'Español', 'lang.de': 'Deutsch', 'lang.zh-CN': '简体中文',
   'lang.help': '自动会跟随 OrcaSlicer 的语言；Spooler 不支持该语言时使用英语。您的选择会随 Spooler 的设置一起保存。',

@@ -7,7 +7,7 @@ import { t } from '../core/i18n';
 defineProps<{ where: 'spools' | 'printer' }>();
 </script>
 <template>
-  <OuiBanner v-if="m.peers.u1control" tone="info" :title="where === 'printer' ? t('peer.printer') : t('peer.spools')" data-test="peer-u1">
+  <OuiBanner v-if="m.peers.u1control" tone="info" dismissible :dismiss-key="`peer:u1control:${where}`" :close-label="t('common.close')" :title="where === 'printer' ? t('peer.printer') : t('peer.spools')" data-test="peer-u1">
     <details class="pn"><summary>{{ t('peer.whyTitle') }}</summary><p>{{ t('peer.whyBody') }}</p></details>
   </OuiBanner>
 </template>

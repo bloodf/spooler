@@ -1,4 +1,14 @@
-# Orca UI foundation 4.1.0 — Vue and PrimeVue
+# Orca UI foundation 4.2.0 — Vue and PrimeVue
+
+Version 4.2.0 adds notices that never stay on screen for good, and a row for what a feature needs:
+
+- `OuiToastHost` and `useToast()` (`src/components/toast.ts`): one toast stack per page, bottom-left, newest at the bottom, at most four. `useToast().show({ tone, title, body?, action?, timeout?, key? })`; tones `info`, `success`, `warn`, `error`. Every toast has a close button (`closeLabel` on the host, default "Close"); info and success leave after 5 s, warnings after 8 s, errors stay until closed; hover or focus holds the timer; errors are `role="alert"`, the rest `role="status"`; a `key` replaces the toast with the same key instead of stacking a copy; motion follows `prefers-reduced-motion`. Mount `<OuiToastHost :close-label="…" :label="…" />` once at the end of the app root. A page with a bar along the bottom edge sets `--oui-toast-bottom`.
+- `OuiBanner` takes `dismissible`, `dismissKey` and `closeLabel`, and emits `dismiss`. With `dismissKey` the dismissal is remembered for the session (`sessionStorage`); put what the banner is about in the key (`spoolman-down:<url>`, `unconfirmed:<count>`) so it comes back when that changes, not on every poll.
+- `OuiRequirement`: one row for "this feature needs X" in a Settings section: `name`, `why`, `status` (`found`, `missing`, `checking`, `unknown`) with `statusLabel`, `detail` (where it was found), `installText`, `installUrl`, `installLabel`, `checkLabel`, `checking`; emits `check` ("Check again") and `open` (the install link; without an `open` listener it is a plain link).
+
+Nothing that 4.1.0 pages rely on changes. To update, replace `ui/shared/` with the 4.2.0 snapshot and rebuild.
+
+## 4.1.0
 
 Version 4.1.0 draws the spool with the photo spool again: `OuiSpool` shows the product render of the reel (eight fill levels, `src/assets/spool/*.webp`, 72 kB) with the winding tinted to the filament colour or colours, as Spooler, Kobra Control and U1 Control drew it before 4.0.0. Its props are unchanged, plus an optional `direction` (`coaxial` or `longitudinal`) for how a multi-colour filament's colours run; without it they sit side by side. It also fixes the page height and turns settings into tabs:
 
