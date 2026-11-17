@@ -32,14 +32,23 @@ class ItemsTest(unittest.TestCase):
 
 
 class Filaments:
-    def __init__(self, edited, saved):
-        self.edited, self.saved = edited, saved
+    """Like OrcaSlicer's PresetCollection: find_preset() answers the edited copy for the selected preset
+    (Preset.hpp: "If the preset is active, a temporary copy is returned"); only get_selected_preset()
+    gives the saved one."""
+
+    def __init__(self, edited, saved, others=()):
+        self.edited, self.saved, self.others = edited, saved, list(others)
 
     def get_edited_preset(self):
         return self.edited
 
+    def get_selected_preset(self):
+        return self.saved
+
     def find_preset(self, name):
-        return self.saved if name == self.saved.name else None
+        if name == self.saved.name:
+            return self.edited
+        return next((p for p in self.others if p.name == name), None)
 
 
 def bundle(edited_config, name="_local/spooler/X @Snapmaker U1"):
@@ -207,7 +216,7 @@ class StartTest(unittest.TestCase):
         orca.host.preset_bundle = lambda: bundle({"filament_flow_ratio": "0.95"})
         sent = threading.Event()
         posted = []
-        sp.send_changes = lambda name, changes, snapshot: f"{name}: {sorted(changes)} {threading.current_thread() is not main}"
+        sp.send_changes = lambda name, changes, snapshot, where=None: f"{name}: {sorted(changes)} {threading.current_thread() is not main}"
         main = threading.current_thread()
         sp.start_send(lambda data: (posted.append(data), sent.set()))
         self.assertTrue(sent.wait(5))
@@ -262,18 +271,20 @@ class ButtonTest(unittest.TestCase):
     def setUp(self):
         self.original = sp.start_send
         self.started = []
-        sp.start_send = self.started.append
+        sp.start_send = lambda post, chosen=None: self.started.append((post, chosen))
 
     def tearDown(self):
         sp.start_send = self.original
 
     def test_tab_and_window_send(self):
         page = sp.SpoolerPage()
-        page.on_message({"type": "send"})
+        message = {"type": "send", "spool": 3, "preset": "_local/spooler/X @Snapmaker U1"}
+        page.on_message(message)
         window = sp.SpoolerWindow()
         window._panel = types.SimpleNamespace(post=lambda data: None)
-        window.on_message({"type": "send"})
-        self.assertEqual(self.started, [page.post_message, window._post])  # posts only while the window is open
+        window.on_message(message)
+        # posts only while the window is open; the preset picked on the page goes along
+        self.assertEqual(self.started, [(page.post_message, message), (window._post, message)])
 
 
 

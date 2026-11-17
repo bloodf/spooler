@@ -83,8 +83,10 @@ value in `orca_settings` wins over them.
 ### Sending a change back to Spoolman
 
 Edit a Spooler preset in OrcaSlicer's filament settings and leave it a few seconds: while the
-Spooler tab is open the change is sent to Spoolman by itself. **Send Preset Edits to Spoolman** on
-the Spools tab sends it at once. Density, diameter and cost go to Spoolman's own fields; the other
+Spooler tab is open the change is sent to Spoolman by itself. To send at once, open the spool in the
+Spools tab, pick the preset under **OrcaSlicer preset** in its detail (one per printer) and press
+**Send to Spoolman**. It acts on the preset picked there, never on whichever preset was opened last,
+and when that preset has no unsaved edits it says there is nothing to send rather than failing. Density, diameter and cost go to Spoolman's own fields; the other
 settings go into the filament's `orca_settings` field, in the section for that preset's printer (the
 field is created when Spoolman doesn't have it). The presets are then rebuilt, so the preset keeps
 your change and shows no unsaved changes.
@@ -100,6 +102,27 @@ Skip leaves Spoolman alone and isn't asked again for the same values. Flow ratio
 and max volumetric speed in unsaved edits wait in the same prompt; other unsaved edits are sent by
 themselves. Settings > Spool source >
 "Save calibrated values to Spoolman" can make this Automatically or Never instead.
+
+### Using your own preset for a spool
+
+If you already have a tuned filament preset of your own (pressure advance, flow, temperatures, cooling),
+link it to the spool instead of using Spooler's preset. Open the spool's pencil (Edit Spool) and pick
+the preset under **OrcaSlicer preset**: in the spool's part for that spool only, in the filament's part
+for every spool of that filament. The list shows your own filament presets; you can also type a name.
+Spooler stores the name in a Spoolman text extra field, `orca_filament_preset`, on the spool or the
+filament (it adds the field the first time you save one). You can also fill that field in Spoolman
+itself: the exact name of the preset as OrcaSlicer shows it under User presets.
+
+- The spool's field wins over the filament's. Empty both to go back to Spooler's preset.
+- Sync Presets makes no preset for a linked spool (with presets per filament: for a linked filament),
+  and wherever Spooler would pick its own preset (Load Printer Filaments, Keep Slots Synced) it picks
+  yours, on every printer. Pick a preset that is compatible with the printer: OrcaSlicer won't put an
+  incompatible preset in a slot, and the slot is then reported as not changed.
+- Send to Spoolman works on a linked preset too: unsaved edits are sent as usual; with none, the saved
+  settings that differ from the preset Spooler would have made for the selected printer are written
+  into the filament's `orca_settings` section for that printer.
+- U1 Control and Kobra Control read the same field when they apply a toolhead's spool to the project.
+  How OrcaSlicer's own "Sync filaments" treats a linked preset is up to each of them; see their docs.
 
 ## Spools tab
 
@@ -298,8 +321,8 @@ defaults.
   OrcaSlicer refuses it, Spooler turns it off for the session, says so, and the Plugins > Run action
   still works.
 - Generated presets are owned by Spooler and are rewritten from Spoolman. OrcaSlicer can't save over
-  them: Save makes a separate user preset that no longer follows Spoolman. Use **Send Preset Edits
-  to Spoolman** instead.
+  them: Save makes a separate user preset that no longer follows Spoolman. Use **Send to Spoolman**
+  in the spool's detail instead, or link your own preset to the spool (`orca_filament_preset`).
 - Spool actions need Spoolman as the source; Bambu Cloud spools have none.
 - Live list updates need Spoolman's WebSocket (`/api/v1/spool`) to be reachable from OrcaSlicer.
   Behind a reverse proxy, the proxy must pass the `Upgrade` and `Connection` headers (nginx:

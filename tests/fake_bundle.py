@@ -34,6 +34,9 @@ class Preset:
     def label(self, no_alias=False):
         return self.name
 
+    def is_user(self):
+        return not self.is_system and not self.is_default
+
 
 class Collection:
     def __init__(self, presets, selected=0):

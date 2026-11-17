@@ -5,7 +5,7 @@ import InputText from 'primevue/inputtext';
 import Select from 'primevue/select';
 import Checkbox from 'primevue/checkbox';
 import { OuiBanner, OuiEmpty, OuiIcon, OuiPanel, OuiSwatch, OuiToolbar } from '../../shared/src/components';
-import { filter, plus, refresh as refreshIcon, search, settings, upload } from '../../shared/src/icons';
+import { filter, plus, refresh as refreshIcon, search, settings } from '../../shared/src/icons';
 import shelf from '../assets/spooler-shelf.webp';
 import SpoolTable, { type GroupInfo, type Row } from './SpoolTable.vue';
 import SpoolDetail from './SpoolDetail.vue';
@@ -13,7 +13,7 @@ import SpoolEditor from './SpoolEditor.vue';
 import PlatePanel from './PlatePanel.vue';
 import PeerNote from './PeerNote.vue';
 import * as bridge from '../core/bridge';
-import { m, inUse, sourceOff, pending, refresh, sendEdits, openSettings } from '../state/main';
+import { m, inUse, sourceOff, refresh, openSettings } from '../state/main';
 import { menu, shownSpool, openEditor } from '../state/menu';
 import { t, tn, fmt } from '../core/i18n';
 import { COLOR_FAMILIES, colorFamily, closestSpools, compareSpools, groupSpools, spoolMatches, stackEntries, shown, totals, type SortKey, type Spool } from '../logic/spools';
@@ -168,8 +168,6 @@ const setArchived = (on: boolean) => bridge.postMain({ type: 'spool_action', act
           <template #end>
             <Button v-if="m.source === 'spoolman'" severity="secondary" size="small" :label="t('editor.add')" :disabled="!!sourceOff" data-test="add-spool" @click="openEditor(null)">
               <template #icon><OuiIcon :icon="plus" :size="14" /></template></Button>
-            <Button severity="secondary" text size="small" :label="t('list.send')" :disabled="!!sourceOff || pending('send')" :title="t('list.sendHelp')" aria-describedby="sv-why" data-test="send" @click="sendEdits">
-              <template #icon><OuiIcon :icon="upload" :size="14" /></template></Button>
           </template>
         </OuiToolbar>
         <div v-show="filtersOpen" id="sv-panel" class="oui-toolbar sv-panel" role="group" :aria-label="t('filters.toggle')">
@@ -209,7 +207,6 @@ const setArchived = (on: boolean) => bridge.postMain({ type: 'spool_action', act
       <SpoolDetail v-if="selected" id="sp-detail" :spool="selected" class="sp-detail" />
     </div>
     <SpoolEditor v-if="m.source === 'spoolman'" />
-    <p v-if="!sourceOff" id="sv-why" class="oui-sr">{{ t('list.sendHelp') }}</p>
   </div>
 </template>
 

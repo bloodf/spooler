@@ -80,7 +80,7 @@ O Spooler é um fork do [Spoolio](https://github.com/danm1989/spoolio-orcaslicer
 |---|---|---|
 | | Perfis por impressora | Cada perfil é uma cópia independente do perfil mais próximo que o OrcaSlicer já tem para aquela impressora (atualizada no Sync Presets) e soma cor, fabricante, temperaturas de bico e mesa, densidade, diâmetro e custo do Spoolman. Exemplo: `3D Procer PLA Pérola @Snapmaker U1`. |
 | | Ajustes calibrados | Um campo JSON `orca_settings` no filamento do Spoolman, por impressora ou `*` para todas, mais os campos **Flow ratio**, **Pressure advance** e **Max volumetric speed** no formulário de filamento do Spoolman. |
-| | As edições voltam | Altere um perfil do Spooler no OrcaSlicer e ele é enviado ao Spoolman em alguns segundos, ou na hora com **Enviar edições do perfil ao Spoolman**. |
+| | As edições voltam | Altere um perfil do Spooler no OrcaSlicer e ele é enviado ao Spoolman em alguns segundos, ou na hora com **Enviar ao Spoolman** nos detalhes da bobina. |
 | | Busca e filtros | A busca encontra nome, local, lote e comentário, e `#12` acha a bobina 12. Filtros de material e cor, agrupamento, ordenação e **Cor mais próxima**, que lista as 12 bobinas mais parecidas. |
 | | Ações da bobina | **Definir peso pela balança**, **Usar filamento**, **Definir gramas restantes**, **Adicionar nota**, **Mover**, **Marcar como secada hoje**, **Adicionar bobina deste filamento** (de 1 a 20), **Arquivar** e **Abrir no Spoolman**. |
 | | Detalhe da bobina | O que resta, quanto tempo dura, as impressões que usaram a bobina, gramas e custo lançados e o uso por semana nas últimas 4 semanas. |
@@ -155,13 +155,19 @@ O OrcaSlicer não dá aos plugins um jeito de mudar a cor de um slot, então a a
 <details>
 <summary>Cliquei em Save em um perfil do Spooler. Por que ele parou de acompanhar o Spoolman?</summary>
 
-O OrcaSlicer não consegue salvar por cima de um perfil que pertence a um plugin, então Save cria uma cópia separada. O Spooler envia ao Spoolman os ajustes de calibração alterados nessa cópia, e o perfil do Spooler os recebe na próxima recriação. Para alterar um perfil e mantê-lo acompanhando o Spoolman, edite-o e use <b>Enviar edições do perfil ao Spoolman</b>.
+O OrcaSlicer não consegue salvar por cima de um perfil que pertence a um plugin, então Save cria uma cópia separada. O Spooler envia ao Spoolman os ajustes de calibração alterados nessa cópia, e o perfil do Spooler os recebe na próxima recriação. Para alterar um perfil e mantê-lo acompanhando o Spoolman, edite-o e use <b>Enviar ao Spoolman</b> nos detalhes da bobina. Para manter um perfil seu já ajustado, vincule-o à bobina (veja abaixo).
 </details>
 
 <details>
-<summary>Enviar edições do perfil ao Spoolman diz que não há alterações não salvas. E agora?</summary>
+<summary>Qual perfil o Enviar ao Spoolman envia?</summary>
 
-Ele envia as edições não salvas do perfil do Spooler que está aberto nos ajustes de filamento do OrcaSlicer, então abra esse perfil e altere um valor antes, sem salvar. Cor, fabricante, material e nome são alterados no Spoolman. Se ainda assim recusar, anexe seu log à <a href="https://github.com/bloodf/spooler/issues/38">issue 38</a>.
+O que você escolhe em <b>Perfil do OrcaSlicer</b> nos detalhes da bobina, nunca o último perfil aberto. Se esse perfil estiver aberto nos ajustes de filamento do OrcaSlicer com edições não salvas, elas são enviadas. Sem edições, um perfil do Spooler não tem nada novo (os ajustes salvos vêm do Spoolman) e o Spooler avisa; para um perfil seu vinculado, são enviados os ajustes salvos que diferem dos do Spooler. Cor, fabricante, material e nome são alterados no Spoolman.
+</details>
+
+<details>
+<summary>Uma bobina pode usar um perfil de filamento meu, já ajustado, em vez do do Spooler?</summary>
+
+Pode. Em Editar bobina, escolha-o em <b>Perfil do OrcaSlicer</b>, para a bobina ou para o filamento (todas as bobinas dele). O Spooler guarda o nome num campo extra de texto do Spoolman, <code>orca_filament_preset</code>, que você também pode preencher no próprio Spoolman: o nome exato do perfil, na bobina ou no filamento (o da bobina prevalece). O Spooler então não cria perfil para essa bobina e escolhe o seu onde escolheria o dele. O U1 Control e o Kobra Control leem o mesmo campo. Use um perfil compatível com a impressora.
 </details>
 
 <details>

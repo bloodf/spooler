@@ -7,6 +7,7 @@ Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); 
 ### Added
 - Settings has a Requirements section. It shows the spool source in use (a Spoolman server, or a Bambu Cloud sign-in) as found, missing, not reachable (it answered earlier, so no install steps) or not checked yet, with the reason, what needs it, and how to get it: for Spoolman a Docker command, a line each for macOS, Windows and Linux, and a button that opens Spoolman's install guide. Check again re-runs the connection test Settings already makes when it opens; no extra request is made at start-up.
 - Polish (pl) translation. Thanks to @xtronets for asking (u1control#20).
+- Use your own tuned filament preset for a spool. Edit Spool has an **OrcaSlicer preset** choice, for the spool and for its filament, listing your own filament presets. Spooler keeps the name in a Spoolman text field, `orca_filament_preset` (added to Spoolman the first time you save one; you can also fill it in Spoolman, and the spool's value wins over the filament's). A linked spool gets no Spooler preset; Load Printer Filaments and Keep Slots Synced pick your preset instead. U1 Control and Kobra Control read the same field (#38).
 ### Changed
 - Licence is GPL-3.0 again (GPL-3.0-only), as required by Spoolio's licence. The copyright notices of Dan J Moore and of Spooler's contributors are kept in NOTICE.md and at the top of `spooler_any.py`.
 - When the spool source fails two reads in a row, Sync Presets, Send Preset Edits, Add Spool and the spool actions in the detail panel are off, with a one-line reason, even when the last list is still shown. A single failed read is treated as a blip. They come back with the next good read. Automatic sending of preset edits also waits for that read instead of failing every few seconds.
@@ -20,6 +21,7 @@ Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); 
 
 ### Fixed
 
+- Send to Spoolman always worked on the preset opened last in OrcaSlicer's filament settings and said it had no unsaved changes even after edits: it compared the edited preset with itself. It now compares it with the saved preset, which also makes the automatic sending of edits work. The button moved to the spool's detail, next to an **OrcaSlicer preset** choice of that spool's presets, and acts on the one picked there. With no unsaved edits it says there is nothing to send instead of failing, and for your own linked preset it sends the saved settings that differ from Spooler's (#38).
 - With presets per spool, `profiles.json` also lists each spool's own preset under `"spools"`, so U1 Control and Kobra Control pick that spool's preset rather than the one of its filament's lowest-numbered spool. It also lists each standalone preset's `filament_id` under `"ids"` (OrcaSlicer's plugin API doesn't show it). The file keeps version 1 and its `"filaments"` map.
 
 ## [0.29.0] - 2026-11-17
