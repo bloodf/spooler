@@ -1084,6 +1084,54 @@ test('rfid: pt-BR wording', RFID_PRELUDE + `
   await offered();
   assert(text(byTest('rfid')).includes('Nova bobina RFID em X1C') && btn('Adicionar') && btn('Ignorar'), 'Portuguese: ' + text(byTest('rfid')));
 `, { lang: 'pt_BR' });
+// ------------------------------------------------------------------ presets per spool, Use with and Advanced tuning
+const PRINTERS = "[{target: 'Snapmaker U1 (0.4 nozzle)', label: 'Snapmaker U1'}, {target: 'Sovol SV06 0.4 nozzle', label: 'Sovol SV06'}]";
+test('editor: Use with picks the printers of a spool preset, and sends only a change', `
+  await spools(SPOOLS, {display: {...DEFAULTS, group_same: false}});
+  await click(q('[data-edit="1"]'));
+  await post({...editorData(RAW1), editor: {...editorData(RAW1).editor, use_with: {on: true, printers: ${PRINTERS}, value: null}}});
+  await until(() => byTest('editor-usewith'), 'Use with shows while presets are per spool');
+  assert(text(q('#se-usewith').closest('.oui-formrow') || q('#se-usewith').parentElement.parentElement).includes('Automatic'), 'empty means automatic');
+  await click(byTest('editor-usewith'));
+  await until(() => q('.p-multiselect-overlay') && !q('.p-multiselect-overlay[class*="enter-active"]'), 'printer list open');
+  const opt = qa('.p-multiselect-overlay [role=option]').find(o => text(o) === 'Sovol SV06');
+  assert(opt, 'the printers are offered by name');
+  await mouse(opt); await settle();
+  await press('Escape'); await until(() => !q('.p-multiselect-overlay'), 'list closed');
+  await click(byTest('editor-save'));
+  eq(lastOf('spool_action').spool, {use_with: ['Sovol SV06 0.4 nozzle']}, 'the printer preset picked');
+  eq(lastOf('spool_action').was.spool, {use_with: null}, 'with what Spoolman held');
+  await post({type: 'action_result', action: 'save', ok: true, text: 'Saved spool #1.', ref: editorRef()});
+  await until(() => !dialogOpen(), 'closed');
+  await click(q('[data-edit="1"]'));
+  await post({...editorData(RAW1), editor: {...editorData(RAW1).editor, use_with: {on: false, printers: ${PRINTERS}, value: null}}});
+  await until(() => q('#se-loc'), 'editor open');
+  assert(!byTest('editor-usewith'), 'hidden while presets are per filament and the spool has none');
+`);
+test('settings: presets per spool and Advanced tuning, off by default, saved with decimals typed with a point', `
+  await post({type: 'show_view', view: 'settings', url: 'http://spoolman:7912', source: 'spoolman', low_stock: 100, display: DEFAULTS, drying: {}, progress: {}, stats: {},
+    presets: {per_spool: false, tuning: false, materials: {}}, parents: [{name: 'Generic PLA', type: 'PLA'}, {name: 'Generic PLA Silk', type: 'PLA'}, {name: 'Generic PETG', type: 'PETG'}]});
+  await until(() => byTest('preset-mode-filament'), 'Presets section');
+  assert(q('#pm-filament').checked && !q('#pm-spool').checked, 'one per filament by default');
+  assert(!byTest('preset-unsaved'), 'nothing to say while the mode stays');
+  assert(!q('#tune-on').checked && !byTest('tune-mat'), 'Advanced tuning off by default, its fields hidden');
+  await click(q('#pm-spool'));
+  await until(() => byTest('preset-unsaved'), 'switching: the rename note');
+  assert(text(byTest('preset-unsaved')).includes('ungespeicherte'), 'says unsaved preset edits hold the reload');
+  assert(text(byTest('preset-mode-help')).includes('#12'), 'per-spool names explained: ' + text(byTest('preset-mode-help')));
+  await click(q('#tune-on'));
+  await until(() => byTest('tune-base'), 'tuning fields');
+  await pick(byTest('tune-base'), 'Generic PLA Silk');
+  assert(!qa('.p-select-overlay [role=option]').length, 'closed');
+  await type(q('#tune-filament_flow_ratio'), '0.95');
+  await type(q('#tune-pressure_advance'), '0.035');
+  await type(q('#tune-fan_max_speed'), '80');
+  q('#tune-fan_max_speed').blur(); await settle();
+  await post({type: 'test_result', source: 'spoolman', ok: true, url: 'http://spoolman:7912', version: '0.26', view: 'settings'});
+  await click(byTest('save'));
+  eq(lastOf('save').presets, {per_spool: true, tuning: true, materials: {PLA: {parent: 'Generic PLA Silk', filament_flow_ratio: 0.95,
+    pressure_advance: 0.035, fan_max_speed: 80}}}, 'saved');
+`, { lang: 'de' });
 
 // ------------------------------------------------------------------ runner
 async function bounded(work, stage, ms = 30000) {

@@ -7,8 +7,9 @@ import Select from 'primevue/select';
 import Checkbox from 'primevue/checkbox';
 import RadioButton from 'primevue/radiobutton';
 import { OuiFormRow, OuiFormSection, OuiIcon, OuiSettings, OuiStatus, OuiSwatch, type OuiSettingsSection } from '../../shared/src/components';
-import { chart, check, drop, eye, info, languages, layers, plus, printer, save as saveIcon, scale, spoolman, store, x } from '../../shared/src/icons';
+import { chart, check, drop, eye, files, info, languages, layers, plus, printer, save as saveIcon, scale, spoolman, store, x } from '../../shared/src/icons';
 import SourceBlock from './SourceBlock.vue';
+import PresetsBlock from './PresetsBlock.vue';
 import SetupWizard from './SetupWizard.vue';
 import * as bridge from '../core/bridge';
 import { boot } from '../core/boot';
@@ -68,6 +69,7 @@ const sections = computed<OuiSettingsSection[]>(() => [
   { id: 's-check', label: t('set.check'), icon: check },
   { id: 's-display', label: t('set.display'), icon: eye },
   { id: 's-dry', label: t('set.drying'), icon: drop },
+  { id: 's-presets', label: t('presets.title'), icon: files },
   { id: 's-printer', label: t('set.printer'), icon: printer },
   { id: 's-stats', label: t('set.stats'), icon: chart },
   { id: 's-lang', label: t('lang.title'), icon: languages },
@@ -151,6 +153,8 @@ const sections = computed<OuiSettingsSection[]>(() => [
           <Button type="submit" severity="secondary" :label="t('set.addMat')" :disabled="!newMat.trim()"><template #icon><OuiIcon :icon="plus" :size="14" /></template></Button></form>
         <template #footer><p class="oui-meta">{{ t('set.dryNote') }}</p></template>
       </OuiFormSection>
+
+      <PresetsBlock />
 
       <OuiFormSection id="s-printer" :icon="printer" tone="cobalt" :title="t('set.printer')" :description="t('set.liveNeeded')">
         <OuiFormRow :label="t('set.progressOn')" for="show-progress"><Checkbox v-model="form.progress.on" input-id="show-progress" binary /></OuiFormRow>

@@ -3,6 +3,7 @@ import { computed, ref, watch } from 'vue';
 import Dialog from 'primevue/dialog';
 import Button from 'primevue/button';
 import InputText from 'primevue/inputtext';
+import MultiSelect from 'primevue/multiselect';
 import Select from 'primevue/select';
 import SelectButton from 'primevue/selectbutton';
 import Textarea from 'primevue/textarea';
@@ -20,6 +21,7 @@ import { formatWeight, spoolPaint, swatchHex, type Filament } from '../logic/spo
 import { matchFilament, rfidPrefill } from '../logic/rfid';
 import { changed, densityFor, editable, filamentForm, filamentPayload, filled, previewFilament, problems, spoolForm, spoolPayload, wasOf,
   type FilamentForm, type Raw, type SpoolForm } from '../logic/editor';
+import { useWithChanged, useWithPayload, type UseWithInfo } from '../logic/presets';
 
 // Add Spool (pick a Spoolman filament to restock, or make a new one, then the spool) and Edit Spool (the spool's fields
 // and its filament's, which every spool of that filament shares), with a live preview drawn like the list's reels.
@@ -34,6 +36,10 @@ const pickId = ref<number | null>(null);
 const sf = ref<SpoolForm>(spoolForm(undefined, []));
 const ff = ref<FilamentForm>(filamentForm(undefined, []));
 const tried = ref(false);
+// Use with: the printers this spool's own preset is made for, while presets are made per spool (Settings > Presets).
+const uw = computed<UseWithInfo | undefined>(() => data.value?.use_with);
+const showUseWith = computed(() => !adding.value && !!uw.value?.printers?.length && (uw.value.on || uw.value.value !== null));
+const useWith = ref<string[]>([]);
 let suggested: number | null = null;
 
 watch(data, d => {
@@ -46,6 +52,7 @@ watch(data, d => {
   pickId.value = editor.rfid ? matchFilament(d.filaments, editor.rfid.offer) : null;
   source.value = (d.filaments ?? []).length && (!pre || pickId.value !== null) ? 'existing' : 'new';
   tried.value = false; suggested = pre?.filament.density ?? null;
+  useWith.value = [...(d.use_with?.value ?? [])];
 }, { immediate: true });
 // The new filament was made but Spoolman refused the spool: it is an existing filament now, picked for the retry.
 watch(() => editor.made, id => {
@@ -106,13 +113,16 @@ async function save() {
   const sCh = changed(spool, spoolPayload(spoolForm(raw.value, defs.value.spool), defs.value.spool));
   // Spoolman keeps the used grams: a new starting weight alone would move the grams left, so those go with it.
   if ('initial_weight' in sCh && spool.remaining_weight !== null) sCh.remaining_weight = spool.remaining_weight;
+  if (showUseWith.value && useWithChanged(useWith.value, uw.value?.value ?? null)) sCh.use_with = useWithPayload(useWith.value);
   const fCh = changed(filamentPayload(ff.value, defs.value.filament), filamentPayload(filamentForm(rawFil.value, defs.value.filament), defs.value.filament));
   if (!Object.keys(sCh).length && !Object.keys(fCh).length) { editor.open = false; note('info', t('editor.noChanges'), 'spool-action'); return; }
   // A new location unlinks a U1 toolhead bound by its location: asked first, as the detail's Move does.
   const listed = m.spools.find(s => s.id === editor.id);
   if ('location' in sCh && listed?.u1_bound && !await ask({ title: t('menu.move'), text: t('confirm.unlink', { location: listed.location }),
     yes: t('confirm.unlinkYes'), no: t('common.goBack'), danger: true })) return;
-  submitEditor({ action: 'save', spool: sCh, filament: fCh, was: { spool: wasOf(raw.value, sCh), filament: { ...wasOf(rawFil.value, fCh), id: rawFil.value?.id ?? null } } });
+  // Use with is kept as Spoolman stores it, so the plugin can tell whether it changed there meanwhile.
+  const wasSpool = { ...wasOf(raw.value, sCh), ...('use_with' in sCh ? { use_with: raw.value?.extra?.use_with ?? null } : {}) };
+  submitEditor({ action: 'save', spool: sCh, filament: fCh, was: { spool: wasSpool, filament: { ...wasOf(rawFil.value, fCh), id: rawFil.value?.id ?? null } } });
 }
 </script>
 
@@ -152,6 +162,10 @@ async function save() {
             <OuiFormRow :label="t('detail.price')" for="se-price"><EditorNumber id="se-price" v-model="sf.price" :min="0" :max="10000000" :digits="2" /></OuiFormRow>
             <OuiFormRow :label="t('menu.noteLabel')" for="se-note" stacked><Textarea id="se-note" v-model="sf.comment" maxlength="1024" rows="2" auto-resize fluid /></OuiFormRow>
             <OuiFormRow :label="t('editor.archived')" for="se-arch"><ToggleSwitch v-model="sf.archived" input-id="se-arch" /></OuiFormRow>
+            <OuiFormRow v-if="showUseWith" :label="t('presets.useWith')" for="se-usewith" :hint="t('presets.useWithHelp')">
+              <MultiSelect v-model="useWith" input-id="se-usewith" :options="uw?.printers ?? []" option-label="label" option-value="target" display="chip"
+                           :placeholder="t('presets.useWithAuto')" :show-toggle-all="false" fluid aria-describedby="se-usewith-h" data-test="editor-usewith" />
+              <span id="se-usewith-h" class="oui-sr">{{ t('presets.useWithHelp') }}</span></OuiFormRow>
             <OuiFormRow v-for="d in defs.spool" :key="d.key" :label="d.name || d.key" :for="`se-sx-${d.key}`" :error="err('spool.' + d.key)">
               <EditorExtra v-model="sf.extra[d.key]" :def="d" :id="`se-sx-${d.key}`" :invalid="!!err('spool.' + d.key)" /></OuiFormRow>
           </section>

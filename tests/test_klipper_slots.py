@@ -29,11 +29,15 @@ def extruders(n):
 class KlipperCase(unittest.TestCase):
     """A Klipper printer at BASE found from a preset, settings in memory, Spoolman as the source."""
 
+    def store(self, settings: dict) -> bool:
+        self.settings = settings  # what was written is what is read next
+        return True
+
     def setUp(self):
         self.settings = {"printers": {"spoolman": []}}
         self.paths = []
         patches = [mock.patch.object(sp, "get_settings", lambda: self.settings),
-                   mock.patch.object(sp, "save_settings", return_value=True),
+                   mock.patch.object(sp, "save_settings", self.store),
                    mock.patch.object(sp, "source", return_value="spoolman"),
                    mock.patch.object(sp, "prune_codes"), mock.patch.object(sp, "_local_sync")]
         for p in patches:
@@ -190,6 +194,18 @@ class PollTest(KlipperCase):
         self.addCleanup(patch.stop)
         doc, _ = sp.moon_poll(BASE)
         self.assertTrue(doc["hh"])
+
+    def test_managed_printer_never_shows_the_active_spool(self):
+        self.moonraker({**extruders(1), "mmu": {"num_gates": 1, "gate_status": [1], "gate_material": ["PLA"]}}, active=4)
+        sp.moon_poll(BASE)
+        self.moonraker({}, active=4)  # one empty answer
+        doc, heads = sp.moon_poll(BASE)
+        self.assertNotIn("vt_tray", doc["print"])
+        sp.live_apply(PID, "Voron", doc, link=PID, full=True)
+        with sp._live_lock:
+            sp.moon_mark(PID, doc, heads)
+        self.addCleanup(sp._live["printers"].pop, PID, None)
+        self.assertFalse(next(p for p in sp.live_snapshot()["printers"] if p["id"] == PID)["spool_set"])
 
     def test_no_active_spool_post_to_a_managed_printer_on_an_empty_poll(self):
         sp._local[PID] = {"link": {"kind": "moonraker", "ip": BASE, "name": "Voron"}, "stop": None, "thread": None}
