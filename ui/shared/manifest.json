@@ -10,7 +10,7 @@
     "src/license.ts": "f2c83aeec15ac664d478bf5258bc1864ccf2dfe6d2bd4ab826596b118b630f89",
     "src/theme.ts": "72c1ec887deb31b0e53ebde8b973cd5ac8dd3c2b5db98b244ecde4e0dd47f65c",
     "src/palette.json": "c7d390822d8f87203147321b984f592ebc25a7af53d28ef9496d586be78f1df7",
-    "src/base.css": "ab3c60a97ce93ada8533caddbb0a0593443fc1a44f57db50a3a5ab3d58b12d6b",
+    "src/base.css": "5b400abc494a186cc8709dc599a6cfddb3de565f8058a036cd09e3c6da15c010",
     "src/fonts/Manrope.woff2": "3adef4afcc8f471f1616fb89bd263ec5d6fbb8fc32fe58fe7d502a56df420c4d",
     "src/icons.ts": "4289958b3e5840d5513c22eff3a6811bfb461c896e0a94cdff77474b32c08986",
     "src/components/OuiAppBar.vue": "3372ee13f5c34f65e4bc938fe73129d280ca928187ee1b767ec452d6f5aa3f8d",
