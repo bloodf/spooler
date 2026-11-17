@@ -36,9 +36,11 @@ test('no English text is empty', () => {
 // Product, protocol and unit names, and words the language shares with English. Anything else that equals the
 // English text was left untranslated by accident.
 const NAMES = ['lang.en', 'lang.pt-BR', 'lang.es', 'lang.de', 'lang.zh-CN', 'printer.ams', 'printer.ht', 'printer.addAms', 'printer.addHt', 'link.button'];
+// "Gate" is the MMU's own word (Happy Hare, ERCF): Spanish and German keep it.
+const GATE = ['printer.gateN'];
 const SAME: Record<string, string[]> = {
-  es: [...NAMES, 'common.ok', 'status.errorPrefix', 'filters.material', 'disp.material', 'disp.head_material', 'spool.rfid', 'progress.hm', 'progress.m', 'stats.materialsN_one'],
-  de: [...NAMES, 'common.ok', 'filters.material', 'disp.material', 'disp.head_material', 'spool.rfid', 'progress.hm', 'progress.m',
+  es: [...NAMES, ...GATE, 'common.ok', 'status.errorPrefix', 'filters.material', 'disp.material', 'disp.head_material', 'spool.rfid', 'progress.hm', 'progress.m', 'stats.materialsN_one'],
+  de: [...NAMES, ...GATE, 'common.ok', 'filters.material', 'disp.material', 'disp.head_material', 'spool.rfid', 'progress.hm', 'progress.m',
     'colour.orange', 'bambu.region', 'link.live', 'usage.slot'],
   'zh-CN': NAMES,
 };
