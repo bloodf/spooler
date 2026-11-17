@@ -43,4 +43,17 @@ export const primeLabels: Partial<Record<Locale, PrimeLabels>> = {
     aria: { close: '关闭', previous: '上一个', next: '下一个', firstPageLabel: '第一页', lastPageLabel: '最后一页',
       nextPageLabel: '下一页', prevPageLabel: '上一页', selectRow: '选择行', unselectRow: '取消选择行' },
   },
+  pl: {
+    accept: 'Potwierdź', reject: 'Wróć', choose: 'Wybierz', upload: 'Wyślij', cancel: 'Anuluj',
+    emptyMessage: 'Brak elementów', emptyFilterMessage: 'Brak wyników dla tych filtrów',
+    emptySearchMessage: 'Nie znaleziono wyników', searchMessage: 'Znalezione wyniki: {0}',
+    selectionMessage: 'Wybrane elementy: {0}', emptySelectionMessage: 'Nie wybrano żadnego elementu',
+    dayNames: ['niedziela', 'poniedziałek', 'wtorek', 'środa', 'czwartek', 'piątek', 'sobota'],
+    dayNamesShort: ['niedz.', 'pon.', 'wt.', 'śr.', 'czw.', 'pt.', 'sob.'], dayNamesMin: ['N', 'P', 'W', 'Ś', 'C', 'P', 'S'],
+    monthNames: ['styczeń', 'luty', 'marzec', 'kwiecień', 'maj', 'czerwiec', 'lipiec', 'sierpień', 'wrzesień', 'październik', 'listopad', 'grudzień'],
+    monthNamesShort: ['sty', 'lut', 'mar', 'kwi', 'maj', 'cze', 'lip', 'sie', 'wrz', 'paź', 'lis', 'gru'],
+    dateFormat: 'dd.mm.yy', firstDayOfWeek: 1,
+    aria: { close: 'Zamknij', previous: 'Poprzedni', next: 'Następny', firstPageLabel: 'Pierwsza strona', lastPageLabel: 'Ostatnia strona',
+      nextPageLabel: 'Następna strona', prevPageLabel: 'Poprzednia strona', selectRow: 'Zaznacz wiersz', unselectRow: 'Odznacz wiersz' },
+  },
 };

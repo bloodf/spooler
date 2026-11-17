@@ -2,7 +2,7 @@
 // dropped ("2.5" becomes 25), and any paste is re-inserted as "2.5" and read as 25 too. These handlers sit on the
 // element around a decimal InputNumber (capture phase) and let "." and the locale's sign both mean the decimal.
 
-/** The decimal sign the language writes: "," in de, es and pt-BR, "." in en and zh-CN. */
+/** The decimal sign the language writes: "," in de, es, pl and pt-BR, "." in en and zh-CN. */
 export function decimalSign(locale: string): string {
   return new Intl.NumberFormat(locale).formatToParts(1.5).find(p => p.type === 'decimal')?.value ?? '.';
 }

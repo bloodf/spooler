@@ -190,7 +190,7 @@ Cada plugin tem a sua aba. O U1 Control controla a Snapmaker U1 e vincula bobina
 
 ## 🌍 Idiomas
 
-Inglês, português do Brasil, espanhol, alemão e chinês simplificado. A página segue o idioma do OrcaSlicer, e Ajustes > **Idioma** muda isso.
+Inglês, português do Brasil, espanhol, alemão, chinês simplificado e polonês. A página segue o idioma do OrcaSlicer, e Ajustes > **Idioma** muda isso.
 
 ## 🧩 Mais plugins do bloodf
 

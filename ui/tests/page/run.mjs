@@ -959,6 +959,7 @@ for (const [host, lang, nav, weights, empty] of [
   ['de', 'de', 'Spulen', '1.380 g von 2.000 g', 'Spoolman ist noch nicht eingerichtet'],
   ['zh_CN', 'zh-CN', '料盘', '1,380 g / 2,000 g', 'Spoolman 尚未设置'],
   ['zh_TW', 'zh-CN', '料盘', '1,380 g / 2,000 g', 'Spoolman 尚未设置'],
+  ['pl_PL', 'pl', 'Szpule', '1380 g z 2000 g', 'Spoolman nie jest jeszcze skonfigurowany'],
   ['fr_FR', 'en', 'Spools', '1,380 g of 2,000 g', 'Spoolman isn’t set up yet']]) {
   test(`X04: ${host} from the host: page in ${lang}`, `
   await spools(SPOOLS);
@@ -969,7 +970,7 @@ for (const [host, lang, nav, weights, empty] of [
   assert(text(byTest('empty-no-url')).includes(${JSON.stringify(empty)}), 'empty state: ' + text(byTest('empty-no-url')));
 `, { lang: host });
 }
-test('X04: Español, Deutsch and 简体中文 can be chosen over the host', `
+test('X04: Español, Deutsch, 简体中文 and Polski can be chosen over the host', `
   await until(() => q('[data-tab="spools"]'));
   await click(byTest('settings-btn'));
   await post({type: 'show_view', view: 'settings', url: '', source: 'spoolman', low_stock: 100, display: DEFAULTS, drying: {}, progress: {}, stats: {}});
@@ -979,6 +980,9 @@ test('X04: Español, Deutsch and 简体中文 can be chosen over the host', `
   await pick(byTest('lang'), '简体中文');
   assert(text(q('#s-lang .oui-panel-title')) === '语言', 'switched to Chinese');
   eq(document.documentElement.lang, 'zh-CN', 'lang');
+  await pick(byTest('lang'), 'Polski');
+  assert(text(q('#s-lang .oui-panel-title')) === 'Język', 'switched to Polish');
+  eq(document.documentElement.lang, 'pl', 'lang');
   await pick(byTest('lang'), 'Español');
   assert(text(q('#s-lang .oui-panel-title')) === 'Idioma', 'switched to Spanish');
   eq(lastOf('ui_language'), {type: 'ui_language', value: 'es', view: 'settings'}, 'last choice saved');

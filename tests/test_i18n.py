@@ -1,4 +1,4 @@
-"""Texts worded in Python (notices, dialogs, action results, plate rows) in all five languages: every
+"""Texts worded in Python (notices, dialogs, action results, plate rows) in all six languages: every
 tr() text has an entry with the same placeholders, the language follows the page's choice, then
 OrcaSlicer's, and numbers, money and sentences are written the way each language writes them."""
 
@@ -13,7 +13,7 @@ from plugin_loader import PLUGIN, load
 
 sp, orca = load()
 
-LANGS = ("pt-BR", "es", "de", "zh-CN")
+LANGS = ("pt-BR", "es", "de", "zh-CN", "pl")
 HAN = re.compile(r"[一-鿿]")
 
 
@@ -106,7 +106,8 @@ class ChoiceTest(unittest.TestCase):
 
     def test_orca_codes_map_to_the_page_languages(self):
         cases = {"pt_BR": "pt-BR", "es": "es", "es_ES": "es", "de": "de", "de_DE": "de", "zh_CN": "zh-CN",
-                 "zh_TW": "zh-CN", "en": "en", "en_US": "en", "fr_FR": None, "": None, None: None, 5: None}
+                 "zh_TW": "zh-CN", "pl": "pl", "pl_PL": "pl", "pl-PL": "pl", "PL": "pl", "en": "en", "en_US": "en",
+                 "fr_FR": None, "": None, None: None, 5: None}
         for code, lang in cases.items():
             self.assertEqual(sp.normalize_language(code), lang, code)
 
@@ -132,7 +133,8 @@ class ChoiceTest(unittest.TestCase):
 
 class FormatTest(unittest.TestCase):
     def test_numbers(self):
-        expect = {"en": "12,345.5", "pt-BR": "12.345,5", "es": "12.345,5", "de": "12.345,5", "zh-CN": "12,345.5"}
+        expect = {"en": "12,345.5", "pt-BR": "12.345,5", "es": "12.345,5", "de": "12.345,5", "zh-CN": "12,345.5",
+                  "pl": "12\u00a0345,5"}
         for lang, text in expect.items():
             with Language(lang):
                 self.assertEqual(sp.fmt_num(12345.5, 1, group=True), text, lang)
@@ -141,9 +143,13 @@ class FormatTest(unittest.TestCase):
             self.assertEqual(sp.fmt_num(5000, group=True), "5000")
         with Language("de"):
             self.assertEqual(sp.fmt_num(5000, group=True), "5.000")
+        with Language("pl"):   # Polish too, with a no-break space, as Intl.NumberFormat("pl") does
+            self.assertEqual(sp.fmt_num(5000, group=True), "5000")
+            self.assertEqual(sp.fmt_num(1234567.891, 2, group=True), "1\u00a0234\u00a0567,89")
 
     def test_money(self):
-        expect = {"en": "€1.25", "pt-BR": "€1,25", "es": "1,25 €", "de": "1,25 €", "zh-CN": "€1.25"}
+        expect = {"en": "€1.25", "pt-BR": "€1,25", "es": "1,25 €", "de": "1,25 €", "zh-CN": "€1.25",
+                  "pl": "1,25 €"}
         for lang, text in expect.items():
             with Language(lang):
                 self.assertEqual(sp.fmt_money(1.25, "EUR"), text, lang)
@@ -175,6 +181,7 @@ class MessageTest(unittest.TestCase):
             "es": "Spooler: no hay suficiente filamento cargado en el AMS. La ranura 2 (Black) necesita 100,0 g de filamento, pero el carrete tiene 20,0 g.",
             "de": "Spooler: nicht genug Filament im AMS geladen. Slot 2 (Black) braucht 100,0 g Filament, aber die Spule hat 20,0 g.",
             "zh-CN": "Spooler：AMS 中装入的耗材丝不足。槽位 2（Black）需要 100.0 g 耗材丝，但料盘有 20.0 g。",
+            "pl": "Spooler: za mało filamentu załadowanego w AMS. Slot 2 (Black) potrzebuje 100,0 g filamentu, ale szpula ma 20,0 g.",
         }
         for lang, text in expect.items():
             with Language(lang):
@@ -187,6 +194,23 @@ class MessageTest(unittest.TestCase):
             kind, notice = sp.plate_notice([unknown])
         self.assertEqual((kind, notice), ("info", "Spooler：未找到槽位 2（Acme PLA 111111）的料盘，因此未检查。"))
 
+    def test_polish_day_counts(self):
+        # Polish plurals (CLDR one/few/many): "1 dzień", then "dni" for every other whole count.
+        r = {"slot": self.SLOT, "slots": [2], "name": "Black"}
+        with Language("pl"):
+            texts = [sp.dry_part({**r, "dry": {"days": n}}) for n in (1, 2, 5, 12, 22)]
+        want = [f"Black (slot 2) suszono ostatnio {n} {'dzień' if n == 1 else 'dni'} temu." for n in (1, 2, 5, 12, 22)]
+        self.assertEqual(texts, want)
+
+    def test_polish_rows(self):
+        with Language("pl"):
+            row = sp.plate_rows([self.short()])[0]
+            self.assertEqual(sp.stage_text(26), "Pauza: utracono AMS")
+            self.assertEqual(sp.tr("Spool #{id} moved to {location}.", id=4, location="Półka A"),
+                             "Przeniesiono szpulę #4 do: Półka A.")
+        self.assertEqual((row["slots"], row["headline"]), ("Slot 2", "Za mało"))
+        self.assertEqual(row["detail"], "Potrzeba 100,0 g · zostało 20,0 g")
+
     def test_plate_rows_and_spool_data_stay_as_spoolman_has_them(self):
         with Language("de"):
             row = sp.plate_rows([self.short()])[0]
@@ -195,7 +219,8 @@ class MessageTest(unittest.TestCase):
 
     def test_auto_language_matches_the_page(self):
         # The same cases as ui/tests/unit/i18n.test.ts (AUTO_CASES): an unsupported OrcaSlicer language is English in both.
-        cases = [("pt_BR", "pt-BR"), ("es_ES", "es"), ("de", "de"), ("zh_CN", "zh-CN"), ("zh_TW", "zh-CN"), ("en_GB", "en"),
+        cases = [("pt_BR", "pt-BR"), ("es_ES", "es"), ("de", "de"), ("zh_CN", "zh-CN"), ("zh_TW", "zh-CN"), ("pl_PL", "pl"),
+                 ("en_GB", "en"),
                  ("fr_FR", "en"), ("ko", "en"), ("", "en"), (None, "en")]
         with Language("en"), mock.patch.object(sp, "ui_language", return_value="auto"):
             for host, want in cases:
