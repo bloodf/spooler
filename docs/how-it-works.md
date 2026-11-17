@@ -19,10 +19,15 @@ OrcaSlicer's plugin API can't create presets, so Spooler writes them as a **loca
 and asks OrcaSlicer to reload it:
 
 1. `load_spools()` reads the spools from Spoolman (or Bambu Cloud).
-2. `profile_files()` makes one preset per stocked filament per printer. Each one inherits the
+2. `profile_files()` makes one preset per stocked filament per printer. Each one starts from the
    closest preset OrcaSlicer already has for that printer (`best_parent()`), and carries the
    filament's colour, vendor, temperatures, density, diameter, cost, Spooler's calibration fields
-   and its `orca_settings`.
+   and its `orca_settings`. `flat_preset()` writes it as a standalone copy: the parent's whole config
+   (read on the UI thread by `parent_configs()`, once per parent and again on Sync Presets), Spooler's
+   values on top, `"inherits": ""` and a `filament_id` of its own (`spooler_filament_id()`, `SPL` plus a
+   hash of the preset's key). OrcaSlicer's "sync from AMS" only loads standalone presets
+   (`PresetCollection::get_preset_base()`), matched by `filament_id`. A parent whose config wasn't read
+   is still inherited.
 3. `profile_sync()` writes them to `user/<account>/_local/spooler/` and calls
    `orca.host.preset.bundles.reload_local("spooler")`. A bundle OrcaSlicer refuses is retried
    only after `PROFILE_RETRY` seconds. The files of the last accepted bundle are read first and
@@ -43,7 +48,7 @@ Settings > Presets (`presets` in the settings file, `parse_presets()`) changes t
   printer it is loaded on (`loaded_targets()`: Printer tab slots and Live Link trays, matched to a
   printer preset by host address), else every printer. Preset names are then keyed
   `(filament id, printer preset, spool id)`; `profiles.json` keeps one preset per filament and printer
-  (the lowest-numbered spool's). Send Preset Edits still writes to the filament, which every spool of it
+  (the lowest-numbered spool's) under `"filaments"`, and each spool's own under `"spools"`. Send Preset Edits still writes to the filament, which every spool of it
   shares. Switching renames every preset: OrcaSlicer refuses a reload that removes or renames the
   selected preset while it has unsaved changes ("A modified selected preset was removed or renamed"),
   and the usual back-off retries it.
@@ -152,7 +157,9 @@ automatic loop off for the session with a notification pointing at Plugins > Run
 On the Snapmaker U1, [u1control](https://github.com/bloodf/u1control) can run next to Spooler. They
 share files in `<OrcaSlicer data folder>/spooler/`:
 
-- `profiles.json`: every Spooler preset by filament and printer, so u1control picks the same one.
+- `profiles.json`: every Spooler preset by filament and printer, and with presets per spool by spool
+  too, so u1control (and kobracontrol's printer agent) pick the same one; `"ids"` gives each preset's
+  `filament_id`, which their printer agents report so OrcaSlicer's "sync from AMS" loads that preset.
 - `keep_slots.json`: refreshed while Keep Slots Synced runs, so u1control leaves the slots alone.
 
 u1control binds a toolhead's spool as the Spoolman location `<printer name> T<n>`. Spooler reads

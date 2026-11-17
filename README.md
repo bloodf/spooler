@@ -78,7 +78,7 @@ Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer) b
 
 | | Feature | What you get |
 |---|---|---|
-| | Presets per printer | Each preset inherits the closest preset OrcaSlicer has for that printer and adds colour, vendor, nozzle and bed temperatures, density, diameter and cost from Spoolman. Example: `3D Procer PLA Pérola @Snapmaker U1`. |
+| | Presets per printer | Each preset is a standalone copy of the closest preset OrcaSlicer has for that printer (refreshed on Sync Presets) and adds colour, vendor, nozzle and bed temperatures, density, diameter and cost from Spoolman. Example: `3D Procer PLA Pérola @Snapmaker U1`. |
 | | Calibrated settings | A JSON `orca_settings` field on the Spoolman filament, per printer or `*` for all, plus **Flow ratio**, **Pressure advance** and **Max volumetric speed** fields on Spoolman's filament form. |
 | | Edits go back | Change a Spooler preset in OrcaSlicer and it is sent to Spoolman after a few seconds, or at once with **Send Preset Edits to Spoolman**. |
 | | Search and filters | Search matches name, location, lot number and comment, and `#12` finds spool 12. Material and colour filters, grouping, sorting, and **Closest colour**, which lists the 12 nearest spools. |

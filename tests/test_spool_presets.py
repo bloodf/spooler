@@ -416,6 +416,10 @@ class BundleCheckTest(unittest.TestCase):
             self.assertNotEqual(sp.preset_problem({**good, **bad}), "", bad)
         self.assertEqual(sp.preset_problem({**good, "filament_notes": ["65C,4h"], "filament_retraction_length": ["nil"],
                                             "filament_shrink": ["99.5%"]}), "")
+        # A standalone copy carries its parent's settings as OrcaSlicer serialized them; an inheriting one can't.
+        flat = sp.flat_preset(good, {"filament_flow_ratio": "0.9,0.9", "filament_start_gcode": '"M104"'}, (1, U1))
+        self.assertEqual(sp.preset_problem(flat), "")
+        self.assertNotEqual(sp.preset_problem({**flat, "inherits": "Generic PLA @System"}), "")
 
     def test_a_preset_that_fails_the_check_is_left_out(self):
         bad = filament(1, "Bad", "PLA", extra={"orca_settings": json.dumps(json.dumps({"*": {"pressure_advance": "nan"}}))})
