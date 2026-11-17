@@ -248,10 +248,13 @@ class SendMergeTest(unittest.TestCase):
         self.assertEqual(json.loads(server.filament["extra"]["other"]), "concurrent-new")
         self.assertIn("other", server.patches[0]["extra"])
 
-    def test_unknown_version_is_treated_as_replacing(self):
+    def test_unknown_version_is_refused_and_nothing_is_written(self):
+        # It could replace the whole map or merge it: guessing either way can lose a field.
         server = Server("dev")
-        self.send(server, filament_flow_ratio=("0.95", "0.98"))
-        self.assertIn("other", server.patches[0]["extra"])
+        with self.assertRaises(RuntimeError) as caught:
+            self.send(server, filament_flow_ratio=("0.95", "0.98"))
+        self.assertIn("couldn't read Spoolman's version", str(caught.exception))
+        self.assertEqual(server.patches, [])
 
     def test_same_setting_changed_in_spoolman_meanwhile_is_kept(self):
         server = Server("0.27.1")
