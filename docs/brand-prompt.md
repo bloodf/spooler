@@ -10,7 +10,7 @@ Where each asset goes in this repo:
 |---|---|
 | Symbol / app icon | `assets/spooler-icon.svg`, `assets/spooler-icon.png` (also rendered to the 512 px Orca Cloud store image by the release workflow) |
 | README banner | `assets/spooler-banner.svg`, `assets/spooler-banner.png` |
-| Tab icon | `TAB_ICON_SVG` in `plugin/spooler/spooler_any.py` |
+| Tab icon | the store tile at 40x40, `assets/spooler-plugin-icon.png`, embedded as `TAB_ICON_PNG` in `plugin/spooler/spooler_any.py` |
 | GitHub social preview | Repository Settings > Social preview |
 
 ---
