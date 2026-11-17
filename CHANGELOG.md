@@ -21,6 +21,9 @@ Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); 
 
 ### Fixed
 
+- Changing or clearing a spool's or filament's OrcaSlicer preset link in Edit Spool no longer reports a conflict with Spoolman every time.
+- Send to Spoolman on your own linked preset no longer mistakes your preset's saved values for changes made in Spoolman, and the spool detail now preselects the preset open in OrcaSlicer's filament settings, else the selected printer's.
+- A preset linked to one spool only is no longer sent to Spoolman: its settings would land on the filament every spool of it shares. Link the filament instead, or keep the changes in your preset.
 - Send to Spoolman always worked on the preset opened last in OrcaSlicer's filament settings and said it had no unsaved changes even after edits: it compared the edited preset with itself. It now compares it with the saved preset, which also makes the automatic sending of edits work. The button moved to the spool's detail, next to an **OrcaSlicer preset** choice of that spool's presets, and acts on the one picked there. With no unsaved edits it says there is nothing to send instead of failing, and for your own linked preset it sends the saved settings that differ from Spooler's (#38).
 - With presets per spool, `profiles.json` also lists each spool's own preset under `"spools"`, so U1 Control and Kobra Control pick that spool's preset rather than the one of its filament's lowest-numbered spool. It also lists each standalone preset's `filament_id` under `"ids"` (OrcaSlicer's plugin API doesn't show it). The file keeps version 1 and its `"filaments"` map.
 

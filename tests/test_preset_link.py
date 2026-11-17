@@ -8,6 +8,7 @@ import types
 import unittest
 from unittest import mock
 
+import test_send
 from fake_bundle import SV06, U1, Bundle, Preset
 from test_profiles import SPOOLS, filament, snapshot, sp, spool
 from test_send import Filaments
@@ -113,21 +114,29 @@ class ChosenTest(unittest.TestCase):
     def test_a_spools_presets(self):
         self.assertEqual([(p["name"], p["label"], p["linked"]) for p in sp.spool_presets(self.spools[0])], [
             ("_local/spooler/Preto @Snapmaker U1", "Snapmaker U1", False), ("_local/spooler/Preto @Sovol SV06", "Sovol SV06", False)])
-        self.assertEqual(sp.spool_presets(self.spools[1]), [{"name": MINE, "label": "Snapmaker U1", "linked": True, "where": (1, U1)}])
+        self.assertEqual(sp.spool_presets(self.spools[1]),
+                         [{"name": MINE, "label": "Snapmaker U1", "linked": True, "where": (1, U1), "own": True}])
+
+    def test_the_preset_to_pick_leads(self):
+        names = lambda: [p["name"] for p in sp.spool_presets(self.spools[0])]  # noqa: E731
+        sp._ui_snap["selected"] = SV06
+        self.assertEqual(names()[0], "_local/spooler/Preto @Sovol SV06", "the selected printer's")
+        sp._ui_snap["edited"] = "_local/spooler/Preto @Snapmaker U1"
+        self.assertEqual(names()[0], "_local/spooler/Preto @Snapmaker U1", "the one open in the filament settings")
 
     def test_the_picked_presets_unsaved_edits(self):
         name = "_local/spooler/Preto @Snapmaker U1"
         saved = Preset(name, {"filament_flow_ratio": "0.98"})
         self.use(Preset(name, {"filament_flow_ratio": "0.95"}), saved)
         self.assertEqual(sp.chosen_changes({"spool": 1, "preset": name}),
-                         ("Preto @Snapmaker U1", {"filament_flow_ratio": ("0.95", "0.98")}, (1, U1)))
+                         ("Preto @Snapmaker U1", {"filament_flow_ratio": ("0.95", "0.98")}, None))
 
     def test_another_preset_open_with_edits_is_left_alone(self):
         # The reporter's case: the preset last opened had edits, the one picked had none.
         other = "_local/spooler/Preto @Sovol SV06"
         self.use(Preset(other, {"filament_flow_ratio": "0.9"}), Preset(other, {"filament_flow_ratio": "0.98"}))
         self.assertEqual(sp.chosen_changes({"spool": 1, "preset": "_local/spooler/Preto @Snapmaker U1"}),
-                         ("Preto @Snapmaker U1", {}, (1, U1)))
+                         ("Preto @Snapmaker U1", {}, None))
 
     def test_a_preset_not_of_this_spool_is_refused(self):
         self.use(Preset("x", {}), Preset("x", {}))
@@ -135,7 +144,21 @@ class ChosenTest(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "no longer one of this spool"):
                 sp.chosen_changes(data)
 
+    def test_a_spools_own_link_never_writes_the_shared_filament(self):
+        self.use(Preset(MINE, {"pressure_advance": "0.05"}), Preset(MINE, {"pressure_advance": "0.04"}))
+        with self.assertRaisesRegex(RuntimeError, "linked to this spool only"):
+            sp.chosen_changes({"spool": 2, "preset": MINE})
+
+    def test_a_filament_link_sends_its_unsaved_edits_to_the_filament(self):
+        self.spools[1] = spool(2, linked(self.pla, MINE))
+        sp._spool_cache["spools"] = self.spools
+        self.use(Preset(MINE, {"pressure_advance": "0.05"}), Preset(MINE, {"pressure_advance": "0.04"}))
+        self.assertEqual(sp.chosen_changes({"spool": 2, "preset": MINE}),
+                         (MINE, {"pressure_advance": ("0.05", "0.04")}, (1, U1)))
+
     def test_a_linked_presets_saved_settings_that_differ(self):
+        self.spools[1] = spool(2, linked(self.pla, MINE))  # linked through the filament
+        sp._spool_cache["spools"] = self.spools
         # The parent's settings as the snapshot read them: the base the linked preset is compared with.
         parent = sp.best_parent(self.pla, U1, sp._ui_snap["parents"])
         sp._ui_snap["configs"] = {parent: {"pressure_advance": "0.02", "fan_max_speed": "100", "filament_start_gcode": "G1"}}
@@ -172,13 +195,44 @@ class ChosenTest(unittest.TestCase):
                 mock.patch.object(sp, "send_changes", send):
             sp.start_send(lambda data: (posted.append(data), done.set()), chosen={"spool": 1, "preset": name})
             self.assertTrue(done.wait(5))
-        self.assertEqual(posted, [{"type": "sent", "ok": True, "text": f"{(1, U1)} True"}])
+        self.assertEqual(posted, [{"type": "sent", "ok": True, "text": "None True"}])
         self.assertEqual(set(reads), {main})
 
     def test_detail_lists_the_presets(self):
         with mock.patch.object(sp, "hist_load", lambda: []), mock.patch.object(sp, "plate_spools", lambda url: []):
             detail = sp.spool_detail(2)
-        self.assertEqual(detail["presets"], [{"name": MINE, "label": "Snapmaker U1", "linked": True}])
+        self.assertEqual(detail["presets"], [{"name": MINE, "label": "Snapmaker U1", "linked": True, "own": True}])
+
+
+class LinkedSendTest(unittest.TestCase):
+    """Sending your own linked preset: its saved value is yours, not a sign Spoolman changed since."""
+
+    setUp, tearDown, call, written = (test_send.SendTest.setUp, test_send.SendTest.tearDown,
+                                      test_send.SendTest.call, test_send.SendTest.written)
+
+    def test_a_linked_presets_saved_value_is_not_a_conflict(self):
+        # Spoolman holds pressure_advance 0.04 for this printer; your preset saved 0.032 and now has 0.035.
+        text = test_send.sp.send_changes(MINE, {"pressure_advance": ("0.035", "0.032")}, {"snapshot": True}, (7, U1))
+        self.assertEqual(self.written()[0][U1], {"pressure_advance": "0.035"})
+        self.assertIn("Sent pressure_advance", text)
+        self.assertNotIn("Kept", text)
+
+    def test_a_clash_with_spoolman_is_worded_for_your_preset(self):
+        calls = 0
+        original = self.call
+
+        def changing(method, path, body=None):
+            nonlocal calls
+            if (method, path) == ("GET", "filament/7"):
+                calls += 1
+                if calls == 2:  # changed in Spoolman between the first read and the write
+                    self.filament["extra"]["orca_settings"] = json.dumps(json.dumps({U1: {"pressure_advance": "0.05"}}))
+            return original(method, path, body)
+
+        test_send.sp.spoolman_call = changing
+        text = test_send.sp.send_changes(MINE, {"pressure_advance": ("0.035", "0.032")}, {"snapshot": True}, (7, U1))
+        self.assertIn("Kept Spoolman's newer value for pressure_advance: it changed there while you were editing.", text)
+        self.assertNotIn("the preset now has it", text)
 
 
 class LinkSpoolman(Spoolman):
@@ -235,6 +289,49 @@ class EditorLinkTest(Settings):
         result, server = self.save("a\nb", None)
         self.assertFalse(result["ok"])
         self.assertEqual([w for w in server.writes if w[0] == "PATCH"], [])
+
+    def change(self, stored_spool, stored_fil, spool_link, fil_link):
+        """Edit Spool on a spool whose links Spoolman already holds, sent the way the page sends them."""
+        start = copy.deepcopy(SPOOL)
+        if stored_spool is not None:
+            start = linked(start, stored_spool)
+        if stored_fil is not None:
+            start["filament"] = linked(start["filament"], stored_fil)
+        server = LinkSpoolman(start)
+        server.added = {"spool", "filament"}
+        was = lambda holder: holder.get("extra", {}).get("orca_filament_preset")  # noqa: E731
+        with mock.patch.object(asp, "spoolman_call", server):
+            result = asp.spool_action({"action": "save", "id": 7, "spool": {"preset_link": spool_link},
+                                      "filament": {"preset_link": fil_link},
+                                      "was": {"spool": {"preset_link": was(start)},
+                                              "filament": {"id": 9, "preset_link": was(start["filament"])}}})
+        return result, server
+
+    def test_changing_an_existing_link(self):
+        result, server = self.change(MINE, "Old filament preset", "Other", "New filament preset")
+        self.assertTrue(result["ok"], result)
+        self.assertNotIn("Kept Spoolman", result["text"])
+        self.assertEqual(asp.linked_preset(server.spool), "Other")
+        self.assertEqual(asp._link_text(server.spool["filament"]), "New filament preset")
+
+    def test_clearing_an_existing_link(self):
+        result, server = self.change(MINE, "Old filament preset", None, None)
+        self.assertTrue(result["ok"], result)
+        self.assertNotIn("Kept Spoolman", result["text"])
+        self.assertEqual(asp.linked_preset(server.spool), "")
+
+    def test_a_link_changed_in_spoolman_meanwhile_is_kept(self):
+        result, server = self.change(MINE, None, "Other", None)
+        server_before = asp.linked_preset(server.spool)
+        self.assertEqual(server_before, "Other")
+        start = linked(copy.deepcopy(SPOOL), "Changed in Spoolman")
+        server = LinkSpoolman(start)
+        server.added = {"spool", "filament"}
+        with mock.patch.object(asp, "spoolman_call", server):
+            result = asp.spool_action({"action": "save", "id": 7, "spool": {"preset_link": "Mine"},
+                                      "was": {"spool": {"preset_link": json.dumps(MINE)}}})
+        self.assertIn("Kept Spoolman", result["text"])
+        self.assertEqual(asp.linked_preset(server.spool), "Changed in Spoolman")
 
     def test_the_field_is_spoolers_own(self):
         self.assertIn("orca_filament_preset", asp.EDITOR_OWN)

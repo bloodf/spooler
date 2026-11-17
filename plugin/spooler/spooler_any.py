@@ -1886,6 +1886,8 @@ def profile_snapshot() -> dict | None:
                 "current": [(name, bool(getattr(filaments.find_preset(name), "is_system", False)))
                             for name in current],
                 "user_filaments": user_filament_presets(filaments),
+                # The preset open in the filament settings: Send to Spoolman offers it first.
+                "edited": str(getattr(filaments.get_edited_preset(), "name", "") or ""),
                 "gen": _ui_snap.get("gen", 0) + 1, "project": _project["n"]}
     except Exception:
         log.exception("Could not read the presets")
@@ -2621,7 +2623,9 @@ def _orca_text(items: list, key: str) -> str:
 def spool_presets(spool: dict | None) -> list[dict]:
     """The OrcaSlicer presets a spool goes by, for Send to Spoolman: your own linked one, else Spooler's
     preset of it for each printer. Each {"name", "label" (the printer), "linked", "where": (filament id,
-    printer preset)}; a linked preset's printer is the one selected in OrcaSlicer."""
+    printer preset)}; a linked preset's printer is the one selected in OrcaSlicer, and "own" says the
+    link is the spool's own rather than its filament's. The one to pick first leads: the preset open in
+    the filament settings, else the selected printer's."""
     filament = (spool or {}).get("filament") if isinstance(spool, dict) else None
     fid = filament.get("id") if isinstance(filament, dict) else None
     if fid is None:
@@ -2629,17 +2633,19 @@ def spool_presets(spool: dict | None) -> list[dict]:
     linked = linked_preset(spool)
     if linked:
         target = _ui_snap.get("selected") or ""
-        return [{"name": linked, "label": label_for_target(target), "linked": True, "where": (fid, target)}]
+        return [{"name": linked, "label": label_for_target(target), "linked": True, "where": (fid, target),
+                 "own": bool(_link_text(spool))}]
     out = []
-    for key, name in sorted(_profiles["names"].items(), key=lambda item: item[1].casefold()):
+    for key, name in _profiles["names"].items():
         if key[0] == fid and (len(key) < 3 or key[2] == spool.get("id")):
             out.append({"name": PROFILE_PREFIX + name, "label": label_for_target(key[1]), "linked": False,
                         "where": (fid, key[1])})
-    return out
+    edited, selected = _ui_snap.get("edited"), _ui_snap.get("selected")
+    return sorted(out, key=lambda p: (p["name"] != edited, p["where"][1] != selected, p["name"].casefold()))
 
 
 def chosen_changes(data: object) -> tuple[str, dict, tuple]:
-    """(name, {setting: (value, base)}, (filament id, printer preset)) for Send to Spoolman on the preset
+    """(name, {setting: (value, base)}, (filament id, printer preset) for a linked preset, else None) for Send to Spoolman on the preset
     picked in a spool's detail: its unsaved edits when it is the preset open in OrcaSlicer's filament
     settings and has some; else, for your own linked preset, its saved settings that differ from the
     preset Spooler would make (a Spooler preset's saved settings come from Spoolman: {}). UI thread."""
@@ -2649,10 +2655,18 @@ def chosen_changes(data: object) -> tuple[str, dict, tuple]:
     pick = next((p for p in spool_presets(spool) if p["name"] == full), None) if full else None
     if pick is None:
         raise RuntimeError(tr("That preset is no longer one of this spool's. Refresh, then send it again."))
+    if pick.get("own"):
+        # Spoolman keeps settings on the filament, shared by every spool of it: a link of this spool
+        # alone must not change the others' presets.
+        raise RuntimeError(tr("{name} is linked to this spool only, and Spoolman keeps settings on the filament every "
+                              "spool of it shares; nothing was sent. Save your changes in the preset itself, or link "
+                              "the filament instead.", name=full))
     name = full[len(PROFILE_PREFIX):] if full.startswith(PROFILE_PREFIX) else full
     filaments = orca.host.preset_bundle().filaments
     changes = unsaved_changes(filaments, full)
-    if changes or not pick["linked"]:
+    if not pick["linked"]:
+        return name, changes, None  # a Spooler preset: send_changes finds its filament and printer by name
+    if changes:
         return name, changes, pick["where"]
     if not pick["where"][1]:
         raise RuntimeError(tr("Select a printer in OrcaSlicer first, then send again."))
@@ -2775,7 +2789,9 @@ def _send_changes(name: str, changes: dict, snapshot: dict, where: tuple | None 
     for key, (text, saved) in sorted(changes.items()):
         if key not in ORCA_SETTINGS_KEYS:
             other.append(key)
-        elif key in now and not _same(now[key], orca_items(saved or "", key)):
+        elif where is None and key in now and not _same(now[key], orca_items(saved or "", key)):
+            # A Spooler preset's saved value is what Spoolman gave it: another value means Spoolman
+            # changed since. Your own linked preset's saved value is yours, so it says nothing of that.
             kept.append(key)
         elif key in NATIVE_KEYS and native_value(key, text, filament) is not None:
             native[NATIVE_KEYS[key]] = native_value(key, text, filament)
@@ -2838,7 +2854,10 @@ def _send_changes(name: str, changes: dict, snapshot: dict, where: tuple | None 
     notes = []
     if sent:
         notes.append(tr("Sent {settings} to Spoolman for {name}.", settings=", ".join(sent), name=name))
-    if kept:
+    if kept and where is not None:  # your own preset isn't rebuilt from Spoolman: it keeps your value
+        notes.append(tr("Kept Spoolman's newer value for {fields}: it changed there while you were editing.",
+                        fields=", ".join(kept)))
+    elif kept:
         notes.append(tr("Kept Spoolman's newer value for {settings}: the preset now has it, and your "
                         "change stays unsaved; send again to use yours, or discard it.", settings=", ".join(kept)))
     if other:
@@ -6643,7 +6662,7 @@ def editor_save(sid: int, data: dict) -> dict:
         part = spool_changes if kind == "spool" else fil_changes
         part["extra"] = {**(part.get("extra") or {}), PRESET_LINK_FIELD: text}
         had = was_spool if kind == "spool" else was_fil
-        old = had.get(PRESET_LINK_FIELD)
+        old = had.get("preset_link")  # the page sends the link as Spoolman stored it, under this key
         had = {**had, "extra": {**(had.get("extra") or {}), PRESET_LINK_FIELD: old if isinstance(old, str) else None}}
         was_spool, was_fil = (had, was_fil) if kind == "spool" else (was_spool, had)
     now = spoolman_call("GET", f"spool/{sid}")
@@ -8478,6 +8497,13 @@ _TEXT_ROWS: dict[str, tuple[str, str, str, str, str]] = {
         '{name} hat keine ungespeicherten Änderungen, und die gespeicherten Einstellungen stimmen mit Spoolman überein: nichts zu senden.',
         '{name} 没有未保存的更改，且已保存的设置与 Spoolman 一致：无需发送。',
         '{name} nie ma niezapisanych zmian, a zapisane ustawienia zgadzają się ze Spoolmanem: nie ma czego wysłać.',
+    ),
+    '{name} is linked to this spool only, and Spoolman keeps settings on the filament every spool of it shares; nothing was sent. Save your changes in the preset itself, or link the filament instead.': (
+        '{name} está vinculado só a esta bobina, e o Spoolman guarda os ajustes no filamento que todas as bobinas dele compartilham; nada foi enviado. Salve as alterações no próprio perfil, ou vincule o filamento.',
+        '{name} está vinculado solo a este carrete, y Spoolman guarda los ajustes en el filamento que comparten todos sus carretes; no se envió nada. Guarda los cambios en el propio perfil, o vincula el filamento.',
+        '{name} ist nur mit dieser Spule verknüpft, und Spoolman speichert Einstellungen am Filament, das alle seine Spulen teilen; nichts wurde gesendet. Speichere die Änderungen im Profil selbst oder verknüpfe stattdessen das Filament.',
+        '{name} 仅关联到此料盘，而 Spoolman 将设置保存在其所有料盘共用的耗材丝上；未发送任何内容。请在预设本身中保存更改，或改为关联耗材丝。',
+        '{name} jest powiązany tylko z tą szpulą, a Spoolman trzyma ustawienia w filamencie wspólnym dla wszystkich jego szpul; nic nie wysłano. Zapisz zmiany w samym profilu albo powiąż filament.',
     ),
     "{name} has no unsaved changes to send.": (
         "{name} não tem alterações não salvas para enviar.",

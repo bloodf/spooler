@@ -58,6 +58,9 @@ class Collection:
     def selected_preset(self):
         return self._presets[self._selected]
 
+    def get_edited_preset(self):
+        return self._presets[self._selected]
+
 
 class Bundle:
     def __init__(self, data_dir, account="4242", selected=0, filament_slots=4):
