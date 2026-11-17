@@ -61,6 +61,9 @@ SCENES = {
         if (heading) {{ heading.nextElementSibling.remove(); heading.remove(); }}
         document.body.style.paddingBottom = '800px';   // room to scroll the panel to the top, so no list row shows above it
         top(document.querySelector('[data-detail="{SHOWN}"]'));
+        // Longer labels (Portuguese) wrap the actions onto another line: drop the usage chart rather than cut it.
+        var usage = document.querySelector('[data-detail="{SHOWN}"] .sd-usage');
+        if (usage && usage.getBoundingClientRect().bottom > innerHeight - 12) usage.remove();
         document.activeElement.blur();"""},
     # README screenshots: the list with a spool's detail beside it, and the setup guide asking for the address
     "wide": {"view": "spools", "script": f"""
@@ -72,18 +75,26 @@ SCENES = {
     "stock": {"view": "spools", "script": """
         var close = document.querySelector('[data-test="detail-close"]');   // the detail opens by itself only when there is room
         if (close) close.click();
+        // Keep the rows that fit: a row cut by the square's edge would show half its text.
+        await sleep(100);
+        // Measure every row first: removing one moves the rows after it up.
+        Array.from(document.querySelectorAll('tr[data-spool], tr[data-stack]'))
+          .filter(function (tr) { return tr.getBoundingClientRect().bottom > innerHeight - 12; })
+          .forEach(function (tr) { tr.remove(); });
         document.activeElement.blur();"""},
     # "Turn stock into filament presets": the setup guide's step about the presets
-    "presets": {"view": "settings", "wizard_step": 3, "script": ""},
+    "presets": {"view": "settings", "wizard_step": 3, "script": """
+        // Keep the settings tabs that fit: the strip scrolls sideways, so the last one would be cut in half.
+        var strip = document.querySelector('.oui-settings-tabs').getBoundingClientRect().right;
+        Array.from(document.querySelectorAll('.oui-settings-link'))
+          .filter(function (tab) { return tab.getBoundingClientRect().right > strip; })
+          .forEach(function (tab) { tab.remove(); });"""},
     # "See what each slot holds": the printers and their toolheads
     "slots": {"view": "printer", "display": {"head_rfid": False}, "script": """
-        // Show the first printer's toolheads only: its note and the next printer would be cut by the square's edge.
-        var note = document.querySelector('.pp-note');
-        if (note) {
-          var panel = note.closest('.oui-panel');
-          while (panel.nextElementSibling) panel.nextElementSibling.remove();
-          note.remove();
-        }"""},
+        // Show the first printer's toolheads only: what follows them would be cut by the square's edge.
+        var panel = document.querySelector('.oui-cards').closest('.oui-panel');
+        while (panel.nextElementSibling) panel.nextElementSibling.remove();
+        panel.querySelectorAll('.pp-note, .pp-presets, .pp-klipper').forEach(function (el) { el.remove(); });"""},
     # "Check filament before a print": the last slice's check
     "check": {"view": "printer", "plate": True, "script": """
         await until(function () { return document.querySelector('[data-test="plate"]'); });
@@ -114,9 +125,13 @@ def exports() -> list[dict]:
         for name, scene in (("01-stock", "stock"), ("02-presets", "presets"), ("03-slots", "slots"), ("04-check", "check")):
             rows.append({"source": f"spooler-workshop-feature-{name}-{lang}.png",
                          "file": f"assets/orca-cloud/spooler-feature-{name}-{lang}.png",
-                         "size": (1600, 900), "scene": scene, "theme": "dark", "lang": lang, "use": "Orca Cloud gallery image"})
+                         "size": (1600, 900), "scene": scene, "theme": "dark", "lang": lang, "use": "Orca Cloud gallery image",
+                         # The list needs a slightly wider page (758 px), or the spool names are cut short; past
+                         # 760 px the app bar goes to one line and cuts its status text instead.
+                         **({"page_scale": 1.115} if scene == "stock" else {})})
         rows.append({"source": f"spooler-workshop-social-preview-{lang}.png", "file": f"assets/social/spooler-social-preview-{lang}.png",
-                     "size": (1280, 640), "scene": "left", "theme": "dark", "lang": lang, "page_scale": 1.5,
+                     # Under 760 px, so the app bar keeps its two-line layout and its status text whole.
+                     "size": (1280, 640), "scene": "left", "theme": "dark", "lang": lang, "page_scale": 1.48,
                      "use": "GitHub social preview"})
         for theme in ("dark", "light"):
             rows.append({"source": f"spooler-workshop-hero-{theme}-{lang}.png", "file": f"assets/readme/spooler-hero-{theme}-{lang}.png",
