@@ -1,0 +1,5176 @@
+{
+ "files": {
+  "MasterPrint PETG Preto @Snapmaker U1.json": {
+   "type": "filament",
+   "name": "MasterPrint PETG Preto @Snapmaker U1",
+   "from": "User",
+   "instantiation": "true",
+   "inherits": "Generic PETG @U1 0.4 nozzle",
+   "version": "1.0.0",
+   "compatible_printers": [
+    "Snapmaker U1 (0.4 nozzle)"
+   ],
+   "compatible_printers_condition": "",
+   "filament_settings_id": [
+    "MasterPrint PETG Preto @Snapmaker U1"
+   ],
+   "default_filament_colour": [
+    "#000000"
+   ],
+   "filament_vendor": [
+    "MasterPrint"
+   ],
+   "filament_density": [
+    "1.27"
+   ],
+   "filament_diameter": [
+    "1.75"
+   ]
+  },
+  "Snapmaker PLA SnapSpeed Yellow @Snapmaker U1.json": {
+   "type": "filament",
+   "name": "Snapmaker PLA SnapSpeed Yellow @Snapmaker U1",
+   "from": "User",
+   "instantiation": "true",
+   "inherits": "Snapmaker PLA SnapSpeed @U1",
+   "version": "1.0.0",
+   "compatible_printers": [
+    "Snapmaker U1 (0.4 nozzle)"
+   ],
+   "compatible_printers_condition": "",
+   "filament_settings_id": [
+    "Snapmaker PLA SnapSpeed Yellow @Snapmaker U1"
+   ],
+   "default_filament_colour": [
+    "#F4C032"
+   ],
+   "filament_vendor": [
+    "Snapmaker"
+   ],
+   "nozzle_temperature": [
+    "230"
+   ],
+   "nozzle_temperature_initial_layer": [
+    "230"
+   ],
+   "cool_plate_temp": [
+    "60"
+   ],
+   "cool_plate_temp_initial_layer": [
+    "60"
+   ],
+   "eng_plate_temp": [
+    "60"
+   ],
+   "eng_plate_temp_initial_layer": [
+    "60"
+   ],
+   "hot_plate_temp": [
+    "60"
+   ],
+   "hot_plate_temp_initial_layer": [
+    "60"
+   ],
+   "supertack_plate_temp": [
+    "60"
+   ],
+   "supertack_plate_temp_initial_layer": [
+    "60"
+   ],
+   "textured_cool_plate_temp": [
+    "60"
+   ],
+   "textured_cool_plate_temp_initial_layer": [
+    "60"
+   ],
+   "textured_plate_temp": [
+    "60"
+   ],
+   "textured_plate_temp_initial_layer": [
+    "60"
+   ],
+   "filament_density": [
+    "1.24"
+   ],
+   "filament_diameter": [
+    "1.75"
+   ]
+  },
+  "Snapmaker PLA SnapSpeed Red @Snapmaker U1.json": {
+   "type": "filament",
+   "name": "Snapmaker PLA SnapSpeed Red @Snapmaker U1",
+   "from": "User",
+   "instantiation": "true",
+   "inherits": "Snapmaker PLA SnapSpeed @U1",
+   "version": "1.0.0",
+   "compatible_printers": [
+    "Snapmaker U1 (0.4 nozzle)"
+   ],
+   "compatible_printers_condition": "",
+   "filament_settings_id": [
+    "Snapmaker PLA SnapSpeed Red @Snapmaker U1"
+   ],
+   "default_filament_colour": [
+    "#E72F1D"
+   ],
+   "filament_vendor": [
+    "Snapmaker"
+   ],
+   "nozzle_temperature": [
+    "230"
+   ],
+   "nozzle_temperature_initial_layer": [
+    "230"
+   ],
+   "cool_plate_temp": [
+    "60"
+   ],
+   "cool_plate_temp_initial_layer": [
+    "60"
+   ],
+   "eng_plate_temp": [
+    "60"
+   ],
+   "eng_plate_temp_initial_layer": [
+    "60"
+   ],
+   "hot_plate_temp": [
+    "60"
+   ],
+   "hot_plate_temp_initial_layer": [
+    "60"
+   ],
+   "supertack_plate_temp": [
+    "60"
+   ],
+   "supertack_plate_temp_initial_layer": [
+    "60"
+   ],
+   "textured_cool_plate_temp": [
+    "60"
+   ],
+   "textured_cool_plate_temp_initial_layer": [
+    "60"
+   ],
+   "textured_plate_temp": [
+    "60"
+   ],
+   "textured_plate_temp_initial_layer": [
+    "60"
+   ],
+   "filament_density": [
+    "1.24"
+   ],
+   "filament_diameter": [
+    "1.75"
+   ]
+  },
+  "Snapmaker PLA SnapSpeed Black @Snapmaker U1.json": {
+   "type": "filament",
+   "name": "Snapmaker PLA SnapSpeed Black @Snapmaker U1",
+   "from": "User",
+   "instantiation": "true",
+   "inherits": "Snapmaker PLA SnapSpeed @U1",
+   "version": "1.0.0",
+   "compatible_printers": [
+    "Snapmaker U1 (0.4 nozzle)"
+   ],
+   "compatible_printers_condition": "",
+   "filament_settings_id": [
+    "Snapmaker PLA SnapSpeed Black @Snapmaker U1"
+   ],
+   "default_filament_colour": [
+    "#080A0D"
+   ],
+   "filament_vendor": [
+    "Snapmaker"
+   ],
+   "nozzle_temperature": [
+    "230"
+   ],
+   "nozzle_temperature_initial_layer": [
+    "230"
+   ],
+   "cool_plate_temp": [
+    "60"
+   ],
+   "cool_plate_temp_initial_layer": [
+    "60"
+   ],
+   "eng_plate_temp": [
+    "60"
+   ],
+   "eng_plate_temp_initial_layer": [
+    "60"
+   ],
+   "hot_plate_temp": [
+    "60"
+   ],
+   "hot_plate_temp_initial_layer": [
+    "60"
+   ],
+   "supertack_plate_temp": [
+    "60"
+   ],
+   "supertack_plate_temp_initial_layer": [
+    "60"
+   ],
+   "textured_cool_plate_temp": [
+    "60"
+   ],
+   "textured_cool_plate_temp_initial_layer": [
+    "60"
+   ],
+   "textured_plate_temp": [
+    "60"
+   ],
+   "textured_plate_temp_initial_layer": [
+    "60"
+   ],
+   "filament_density": [
+    "1.24"
+   ],
+   "filament_diameter": [
+    "1.75"
+   ]
+  },
+  "Snapmaker PLA SnapSpeed White @Snapmaker U1.json": {
+   "type": "filament",
+   "name": "Snapmaker PLA SnapSpeed White @Snapmaker U1",
+   "from": "User",
+   "instantiation": "true",
+   "inherits": "Snapmaker PLA SnapSpeed @U1",
+   "version": "1.0.0",
+   "compatible_printers": [
+    "Snapmaker U1 (0.4 nozzle)"
+   ],
+   "compatible_printers_condition": "",
+   "filament_settings_id": [
+    "Snapmaker PLA SnapSpeed White @Snapmaker U1"
+   ],
+   "default_filament_colour": [
+    "#E2DEDB"
+   ],
+   "filament_vendor": [
+    "Snapmaker"
+   ],
+   "nozzle_temperature": [
+    "230"
+   ],
+   "nozzle_temperature_initial_layer": [
+    "230"
+   ],
+   "cool_plate_temp": [
+    "60"
+   ],
+   "cool_plate_temp_initial_layer": [
+    "60"
+   ],
+   "eng_plate_temp": [
+    "60"
+   ],
+   "eng_plate_temp_initial_layer": [
+    "60"
+   ],
+   "hot_plate_temp": [
+    "60"
+   ],
+   "hot_plate_temp_initial_layer": [
+    "60"
+   ],
+   "supertack_plate_temp": [
+    "60"
+   ],
+   "supertack_plate_temp_initial_layer": [
+    "60"
+   ],
+   "textured_cool_plate_temp": [
+    "60"
+   ],
+   "textured_cool_plate_temp_initial_layer": [
+    "60"
+   ],
+   "textured_plate_temp": [
+    "60"
+   ],
+   "textured_plate_temp_initial_layer": [
+    "60"
+   ],
+   "filament_density": [
+    "1.24"
+   ],
+   "filament_diameter": [
+    "1.75"
+   ]
+  },
+  "3D Procer PLA Bege claro @Snapmaker U1.json": {
+   "type": "filament",
+   "name": "3D Procer PLA Bege claro @Snapmaker U1",
+   "from": "User",
+   "instantiation": "true",
+   "inherits": "Generic PLA @U1 0.4 nozzle",
+   "version": "1.0.0",
+   "compatible_printers": [
+    "Snapmaker U1 (0.4 nozzle)"
+   ],
+   "compatible_printers_condition": "",
+   "filament_settings_id": [
+    "3D Procer PLA Bege claro @Snapmaker U1"
+   ],
+   "default_filament_colour": [
+    "#F5E6CC"
+   ],
+   "filament_vendor": [
+    "3D Procer"
+   ],
+   "nozzle_temperature": [
+    "205"
+   ],
+   "nozzle_temperature_initial_layer": [
+    "205"
+   ],
+   "cool_plate_temp": [
+    "65"
+   ],
+   "cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "eng_plate_temp": [
+    "65"
+   ],
+   "eng_plate_temp_initial_layer": [
+    "65"
+   ],
+   "hot_plate_temp": [
+    "65"
+   ],
+   "hot_plate_temp_initial_layer": [
+    "65"
+   ],
+   "supertack_plate_temp": [
+    "65"
+   ],
+   "supertack_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_cool_plate_temp": [
+    "65"
+   ],
+   "textured_cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_plate_temp": [
+    "65"
+   ],
+   "textured_plate_temp_initial_layer": [
+    "65"
+   ],
+   "filament_density": [
+    "1.24"
+   ],
+   "filament_diameter": [
+    "1.75"
+   ]
+  },
+  "3D Procer PLA Cinza grafite @Snapmaker U1.json": {
+   "type": "filament",
+   "name": "3D Procer PLA Cinza grafite @Snapmaker U1",
+   "from": "User",
+   "instantiation": "true",
+   "inherits": "Generic PLA @U1 0.4 nozzle",
+   "version": "1.0.0",
+   "compatible_printers": [
+    "Snapmaker U1 (0.4 nozzle)"
+   ],
+   "compatible_printers_condition": "",
+   "filament_settings_id": [
+    "3D Procer PLA Cinza grafite @Snapmaker U1"
+   ],
+   "default_filament_colour": [
+    "#41424C"
+   ],
+   "filament_vendor": [
+    "3D Procer"
+   ],
+   "nozzle_temperature": [
+    "205"
+   ],
+   "nozzle_temperature_initial_layer": [
+    "205"
+   ],
+   "cool_plate_temp": [
+    "65"
+   ],
+   "cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "eng_plate_temp": [
+    "65"
+   ],
+   "eng_plate_temp_initial_layer": [
+    "65"
+   ],
+   "hot_plate_temp": [
+    "65"
+   ],
+   "hot_plate_temp_initial_layer": [
+    "65"
+   ],
+   "supertack_plate_temp": [
+    "65"
+   ],
+   "supertack_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_cool_plate_temp": [
+    "65"
+   ],
+   "textured_cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_plate_temp": [
+    "65"
+   ],
+   "textured_plate_temp_initial_layer": [
+    "65"
+   ],
+   "filament_density": [
+    "1.24"
+   ],
+   "filament_diameter": [
+    "1.75"
+   ]
+  },
+  "3D Procer PLA Branco @Snapmaker U1.json": {
+   "type": "filament",
+   "name": "3D Procer PLA Branco @Snapmaker U1",
+   "from": "User",
+   "instantiation": "true",
+   "inherits": "Generic PLA @U1 0.4 nozzle",
+   "version": "1.0.0",
+   "compatible_printers": [
+    "Snapmaker U1 (0.4 nozzle)"
+   ],
+   "compatible_printers_condition": "",
+   "filament_settings_id": [
+    "3D Procer PLA Branco @Snapmaker U1"
+   ],
+   "default_filament_colour": [
+    "#FFFFFF"
+   ],
+   "filament_vendor": [
+    "3D Procer"
+   ],
+   "nozzle_temperature": [
+    "205"
+   ],
+   "nozzle_temperature_initial_layer": [
+    "205"
+   ],
+   "cool_plate_temp": [
+    "65"
+   ],
+   "cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "eng_plate_temp": [
+    "65"
+   ],
+   "eng_plate_temp_initial_layer": [
+    "65"
+   ],
+   "hot_plate_temp": [
+    "65"
+   ],
+   "hot_plate_temp_initial_layer": [
+    "65"
+   ],
+   "supertack_plate_temp": [
+    "65"
+   ],
+   "supertack_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_cool_plate_temp": [
+    "65"
+   ],
+   "textured_cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_plate_temp": [
+    "65"
+   ],
+   "textured_plate_temp_initial_layer": [
+    "65"
+   ],
+   "filament_density": [
+    "1.24"
+   ],
+   "filament_diameter": [
+    "1.75"
+   ]
+  },
+  "3D Procer PLA Preto @Snapmaker U1.json": {
+   "type": "filament",
+   "name": "3D Procer PLA Preto @Snapmaker U1",
+   "from": "User",
+   "instantiation": "true",
+   "inherits": "Generic PLA @U1 0.4 nozzle",
+   "version": "1.0.0",
+   "compatible_printers": [
+    "Snapmaker U1 (0.4 nozzle)"
+   ],
+   "compatible_printers_condition": "",
+   "filament_settings_id": [
+    "3D Procer PLA Preto @Snapmaker U1"
+   ],
+   "default_filament_colour": [
+    "#000000"
+   ],
+   "filament_vendor": [
+    "3D Procer"
+   ],
+   "nozzle_temperature": [
+    "205"
+   ],
+   "nozzle_temperature_initial_layer": [
+    "205"
+   ],
+   "cool_plate_temp": [
+    "65"
+   ],
+   "cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "eng_plate_temp": [
+    "65"
+   ],
+   "eng_plate_temp_initial_layer": [
+    "65"
+   ],
+   "hot_plate_temp": [
+    "65"
+   ],
+   "hot_plate_temp_initial_layer": [
+    "65"
+   ],
+   "supertack_plate_temp": [
+    "65"
+   ],
+   "supertack_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_cool_plate_temp": [
+    "65"
+   ],
+   "textured_cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_plate_temp": [
+    "65"
+   ],
+   "textured_plate_temp_initial_layer": [
+    "65"
+   ],
+   "filament_density": [
+    "1.24"
+   ],
+   "filament_diameter": [
+    "1.75"
+   ]
+  },
+  "3D Procer PLA Cinza grafite perolado @Snapmaker U1.json": {
+   "type": "filament",
+   "name": "3D Procer PLA Cinza grafite perolado @Snapmaker U1",
+   "from": "User",
+   "instantiation": "true",
+   "inherits": "Generic PLA @U1 0.4 nozzle",
+   "version": "1.0.0",
+   "compatible_printers": [
+    "Snapmaker U1 (0.4 nozzle)"
+   ],
+   "compatible_printers_condition": "",
+   "filament_settings_id": [
+    "3D Procer PLA Cinza grafite perolado @Snapmaker U1"
+   ],
+   "default_filament_colour": [
+    "#4A4D55"
+   ],
+   "filament_vendor": [
+    "3D Procer"
+   ],
+   "nozzle_temperature": [
+    "205"
+   ],
+   "nozzle_temperature_initial_layer": [
+    "205"
+   ],
+   "cool_plate_temp": [
+    "65"
+   ],
+   "cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "eng_plate_temp": [
+    "65"
+   ],
+   "eng_plate_temp_initial_layer": [
+    "65"
+   ],
+   "hot_plate_temp": [
+    "65"
+   ],
+   "hot_plate_temp_initial_layer": [
+    "65"
+   ],
+   "supertack_plate_temp": [
+    "65"
+   ],
+   "supertack_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_cool_plate_temp": [
+    "65"
+   ],
+   "textured_cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_plate_temp": [
+    "65"
+   ],
+   "textured_plate_temp_initial_layer": [
+    "65"
+   ],
+   "filament_density": [
+    "1.24"
+   ],
+   "filament_diameter": [
+    "1.75"
+   ]
+  },
+  "3D Procer PLA Branco marmorizado @Snapmaker U1.json": {
+   "type": "filament",
+   "name": "3D Procer PLA Branco marmorizado @Snapmaker U1",
+   "from": "User",
+   "instantiation": "true",
+   "inherits": "Generic PLA @U1 0.4 nozzle",
+   "version": "1.0.0",
+   "compatible_printers": [
+    "Snapmaker U1 (0.4 nozzle)"
+   ],
+   "compatible_printers_condition": "",
+   "filament_settings_id": [
+    "3D Procer PLA Branco marmorizado @Snapmaker U1"
+   ],
+   "default_filament_colour": [
+    "#F2F2EE"
+   ],
+   "filament_vendor": [
+    "3D Procer"
+   ],
+   "nozzle_temperature": [
+    "205"
+   ],
+   "nozzle_temperature_initial_layer": [
+    "205"
+   ],
+   "cool_plate_temp": [
+    "65"
+   ],
+   "cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "eng_plate_temp": [
+    "65"
+   ],
+   "eng_plate_temp_initial_layer": [
+    "65"
+   ],
+   "hot_plate_temp": [
+    "65"
+   ],
+   "hot_plate_temp_initial_layer": [
+    "65"
+   ],
+   "supertack_plate_temp": [
+    "65"
+   ],
+   "supertack_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_cool_plate_temp": [
+    "65"
+   ],
+   "textured_cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_plate_temp": [
+    "65"
+   ],
+   "textured_plate_temp_initial_layer": [
+    "65"
+   ],
+   "filament_density": [
+    "1.24"
+   ],
+   "filament_diameter": [
+    "1.75"
+   ]
+  },
+  "3D Procer PLA Pérola @Snapmaker U1.json": {
+   "type": "filament",
+   "name": "3D Procer PLA Pérola @Snapmaker U1",
+   "from": "User",
+   "instantiation": "true",
+   "inherits": "Generic PLA @U1 0.4 nozzle",
+   "version": "1.0.0",
+   "compatible_printers": [
+    "Snapmaker U1 (0.4 nozzle)"
+   ],
+   "compatible_printers_condition": "",
+   "filament_settings_id": [
+    "3D Procer PLA Pérola @Snapmaker U1"
+   ],
+   "default_filament_colour": [
+    "#EAE0C8"
+   ],
+   "filament_vendor": [
+    "3D Procer"
+   ],
+   "nozzle_temperature": [
+    "205"
+   ],
+   "nozzle_temperature_initial_layer": [
+    "205"
+   ],
+   "cool_plate_temp": [
+    "65"
+   ],
+   "cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "eng_plate_temp": [
+    "65"
+   ],
+   "eng_plate_temp_initial_layer": [
+    "65"
+   ],
+   "hot_plate_temp": [
+    "65"
+   ],
+   "hot_plate_temp_initial_layer": [
+    "65"
+   ],
+   "supertack_plate_temp": [
+    "65"
+   ],
+   "supertack_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_cool_plate_temp": [
+    "65"
+   ],
+   "textured_cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_plate_temp": [
+    "65"
+   ],
+   "textured_plate_temp_initial_layer": [
+    "65"
+   ],
+   "filament_density": [
+    "1.24"
+   ],
+   "filament_diameter": [
+    "1.75"
+   ]
+  },
+  "3D Procer PLA Preto matte @Snapmaker U1.json": {
+   "type": "filament",
+   "name": "3D Procer PLA Preto matte @Snapmaker U1",
+   "from": "User",
+   "instantiation": "true",
+   "inherits": "Generic PLA @U1 0.4 nozzle",
+   "version": "1.0.0",
+   "compatible_printers": [
+    "Snapmaker U1 (0.4 nozzle)"
+   ],
+   "compatible_printers_condition": "",
+   "filament_settings_id": [
+    "3D Procer PLA Preto matte @Snapmaker U1"
+   ],
+   "default_filament_colour": [
+    "#1C1C1C"
+   ],
+   "filament_vendor": [
+    "3D Procer"
+   ],
+   "nozzle_temperature": [
+    "205"
+   ],
+   "nozzle_temperature_initial_layer": [
+    "205"
+   ],
+   "cool_plate_temp": [
+    "65"
+   ],
+   "cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "eng_plate_temp": [
+    "65"
+   ],
+   "eng_plate_temp_initial_layer": [
+    "65"
+   ],
+   "hot_plate_temp": [
+    "65"
+   ],
+   "hot_plate_temp_initial_layer": [
+    "65"
+   ],
+   "supertack_plate_temp": [
+    "65"
+   ],
+   "supertack_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_cool_plate_temp": [
+    "65"
+   ],
+   "textured_cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_plate_temp": [
+    "65"
+   ],
+   "textured_plate_temp_initial_layer": [
+    "65"
+   ],
+   "filament_density": [
+    "1.24"
+   ],
+   "filament_diameter": [
+    "1.75"
+   ]
+  },
+  "3D Procer PLA Marrom escuro @Snapmaker U1.json": {
+   "type": "filament",
+   "name": "3D Procer PLA Marrom escuro @Snapmaker U1",
+   "from": "User",
+   "instantiation": "true",
+   "inherits": "Generic PLA @U1 0.4 nozzle",
+   "version": "1.0.0",
+   "compatible_printers": [
+    "Snapmaker U1 (0.4 nozzle)"
+   ],
+   "compatible_printers_condition": "",
+   "filament_settings_id": [
+    "3D Procer PLA Marrom escuro @Snapmaker U1"
+   ],
+   "default_filament_colour": [
+    "#4B2E1E"
+   ],
+   "filament_vendor": [
+    "3D Procer"
+   ],
+   "nozzle_temperature": [
+    "205"
+   ],
+   "nozzle_temperature_initial_layer": [
+    "205"
+   ],
+   "cool_plate_temp": [
+    "65"
+   ],
+   "cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "eng_plate_temp": [
+    "65"
+   ],
+   "eng_plate_temp_initial_layer": [
+    "65"
+   ],
+   "hot_plate_temp": [
+    "65"
+   ],
+   "hot_plate_temp_initial_layer": [
+    "65"
+   ],
+   "supertack_plate_temp": [
+    "65"
+   ],
+   "supertack_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_cool_plate_temp": [
+    "65"
+   ],
+   "textured_cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_plate_temp": [
+    "65"
+   ],
+   "textured_plate_temp_initial_layer": [
+    "65"
+   ],
+   "filament_density": [
+    "1.24"
+   ],
+   "filament_diameter": [
+    "1.75"
+   ]
+  },
+  "3D Procer PLA Bege escuro @Snapmaker U1.json": {
+   "type": "filament",
+   "name": "3D Procer PLA Bege escuro @Snapmaker U1",
+   "from": "User",
+   "instantiation": "true",
+   "inherits": "Generic PLA @U1 0.4 nozzle",
+   "version": "1.0.0",
+   "compatible_printers": [
+    "Snapmaker U1 (0.4 nozzle)"
+   ],
+   "compatible_printers_condition": "",
+   "filament_settings_id": [
+    "3D Procer PLA Bege escuro @Snapmaker U1"
+   ],
+   "default_filament_colour": [
+    "#C8AD7F"
+   ],
+   "filament_vendor": [
+    "3D Procer"
+   ],
+   "nozzle_temperature": [
+    "205"
+   ],
+   "nozzle_temperature_initial_layer": [
+    "205"
+   ],
+   "cool_plate_temp": [
+    "65"
+   ],
+   "cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "eng_plate_temp": [
+    "65"
+   ],
+   "eng_plate_temp_initial_layer": [
+    "65"
+   ],
+   "hot_plate_temp": [
+    "65"
+   ],
+   "hot_plate_temp_initial_layer": [
+    "65"
+   ],
+   "supertack_plate_temp": [
+    "65"
+   ],
+   "supertack_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_cool_plate_temp": [
+    "65"
+   ],
+   "textured_cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_plate_temp": [
+    "65"
+   ],
+   "textured_plate_temp_initial_layer": [
+    "65"
+   ],
+   "filament_density": [
+    "1.24"
+   ],
+   "filament_diameter": [
+    "1.75"
+   ]
+  },
+  "3D Procer PLA Caucasiano @Snapmaker U1.json": {
+   "type": "filament",
+   "name": "3D Procer PLA Caucasiano @Snapmaker U1",
+   "from": "User",
+   "instantiation": "true",
+   "inherits": "Generic PLA @U1 0.4 nozzle",
+   "version": "1.0.0",
+   "compatible_printers": [
+    "Snapmaker U1 (0.4 nozzle)"
+   ],
+   "compatible_printers_condition": "",
+   "filament_settings_id": [
+    "3D Procer PLA Caucasiano @Snapmaker U1"
+   ],
+   "default_filament_colour": [
+    "#E8BE9A"
+   ],
+   "filament_vendor": [
+    "3D Procer"
+   ],
+   "nozzle_temperature": [
+    "205"
+   ],
+   "nozzle_temperature_initial_layer": [
+    "205"
+   ],
+   "cool_plate_temp": [
+    "65"
+   ],
+   "cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "eng_plate_temp": [
+    "65"
+   ],
+   "eng_plate_temp_initial_layer": [
+    "65"
+   ],
+   "hot_plate_temp": [
+    "65"
+   ],
+   "hot_plate_temp_initial_layer": [
+    "65"
+   ],
+   "supertack_plate_temp": [
+    "65"
+   ],
+   "supertack_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_cool_plate_temp": [
+    "65"
+   ],
+   "textured_cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_plate_temp": [
+    "65"
+   ],
+   "textured_plate_temp_initial_layer": [
+    "65"
+   ],
+   "filament_density": [
+    "1.24"
+   ],
+   "filament_diameter": [
+    "1.75"
+   ]
+  },
+  "3D Procer PLA Ouro @Snapmaker U1.json": {
+   "type": "filament",
+   "name": "3D Procer PLA Ouro @Snapmaker U1",
+   "from": "User",
+   "instantiation": "true",
+   "inherits": "Generic PLA @U1 0.4 nozzle",
+   "version": "1.0.0",
+   "compatible_printers": [
+    "Snapmaker U1 (0.4 nozzle)"
+   ],
+   "compatible_printers_condition": "",
+   "filament_settings_id": [
+    "3D Procer PLA Ouro @Snapmaker U1"
+   ],
+   "default_filament_colour": [
+    "#D4AF37"
+   ],
+   "filament_vendor": [
+    "3D Procer"
+   ],
+   "nozzle_temperature": [
+    "205"
+   ],
+   "nozzle_temperature_initial_layer": [
+    "205"
+   ],
+   "cool_plate_temp": [
+    "65"
+   ],
+   "cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "eng_plate_temp": [
+    "65"
+   ],
+   "eng_plate_temp_initial_layer": [
+    "65"
+   ],
+   "hot_plate_temp": [
+    "65"
+   ],
+   "hot_plate_temp_initial_layer": [
+    "65"
+   ],
+   "supertack_plate_temp": [
+    "65"
+   ],
+   "supertack_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_cool_plate_temp": [
+    "65"
+   ],
+   "textured_cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_plate_temp": [
+    "65"
+   ],
+   "textured_plate_temp_initial_layer": [
+    "65"
+   ],
+   "filament_density": [
+    "1.24"
+   ],
+   "filament_diameter": [
+    "1.75"
+   ]
+  },
+  "3D Procer PLA Preto perolado metalizado @Snapmaker U1.json": {
+   "type": "filament",
+   "name": "3D Procer PLA Preto perolado metalizado @Snapmaker U1",
+   "from": "User",
+   "instantiation": "true",
+   "inherits": "Generic PLA @U1 0.4 nozzle",
+   "version": "1.0.0",
+   "compatible_printers": [
+    "Snapmaker U1 (0.4 nozzle)"
+   ],
+   "compatible_printers_condition": "",
+   "filament_settings_id": [
+    "3D Procer PLA Preto perolado metalizado @Snapmaker U1"
+   ],
+   "default_filament_colour": [
+    "#2B2B30"
+   ],
+   "filament_vendor": [
+    "3D Procer"
+   ],
+   "nozzle_temperature": [
+    "205"
+   ],
+   "nozzle_temperature_initial_layer": [
+    "205"
+   ],
+   "cool_plate_temp": [
+    "65"
+   ],
+   "cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "eng_plate_temp": [
+    "65"
+   ],
+   "eng_plate_temp_initial_layer": [
+    "65"
+   ],
+   "hot_plate_temp": [
+    "65"
+   ],
+   "hot_plate_temp_initial_layer": [
+    "65"
+   ],
+   "supertack_plate_temp": [
+    "65"
+   ],
+   "supertack_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_cool_plate_temp": [
+    "65"
+   ],
+   "textured_cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_plate_temp": [
+    "65"
+   ],
+   "textured_plate_temp_initial_layer": [
+    "65"
+   ],
+   "filament_density": [
+    "1.24"
+   ],
+   "filament_diameter": [
+    "1.75"
+   ]
+  },
+  "3D Procer PLA Marrom terra @Snapmaker U1.json": {
+   "type": "filament",
+   "name": "3D Procer PLA Marrom terra @Snapmaker U1",
+   "from": "User",
+   "instantiation": "true",
+   "inherits": "Generic PLA @U1 0.4 nozzle",
+   "version": "1.0.0",
+   "compatible_printers": [
+    "Snapmaker U1 (0.4 nozzle)"
+   ],
+   "compatible_printers_condition": "",
+   "filament_settings_id": [
+    "3D Procer PLA Marrom terra @Snapmaker U1"
+   ],
+   "default_filament_colour": [
+    "#8B5A2B"
+   ],
+   "filament_vendor": [
+    "3D Procer"
+   ],
+   "nozzle_temperature": [
+    "205"
+   ],
+   "nozzle_temperature_initial_layer": [
+    "205"
+   ],
+   "cool_plate_temp": [
+    "65"
+   ],
+   "cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "eng_plate_temp": [
+    "65"
+   ],
+   "eng_plate_temp_initial_layer": [
+    "65"
+   ],
+   "hot_plate_temp": [
+    "65"
+   ],
+   "hot_plate_temp_initial_layer": [
+    "65"
+   ],
+   "supertack_plate_temp": [
+    "65"
+   ],
+   "supertack_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_cool_plate_temp": [
+    "65"
+   ],
+   "textured_cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_plate_temp": [
+    "65"
+   ],
+   "textured_plate_temp_initial_layer": [
+    "65"
+   ],
+   "filament_density": [
+    "1.24"
+   ],
+   "filament_diameter": [
+    "1.75"
+   ]
+  },
+  "3D Procer PLA Marrom claro @Snapmaker U1.json": {
+   "type": "filament",
+   "name": "3D Procer PLA Marrom claro @Snapmaker U1",
+   "from": "User",
+   "instantiation": "true",
+   "inherits": "Generic PLA @U1 0.4 nozzle",
+   "version": "1.0.0",
+   "compatible_printers": [
+    "Snapmaker U1 (0.4 nozzle)"
+   ],
+   "compatible_printers_condition": "",
+   "filament_settings_id": [
+    "3D Procer PLA Marrom claro @Snapmaker U1"
+   ],
+   "default_filament_colour": [
+    "#A0785A"
+   ],
+   "filament_vendor": [
+    "3D Procer"
+   ],
+   "nozzle_temperature": [
+    "205"
+   ],
+   "nozzle_temperature_initial_layer": [
+    "205"
+   ],
+   "cool_plate_temp": [
+    "65"
+   ],
+   "cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "eng_plate_temp": [
+    "65"
+   ],
+   "eng_plate_temp_initial_layer": [
+    "65"
+   ],
+   "hot_plate_temp": [
+    "65"
+   ],
+   "hot_plate_temp_initial_layer": [
+    "65"
+   ],
+   "supertack_plate_temp": [
+    "65"
+   ],
+   "supertack_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_cool_plate_temp": [
+    "65"
+   ],
+   "textured_cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_plate_temp": [
+    "65"
+   ],
+   "textured_plate_temp_initial_layer": [
+    "65"
+   ],
+   "filament_density": [
+    "1.24"
+   ],
+   "filament_diameter": [
+    "1.75"
+   ]
+  },
+  "3D Procer PLA Amarelo @Snapmaker U1.json": {
+   "type": "filament",
+   "name": "3D Procer PLA Amarelo @Snapmaker U1",
+   "from": "User",
+   "instantiation": "true",
+   "inherits": "Generic PLA @U1 0.4 nozzle",
+   "version": "1.0.0",
+   "compatible_printers": [
+    "Snapmaker U1 (0.4 nozzle)"
+   ],
+   "compatible_printers_condition": "",
+   "filament_settings_id": [
+    "3D Procer PLA Amarelo @Snapmaker U1"
+   ],
+   "default_filament_colour": [
+    "#FFFF00"
+   ],
+   "filament_vendor": [
+    "3D Procer"
+   ],
+   "nozzle_temperature": [
+    "205"
+   ],
+   "nozzle_temperature_initial_layer": [
+    "205"
+   ],
+   "cool_plate_temp": [
+    "65"
+   ],
+   "cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "eng_plate_temp": [
+    "65"
+   ],
+   "eng_plate_temp_initial_layer": [
+    "65"
+   ],
+   "hot_plate_temp": [
+    "65"
+   ],
+   "hot_plate_temp_initial_layer": [
+    "65"
+   ],
+   "supertack_plate_temp": [
+    "65"
+   ],
+   "supertack_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_cool_plate_temp": [
+    "65"
+   ],
+   "textured_cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_plate_temp": [
+    "65"
+   ],
+   "textured_plate_temp_initial_layer": [
+    "65"
+   ],
+   "filament_density": [
+    "1.24"
+   ],
+   "filament_diameter": [
+    "1.75"
+   ]
+  },
+  "3D Procer PLA Bronze @Snapmaker U1.json": {
+   "type": "filament",
+   "name": "3D Procer PLA Bronze @Snapmaker U1",
+   "from": "User",
+   "instantiation": "true",
+   "inherits": "Generic PLA @U1 0.4 nozzle",
+   "version": "1.0.0",
+   "compatible_printers": [
+    "Snapmaker U1 (0.4 nozzle)"
+   ],
+   "compatible_printers_condition": "",
+   "filament_settings_id": [
+    "3D Procer PLA Bronze @Snapmaker U1"
+   ],
+   "default_filament_colour": [
+    "#CD7F32"
+   ],
+   "filament_vendor": [
+    "3D Procer"
+   ],
+   "nozzle_temperature": [
+    "205"
+   ],
+   "nozzle_temperature_initial_layer": [
+    "205"
+   ],
+   "cool_plate_temp": [
+    "65"
+   ],
+   "cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "eng_plate_temp": [
+    "65"
+   ],
+   "eng_plate_temp_initial_layer": [
+    "65"
+   ],
+   "hot_plate_temp": [
+    "65"
+   ],
+   "hot_plate_temp_initial_layer": [
+    "65"
+   ],
+   "supertack_plate_temp": [
+    "65"
+   ],
+   "supertack_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_cool_plate_temp": [
+    "65"
+   ],
+   "textured_cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_plate_temp": [
+    "65"
+   ],
+   "textured_plate_temp_initial_layer": [
+    "65"
+   ],
+   "filament_density": [
+    "1.24"
+   ],
+   "filament_diameter": [
+    "1.75"
+   ]
+  },
+  "3D Procer PLA Bege areia @Snapmaker U1.json": {
+   "type": "filament",
+   "name": "3D Procer PLA Bege areia @Snapmaker U1",
+   "from": "User",
+   "instantiation": "true",
+   "inherits": "Generic PLA @U1 0.4 nozzle",
+   "version": "1.0.0",
+   "compatible_printers": [
+    "Snapmaker U1 (0.4 nozzle)"
+   ],
+   "compatible_printers_condition": "",
+   "filament_settings_id": [
+    "3D Procer PLA Bege areia @Snapmaker U1"
+   ],
+   "default_filament_colour": [
+    "#D8C3A0"
+   ],
+   "filament_vendor": [
+    "3D Procer"
+   ],
+   "nozzle_temperature": [
+    "205"
+   ],
+   "nozzle_temperature_initial_layer": [
+    "205"
+   ],
+   "cool_plate_temp": [
+    "65"
+   ],
+   "cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "eng_plate_temp": [
+    "65"
+   ],
+   "eng_plate_temp_initial_layer": [
+    "65"
+   ],
+   "hot_plate_temp": [
+    "65"
+   ],
+   "hot_plate_temp_initial_layer": [
+    "65"
+   ],
+   "supertack_plate_temp": [
+    "65"
+   ],
+   "supertack_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_cool_plate_temp": [
+    "65"
+   ],
+   "textured_cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_plate_temp": [
+    "65"
+   ],
+   "textured_plate_temp_initial_layer": [
+    "65"
+   ],
+   "filament_density": [
+    "1.24"
+   ],
+   "filament_diameter": [
+    "1.75"
+   ]
+  },
+  "3D Procer PLA Cinza @Snapmaker U1.json": {
+   "type": "filament",
+   "name": "3D Procer PLA Cinza @Snapmaker U1",
+   "from": "User",
+   "instantiation": "true",
+   "inherits": "Generic PLA @U1 0.4 nozzle",
+   "version": "1.0.0",
+   "compatible_printers": [
+    "Snapmaker U1 (0.4 nozzle)"
+   ],
+   "compatible_printers_condition": "",
+   "filament_settings_id": [
+    "3D Procer PLA Cinza @Snapmaker U1"
+   ],
+   "default_filament_colour": [
+    "#808080"
+   ],
+   "filament_vendor": [
+    "3D Procer"
+   ],
+   "nozzle_temperature": [
+    "205"
+   ],
+   "nozzle_temperature_initial_layer": [
+    "205"
+   ],
+   "cool_plate_temp": [
+    "65"
+   ],
+   "cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "eng_plate_temp": [
+    "65"
+   ],
+   "eng_plate_temp_initial_layer": [
+    "65"
+   ],
+   "hot_plate_temp": [
+    "65"
+   ],
+   "hot_plate_temp_initial_layer": [
+    "65"
+   ],
+   "supertack_plate_temp": [
+    "65"
+   ],
+   "supertack_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_cool_plate_temp": [
+    "65"
+   ],
+   "textured_cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_plate_temp": [
+    "65"
+   ],
+   "textured_plate_temp_initial_layer": [
+    "65"
+   ],
+   "filament_density": [
+    "1.24"
+   ],
+   "filament_diameter": [
+    "1.75"
+   ]
+  },
+  "3D Procer PLA Azul @Snapmaker U1.json": {
+   "type": "filament",
+   "name": "3D Procer PLA Azul @Snapmaker U1",
+   "from": "User",
+   "instantiation": "true",
+   "inherits": "Generic PLA @U1 0.4 nozzle",
+   "version": "1.0.0",
+   "compatible_printers": [
+    "Snapmaker U1 (0.4 nozzle)"
+   ],
+   "compatible_printers_condition": "",
+   "filament_settings_id": [
+    "3D Procer PLA Azul @Snapmaker U1"
+   ],
+   "default_filament_colour": [
+    "#0000FF"
+   ],
+   "filament_vendor": [
+    "3D Procer"
+   ],
+   "nozzle_temperature": [
+    "205"
+   ],
+   "nozzle_temperature_initial_layer": [
+    "205"
+   ],
+   "cool_plate_temp": [
+    "65"
+   ],
+   "cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "eng_plate_temp": [
+    "65"
+   ],
+   "eng_plate_temp_initial_layer": [
+    "65"
+   ],
+   "hot_plate_temp": [
+    "65"
+   ],
+   "hot_plate_temp_initial_layer": [
+    "65"
+   ],
+   "supertack_plate_temp": [
+    "65"
+   ],
+   "supertack_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_cool_plate_temp": [
+    "65"
+   ],
+   "textured_cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_plate_temp": [
+    "65"
+   ],
+   "textured_plate_temp_initial_layer": [
+    "65"
+   ],
+   "filament_density": [
+    "1.24"
+   ],
+   "filament_diameter": [
+    "1.75"
+   ]
+  },
+  "3D Procer PLA Verde @Snapmaker U1.json": {
+   "type": "filament",
+   "name": "3D Procer PLA Verde @Snapmaker U1",
+   "from": "User",
+   "instantiation": "true",
+   "inherits": "Generic PLA @U1 0.4 nozzle",
+   "version": "1.0.0",
+   "compatible_printers": [
+    "Snapmaker U1 (0.4 nozzle)"
+   ],
+   "compatible_printers_condition": "",
+   "filament_settings_id": [
+    "3D Procer PLA Verde @Snapmaker U1"
+   ],
+   "default_filament_colour": [
+    "#008000"
+   ],
+   "filament_vendor": [
+    "3D Procer"
+   ],
+   "nozzle_temperature": [
+    "205"
+   ],
+   "nozzle_temperature_initial_layer": [
+    "205"
+   ],
+   "cool_plate_temp": [
+    "65"
+   ],
+   "cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "eng_plate_temp": [
+    "65"
+   ],
+   "eng_plate_temp_initial_layer": [
+    "65"
+   ],
+   "hot_plate_temp": [
+    "65"
+   ],
+   "hot_plate_temp_initial_layer": [
+    "65"
+   ],
+   "supertack_plate_temp": [
+    "65"
+   ],
+   "supertack_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_cool_plate_temp": [
+    "65"
+   ],
+   "textured_cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_plate_temp": [
+    "65"
+   ],
+   "textured_plate_temp_initial_layer": [
+    "65"
+   ],
+   "filament_density": [
+    "1.24"
+   ],
+   "filament_diameter": [
+    "1.75"
+   ]
+  },
+  "3D Procer PLA Azul claro metalizado @Snapmaker U1.json": {
+   "type": "filament",
+   "name": "3D Procer PLA Azul claro metalizado @Snapmaker U1",
+   "from": "User",
+   "instantiation": "true",
+   "inherits": "Generic PLA @U1 0.4 nozzle",
+   "version": "1.0.0",
+   "compatible_printers": [
+    "Snapmaker U1 (0.4 nozzle)"
+   ],
+   "compatible_printers_condition": "",
+   "filament_settings_id": [
+    "3D Procer PLA Azul claro metalizado @Snapmaker U1"
+   ],
+   "default_filament_colour": [
+    "#7FB3E6"
+   ],
+   "filament_vendor": [
+    "3D Procer"
+   ],
+   "nozzle_temperature": [
+    "205"
+   ],
+   "nozzle_temperature_initial_layer": [
+    "205"
+   ],
+   "cool_plate_temp": [
+    "65"
+   ],
+   "cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "eng_plate_temp": [
+    "65"
+   ],
+   "eng_plate_temp_initial_layer": [
+    "65"
+   ],
+   "hot_plate_temp": [
+    "65"
+   ],
+   "hot_plate_temp_initial_layer": [
+    "65"
+   ],
+   "supertack_plate_temp": [
+    "65"
+   ],
+   "supertack_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_cool_plate_temp": [
+    "65"
+   ],
+   "textured_cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_plate_temp": [
+    "65"
+   ],
+   "textured_plate_temp_initial_layer": [
+    "65"
+   ],
+   "filament_density": [
+    "1.24"
+   ],
+   "filament_diameter": [
+    "1.75"
+   ]
+  },
+  "3D Procer PLA Verde natal silk @Snapmaker U1.json": {
+   "type": "filament",
+   "name": "3D Procer PLA Verde natal silk @Snapmaker U1",
+   "from": "User",
+   "instantiation": "true",
+   "inherits": "Generic PLA Silk @U1 0.4 nozzle",
+   "version": "1.0.0",
+   "compatible_printers": [
+    "Snapmaker U1 (0.4 nozzle)"
+   ],
+   "compatible_printers_condition": "",
+   "filament_settings_id": [
+    "3D Procer PLA Verde natal silk @Snapmaker U1"
+   ],
+   "default_filament_colour": [
+    "#0B6623"
+   ],
+   "filament_vendor": [
+    "3D Procer"
+   ],
+   "nozzle_temperature": [
+    "230"
+   ],
+   "nozzle_temperature_initial_layer": [
+    "230"
+   ],
+   "cool_plate_temp": [
+    "65"
+   ],
+   "cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "eng_plate_temp": [
+    "65"
+   ],
+   "eng_plate_temp_initial_layer": [
+    "65"
+   ],
+   "hot_plate_temp": [
+    "65"
+   ],
+   "hot_plate_temp_initial_layer": [
+    "65"
+   ],
+   "supertack_plate_temp": [
+    "65"
+   ],
+   "supertack_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_cool_plate_temp": [
+    "65"
+   ],
+   "textured_cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_plate_temp": [
+    "65"
+   ],
+   "textured_plate_temp_initial_layer": [
+    "65"
+   ],
+   "filament_density": [
+    "1.24"
+   ],
+   "filament_diameter": [
+    "1.75"
+   ]
+  },
+  "3D Procer PLA Ouro silk @Snapmaker U1.json": {
+   "type": "filament",
+   "name": "3D Procer PLA Ouro silk @Snapmaker U1",
+   "from": "User",
+   "instantiation": "true",
+   "inherits": "Generic PLA Silk @U1 0.4 nozzle",
+   "version": "1.0.0",
+   "compatible_printers": [
+    "Snapmaker U1 (0.4 nozzle)"
+   ],
+   "compatible_printers_condition": "",
+   "filament_settings_id": [
+    "3D Procer PLA Ouro silk @Snapmaker U1"
+   ],
+   "default_filament_colour": [
+    "#E6BE48"
+   ],
+   "filament_vendor": [
+    "3D Procer"
+   ],
+   "nozzle_temperature": [
+    "230"
+   ],
+   "nozzle_temperature_initial_layer": [
+    "230"
+   ],
+   "cool_plate_temp": [
+    "65"
+   ],
+   "cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "eng_plate_temp": [
+    "65"
+   ],
+   "eng_plate_temp_initial_layer": [
+    "65"
+   ],
+   "hot_plate_temp": [
+    "65"
+   ],
+   "hot_plate_temp_initial_layer": [
+    "65"
+   ],
+   "supertack_plate_temp": [
+    "65"
+   ],
+   "supertack_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_cool_plate_temp": [
+    "65"
+   ],
+   "textured_cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_plate_temp": [
+    "65"
+   ],
+   "textured_plate_temp_initial_layer": [
+    "65"
+   ],
+   "filament_density": [
+    "1.24"
+   ],
+   "filament_diameter": [
+    "1.75"
+   ]
+  },
+  "3D Procer PLA Cobre @Snapmaker U1.json": {
+   "type": "filament",
+   "name": "3D Procer PLA Cobre @Snapmaker U1",
+   "from": "User",
+   "instantiation": "true",
+   "inherits": "Generic PLA @U1 0.4 nozzle",
+   "version": "1.0.0",
+   "compatible_printers": [
+    "Snapmaker U1 (0.4 nozzle)"
+   ],
+   "compatible_printers_condition": "",
+   "filament_settings_id": [
+    "3D Procer PLA Cobre @Snapmaker U1"
+   ],
+   "default_filament_colour": [
+    "#B87333"
+   ],
+   "filament_vendor": [
+    "3D Procer"
+   ],
+   "nozzle_temperature": [
+    "205"
+   ],
+   "nozzle_temperature_initial_layer": [
+    "205"
+   ],
+   "cool_plate_temp": [
+    "65"
+   ],
+   "cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "eng_plate_temp": [
+    "65"
+   ],
+   "eng_plate_temp_initial_layer": [
+    "65"
+   ],
+   "hot_plate_temp": [
+    "65"
+   ],
+   "hot_plate_temp_initial_layer": [
+    "65"
+   ],
+   "supertack_plate_temp": [
+    "65"
+   ],
+   "supertack_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_cool_plate_temp": [
+    "65"
+   ],
+   "textured_cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_plate_temp": [
+    "65"
+   ],
+   "textured_plate_temp_initial_layer": [
+    "65"
+   ],
+   "filament_density": [
+    "1.24"
+   ],
+   "filament_diameter": [
+    "1.75"
+   ]
+  },
+  "3D Procer PLA Vermelho @Snapmaker U1.json": {
+   "type": "filament",
+   "name": "3D Procer PLA Vermelho @Snapmaker U1",
+   "from": "User",
+   "instantiation": "true",
+   "inherits": "Generic PLA @U1 0.4 nozzle",
+   "version": "1.0.0",
+   "compatible_printers": [
+    "Snapmaker U1 (0.4 nozzle)"
+   ],
+   "compatible_printers_condition": "",
+   "filament_settings_id": [
+    "3D Procer PLA Vermelho @Snapmaker U1"
+   ],
+   "default_filament_colour": [
+    "#FF0000"
+   ],
+   "filament_vendor": [
+    "3D Procer"
+   ],
+   "nozzle_temperature": [
+    "205"
+   ],
+   "nozzle_temperature_initial_layer": [
+    "205"
+   ],
+   "cool_plate_temp": [
+    "65"
+   ],
+   "cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "eng_plate_temp": [
+    "65"
+   ],
+   "eng_plate_temp_initial_layer": [
+    "65"
+   ],
+   "hot_plate_temp": [
+    "65"
+   ],
+   "hot_plate_temp_initial_layer": [
+    "65"
+   ],
+   "supertack_plate_temp": [
+    "65"
+   ],
+   "supertack_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_cool_plate_temp": [
+    "65"
+   ],
+   "textured_cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_plate_temp": [
+    "65"
+   ],
+   "textured_plate_temp_initial_layer": [
+    "65"
+   ],
+   "filament_density": [
+    "1.24"
+   ],
+   "filament_diameter": [
+    "1.75"
+   ]
+  },
+  "3D Procer PLA Verde militar escuro @Snapmaker U1.json": {
+   "type": "filament",
+   "name": "3D Procer PLA Verde militar escuro @Snapmaker U1",
+   "from": "User",
+   "instantiation": "true",
+   "inherits": "Generic PLA @U1 0.4 nozzle",
+   "version": "1.0.0",
+   "compatible_printers": [
+    "Snapmaker U1 (0.4 nozzle)"
+   ],
+   "compatible_printers_condition": "",
+   "filament_settings_id": [
+    "3D Procer PLA Verde militar escuro @Snapmaker U1"
+   ],
+   "default_filament_colour": [
+    "#3B4A2A"
+   ],
+   "filament_vendor": [
+    "3D Procer"
+   ],
+   "nozzle_temperature": [
+    "205"
+   ],
+   "nozzle_temperature_initial_layer": [
+    "205"
+   ],
+   "cool_plate_temp": [
+    "65"
+   ],
+   "cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "eng_plate_temp": [
+    "65"
+   ],
+   "eng_plate_temp_initial_layer": [
+    "65"
+   ],
+   "hot_plate_temp": [
+    "65"
+   ],
+   "hot_plate_temp_initial_layer": [
+    "65"
+   ],
+   "supertack_plate_temp": [
+    "65"
+   ],
+   "supertack_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_cool_plate_temp": [
+    "65"
+   ],
+   "textured_cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_plate_temp": [
+    "65"
+   ],
+   "textured_plate_temp_initial_layer": [
+    "65"
+   ],
+   "filament_density": [
+    "1.24"
+   ],
+   "filament_diameter": [
+    "1.75"
+   ]
+  },
+  "3D Procer PLA Verde escuro @Snapmaker U1.json": {
+   "type": "filament",
+   "name": "3D Procer PLA Verde escuro @Snapmaker U1",
+   "from": "User",
+   "instantiation": "true",
+   "inherits": "Generic PLA @U1 0.4 nozzle",
+   "version": "1.0.0",
+   "compatible_printers": [
+    "Snapmaker U1 (0.4 nozzle)"
+   ],
+   "compatible_printers_condition": "",
+   "filament_settings_id": [
+    "3D Procer PLA Verde escuro @Snapmaker U1"
+   ],
+   "default_filament_colour": [
+    "#006400"
+   ],
+   "filament_vendor": [
+    "3D Procer"
+   ],
+   "nozzle_temperature": [
+    "205"
+   ],
+   "nozzle_temperature_initial_layer": [
+    "205"
+   ],
+   "cool_plate_temp": [
+    "65"
+   ],
+   "cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "eng_plate_temp": [
+    "65"
+   ],
+   "eng_plate_temp_initial_layer": [
+    "65"
+   ],
+   "hot_plate_temp": [
+    "65"
+   ],
+   "hot_plate_temp_initial_layer": [
+    "65"
+   ],
+   "supertack_plate_temp": [
+    "65"
+   ],
+   "supertack_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_cool_plate_temp": [
+    "65"
+   ],
+   "textured_cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_plate_temp": [
+    "65"
+   ],
+   "textured_plate_temp_initial_layer": [
+    "65"
+   ],
+   "filament_density": [
+    "1.24"
+   ],
+   "filament_diameter": [
+    "1.75"
+   ]
+  },
+  "3D Procer PLA Laranja @Snapmaker U1.json": {
+   "type": "filament",
+   "name": "3D Procer PLA Laranja @Snapmaker U1",
+   "from": "User",
+   "instantiation": "true",
+   "inherits": "Generic PLA @U1 0.4 nozzle",
+   "version": "1.0.0",
+   "compatible_printers": [
+    "Snapmaker U1 (0.4 nozzle)"
+   ],
+   "compatible_printers_condition": "",
+   "filament_settings_id": [
+    "3D Procer PLA Laranja @Snapmaker U1"
+   ],
+   "default_filament_colour": [
+    "#FFA500"
+   ],
+   "filament_vendor": [
+    "3D Procer"
+   ],
+   "nozzle_temperature": [
+    "205"
+   ],
+   "nozzle_temperature_initial_layer": [
+    "205"
+   ],
+   "cool_plate_temp": [
+    "65"
+   ],
+   "cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "eng_plate_temp": [
+    "65"
+   ],
+   "eng_plate_temp_initial_layer": [
+    "65"
+   ],
+   "hot_plate_temp": [
+    "65"
+   ],
+   "hot_plate_temp_initial_layer": [
+    "65"
+   ],
+   "supertack_plate_temp": [
+    "65"
+   ],
+   "supertack_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_cool_plate_temp": [
+    "65"
+   ],
+   "textured_cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_plate_temp": [
+    "65"
+   ],
+   "textured_plate_temp_initial_layer": [
+    "65"
+   ],
+   "filament_density": [
+    "1.24"
+   ],
+   "filament_diameter": [
+    "1.75"
+   ]
+  },
+  "3D Procer PLA Roxo @Snapmaker U1.json": {
+   "type": "filament",
+   "name": "3D Procer PLA Roxo @Snapmaker U1",
+   "from": "User",
+   "instantiation": "true",
+   "inherits": "Generic PLA @U1 0.4 nozzle",
+   "version": "1.0.0",
+   "compatible_printers": [
+    "Snapmaker U1 (0.4 nozzle)"
+   ],
+   "compatible_printers_condition": "",
+   "filament_settings_id": [
+    "3D Procer PLA Roxo @Snapmaker U1"
+   ],
+   "default_filament_colour": [
+    "#800080"
+   ],
+   "filament_vendor": [
+    "3D Procer"
+   ],
+   "nozzle_temperature": [
+    "205"
+   ],
+   "nozzle_temperature_initial_layer": [
+    "205"
+   ],
+   "cool_plate_temp": [
+    "65"
+   ],
+   "cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "eng_plate_temp": [
+    "65"
+   ],
+   "eng_plate_temp_initial_layer": [
+    "65"
+   ],
+   "hot_plate_temp": [
+    "65"
+   ],
+   "hot_plate_temp_initial_layer": [
+    "65"
+   ],
+   "supertack_plate_temp": [
+    "65"
+   ],
+   "supertack_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_cool_plate_temp": [
+    "65"
+   ],
+   "textured_cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_plate_temp": [
+    "65"
+   ],
+   "textured_plate_temp_initial_layer": [
+    "65"
+   ],
+   "filament_density": [
+    "1.24"
+   ],
+   "filament_diameter": [
+    "1.75"
+   ]
+  },
+  "3D Procer PLA Vermelho metalizado @Snapmaker U1.json": {
+   "type": "filament",
+   "name": "3D Procer PLA Vermelho metalizado @Snapmaker U1",
+   "from": "User",
+   "instantiation": "true",
+   "inherits": "Generic PLA @U1 0.4 nozzle",
+   "version": "1.0.0",
+   "compatible_printers": [
+    "Snapmaker U1 (0.4 nozzle)"
+   ],
+   "compatible_printers_condition": "",
+   "filament_settings_id": [
+    "3D Procer PLA Vermelho metalizado @Snapmaker U1"
+   ],
+   "default_filament_colour": [
+    "#C41E3A"
+   ],
+   "filament_vendor": [
+    "3D Procer"
+   ],
+   "nozzle_temperature": [
+    "205"
+   ],
+   "nozzle_temperature_initial_layer": [
+    "205"
+   ],
+   "cool_plate_temp": [
+    "65"
+   ],
+   "cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "eng_plate_temp": [
+    "65"
+   ],
+   "eng_plate_temp_initial_layer": [
+    "65"
+   ],
+   "hot_plate_temp": [
+    "65"
+   ],
+   "hot_plate_temp_initial_layer": [
+    "65"
+   ],
+   "supertack_plate_temp": [
+    "65"
+   ],
+   "supertack_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_cool_plate_temp": [
+    "65"
+   ],
+   "textured_cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_plate_temp": [
+    "65"
+   ],
+   "textured_plate_temp_initial_layer": [
+    "65"
+   ],
+   "filament_density": [
+    "1.24"
+   ],
+   "filament_diameter": [
+    "1.75"
+   ]
+  },
+  "3D Procer PLA Vermelho silk @Snapmaker U1.json": {
+   "type": "filament",
+   "name": "3D Procer PLA Vermelho silk @Snapmaker U1",
+   "from": "User",
+   "instantiation": "true",
+   "inherits": "Generic PLA Silk @U1 0.4 nozzle",
+   "version": "1.0.0",
+   "compatible_printers": [
+    "Snapmaker U1 (0.4 nozzle)"
+   ],
+   "compatible_printers_condition": "",
+   "filament_settings_id": [
+    "3D Procer PLA Vermelho silk @Snapmaker U1"
+   ],
+   "default_filament_colour": [
+    "#D1001F"
+   ],
+   "filament_vendor": [
+    "3D Procer"
+   ],
+   "nozzle_temperature": [
+    "230"
+   ],
+   "nozzle_temperature_initial_layer": [
+    "230"
+   ],
+   "cool_plate_temp": [
+    "65"
+   ],
+   "cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "eng_plate_temp": [
+    "65"
+   ],
+   "eng_plate_temp_initial_layer": [
+    "65"
+   ],
+   "hot_plate_temp": [
+    "65"
+   ],
+   "hot_plate_temp_initial_layer": [
+    "65"
+   ],
+   "supertack_plate_temp": [
+    "65"
+   ],
+   "supertack_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_cool_plate_temp": [
+    "65"
+   ],
+   "textured_cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_plate_temp": [
+    "65"
+   ],
+   "textured_plate_temp_initial_layer": [
+    "65"
+   ],
+   "filament_density": [
+    "1.24"
+   ],
+   "filament_diameter": [
+    "1.75"
+   ]
+  },
+  "MasterPrint PETG Preto @Sovol SV06.json": {
+   "type": "filament",
+   "name": "MasterPrint PETG Preto @Sovol SV06",
+   "from": "User",
+   "instantiation": "true",
+   "inherits": "Generic PETG @System",
+   "version": "1.0.0",
+   "compatible_printers": [
+    "Sovol SV06 0.4 nozzle"
+   ],
+   "compatible_printers_condition": "",
+   "filament_settings_id": [
+    "MasterPrint PETG Preto @Sovol SV06"
+   ],
+   "default_filament_colour": [
+    "#000000"
+   ],
+   "filament_vendor": [
+    "MasterPrint"
+   ],
+   "filament_density": [
+    "1.27"
+   ],
+   "filament_diameter": [
+    "1.75"
+   ]
+  },
+  "Snapmaker PLA SnapSpeed Yellow @Sovol SV06.json": {
+   "type": "filament",
+   "name": "Snapmaker PLA SnapSpeed Yellow @Sovol SV06",
+   "from": "User",
+   "instantiation": "true",
+   "inherits": "Generic PLA @System",
+   "version": "1.0.0",
+   "compatible_printers": [
+    "Sovol SV06 0.4 nozzle"
+   ],
+   "compatible_printers_condition": "",
+   "filament_settings_id": [
+    "Snapmaker PLA SnapSpeed Yellow @Sovol SV06"
+   ],
+   "default_filament_colour": [
+    "#F4C032"
+   ],
+   "filament_vendor": [
+    "Snapmaker"
+   ],
+   "nozzle_temperature": [
+    "230"
+   ],
+   "nozzle_temperature_initial_layer": [
+    "230"
+   ],
+   "cool_plate_temp": [
+    "60"
+   ],
+   "cool_plate_temp_initial_layer": [
+    "60"
+   ],
+   "eng_plate_temp": [
+    "60"
+   ],
+   "eng_plate_temp_initial_layer": [
+    "60"
+   ],
+   "hot_plate_temp": [
+    "60"
+   ],
+   "hot_plate_temp_initial_layer": [
+    "60"
+   ],
+   "supertack_plate_temp": [
+    "60"
+   ],
+   "supertack_plate_temp_initial_layer": [
+    "60"
+   ],
+   "textured_cool_plate_temp": [
+    "60"
+   ],
+   "textured_cool_plate_temp_initial_layer": [
+    "60"
+   ],
+   "textured_plate_temp": [
+    "60"
+   ],
+   "textured_plate_temp_initial_layer": [
+    "60"
+   ],
+   "filament_density": [
+    "1.24"
+   ],
+   "filament_diameter": [
+    "1.75"
+   ]
+  },
+  "Snapmaker PLA SnapSpeed Red @Sovol SV06.json": {
+   "type": "filament",
+   "name": "Snapmaker PLA SnapSpeed Red @Sovol SV06",
+   "from": "User",
+   "instantiation": "true",
+   "inherits": "Generic PLA @System",
+   "version": "1.0.0",
+   "compatible_printers": [
+    "Sovol SV06 0.4 nozzle"
+   ],
+   "compatible_printers_condition": "",
+   "filament_settings_id": [
+    "Snapmaker PLA SnapSpeed Red @Sovol SV06"
+   ],
+   "default_filament_colour": [
+    "#E72F1D"
+   ],
+   "filament_vendor": [
+    "Snapmaker"
+   ],
+   "nozzle_temperature": [
+    "230"
+   ],
+   "nozzle_temperature_initial_layer": [
+    "230"
+   ],
+   "cool_plate_temp": [
+    "60"
+   ],
+   "cool_plate_temp_initial_layer": [
+    "60"
+   ],
+   "eng_plate_temp": [
+    "60"
+   ],
+   "eng_plate_temp_initial_layer": [
+    "60"
+   ],
+   "hot_plate_temp": [
+    "60"
+   ],
+   "hot_plate_temp_initial_layer": [
+    "60"
+   ],
+   "supertack_plate_temp": [
+    "60"
+   ],
+   "supertack_plate_temp_initial_layer": [
+    "60"
+   ],
+   "textured_cool_plate_temp": [
+    "60"
+   ],
+   "textured_cool_plate_temp_initial_layer": [
+    "60"
+   ],
+   "textured_plate_temp": [
+    "60"
+   ],
+   "textured_plate_temp_initial_layer": [
+    "60"
+   ],
+   "filament_density": [
+    "1.24"
+   ],
+   "filament_diameter": [
+    "1.75"
+   ]
+  },
+  "Snapmaker PLA SnapSpeed Black @Sovol SV06.json": {
+   "type": "filament",
+   "name": "Snapmaker PLA SnapSpeed Black @Sovol SV06",
+   "from": "User",
+   "instantiation": "true",
+   "inherits": "Generic PLA @System",
+   "version": "1.0.0",
+   "compatible_printers": [
+    "Sovol SV06 0.4 nozzle"
+   ],
+   "compatible_printers_condition": "",
+   "filament_settings_id": [
+    "Snapmaker PLA SnapSpeed Black @Sovol SV06"
+   ],
+   "default_filament_colour": [
+    "#080A0D"
+   ],
+   "filament_vendor": [
+    "Snapmaker"
+   ],
+   "nozzle_temperature": [
+    "230"
+   ],
+   "nozzle_temperature_initial_layer": [
+    "230"
+   ],
+   "cool_plate_temp": [
+    "60"
+   ],
+   "cool_plate_temp_initial_layer": [
+    "60"
+   ],
+   "eng_plate_temp": [
+    "60"
+   ],
+   "eng_plate_temp_initial_layer": [
+    "60"
+   ],
+   "hot_plate_temp": [
+    "60"
+   ],
+   "hot_plate_temp_initial_layer": [
+    "60"
+   ],
+   "supertack_plate_temp": [
+    "60"
+   ],
+   "supertack_plate_temp_initial_layer": [
+    "60"
+   ],
+   "textured_cool_plate_temp": [
+    "60"
+   ],
+   "textured_cool_plate_temp_initial_layer": [
+    "60"
+   ],
+   "textured_plate_temp": [
+    "60"
+   ],
+   "textured_plate_temp_initial_layer": [
+    "60"
+   ],
+   "filament_density": [
+    "1.24"
+   ],
+   "filament_diameter": [
+    "1.75"
+   ]
+  },
+  "Snapmaker PLA SnapSpeed White @Sovol SV06.json": {
+   "type": "filament",
+   "name": "Snapmaker PLA SnapSpeed White @Sovol SV06",
+   "from": "User",
+   "instantiation": "true",
+   "inherits": "Generic PLA @System",
+   "version": "1.0.0",
+   "compatible_printers": [
+    "Sovol SV06 0.4 nozzle"
+   ],
+   "compatible_printers_condition": "",
+   "filament_settings_id": [
+    "Snapmaker PLA SnapSpeed White @Sovol SV06"
+   ],
+   "default_filament_colour": [
+    "#E2DEDB"
+   ],
+   "filament_vendor": [
+    "Snapmaker"
+   ],
+   "nozzle_temperature": [
+    "230"
+   ],
+   "nozzle_temperature_initial_layer": [
+    "230"
+   ],
+   "cool_plate_temp": [
+    "60"
+   ],
+   "cool_plate_temp_initial_layer": [
+    "60"
+   ],
+   "eng_plate_temp": [
+    "60"
+   ],
+   "eng_plate_temp_initial_layer": [
+    "60"
+   ],
+   "hot_plate_temp": [
+    "60"
+   ],
+   "hot_plate_temp_initial_layer": [
+    "60"
+   ],
+   "supertack_plate_temp": [
+    "60"
+   ],
+   "supertack_plate_temp_initial_layer": [
+    "60"
+   ],
+   "textured_cool_plate_temp": [
+    "60"
+   ],
+   "textured_cool_plate_temp_initial_layer": [
+    "60"
+   ],
+   "textured_plate_temp": [
+    "60"
+   ],
+   "textured_plate_temp_initial_layer": [
+    "60"
+   ],
+   "filament_density": [
+    "1.24"
+   ],
+   "filament_diameter": [
+    "1.75"
+   ]
+  },
+  "3D Procer PLA Bege claro @Sovol SV06.json": {
+   "type": "filament",
+   "name": "3D Procer PLA Bege claro @Sovol SV06",
+   "from": "User",
+   "instantiation": "true",
+   "inherits": "Generic PLA @System",
+   "version": "1.0.0",
+   "compatible_printers": [
+    "Sovol SV06 0.4 nozzle"
+   ],
+   "compatible_printers_condition": "",
+   "filament_settings_id": [
+    "3D Procer PLA Bege claro @Sovol SV06"
+   ],
+   "default_filament_colour": [
+    "#F5E6CC"
+   ],
+   "filament_vendor": [
+    "3D Procer"
+   ],
+   "nozzle_temperature": [
+    "205"
+   ],
+   "nozzle_temperature_initial_layer": [
+    "205"
+   ],
+   "cool_plate_temp": [
+    "65"
+   ],
+   "cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "eng_plate_temp": [
+    "65"
+   ],
+   "eng_plate_temp_initial_layer": [
+    "65"
+   ],
+   "hot_plate_temp": [
+    "65"
+   ],
+   "hot_plate_temp_initial_layer": [
+    "65"
+   ],
+   "supertack_plate_temp": [
+    "65"
+   ],
+   "supertack_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_cool_plate_temp": [
+    "65"
+   ],
+   "textured_cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_plate_temp": [
+    "65"
+   ],
+   "textured_plate_temp_initial_layer": [
+    "65"
+   ],
+   "filament_density": [
+    "1.24"
+   ],
+   "filament_diameter": [
+    "1.75"
+   ]
+  },
+  "3D Procer PLA Cinza grafite @Sovol SV06.json": {
+   "type": "filament",
+   "name": "3D Procer PLA Cinza grafite @Sovol SV06",
+   "from": "User",
+   "instantiation": "true",
+   "inherits": "Generic PLA @System",
+   "version": "1.0.0",
+   "compatible_printers": [
+    "Sovol SV06 0.4 nozzle"
+   ],
+   "compatible_printers_condition": "",
+   "filament_settings_id": [
+    "3D Procer PLA Cinza grafite @Sovol SV06"
+   ],
+   "default_filament_colour": [
+    "#41424C"
+   ],
+   "filament_vendor": [
+    "3D Procer"
+   ],
+   "nozzle_temperature": [
+    "205"
+   ],
+   "nozzle_temperature_initial_layer": [
+    "205"
+   ],
+   "cool_plate_temp": [
+    "65"
+   ],
+   "cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "eng_plate_temp": [
+    "65"
+   ],
+   "eng_plate_temp_initial_layer": [
+    "65"
+   ],
+   "hot_plate_temp": [
+    "65"
+   ],
+   "hot_plate_temp_initial_layer": [
+    "65"
+   ],
+   "supertack_plate_temp": [
+    "65"
+   ],
+   "supertack_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_cool_plate_temp": [
+    "65"
+   ],
+   "textured_cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_plate_temp": [
+    "65"
+   ],
+   "textured_plate_temp_initial_layer": [
+    "65"
+   ],
+   "filament_density": [
+    "1.24"
+   ],
+   "filament_diameter": [
+    "1.75"
+   ]
+  },
+  "3D Procer PLA Branco @Sovol SV06.json": {
+   "type": "filament",
+   "name": "3D Procer PLA Branco @Sovol SV06",
+   "from": "User",
+   "instantiation": "true",
+   "inherits": "Generic PLA @System",
+   "version": "1.0.0",
+   "compatible_printers": [
+    "Sovol SV06 0.4 nozzle"
+   ],
+   "compatible_printers_condition": "",
+   "filament_settings_id": [
+    "3D Procer PLA Branco @Sovol SV06"
+   ],
+   "default_filament_colour": [
+    "#FFFFFF"
+   ],
+   "filament_vendor": [
+    "3D Procer"
+   ],
+   "nozzle_temperature": [
+    "205"
+   ],
+   "nozzle_temperature_initial_layer": [
+    "205"
+   ],
+   "cool_plate_temp": [
+    "65"
+   ],
+   "cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "eng_plate_temp": [
+    "65"
+   ],
+   "eng_plate_temp_initial_layer": [
+    "65"
+   ],
+   "hot_plate_temp": [
+    "65"
+   ],
+   "hot_plate_temp_initial_layer": [
+    "65"
+   ],
+   "supertack_plate_temp": [
+    "65"
+   ],
+   "supertack_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_cool_plate_temp": [
+    "65"
+   ],
+   "textured_cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_plate_temp": [
+    "65"
+   ],
+   "textured_plate_temp_initial_layer": [
+    "65"
+   ],
+   "filament_density": [
+    "1.24"
+   ],
+   "filament_diameter": [
+    "1.75"
+   ]
+  },
+  "3D Procer PLA Preto @Sovol SV06.json": {
+   "type": "filament",
+   "name": "3D Procer PLA Preto @Sovol SV06",
+   "from": "User",
+   "instantiation": "true",
+   "inherits": "Generic PLA @System",
+   "version": "1.0.0",
+   "compatible_printers": [
+    "Sovol SV06 0.4 nozzle"
+   ],
+   "compatible_printers_condition": "",
+   "filament_settings_id": [
+    "3D Procer PLA Preto @Sovol SV06"
+   ],
+   "default_filament_colour": [
+    "#000000"
+   ],
+   "filament_vendor": [
+    "3D Procer"
+   ],
+   "nozzle_temperature": [
+    "205"
+   ],
+   "nozzle_temperature_initial_layer": [
+    "205"
+   ],
+   "cool_plate_temp": [
+    "65"
+   ],
+   "cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "eng_plate_temp": [
+    "65"
+   ],
+   "eng_plate_temp_initial_layer": [
+    "65"
+   ],
+   "hot_plate_temp": [
+    "65"
+   ],
+   "hot_plate_temp_initial_layer": [
+    "65"
+   ],
+   "supertack_plate_temp": [
+    "65"
+   ],
+   "supertack_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_cool_plate_temp": [
+    "65"
+   ],
+   "textured_cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_plate_temp": [
+    "65"
+   ],
+   "textured_plate_temp_initial_layer": [
+    "65"
+   ],
+   "filament_density": [
+    "1.24"
+   ],
+   "filament_diameter": [
+    "1.75"
+   ]
+  },
+  "3D Procer PLA Cinza grafite perolado @Sovol SV06.json": {
+   "type": "filament",
+   "name": "3D Procer PLA Cinza grafite perolado @Sovol SV06",
+   "from": "User",
+   "instantiation": "true",
+   "inherits": "Generic PLA @System",
+   "version": "1.0.0",
+   "compatible_printers": [
+    "Sovol SV06 0.4 nozzle"
+   ],
+   "compatible_printers_condition": "",
+   "filament_settings_id": [
+    "3D Procer PLA Cinza grafite perolado @Sovol SV06"
+   ],
+   "default_filament_colour": [
+    "#4A4D55"
+   ],
+   "filament_vendor": [
+    "3D Procer"
+   ],
+   "nozzle_temperature": [
+    "205"
+   ],
+   "nozzle_temperature_initial_layer": [
+    "205"
+   ],
+   "cool_plate_temp": [
+    "65"
+   ],
+   "cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "eng_plate_temp": [
+    "65"
+   ],
+   "eng_plate_temp_initial_layer": [
+    "65"
+   ],
+   "hot_plate_temp": [
+    "65"
+   ],
+   "hot_plate_temp_initial_layer": [
+    "65"
+   ],
+   "supertack_plate_temp": [
+    "65"
+   ],
+   "supertack_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_cool_plate_temp": [
+    "65"
+   ],
+   "textured_cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_plate_temp": [
+    "65"
+   ],
+   "textured_plate_temp_initial_layer": [
+    "65"
+   ],
+   "filament_density": [
+    "1.24"
+   ],
+   "filament_diameter": [
+    "1.75"
+   ]
+  },
+  "3D Procer PLA Branco marmorizado @Sovol SV06.json": {
+   "type": "filament",
+   "name": "3D Procer PLA Branco marmorizado @Sovol SV06",
+   "from": "User",
+   "instantiation": "true",
+   "inherits": "Generic PLA @System",
+   "version": "1.0.0",
+   "compatible_printers": [
+    "Sovol SV06 0.4 nozzle"
+   ],
+   "compatible_printers_condition": "",
+   "filament_settings_id": [
+    "3D Procer PLA Branco marmorizado @Sovol SV06"
+   ],
+   "default_filament_colour": [
+    "#F2F2EE"
+   ],
+   "filament_vendor": [
+    "3D Procer"
+   ],
+   "nozzle_temperature": [
+    "205"
+   ],
+   "nozzle_temperature_initial_layer": [
+    "205"
+   ],
+   "cool_plate_temp": [
+    "65"
+   ],
+   "cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "eng_plate_temp": [
+    "65"
+   ],
+   "eng_plate_temp_initial_layer": [
+    "65"
+   ],
+   "hot_plate_temp": [
+    "65"
+   ],
+   "hot_plate_temp_initial_layer": [
+    "65"
+   ],
+   "supertack_plate_temp": [
+    "65"
+   ],
+   "supertack_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_cool_plate_temp": [
+    "65"
+   ],
+   "textured_cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_plate_temp": [
+    "65"
+   ],
+   "textured_plate_temp_initial_layer": [
+    "65"
+   ],
+   "filament_density": [
+    "1.24"
+   ],
+   "filament_diameter": [
+    "1.75"
+   ]
+  },
+  "3D Procer PLA Pérola @Sovol SV06.json": {
+   "type": "filament",
+   "name": "3D Procer PLA Pérola @Sovol SV06",
+   "from": "User",
+   "instantiation": "true",
+   "inherits": "Generic PLA @System",
+   "version": "1.0.0",
+   "compatible_printers": [
+    "Sovol SV06 0.4 nozzle"
+   ],
+   "compatible_printers_condition": "",
+   "filament_settings_id": [
+    "3D Procer PLA Pérola @Sovol SV06"
+   ],
+   "default_filament_colour": [
+    "#EAE0C8"
+   ],
+   "filament_vendor": [
+    "3D Procer"
+   ],
+   "nozzle_temperature": [
+    "205"
+   ],
+   "nozzle_temperature_initial_layer": [
+    "205"
+   ],
+   "cool_plate_temp": [
+    "65"
+   ],
+   "cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "eng_plate_temp": [
+    "65"
+   ],
+   "eng_plate_temp_initial_layer": [
+    "65"
+   ],
+   "hot_plate_temp": [
+    "65"
+   ],
+   "hot_plate_temp_initial_layer": [
+    "65"
+   ],
+   "supertack_plate_temp": [
+    "65"
+   ],
+   "supertack_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_cool_plate_temp": [
+    "65"
+   ],
+   "textured_cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_plate_temp": [
+    "65"
+   ],
+   "textured_plate_temp_initial_layer": [
+    "65"
+   ],
+   "filament_density": [
+    "1.24"
+   ],
+   "filament_diameter": [
+    "1.75"
+   ]
+  },
+  "3D Procer PLA Preto matte @Sovol SV06.json": {
+   "type": "filament",
+   "name": "3D Procer PLA Preto matte @Sovol SV06",
+   "from": "User",
+   "instantiation": "true",
+   "inherits": "Generic PLA Matte @System",
+   "version": "1.0.0",
+   "compatible_printers": [
+    "Sovol SV06 0.4 nozzle"
+   ],
+   "compatible_printers_condition": "",
+   "filament_settings_id": [
+    "3D Procer PLA Preto matte @Sovol SV06"
+   ],
+   "default_filament_colour": [
+    "#1C1C1C"
+   ],
+   "filament_vendor": [
+    "3D Procer"
+   ],
+   "nozzle_temperature": [
+    "205"
+   ],
+   "nozzle_temperature_initial_layer": [
+    "205"
+   ],
+   "cool_plate_temp": [
+    "65"
+   ],
+   "cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "eng_plate_temp": [
+    "65"
+   ],
+   "eng_plate_temp_initial_layer": [
+    "65"
+   ],
+   "hot_plate_temp": [
+    "65"
+   ],
+   "hot_plate_temp_initial_layer": [
+    "65"
+   ],
+   "supertack_plate_temp": [
+    "65"
+   ],
+   "supertack_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_cool_plate_temp": [
+    "65"
+   ],
+   "textured_cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_plate_temp": [
+    "65"
+   ],
+   "textured_plate_temp_initial_layer": [
+    "65"
+   ],
+   "filament_density": [
+    "1.24"
+   ],
+   "filament_diameter": [
+    "1.75"
+   ]
+  },
+  "3D Procer PLA Marrom escuro @Sovol SV06.json": {
+   "type": "filament",
+   "name": "3D Procer PLA Marrom escuro @Sovol SV06",
+   "from": "User",
+   "instantiation": "true",
+   "inherits": "Generic PLA @System",
+   "version": "1.0.0",
+   "compatible_printers": [
+    "Sovol SV06 0.4 nozzle"
+   ],
+   "compatible_printers_condition": "",
+   "filament_settings_id": [
+    "3D Procer PLA Marrom escuro @Sovol SV06"
+   ],
+   "default_filament_colour": [
+    "#4B2E1E"
+   ],
+   "filament_vendor": [
+    "3D Procer"
+   ],
+   "nozzle_temperature": [
+    "205"
+   ],
+   "nozzle_temperature_initial_layer": [
+    "205"
+   ],
+   "cool_plate_temp": [
+    "65"
+   ],
+   "cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "eng_plate_temp": [
+    "65"
+   ],
+   "eng_plate_temp_initial_layer": [
+    "65"
+   ],
+   "hot_plate_temp": [
+    "65"
+   ],
+   "hot_plate_temp_initial_layer": [
+    "65"
+   ],
+   "supertack_plate_temp": [
+    "65"
+   ],
+   "supertack_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_cool_plate_temp": [
+    "65"
+   ],
+   "textured_cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_plate_temp": [
+    "65"
+   ],
+   "textured_plate_temp_initial_layer": [
+    "65"
+   ],
+   "filament_density": [
+    "1.24"
+   ],
+   "filament_diameter": [
+    "1.75"
+   ]
+  },
+  "3D Procer PLA Bege escuro @Sovol SV06.json": {
+   "type": "filament",
+   "name": "3D Procer PLA Bege escuro @Sovol SV06",
+   "from": "User",
+   "instantiation": "true",
+   "inherits": "Generic PLA @System",
+   "version": "1.0.0",
+   "compatible_printers": [
+    "Sovol SV06 0.4 nozzle"
+   ],
+   "compatible_printers_condition": "",
+   "filament_settings_id": [
+    "3D Procer PLA Bege escuro @Sovol SV06"
+   ],
+   "default_filament_colour": [
+    "#C8AD7F"
+   ],
+   "filament_vendor": [
+    "3D Procer"
+   ],
+   "nozzle_temperature": [
+    "205"
+   ],
+   "nozzle_temperature_initial_layer": [
+    "205"
+   ],
+   "cool_plate_temp": [
+    "65"
+   ],
+   "cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "eng_plate_temp": [
+    "65"
+   ],
+   "eng_plate_temp_initial_layer": [
+    "65"
+   ],
+   "hot_plate_temp": [
+    "65"
+   ],
+   "hot_plate_temp_initial_layer": [
+    "65"
+   ],
+   "supertack_plate_temp": [
+    "65"
+   ],
+   "supertack_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_cool_plate_temp": [
+    "65"
+   ],
+   "textured_cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_plate_temp": [
+    "65"
+   ],
+   "textured_plate_temp_initial_layer": [
+    "65"
+   ],
+   "filament_density": [
+    "1.24"
+   ],
+   "filament_diameter": [
+    "1.75"
+   ]
+  },
+  "3D Procer PLA Caucasiano @Sovol SV06.json": {
+   "type": "filament",
+   "name": "3D Procer PLA Caucasiano @Sovol SV06",
+   "from": "User",
+   "instantiation": "true",
+   "inherits": "Generic PLA @System",
+   "version": "1.0.0",
+   "compatible_printers": [
+    "Sovol SV06 0.4 nozzle"
+   ],
+   "compatible_printers_condition": "",
+   "filament_settings_id": [
+    "3D Procer PLA Caucasiano @Sovol SV06"
+   ],
+   "default_filament_colour": [
+    "#E8BE9A"
+   ],
+   "filament_vendor": [
+    "3D Procer"
+   ],
+   "nozzle_temperature": [
+    "205"
+   ],
+   "nozzle_temperature_initial_layer": [
+    "205"
+   ],
+   "cool_plate_temp": [
+    "65"
+   ],
+   "cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "eng_plate_temp": [
+    "65"
+   ],
+   "eng_plate_temp_initial_layer": [
+    "65"
+   ],
+   "hot_plate_temp": [
+    "65"
+   ],
+   "hot_plate_temp_initial_layer": [
+    "65"
+   ],
+   "supertack_plate_temp": [
+    "65"
+   ],
+   "supertack_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_cool_plate_temp": [
+    "65"
+   ],
+   "textured_cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_plate_temp": [
+    "65"
+   ],
+   "textured_plate_temp_initial_layer": [
+    "65"
+   ],
+   "filament_density": [
+    "1.24"
+   ],
+   "filament_diameter": [
+    "1.75"
+   ]
+  },
+  "3D Procer PLA Ouro @Sovol SV06.json": {
+   "type": "filament",
+   "name": "3D Procer PLA Ouro @Sovol SV06",
+   "from": "User",
+   "instantiation": "true",
+   "inherits": "Generic PLA @System",
+   "version": "1.0.0",
+   "compatible_printers": [
+    "Sovol SV06 0.4 nozzle"
+   ],
+   "compatible_printers_condition": "",
+   "filament_settings_id": [
+    "3D Procer PLA Ouro @Sovol SV06"
+   ],
+   "default_filament_colour": [
+    "#D4AF37"
+   ],
+   "filament_vendor": [
+    "3D Procer"
+   ],
+   "nozzle_temperature": [
+    "205"
+   ],
+   "nozzle_temperature_initial_layer": [
+    "205"
+   ],
+   "cool_plate_temp": [
+    "65"
+   ],
+   "cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "eng_plate_temp": [
+    "65"
+   ],
+   "eng_plate_temp_initial_layer": [
+    "65"
+   ],
+   "hot_plate_temp": [
+    "65"
+   ],
+   "hot_plate_temp_initial_layer": [
+    "65"
+   ],
+   "supertack_plate_temp": [
+    "65"
+   ],
+   "supertack_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_cool_plate_temp": [
+    "65"
+   ],
+   "textured_cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_plate_temp": [
+    "65"
+   ],
+   "textured_plate_temp_initial_layer": [
+    "65"
+   ],
+   "filament_density": [
+    "1.24"
+   ],
+   "filament_diameter": [
+    "1.75"
+   ]
+  },
+  "3D Procer PLA Preto perolado metalizado @Sovol SV06.json": {
+   "type": "filament",
+   "name": "3D Procer PLA Preto perolado metalizado @Sovol SV06",
+   "from": "User",
+   "instantiation": "true",
+   "inherits": "Generic PLA @System",
+   "version": "1.0.0",
+   "compatible_printers": [
+    "Sovol SV06 0.4 nozzle"
+   ],
+   "compatible_printers_condition": "",
+   "filament_settings_id": [
+    "3D Procer PLA Preto perolado metalizado @Sovol SV06"
+   ],
+   "default_filament_colour": [
+    "#2B2B30"
+   ],
+   "filament_vendor": [
+    "3D Procer"
+   ],
+   "nozzle_temperature": [
+    "205"
+   ],
+   "nozzle_temperature_initial_layer": [
+    "205"
+   ],
+   "cool_plate_temp": [
+    "65"
+   ],
+   "cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "eng_plate_temp": [
+    "65"
+   ],
+   "eng_plate_temp_initial_layer": [
+    "65"
+   ],
+   "hot_plate_temp": [
+    "65"
+   ],
+   "hot_plate_temp_initial_layer": [
+    "65"
+   ],
+   "supertack_plate_temp": [
+    "65"
+   ],
+   "supertack_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_cool_plate_temp": [
+    "65"
+   ],
+   "textured_cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_plate_temp": [
+    "65"
+   ],
+   "textured_plate_temp_initial_layer": [
+    "65"
+   ],
+   "filament_density": [
+    "1.24"
+   ],
+   "filament_diameter": [
+    "1.75"
+   ]
+  },
+  "3D Procer PLA Marrom terra @Sovol SV06.json": {
+   "type": "filament",
+   "name": "3D Procer PLA Marrom terra @Sovol SV06",
+   "from": "User",
+   "instantiation": "true",
+   "inherits": "Generic PLA @System",
+   "version": "1.0.0",
+   "compatible_printers": [
+    "Sovol SV06 0.4 nozzle"
+   ],
+   "compatible_printers_condition": "",
+   "filament_settings_id": [
+    "3D Procer PLA Marrom terra @Sovol SV06"
+   ],
+   "default_filament_colour": [
+    "#8B5A2B"
+   ],
+   "filament_vendor": [
+    "3D Procer"
+   ],
+   "nozzle_temperature": [
+    "205"
+   ],
+   "nozzle_temperature_initial_layer": [
+    "205"
+   ],
+   "cool_plate_temp": [
+    "65"
+   ],
+   "cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "eng_plate_temp": [
+    "65"
+   ],
+   "eng_plate_temp_initial_layer": [
+    "65"
+   ],
+   "hot_plate_temp": [
+    "65"
+   ],
+   "hot_plate_temp_initial_layer": [
+    "65"
+   ],
+   "supertack_plate_temp": [
+    "65"
+   ],
+   "supertack_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_cool_plate_temp": [
+    "65"
+   ],
+   "textured_cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_plate_temp": [
+    "65"
+   ],
+   "textured_plate_temp_initial_layer": [
+    "65"
+   ],
+   "filament_density": [
+    "1.24"
+   ],
+   "filament_diameter": [
+    "1.75"
+   ]
+  },
+  "3D Procer PLA Marrom claro @Sovol SV06.json": {
+   "type": "filament",
+   "name": "3D Procer PLA Marrom claro @Sovol SV06",
+   "from": "User",
+   "instantiation": "true",
+   "inherits": "Generic PLA @System",
+   "version": "1.0.0",
+   "compatible_printers": [
+    "Sovol SV06 0.4 nozzle"
+   ],
+   "compatible_printers_condition": "",
+   "filament_settings_id": [
+    "3D Procer PLA Marrom claro @Sovol SV06"
+   ],
+   "default_filament_colour": [
+    "#A0785A"
+   ],
+   "filament_vendor": [
+    "3D Procer"
+   ],
+   "nozzle_temperature": [
+    "205"
+   ],
+   "nozzle_temperature_initial_layer": [
+    "205"
+   ],
+   "cool_plate_temp": [
+    "65"
+   ],
+   "cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "eng_plate_temp": [
+    "65"
+   ],
+   "eng_plate_temp_initial_layer": [
+    "65"
+   ],
+   "hot_plate_temp": [
+    "65"
+   ],
+   "hot_plate_temp_initial_layer": [
+    "65"
+   ],
+   "supertack_plate_temp": [
+    "65"
+   ],
+   "supertack_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_cool_plate_temp": [
+    "65"
+   ],
+   "textured_cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_plate_temp": [
+    "65"
+   ],
+   "textured_plate_temp_initial_layer": [
+    "65"
+   ],
+   "filament_density": [
+    "1.24"
+   ],
+   "filament_diameter": [
+    "1.75"
+   ]
+  },
+  "3D Procer PLA Amarelo @Sovol SV06.json": {
+   "type": "filament",
+   "name": "3D Procer PLA Amarelo @Sovol SV06",
+   "from": "User",
+   "instantiation": "true",
+   "inherits": "Generic PLA @System",
+   "version": "1.0.0",
+   "compatible_printers": [
+    "Sovol SV06 0.4 nozzle"
+   ],
+   "compatible_printers_condition": "",
+   "filament_settings_id": [
+    "3D Procer PLA Amarelo @Sovol SV06"
+   ],
+   "default_filament_colour": [
+    "#FFFF00"
+   ],
+   "filament_vendor": [
+    "3D Procer"
+   ],
+   "nozzle_temperature": [
+    "205"
+   ],
+   "nozzle_temperature_initial_layer": [
+    "205"
+   ],
+   "cool_plate_temp": [
+    "65"
+   ],
+   "cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "eng_plate_temp": [
+    "65"
+   ],
+   "eng_plate_temp_initial_layer": [
+    "65"
+   ],
+   "hot_plate_temp": [
+    "65"
+   ],
+   "hot_plate_temp_initial_layer": [
+    "65"
+   ],
+   "supertack_plate_temp": [
+    "65"
+   ],
+   "supertack_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_cool_plate_temp": [
+    "65"
+   ],
+   "textured_cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_plate_temp": [
+    "65"
+   ],
+   "textured_plate_temp_initial_layer": [
+    "65"
+   ],
+   "filament_density": [
+    "1.24"
+   ],
+   "filament_diameter": [
+    "1.75"
+   ]
+  },
+  "3D Procer PLA Bronze @Sovol SV06.json": {
+   "type": "filament",
+   "name": "3D Procer PLA Bronze @Sovol SV06",
+   "from": "User",
+   "instantiation": "true",
+   "inherits": "Generic PLA @System",
+   "version": "1.0.0",
+   "compatible_printers": [
+    "Sovol SV06 0.4 nozzle"
+   ],
+   "compatible_printers_condition": "",
+   "filament_settings_id": [
+    "3D Procer PLA Bronze @Sovol SV06"
+   ],
+   "default_filament_colour": [
+    "#CD7F32"
+   ],
+   "filament_vendor": [
+    "3D Procer"
+   ],
+   "nozzle_temperature": [
+    "205"
+   ],
+   "nozzle_temperature_initial_layer": [
+    "205"
+   ],
+   "cool_plate_temp": [
+    "65"
+   ],
+   "cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "eng_plate_temp": [
+    "65"
+   ],
+   "eng_plate_temp_initial_layer": [
+    "65"
+   ],
+   "hot_plate_temp": [
+    "65"
+   ],
+   "hot_plate_temp_initial_layer": [
+    "65"
+   ],
+   "supertack_plate_temp": [
+    "65"
+   ],
+   "supertack_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_cool_plate_temp": [
+    "65"
+   ],
+   "textured_cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_plate_temp": [
+    "65"
+   ],
+   "textured_plate_temp_initial_layer": [
+    "65"
+   ],
+   "filament_density": [
+    "1.24"
+   ],
+   "filament_diameter": [
+    "1.75"
+   ]
+  },
+  "3D Procer PLA Bege areia @Sovol SV06.json": {
+   "type": "filament",
+   "name": "3D Procer PLA Bege areia @Sovol SV06",
+   "from": "User",
+   "instantiation": "true",
+   "inherits": "Generic PLA @System",
+   "version": "1.0.0",
+   "compatible_printers": [
+    "Sovol SV06 0.4 nozzle"
+   ],
+   "compatible_printers_condition": "",
+   "filament_settings_id": [
+    "3D Procer PLA Bege areia @Sovol SV06"
+   ],
+   "default_filament_colour": [
+    "#D8C3A0"
+   ],
+   "filament_vendor": [
+    "3D Procer"
+   ],
+   "nozzle_temperature": [
+    "205"
+   ],
+   "nozzle_temperature_initial_layer": [
+    "205"
+   ],
+   "cool_plate_temp": [
+    "65"
+   ],
+   "cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "eng_plate_temp": [
+    "65"
+   ],
+   "eng_plate_temp_initial_layer": [
+    "65"
+   ],
+   "hot_plate_temp": [
+    "65"
+   ],
+   "hot_plate_temp_initial_layer": [
+    "65"
+   ],
+   "supertack_plate_temp": [
+    "65"
+   ],
+   "supertack_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_cool_plate_temp": [
+    "65"
+   ],
+   "textured_cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_plate_temp": [
+    "65"
+   ],
+   "textured_plate_temp_initial_layer": [
+    "65"
+   ],
+   "filament_density": [
+    "1.24"
+   ],
+   "filament_diameter": [
+    "1.75"
+   ]
+  },
+  "3D Procer PLA Cinza @Sovol SV06.json": {
+   "type": "filament",
+   "name": "3D Procer PLA Cinza @Sovol SV06",
+   "from": "User",
+   "instantiation": "true",
+   "inherits": "Generic PLA @System",
+   "version": "1.0.0",
+   "compatible_printers": [
+    "Sovol SV06 0.4 nozzle"
+   ],
+   "compatible_printers_condition": "",
+   "filament_settings_id": [
+    "3D Procer PLA Cinza @Sovol SV06"
+   ],
+   "default_filament_colour": [
+    "#808080"
+   ],
+   "filament_vendor": [
+    "3D Procer"
+   ],
+   "nozzle_temperature": [
+    "205"
+   ],
+   "nozzle_temperature_initial_layer": [
+    "205"
+   ],
+   "cool_plate_temp": [
+    "65"
+   ],
+   "cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "eng_plate_temp": [
+    "65"
+   ],
+   "eng_plate_temp_initial_layer": [
+    "65"
+   ],
+   "hot_plate_temp": [
+    "65"
+   ],
+   "hot_plate_temp_initial_layer": [
+    "65"
+   ],
+   "supertack_plate_temp": [
+    "65"
+   ],
+   "supertack_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_cool_plate_temp": [
+    "65"
+   ],
+   "textured_cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_plate_temp": [
+    "65"
+   ],
+   "textured_plate_temp_initial_layer": [
+    "65"
+   ],
+   "filament_density": [
+    "1.24"
+   ],
+   "filament_diameter": [
+    "1.75"
+   ]
+  },
+  "3D Procer PLA Azul @Sovol SV06.json": {
+   "type": "filament",
+   "name": "3D Procer PLA Azul @Sovol SV06",
+   "from": "User",
+   "instantiation": "true",
+   "inherits": "Generic PLA @System",
+   "version": "1.0.0",
+   "compatible_printers": [
+    "Sovol SV06 0.4 nozzle"
+   ],
+   "compatible_printers_condition": "",
+   "filament_settings_id": [
+    "3D Procer PLA Azul @Sovol SV06"
+   ],
+   "default_filament_colour": [
+    "#0000FF"
+   ],
+   "filament_vendor": [
+    "3D Procer"
+   ],
+   "nozzle_temperature": [
+    "205"
+   ],
+   "nozzle_temperature_initial_layer": [
+    "205"
+   ],
+   "cool_plate_temp": [
+    "65"
+   ],
+   "cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "eng_plate_temp": [
+    "65"
+   ],
+   "eng_plate_temp_initial_layer": [
+    "65"
+   ],
+   "hot_plate_temp": [
+    "65"
+   ],
+   "hot_plate_temp_initial_layer": [
+    "65"
+   ],
+   "supertack_plate_temp": [
+    "65"
+   ],
+   "supertack_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_cool_plate_temp": [
+    "65"
+   ],
+   "textured_cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_plate_temp": [
+    "65"
+   ],
+   "textured_plate_temp_initial_layer": [
+    "65"
+   ],
+   "filament_density": [
+    "1.24"
+   ],
+   "filament_diameter": [
+    "1.75"
+   ]
+  },
+  "3D Procer PLA Verde @Sovol SV06.json": {
+   "type": "filament",
+   "name": "3D Procer PLA Verde @Sovol SV06",
+   "from": "User",
+   "instantiation": "true",
+   "inherits": "Generic PLA @System",
+   "version": "1.0.0",
+   "compatible_printers": [
+    "Sovol SV06 0.4 nozzle"
+   ],
+   "compatible_printers_condition": "",
+   "filament_settings_id": [
+    "3D Procer PLA Verde @Sovol SV06"
+   ],
+   "default_filament_colour": [
+    "#008000"
+   ],
+   "filament_vendor": [
+    "3D Procer"
+   ],
+   "nozzle_temperature": [
+    "205"
+   ],
+   "nozzle_temperature_initial_layer": [
+    "205"
+   ],
+   "cool_plate_temp": [
+    "65"
+   ],
+   "cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "eng_plate_temp": [
+    "65"
+   ],
+   "eng_plate_temp_initial_layer": [
+    "65"
+   ],
+   "hot_plate_temp": [
+    "65"
+   ],
+   "hot_plate_temp_initial_layer": [
+    "65"
+   ],
+   "supertack_plate_temp": [
+    "65"
+   ],
+   "supertack_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_cool_plate_temp": [
+    "65"
+   ],
+   "textured_cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_plate_temp": [
+    "65"
+   ],
+   "textured_plate_temp_initial_layer": [
+    "65"
+   ],
+   "filament_density": [
+    "1.24"
+   ],
+   "filament_diameter": [
+    "1.75"
+   ]
+  },
+  "3D Procer PLA Azul claro metalizado @Sovol SV06.json": {
+   "type": "filament",
+   "name": "3D Procer PLA Azul claro metalizado @Sovol SV06",
+   "from": "User",
+   "instantiation": "true",
+   "inherits": "Generic PLA @System",
+   "version": "1.0.0",
+   "compatible_printers": [
+    "Sovol SV06 0.4 nozzle"
+   ],
+   "compatible_printers_condition": "",
+   "filament_settings_id": [
+    "3D Procer PLA Azul claro metalizado @Sovol SV06"
+   ],
+   "default_filament_colour": [
+    "#7FB3E6"
+   ],
+   "filament_vendor": [
+    "3D Procer"
+   ],
+   "nozzle_temperature": [
+    "205"
+   ],
+   "nozzle_temperature_initial_layer": [
+    "205"
+   ],
+   "cool_plate_temp": [
+    "65"
+   ],
+   "cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "eng_plate_temp": [
+    "65"
+   ],
+   "eng_plate_temp_initial_layer": [
+    "65"
+   ],
+   "hot_plate_temp": [
+    "65"
+   ],
+   "hot_plate_temp_initial_layer": [
+    "65"
+   ],
+   "supertack_plate_temp": [
+    "65"
+   ],
+   "supertack_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_cool_plate_temp": [
+    "65"
+   ],
+   "textured_cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_plate_temp": [
+    "65"
+   ],
+   "textured_plate_temp_initial_layer": [
+    "65"
+   ],
+   "filament_density": [
+    "1.24"
+   ],
+   "filament_diameter": [
+    "1.75"
+   ]
+  },
+  "3D Procer PLA Verde natal silk @Sovol SV06.json": {
+   "type": "filament",
+   "name": "3D Procer PLA Verde natal silk @Sovol SV06",
+   "from": "User",
+   "instantiation": "true",
+   "inherits": "Generic PLA Silk @System",
+   "version": "1.0.0",
+   "compatible_printers": [
+    "Sovol SV06 0.4 nozzle"
+   ],
+   "compatible_printers_condition": "",
+   "filament_settings_id": [
+    "3D Procer PLA Verde natal silk @Sovol SV06"
+   ],
+   "default_filament_colour": [
+    "#0B6623"
+   ],
+   "filament_vendor": [
+    "3D Procer"
+   ],
+   "nozzle_temperature": [
+    "230"
+   ],
+   "nozzle_temperature_initial_layer": [
+    "230"
+   ],
+   "cool_plate_temp": [
+    "65"
+   ],
+   "cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "eng_plate_temp": [
+    "65"
+   ],
+   "eng_plate_temp_initial_layer": [
+    "65"
+   ],
+   "hot_plate_temp": [
+    "65"
+   ],
+   "hot_plate_temp_initial_layer": [
+    "65"
+   ],
+   "supertack_plate_temp": [
+    "65"
+   ],
+   "supertack_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_cool_plate_temp": [
+    "65"
+   ],
+   "textured_cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_plate_temp": [
+    "65"
+   ],
+   "textured_plate_temp_initial_layer": [
+    "65"
+   ],
+   "filament_density": [
+    "1.24"
+   ],
+   "filament_diameter": [
+    "1.75"
+   ]
+  },
+  "3D Procer PLA Ouro silk @Sovol SV06.json": {
+   "type": "filament",
+   "name": "3D Procer PLA Ouro silk @Sovol SV06",
+   "from": "User",
+   "instantiation": "true",
+   "inherits": "Generic PLA Silk @System",
+   "version": "1.0.0",
+   "compatible_printers": [
+    "Sovol SV06 0.4 nozzle"
+   ],
+   "compatible_printers_condition": "",
+   "filament_settings_id": [
+    "3D Procer PLA Ouro silk @Sovol SV06"
+   ],
+   "default_filament_colour": [
+    "#E6BE48"
+   ],
+   "filament_vendor": [
+    "3D Procer"
+   ],
+   "nozzle_temperature": [
+    "230"
+   ],
+   "nozzle_temperature_initial_layer": [
+    "230"
+   ],
+   "cool_plate_temp": [
+    "65"
+   ],
+   "cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "eng_plate_temp": [
+    "65"
+   ],
+   "eng_plate_temp_initial_layer": [
+    "65"
+   ],
+   "hot_plate_temp": [
+    "65"
+   ],
+   "hot_plate_temp_initial_layer": [
+    "65"
+   ],
+   "supertack_plate_temp": [
+    "65"
+   ],
+   "supertack_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_cool_plate_temp": [
+    "65"
+   ],
+   "textured_cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_plate_temp": [
+    "65"
+   ],
+   "textured_plate_temp_initial_layer": [
+    "65"
+   ],
+   "filament_density": [
+    "1.24"
+   ],
+   "filament_diameter": [
+    "1.75"
+   ]
+  },
+  "3D Procer PLA Cobre @Sovol SV06.json": {
+   "type": "filament",
+   "name": "3D Procer PLA Cobre @Sovol SV06",
+   "from": "User",
+   "instantiation": "true",
+   "inherits": "Generic PLA @System",
+   "version": "1.0.0",
+   "compatible_printers": [
+    "Sovol SV06 0.4 nozzle"
+   ],
+   "compatible_printers_condition": "",
+   "filament_settings_id": [
+    "3D Procer PLA Cobre @Sovol SV06"
+   ],
+   "default_filament_colour": [
+    "#B87333"
+   ],
+   "filament_vendor": [
+    "3D Procer"
+   ],
+   "nozzle_temperature": [
+    "205"
+   ],
+   "nozzle_temperature_initial_layer": [
+    "205"
+   ],
+   "cool_plate_temp": [
+    "65"
+   ],
+   "cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "eng_plate_temp": [
+    "65"
+   ],
+   "eng_plate_temp_initial_layer": [
+    "65"
+   ],
+   "hot_plate_temp": [
+    "65"
+   ],
+   "hot_plate_temp_initial_layer": [
+    "65"
+   ],
+   "supertack_plate_temp": [
+    "65"
+   ],
+   "supertack_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_cool_plate_temp": [
+    "65"
+   ],
+   "textured_cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_plate_temp": [
+    "65"
+   ],
+   "textured_plate_temp_initial_layer": [
+    "65"
+   ],
+   "filament_density": [
+    "1.24"
+   ],
+   "filament_diameter": [
+    "1.75"
+   ]
+  },
+  "3D Procer PLA Vermelho @Sovol SV06.json": {
+   "type": "filament",
+   "name": "3D Procer PLA Vermelho @Sovol SV06",
+   "from": "User",
+   "instantiation": "true",
+   "inherits": "Generic PLA @System",
+   "version": "1.0.0",
+   "compatible_printers": [
+    "Sovol SV06 0.4 nozzle"
+   ],
+   "compatible_printers_condition": "",
+   "filament_settings_id": [
+    "3D Procer PLA Vermelho @Sovol SV06"
+   ],
+   "default_filament_colour": [
+    "#FF0000"
+   ],
+   "filament_vendor": [
+    "3D Procer"
+   ],
+   "nozzle_temperature": [
+    "205"
+   ],
+   "nozzle_temperature_initial_layer": [
+    "205"
+   ],
+   "cool_plate_temp": [
+    "65"
+   ],
+   "cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "eng_plate_temp": [
+    "65"
+   ],
+   "eng_plate_temp_initial_layer": [
+    "65"
+   ],
+   "hot_plate_temp": [
+    "65"
+   ],
+   "hot_plate_temp_initial_layer": [
+    "65"
+   ],
+   "supertack_plate_temp": [
+    "65"
+   ],
+   "supertack_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_cool_plate_temp": [
+    "65"
+   ],
+   "textured_cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_plate_temp": [
+    "65"
+   ],
+   "textured_plate_temp_initial_layer": [
+    "65"
+   ],
+   "filament_density": [
+    "1.24"
+   ],
+   "filament_diameter": [
+    "1.75"
+   ]
+  },
+  "3D Procer PLA Verde militar escuro @Sovol SV06.json": {
+   "type": "filament",
+   "name": "3D Procer PLA Verde militar escuro @Sovol SV06",
+   "from": "User",
+   "instantiation": "true",
+   "inherits": "Generic PLA @System",
+   "version": "1.0.0",
+   "compatible_printers": [
+    "Sovol SV06 0.4 nozzle"
+   ],
+   "compatible_printers_condition": "",
+   "filament_settings_id": [
+    "3D Procer PLA Verde militar escuro @Sovol SV06"
+   ],
+   "default_filament_colour": [
+    "#3B4A2A"
+   ],
+   "filament_vendor": [
+    "3D Procer"
+   ],
+   "nozzle_temperature": [
+    "205"
+   ],
+   "nozzle_temperature_initial_layer": [
+    "205"
+   ],
+   "cool_plate_temp": [
+    "65"
+   ],
+   "cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "eng_plate_temp": [
+    "65"
+   ],
+   "eng_plate_temp_initial_layer": [
+    "65"
+   ],
+   "hot_plate_temp": [
+    "65"
+   ],
+   "hot_plate_temp_initial_layer": [
+    "65"
+   ],
+   "supertack_plate_temp": [
+    "65"
+   ],
+   "supertack_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_cool_plate_temp": [
+    "65"
+   ],
+   "textured_cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_plate_temp": [
+    "65"
+   ],
+   "textured_plate_temp_initial_layer": [
+    "65"
+   ],
+   "filament_density": [
+    "1.24"
+   ],
+   "filament_diameter": [
+    "1.75"
+   ]
+  },
+  "3D Procer PLA Verde escuro @Sovol SV06.json": {
+   "type": "filament",
+   "name": "3D Procer PLA Verde escuro @Sovol SV06",
+   "from": "User",
+   "instantiation": "true",
+   "inherits": "Generic PLA @System",
+   "version": "1.0.0",
+   "compatible_printers": [
+    "Sovol SV06 0.4 nozzle"
+   ],
+   "compatible_printers_condition": "",
+   "filament_settings_id": [
+    "3D Procer PLA Verde escuro @Sovol SV06"
+   ],
+   "default_filament_colour": [
+    "#006400"
+   ],
+   "filament_vendor": [
+    "3D Procer"
+   ],
+   "nozzle_temperature": [
+    "205"
+   ],
+   "nozzle_temperature_initial_layer": [
+    "205"
+   ],
+   "cool_plate_temp": [
+    "65"
+   ],
+   "cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "eng_plate_temp": [
+    "65"
+   ],
+   "eng_plate_temp_initial_layer": [
+    "65"
+   ],
+   "hot_plate_temp": [
+    "65"
+   ],
+   "hot_plate_temp_initial_layer": [
+    "65"
+   ],
+   "supertack_plate_temp": [
+    "65"
+   ],
+   "supertack_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_cool_plate_temp": [
+    "65"
+   ],
+   "textured_cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_plate_temp": [
+    "65"
+   ],
+   "textured_plate_temp_initial_layer": [
+    "65"
+   ],
+   "filament_density": [
+    "1.24"
+   ],
+   "filament_diameter": [
+    "1.75"
+   ]
+  },
+  "3D Procer PLA Laranja @Sovol SV06.json": {
+   "type": "filament",
+   "name": "3D Procer PLA Laranja @Sovol SV06",
+   "from": "User",
+   "instantiation": "true",
+   "inherits": "Generic PLA @System",
+   "version": "1.0.0",
+   "compatible_printers": [
+    "Sovol SV06 0.4 nozzle"
+   ],
+   "compatible_printers_condition": "",
+   "filament_settings_id": [
+    "3D Procer PLA Laranja @Sovol SV06"
+   ],
+   "default_filament_colour": [
+    "#FFA500"
+   ],
+   "filament_vendor": [
+    "3D Procer"
+   ],
+   "nozzle_temperature": [
+    "205"
+   ],
+   "nozzle_temperature_initial_layer": [
+    "205"
+   ],
+   "cool_plate_temp": [
+    "65"
+   ],
+   "cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "eng_plate_temp": [
+    "65"
+   ],
+   "eng_plate_temp_initial_layer": [
+    "65"
+   ],
+   "hot_plate_temp": [
+    "65"
+   ],
+   "hot_plate_temp_initial_layer": [
+    "65"
+   ],
+   "supertack_plate_temp": [
+    "65"
+   ],
+   "supertack_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_cool_plate_temp": [
+    "65"
+   ],
+   "textured_cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_plate_temp": [
+    "65"
+   ],
+   "textured_plate_temp_initial_layer": [
+    "65"
+   ],
+   "filament_density": [
+    "1.24"
+   ],
+   "filament_diameter": [
+    "1.75"
+   ]
+  },
+  "3D Procer PLA Roxo @Sovol SV06.json": {
+   "type": "filament",
+   "name": "3D Procer PLA Roxo @Sovol SV06",
+   "from": "User",
+   "instantiation": "true",
+   "inherits": "Generic PLA @System",
+   "version": "1.0.0",
+   "compatible_printers": [
+    "Sovol SV06 0.4 nozzle"
+   ],
+   "compatible_printers_condition": "",
+   "filament_settings_id": [
+    "3D Procer PLA Roxo @Sovol SV06"
+   ],
+   "default_filament_colour": [
+    "#800080"
+   ],
+   "filament_vendor": [
+    "3D Procer"
+   ],
+   "nozzle_temperature": [
+    "205"
+   ],
+   "nozzle_temperature_initial_layer": [
+    "205"
+   ],
+   "cool_plate_temp": [
+    "65"
+   ],
+   "cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "eng_plate_temp": [
+    "65"
+   ],
+   "eng_plate_temp_initial_layer": [
+    "65"
+   ],
+   "hot_plate_temp": [
+    "65"
+   ],
+   "hot_plate_temp_initial_layer": [
+    "65"
+   ],
+   "supertack_plate_temp": [
+    "65"
+   ],
+   "supertack_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_cool_plate_temp": [
+    "65"
+   ],
+   "textured_cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_plate_temp": [
+    "65"
+   ],
+   "textured_plate_temp_initial_layer": [
+    "65"
+   ],
+   "filament_density": [
+    "1.24"
+   ],
+   "filament_diameter": [
+    "1.75"
+   ]
+  },
+  "3D Procer PLA Vermelho metalizado @Sovol SV06.json": {
+   "type": "filament",
+   "name": "3D Procer PLA Vermelho metalizado @Sovol SV06",
+   "from": "User",
+   "instantiation": "true",
+   "inherits": "Generic PLA @System",
+   "version": "1.0.0",
+   "compatible_printers": [
+    "Sovol SV06 0.4 nozzle"
+   ],
+   "compatible_printers_condition": "",
+   "filament_settings_id": [
+    "3D Procer PLA Vermelho metalizado @Sovol SV06"
+   ],
+   "default_filament_colour": [
+    "#C41E3A"
+   ],
+   "filament_vendor": [
+    "3D Procer"
+   ],
+   "nozzle_temperature": [
+    "205"
+   ],
+   "nozzle_temperature_initial_layer": [
+    "205"
+   ],
+   "cool_plate_temp": [
+    "65"
+   ],
+   "cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "eng_plate_temp": [
+    "65"
+   ],
+   "eng_plate_temp_initial_layer": [
+    "65"
+   ],
+   "hot_plate_temp": [
+    "65"
+   ],
+   "hot_plate_temp_initial_layer": [
+    "65"
+   ],
+   "supertack_plate_temp": [
+    "65"
+   ],
+   "supertack_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_cool_plate_temp": [
+    "65"
+   ],
+   "textured_cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_plate_temp": [
+    "65"
+   ],
+   "textured_plate_temp_initial_layer": [
+    "65"
+   ],
+   "filament_density": [
+    "1.24"
+   ],
+   "filament_diameter": [
+    "1.75"
+   ]
+  },
+  "3D Procer PLA Vermelho silk @Sovol SV06.json": {
+   "type": "filament",
+   "name": "3D Procer PLA Vermelho silk @Sovol SV06",
+   "from": "User",
+   "instantiation": "true",
+   "inherits": "Generic PLA Silk @System",
+   "version": "1.0.0",
+   "compatible_printers": [
+    "Sovol SV06 0.4 nozzle"
+   ],
+   "compatible_printers_condition": "",
+   "filament_settings_id": [
+    "3D Procer PLA Vermelho silk @Sovol SV06"
+   ],
+   "default_filament_colour": [
+    "#D1001F"
+   ],
+   "filament_vendor": [
+    "3D Procer"
+   ],
+   "nozzle_temperature": [
+    "230"
+   ],
+   "nozzle_temperature_initial_layer": [
+    "230"
+   ],
+   "cool_plate_temp": [
+    "65"
+   ],
+   "cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "eng_plate_temp": [
+    "65"
+   ],
+   "eng_plate_temp_initial_layer": [
+    "65"
+   ],
+   "hot_plate_temp": [
+    "65"
+   ],
+   "hot_plate_temp_initial_layer": [
+    "65"
+   ],
+   "supertack_plate_temp": [
+    "65"
+   ],
+   "supertack_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_cool_plate_temp": [
+    "65"
+   ],
+   "textured_cool_plate_temp_initial_layer": [
+    "65"
+   ],
+   "textured_plate_temp": [
+    "65"
+   ],
+   "textured_plate_temp_initial_layer": [
+    "65"
+   ],
+   "filament_density": [
+    "1.24"
+   ],
+   "filament_diameter": [
+    "1.75"
+   ]
+  }
+ },
+ "profile_map": {
+  "10": {
+   "Snapmaker U1": "_local/spooler/3D Procer PLA Preto @Snapmaker U1",
+   "Sovol SV06": "_local/spooler/3D Procer PLA Preto @Sovol SV06"
+  },
+  "11": {
+   "Snapmaker U1": "_local/spooler/3D Procer PLA Cinza grafite perolado @Snapmaker U1",
+   "Sovol SV06": "_local/spooler/3D Procer PLA Cinza grafite perolado @Sovol SV06"
+  },
+  "12": {
+   "Snapmaker U1": "_local/spooler/3D Procer PLA Branco marmorizado @Snapmaker U1",
+   "Sovol SV06": "_local/spooler/3D Procer PLA Branco marmorizado @Sovol SV06"
+  },
+  "13": {
+   "Snapmaker U1": "_local/spooler/3D Procer PLA Pérola @Snapmaker U1",
+   "Sovol SV06": "_local/spooler/3D Procer PLA Pérola @Sovol SV06"
+  },
+  "14": {
+   "Snapmaker U1": "_local/spooler/3D Procer PLA Preto matte @Snapmaker U1",
+   "Sovol SV06": "_local/spooler/3D Procer PLA Preto matte @Sovol SV06"
+  },
+  "15": {
+   "Snapmaker U1": "_local/spooler/3D Procer PLA Marrom escuro @Snapmaker U1",
+   "Sovol SV06": "_local/spooler/3D Procer PLA Marrom escuro @Sovol SV06"
+  },
+  "16": {
+   "Snapmaker U1": "_local/spooler/3D Procer PLA Bege escuro @Snapmaker U1",
+   "Sovol SV06": "_local/spooler/3D Procer PLA Bege escuro @Sovol SV06"
+  },
+  "17": {
+   "Snapmaker U1": "_local/spooler/3D Procer PLA Caucasiano @Snapmaker U1",
+   "Sovol SV06": "_local/spooler/3D Procer PLA Caucasiano @Sovol SV06"
+  },
+  "18": {
+   "Snapmaker U1": "_local/spooler/3D Procer PLA Ouro @Snapmaker U1",
+   "Sovol SV06": "_local/spooler/3D Procer PLA Ouro @Sovol SV06"
+  },
+  "19": {
+   "Snapmaker U1": "_local/spooler/3D Procer PLA Preto perolado metalizado @Snapmaker U1",
+   "Sovol SV06": "_local/spooler/3D Procer PLA Preto perolado metalizado @Sovol SV06"
+  },
+  "2": {
+   "Snapmaker U1": "_local/spooler/MasterPrint PETG Preto @Snapmaker U1",
+   "Sovol SV06": "_local/spooler/MasterPrint PETG Preto @Sovol SV06"
+  },
+  "20": {
+   "Snapmaker U1": "_local/spooler/3D Procer PLA Marrom terra @Snapmaker U1",
+   "Sovol SV06": "_local/spooler/3D Procer PLA Marrom terra @Sovol SV06"
+  },
+  "21": {
+   "Snapmaker U1": "_local/spooler/3D Procer PLA Marrom claro @Snapmaker U1",
+   "Sovol SV06": "_local/spooler/3D Procer PLA Marrom claro @Sovol SV06"
+  },
+  "22": {
+   "Snapmaker U1": "_local/spooler/3D Procer PLA Amarelo @Snapmaker U1",
+   "Sovol SV06": "_local/spooler/3D Procer PLA Amarelo @Sovol SV06"
+  },
+  "23": {
+   "Snapmaker U1": "_local/spooler/3D Procer PLA Bronze @Snapmaker U1",
+   "Sovol SV06": "_local/spooler/3D Procer PLA Bronze @Sovol SV06"
+  },
+  "24": {
+   "Snapmaker U1": "_local/spooler/3D Procer PLA Bege areia @Snapmaker U1",
+   "Sovol SV06": "_local/spooler/3D Procer PLA Bege areia @Sovol SV06"
+  },
+  "25": {
+   "Snapmaker U1": "_local/spooler/3D Procer PLA Cinza @Snapmaker U1",
+   "Sovol SV06": "_local/spooler/3D Procer PLA Cinza @Sovol SV06"
+  },
+  "26": {
+   "Snapmaker U1": "_local/spooler/3D Procer PLA Azul @Snapmaker U1",
+   "Sovol SV06": "_local/spooler/3D Procer PLA Azul @Sovol SV06"
+  },
+  "27": {
+   "Snapmaker U1": "_local/spooler/3D Procer PLA Verde @Snapmaker U1",
+   "Sovol SV06": "_local/spooler/3D Procer PLA Verde @Sovol SV06"
+  },
+  "28": {
+   "Snapmaker U1": "_local/spooler/3D Procer PLA Azul claro metalizado @Snapmaker U1",
+   "Sovol SV06": "_local/spooler/3D Procer PLA Azul claro metalizado @Sovol SV06"
+  },
+  "29": {
+   "Snapmaker U1": "_local/spooler/3D Procer PLA Verde natal silk @Snapmaker U1",
+   "Sovol SV06": "_local/spooler/3D Procer PLA Verde natal silk @Sovol SV06"
+  },
+  "3": {
+   "Snapmaker U1": "_local/spooler/Snapmaker PLA SnapSpeed Yellow @Snapmaker U1",
+   "Sovol SV06": "_local/spooler/Snapmaker PLA SnapSpeed Yellow @Sovol SV06"
+  },
+  "30": {
+   "Snapmaker U1": "_local/spooler/3D Procer PLA Ouro silk @Snapmaker U1",
+   "Sovol SV06": "_local/spooler/3D Procer PLA Ouro silk @Sovol SV06"
+  },
+  "31": {
+   "Snapmaker U1": "_local/spooler/3D Procer PLA Cobre @Snapmaker U1",
+   "Sovol SV06": "_local/spooler/3D Procer PLA Cobre @Sovol SV06"
+  },
+  "32": {
+   "Snapmaker U1": "_local/spooler/3D Procer PLA Vermelho @Snapmaker U1",
+   "Sovol SV06": "_local/spooler/3D Procer PLA Vermelho @Sovol SV06"
+  },
+  "33": {
+   "Snapmaker U1": "_local/spooler/3D Procer PLA Verde militar escuro @Snapmaker U1",
+   "Sovol SV06": "_local/spooler/3D Procer PLA Verde militar escuro @Sovol SV06"
+  },
+  "34": {
+   "Snapmaker U1": "_local/spooler/3D Procer PLA Verde escuro @Snapmaker U1",
+   "Sovol SV06": "_local/spooler/3D Procer PLA Verde escuro @Sovol SV06"
+  },
+  "35": {
+   "Snapmaker U1": "_local/spooler/3D Procer PLA Laranja @Snapmaker U1",
+   "Sovol SV06": "_local/spooler/3D Procer PLA Laranja @Sovol SV06"
+  },
+  "36": {
+   "Snapmaker U1": "_local/spooler/3D Procer PLA Roxo @Snapmaker U1",
+   "Sovol SV06": "_local/spooler/3D Procer PLA Roxo @Sovol SV06"
+  },
+  "37": {
+   "Snapmaker U1": "_local/spooler/3D Procer PLA Vermelho metalizado @Snapmaker U1",
+   "Sovol SV06": "_local/spooler/3D Procer PLA Vermelho metalizado @Sovol SV06"
+  },
+  "38": {
+   "Snapmaker U1": "_local/spooler/3D Procer PLA Vermelho silk @Snapmaker U1",
+   "Sovol SV06": "_local/spooler/3D Procer PLA Vermelho silk @Sovol SV06"
+  },
+  "4": {
+   "Snapmaker U1": "_local/spooler/Snapmaker PLA SnapSpeed Red @Snapmaker U1",
+   "Sovol SV06": "_local/spooler/Snapmaker PLA SnapSpeed Red @Sovol SV06"
+  },
+  "5": {
+   "Snapmaker U1": "_local/spooler/Snapmaker PLA SnapSpeed Black @Snapmaker U1",
+   "Sovol SV06": "_local/spooler/Snapmaker PLA SnapSpeed Black @Sovol SV06"
+  },
+  "6": {
+   "Snapmaker U1": "_local/spooler/Snapmaker PLA SnapSpeed White @Snapmaker U1",
+   "Sovol SV06": "_local/spooler/Snapmaker PLA SnapSpeed White @Sovol SV06"
+  },
+  "7": {
+   "Snapmaker U1": "_local/spooler/3D Procer PLA Bege claro @Snapmaker U1",
+   "Sovol SV06": "_local/spooler/3D Procer PLA Bege claro @Sovol SV06"
+  },
+  "8": {
+   "Snapmaker U1": "_local/spooler/3D Procer PLA Cinza grafite @Snapmaker U1",
+   "Sovol SV06": "_local/spooler/3D Procer PLA Cinza grafite @Sovol SV06"
+  },
+  "9": {
+   "Snapmaker U1": "_local/spooler/3D Procer PLA Branco @Snapmaker U1",
+   "Sovol SV06": "_local/spooler/3D Procer PLA Branco @Sovol SV06"
+  }
+ }
+}

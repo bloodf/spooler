@@ -29,11 +29,15 @@ def extruders(n):
 class KlipperCase(unittest.TestCase):
     """A Klipper printer at BASE found from a preset, settings in memory, Spoolman as the source."""
 
+    def store(self, settings: dict) -> bool:
+        self.settings = settings  # what was written is what is read next
+        return True
+
     def setUp(self):
         self.settings = {"printers": {"spoolman": []}}
         self.paths = []
         patches = [mock.patch.object(sp, "get_settings", lambda: self.settings),
-                   mock.patch.object(sp, "save_settings", return_value=True),
+                   mock.patch.object(sp, "save_settings", self.store),
                    mock.patch.object(sp, "source", return_value="spoolman"),
                    mock.patch.object(sp, "prune_codes"), mock.patch.object(sp, "_local_sync")]
         for p in patches:

@@ -15,6 +15,11 @@ Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); 
 - A Klipper printer whose MMU doesn't report its gates can have up to 16 gates set on the Printer tab, with the spool on each. Gates the printer reports are still read from it and can't be changed here: AFC and Happy Hare through Moonraker's lane_data, and Happy Hare's own gates too, which are never filled from a slice or booked here since Happy Hare books its spools to Spoolman itself. The toolheads and gates to set appear once Spooler has read the printer.
 - After a slice for a Klipper printer, each filament's matching spool is put on its toolhead (or gate), as already done for PrusaLink and OctoPrint. A spool put on a slot is taken off any other slot it was on. Bambu printers and printer-reported gates are left alone.
 - With two or more of these printers, each one on the Printer tab says which OrcaSlicer printer presets slice for it; a preset not chosen goes by its host address as before. Each Klipper printer has its own switch to turn the slice fill off.
+- Settings > Presets: OrcaSlicer filament presets can now be made per spool instead of per filament. Each is named with the spool's number, like "SUNLU PLA Black #12 @Snapmaker U1", so the name stays the same on every sync and no two clash; archived spools lose theirs and renamed ones leave no old preset behind. Per filament stays the default.
+- Use with, in Edit Spool, picks the printers that get a spool's own preset. Left empty, a spool loaded in a printer slot (on the Printer tab or reported by Live Link) gets a preset for that printer only, and a spool on the shelf one for every printer. It is kept in a new "Use with" spool field, which Spooler adds to Spoolman only once presets are per spool or the field is first saved, and saving it follows the same Spoolman version rules as the other extra fields.
+- Advanced tuning in Settings > Presets, off by default: per material, choose the OrcaSlicer preset to inherit from and set flow ratio, pressure advance, retraction length and speed, max volumetric speed and fan speeds. A filament's own values in Spoolman still win. Turned off, presets are made exactly as before.
+- Settings > Presets says that OrcaSlicer won't reload renamed Spooler presets while the selected one has unsaved changes, and what to do.
+- Every preset is checked against the settings and value types OrcaSlicer takes before the set is written. One that fails is left out and named in spooler.log, so it can't make OrcaSlicer refuse all the others.
 
 ### Changed
 - When a sliced filament matches several spools, Spooler now asks which one is loaded instead of leaving the slot as it is, for PrusaLink, OctoPrint and Klipper printers.
@@ -24,6 +29,7 @@ Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); 
 - A prompt waiting for an answer is still there after OrcaSlicer restarts.
 
 ### Fixed
+- A Settings save that happened while Spooler was writing a calibration prompt, a printer list or another setting could drop that write. Every settings write now updates only its own keys, one at a time.
 - When Spooler can't read Spoolman's version, Send to Spoolman now says so and writes nothing, instead of sending every extra field of the filament back as read, which on a Spoolman that merges them could undo a change made in between.
 - On Spoolman 0.22 to 0.25, Clear Dried Date did nothing: the spool kept its dried date while Spooler said it was cleared. These versions can't remove the date, so Spooler now says so and writes nothing; Spoolman 0.26 or newer removes it as before.
 - On Spoolman 0.22 to 0.25, Mark Dried Today and Send to Spoolman sent back every extra field of the spool or filament, as read just before, instead of only the one they change, so a change made in Spoolman in between could be undone. They now send only their own field; only Spoolman older than 0.22, which replaces the whole map, still gets it whole.

@@ -1,6 +1,8 @@
 // The plugin fills the boot JSON before serving the page: which surface this is (the native tab with its two
 // views, the separate spool window, or the separate Settings window), the saved settings and the plugin's
 // constants. During `vite dev` it is absent and the defaults apply.
+import { DEFAULT_PRESETS, type ParentBase, type PresetSettings } from '../logic/presets';
+
 export interface ProgressSettings { on: boolean; finish: boolean; slot: boolean; idle: 'line' | 'hide' }
 export interface StatsSettings { on: boolean; cur: string }
 export interface SettingsBoot {
@@ -8,6 +10,7 @@ export interface SettingsBoot {
   plate_check: boolean; plate_margin: number; weight_display: 'grams' | 'percent' | 'both'; show_cart: boolean;
   spool_columns: 1 | 2; progress: ProgressSettings; stats: StatsSettings; display: Record<string, boolean>;
   drying: Record<string, number>; cur_code: string; wizard: boolean; log_path: string; auto_keep_slots: boolean;
+  presets: PresetSettings; parents: ParentBase[];
   save_calibration: 'ask' | 'auto' | 'never';
 }
 export interface Boot {
@@ -40,13 +43,14 @@ function read(): Partial<Boot> {
 const raw = read();
 export const boot: Boot = {
   mode: 'tab', view: 'main', version: 'dev', lang: null, low_stock_default: 100, refresh_ms: 60000,
-  display_defaults: DEFAULT_DISPLAY, own_fields: ['tag', 'orca_settings', 'dried'],
+  display_defaults: DEFAULT_DISPLAY, own_fields: ['tag', 'orca_settings', 'dried', 'use_with'],
   ...raw,
   settings: {
     url: '', verified_url: '', default_url: 'http://localhost:7912', source: 'spoolman', low_stock: 100, plate_check: true,
     plate_margin: 10, weight_display: 'both', show_cart: false, spool_columns: 1,
     progress: { on: true, finish: true, slot: true, idle: 'line' }, stats: { on: true, cur: 'spoolman' },
     display: { ...DEFAULT_DISPLAY }, drying: {}, cur_code: 'EUR', wizard: false, log_path: '', auto_keep_slots: false, save_calibration: 'ask',
+    presets: { ...DEFAULT_PRESETS }, parents: [],
     ...(raw.settings ?? {}),
   },
 };
