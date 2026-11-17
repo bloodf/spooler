@@ -219,6 +219,11 @@ class UseWithTest(unittest.TestCase):
             self.assertEqual(loaded, {"5": {SV06}, "6": {SV06}, "7": {U1}, "8": {U1}})  # p3 matches no preset
             only = sp.loaded_targets(self.PRINTERS[:1])
         self.assertEqual(only["9"], {U1}, "with one printer preset, every printer is that one")
+        with mock.patch.object(sp, "printers_cfg", return_value=cfg), mock.patch.object(sp, "live_snapshot", return_value=live), \
+                mock.patch.object(sp, "slice_map", return_value={U1: "p3", "My U1 copy": "p1"}):
+            picked = sp.loaded_targets(self.PRINTERS)
+        self.assertEqual(picked["9"], {U1}, "a printer preset chosen on the Printer tab wins over the address")
+        self.assertEqual(picked["5"], {SV06}, "a chosen preset that isn't a target leaves the address match")
 
     def test_moving_a_spool_moves_its_preset_and_leaves_no_orphan(self):
         with tempfile.TemporaryDirectory() as tmp:
