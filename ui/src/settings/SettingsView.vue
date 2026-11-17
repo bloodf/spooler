@@ -6,12 +6,11 @@ import InputNumber from 'primevue/inputnumber';
 import Select from 'primevue/select';
 import Checkbox from 'primevue/checkbox';
 import RadioButton from 'primevue/radiobutton';
-import { OuiFormRow, OuiFormSection, OuiIcon, OuiSettings, OuiStatus, OuiSwatch, type OuiSettingsSection } from '../../shared/src/components';
+import { OuiFormRow, OuiFormSection, OuiIcon, OuiRequirement, OuiSettings, OuiStatus, OuiSwatch, type OuiSettingsSection } from '../../shared/src/components';
 import { chart, check, drop, eye, files, info, languages, layers, plug, plus, printer, save as saveIcon, scale, spoolman, store, x } from '../../shared/src/icons';
 import SourceBlock from './SourceBlock.vue';
 import PresetsBlock from './PresetsBlock.vue';
 import SetupWizard from './SetupWizard.vue';
-import RequirementRow from './RequirementRow.vue';
 import * as bridge from '../core/bridge';
 import { boot } from '../core/boot';
 import { m } from '../state/main';
@@ -63,7 +62,16 @@ const setDisp = (k: string, v: unknown) => { form.display = { ...form.display, [
 
 // Requirements: the saved spool source. Spoolman installs with Docker on every desktop system.
 const SPOOLMAN_DOCKER = 'docker run -d --name spoolman -p 7912:8000 -v spoolman-data:/home/app/.local/share/spoolman ghcr.io/donkie/spoolman:latest';
-const reqSteps = (r: Requirement) => (r.id === 'bambu' ? [t('req.bambuHow')] : [t('req.os.mac'), t('req.os.win'), t('req.os.linux'), t('req.then')]);
+const SPOOLMAN_SITE = 'https://github.com/Donkie/Spoolman';
+const reqSteps = (r: Requirement) => (r.id === 'bambu' ? [] : [t('req.os.mac'), t('req.os.win'), t('req.os.linux'), t('req.then')]);
+// Our states on OuiRequirement's: unreachable (it answered earlier this session) is a missing row without the install line.
+const reqRow = (r: Requirement) => {
+  if (req.checking) return { status: 'checking' as const, label: t('req.checking'), detail: undefined };
+  const label = r.status === 'ok' ? t('req.connected') : r.status === 'unreachable' ? t('req.unreachable') : r.status === 'unknown' ? t('req.untested')
+    : r.signin ? t('req.signedOut') : t('req.status.missing');
+  const status = r.status === 'ok' ? 'found' as const : r.status === 'unknown' ? 'unknown' as const : 'missing' as const;
+  return { status, label, detail: r.details || undefined };
+};
 const reqMissing = computed(() => req.list.some(r => r.status === 'missing' || r.status === 'unreachable'));
 
 // The index beside the sections; the source flags itself until it passed a test (Save waits for it).
@@ -98,14 +106,19 @@ const sections = computed<OuiSettingsSection[]>(() => [
       </OuiFormSection>
 
       <OuiFormSection id="s-req" :icon="plug" tone="neutral" :title="t('req.title')" :description="t('req.help')">
-        <div class="set-pad" aria-live="polite" data-test="requirements">
-          <RequirementRow v-for="r in req.list" :key="r.id" :name="r.id === 'bambu' ? 'Bambu Cloud' : 'Spoolman'" :status="req.checking ? 'unknown' : r.status"
-                          :label="req.checking ? t('req.checking') : t(`req.status.${r.status}`)" :details="req.checking ? '' : r.details"
-                          :why="t(r.id === 'bambu' ? 'req.why.bambu' : 'req.why.spoolman')" :code="r.id === 'bambu' ? '' : SPOOLMAN_DOCKER" :steps="reqSteps(r)">
-            <Button v-if="r.id !== 'bambu' && r.status === 'missing'" severity="secondary" size="small" :label="t('req.install')" data-test="req-install" @click="bridge.postSettings({ type: 'spoolman_help' })" />
-            <Button severity="secondary" size="small" :label="t('req.check')" :loading="req.checking" data-test="req-check" @click="checkRequirements" />
-          </RequirementRow>
-          <p v-if="!req.list.length" class="oui-meta">{{ t('req.checking') }}</p>
+        <div aria-live="polite" data-test="requirements">
+          <template v-for="r in req.list" :key="r.id">
+            <OuiRequirement :name="r.id === 'bambu' ? 'Bambu Cloud' : 'Spoolman'" :why="t(r.id === 'bambu' ? 'req.why.bambu' : 'req.why.spoolman')"
+                            :status="reqRow(r).status" :status-label="reqRow(r).label" :detail="reqRow(r).detail" :check-label="t('req.check')" data-test="req-row"
+                            :install-text="r.status !== 'missing' ? undefined : t(r.id === 'bambu' ? 'req.bambuHow' : 'req.spoolmanInstall')"
+                            :install-url="r.id === 'bambu' || r.status !== 'missing' ? undefined : SPOOLMAN_SITE" :install-label="t('req.install')"
+                            @check="checkRequirements" @open="bridge.postSettings({ type: 'spoolman_help' })" />
+            <div v-if="r.id !== 'bambu' && r.status === 'missing' && !req.checking" class="set-req-how" data-test="req-how">
+              <pre class="oui-mono oui-well set-req-code">{{ SPOOLMAN_DOCKER }}</pre>
+              <ul class="set-req-steps"><li v-for="line in reqSteps(r)" :key="line" class="oui-meta">{{ line }}</li></ul>
+            </div>
+          </template>
+          <p v-if="!req.list.length" class="oui-meta set-pad">{{ t('req.checking') }}</p>
         </div>
       </OuiFormSection>
 
@@ -213,8 +226,7 @@ const sections = computed<OuiSettingsSection[]>(() => [
           <Select :model-value="langPref" :options="langOptions" option-label="label" option-value="value" :aria-label="t('lang.label')" data-test="lang"
                   @update:model-value="setLangPref($event as LangPref)" /></OuiFormRow>
         <OuiFormRow :label="t('set.version', { v: boot.version })">
-          <span v-if="!update.newer" class="oui-meta" role="status">{{ update.text }}</span>
-          <Button v-else size="small" :label="t('set.newer', { v: update.newer })" @click="bridge.postSettings({ type: 'release' })" />
+          <Button v-if="update.newer" size="small" :label="t('set.newer', { v: update.newer })" @click="bridge.postSettings({ type: 'release' })" />
           <Button severity="secondary" size="small" :label="t('set.checkUpdate')" :loading="update.busy" @click="checkUpdate"><template #icon><OuiIcon :icon="info" :size="14" /></template></Button>
         </OuiFormRow>
         <p class="oui-meta set-pad set-log">{{ t('set.log', { path: boot.settings.log_path }) }}</p>
@@ -250,4 +262,7 @@ const sections = computed<OuiSettingsSection[]>(() => [
 .set-grow { flex: 1 1 160px; min-width: 0; }
 .set-end { text-align: end; }
 .set-log { overflow-wrap: anywhere; }
+.set-req-how { display: grid; gap: var(--oui-s1); padding: 0 var(--oui-s4) var(--oui-s3); }
+.set-req-code { margin: 0; padding: var(--oui-s2); white-space: pre-wrap; overflow-wrap: anywhere; user-select: all; }
+.set-req-steps { margin: 0; padding-inline-start: 1.2em; display: grid; gap: 2px; }
 </style>

@@ -9,7 +9,7 @@ import { boot } from '../core/boot';
 import { m, dupes } from '../state/main';
 import { pickSpool, openEditor } from '../state/menu';
 import { t, tn, locale } from '../core/i18n';
-import { formatWeight, leftLabel, levelTone, lowLevel, noteText, originalWeight, percentLeft, shown, spoolPaint, totals, type Spool, type Totals } from '../logic/spools';
+import { formatWeight, leftLabel, levelTone, lowLevel, noteText, originalWeight, percentLeft, shown, spoolDirection, spoolPaint, totals, type Spool, type Totals } from '../logic/spools';
 
 // The stock list. One row per spool; spools of one filament fold into a stack row (×n) that opens to its spools,
 // and a group (by location, material or manufacturer) is a header row that closes. Picking a row opens its detail.
@@ -60,7 +60,7 @@ function onRow(r: Row) { if (r.kind === 'stack') emit('stack', r.key); else pick
     <Column :header="t('list.col.spool')" class="sp-c-spool">
       <template #body="{ data: r }">
         <div class="sp-spool">
-          <OuiSpool v-bind="spoolPaint(fil(r))" :fraction="frac(sum(r))" :size="r.child ? 32 : 40" />
+          <OuiSpool v-bind="spoolPaint(fil(r))" :direction="spoolDirection(fil(r))" :fraction="frac(sum(r))" :size="r.child ? 32 : 40" />
           <div class="sp-spool-id">
             <p class="sp-name" :title="name(r)"><span class="oui-truncate oui-strong">{{ name(r) }}</span>
               <button v-if="r.kind === 'stack'" type="button" class="oui-chip oui-num st-head" :aria-expanded="r.open" :aria-label="t('stack.toggle', { n: r.items.length, name: name(r) })" @click.stop="emit('stack', r.key)">

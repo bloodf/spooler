@@ -114,7 +114,7 @@ Where icons go: every app-bar tab, every panel and settings section header (as a
 
 Three kinds, in this order of preference:
 
-1. Drawn objects that take data. `OuiSpool` is the spool: its winding is the filament colour and as deep as the filament left. The printer drawings in the gallery (`gallery/art/`) show the Kobra with its four-spool box and the U1 with four toolheads; the spools and heads take the real colours and the print grows with the job. They are vector, follow the theme through the palette, contain no text and cost under 2 kB each. A plugin's own drawings live in that plugin.
+1. Drawn objects that take data. `OuiSpool` is the spool: a product render of the reel whose winding is tinted to the filament colour and is as deep as the filament left. The printer drawings in the gallery (`gallery/art/`) show the Kobra with its four-spool box and the U1 with four toolheads; the spools and heads take the real colours and the print grows with the job. They are vector, follow the theme through the palette, contain no text and cost under 2 kB each. A plugin's own drawings live in that plugin.
 2. Icon tiles, for empty states and section identity.
 3. One raster illustration per plugin for its empty or first-run state (`OuiEmpty image`), and listing or README art. Nowhere else in a page: the pages are single files with a size budget, and a picture cannot follow the theme or the language. The six that exist are in `assets/illustrations/` (320 px WebP with transparency, 2.4 to 18.2 kB each, 43.6 kB together); they use white, two greys and a mid tone of the plugin's accent chosen to hold on both its dark and its light page.
 
@@ -147,7 +147,7 @@ Icon-only buttons carry an `aria-label`. A destructive or irreversible action go
 Rules:
 
 1. One page, one connection state. It is in the app bar; nothing else on the page may contradict it.
-2. A reason is said once. If the page is offline, busy or incomplete, one `OuiBanner` under the app bar says why and offers the way out; disabled controls point at it with `aria-describedby` and say nothing themselves. A reason that concerns one panel goes in that panel's footer, once.
+2. A reason is said once. If the page is offline, busy or incomplete, one `OuiBanner` under the app bar says why and offers the way out; disabled controls point at it with `aria-describedby` and say nothing themselves. Every banner can be closed. A banner is bound to its condition, never timed: it leaves when the condition clears (`show` false) or on its X; after an X it stays closed while the same condition lasts (its `dismissKey`, across polls and reloads) and shows again when the condition changes or clears and comes back. Toasts are the timed ones: they count down only while the page is visible and active, and errors never leave by themselves. News about something that just happened is a toast (`useToast()`), not a banner. A reason that concerns one panel goes in that panel's footer, once.
 3. Stale data shows its source and age (`stale`, "Spooler 0.20.1 · read 5 min ago", "Last known · 4 min ago") and loses its colour: a stale hero is grey, not the accent, and stale readings (`OuiSetpoint stale`, `OuiReadout stale`) are grey with no phase. It never keeps a live-looking state.
 4. An uncertain outcome is `pending` or `warn`, never `ok`, until the printer or Spoolman confirms it.
 5. Unknown is a dash or the words "unknown", never 0, and never an empty cell. A figure built from partial data is `incomplete`: grey, dashed underline, in a warning-tinted block in place of the accent hero, and the gaps named where they occur.
@@ -160,7 +160,7 @@ Import each from `shared/src/components` (or its own `.vue` file). They are not 
 | Component | What it is |
 |---|---|
 | `OuiAppBar` | the band in the plugin's accent: mark on a white tile, name, the page's state as a white pill, task tabs as pills (`data-tab`, arrow keys; the active one filled white; a tab can show a `count`, an `attention` dot with an accessible name, and carry extra `attrs`), page actions. Sticky; the state text gives way first, and tabs drop to a second line when narrow |
-| `OuiBanner` | a page-level state with its action: `info`, `warn`, `error`, `success`, `neutral` |
+| `OuiBanner` | a page-level state with its action: `info`, `warn`, `error`, `success`, `neutral`; `dismissible` with a `dismissKey` so nothing stays on screen for good |
 | `OuiPanel` | a module: header strip tinted in its `tone` with a solid icon tile, title, one line of meta, actions; body; optional footer. `flush` for tables, media and a hero; `fill` to scroll inside a grid cell |
 | `OuiStatus` | a state, as a solid chip (default) or `plain` coloured text |
 | `OuiReadout` | label + large tabular value + unit + sub line, with an optional icon tile; with a `tone` the value takes that colour. `sm`, `md`, `lg`, `hero`; `incomplete`, `stale`; blank is a dash |
@@ -168,13 +168,15 @@ Import each from `shared/src/components` (or its own `.vue` file). They are not 
 | `OuiSpark` | one series over time, as a filled line (with an optional dashed `target`) or bars, in a tone. Shape only: the value is in text beside it and `label` describes it |
 | `OuiJob` | a running job: state, name, percentage or count, bar, stats, actions. `hero` fills it with the accent (56 px figure, 12 px white bar) with the actions under the block; `compact` for the dock; `stale` is grey; unknown progress is indeterminate, not 0 % |
 | `OuiSlot` | a toolhead or slot: a sample of the filament colour across the top (framed by the card, hatched when empty) carrying the identity badge and the state chip; then the drawn spool, filament, amount left with its level (or whatever `#amount` provides), extra rows, actions; `active` |
-| `OuiSpool` | the spool, drawn in vector: winding in the filament colour (or colours), as deep as the filament left; unknown and empty have their own look |
+| `OuiSpool` | the photo spool: eight renders of the reel, the winding tinted to the filament colour (or colours, side by side, coaxial or longitudinal) and as deep as the filament left; unknown and empty show the bare reel |
 | `OuiSwatch`, `OuiLevel` | a filament colour dot; an amount bar: green, amber `low`, red `critical`, unknown hatched. The swatch carries the filament's colour, the bar carries amount and state |
 | `OuiThumb` | a picture in a fixed pixel box, fitted, never stretching its row |
 | `OuiKeyValue` | facts about one object, as an aligned list or `inline` columns |
 | `OuiToolbar` | search and filters, a result count, then the list's actions |
 | `OuiEmpty` | empty, loading, error, offline, with a solid icon tile or an `image`; `compact` for a one-row version |
-| `OuiSettings`, `OuiFormSection`, `OuiFormRow` | the settings page: section index that follows the scroll, sections in columns, rows with a shared label column, one save bar |
+| `OuiToastHost`, `useToast()` | news about something that just happened: bottom-left stack, close button on each, 5 s (info, success), 8 s (warn), errors until closed, timer held on hover or focus |
+| `OuiRequirement` | a row for what a feature needs on this computer: found or missing, where, how to install, Check again |
+| `OuiSettings`, `OuiFormSection`, `OuiFormRow` | the settings page: section tabs (side list wide, strip narrow), one section at a time scrolling inside, rows with a shared label column, one save bar always on screen |
 | `OuiConfirm` | the confirmation dialog: action named on the button, focus on the way back when destructive |
 | `OuiIcon` | an icon from `src/icons.ts`: mono, toned, or in a tinted tile (see Icons) |
 
@@ -189,7 +191,7 @@ Use PrimeVue directly for controls (Button, InputText, InputNumber, Select, Chec
 - A panel that has nothing to show yet is one row (`OuiEmpty compact`), not a reserved hole. A camera that is off must not push the printer's state down.
 - Lists of things with a detail: list and detail side by side from about 1160 px, detail under the list below that.
 - Tables: `DataTable size="small"`, fixed layout, name and one meta line in the first column, numbers right-aligned with `oui-num`, the row action last and quiet. The first cell holds an `OuiSpool` or an `OuiThumb`.
-- Settings: `OuiSettings`. Group sections into two `.oui-stack` columns in reading order. A hint is at most one short line; what a whole section needs explained goes in its description, once.
+- Settings: `OuiSettings`, one `OuiFormSection` per tab, in reading order. A hint is at most one short line; what a whole section needs explained goes in its description, once.
 - The dock shows one thing at a time (form, running job, or result); the same parts sit side by side in a tab.
 - Text is short and plain, in both languages. Buttons do not wrap; labels and names truncate with a `title`; nothing relies on a fixed text width.
 

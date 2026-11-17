@@ -21,7 +21,18 @@
 .orca-dark { --oui-shadow-panel: 0 0 0 transparent; --oui-shadow-overlay: 0 12px 32px rgb(0 0 0 / .5); }
 @font-face { font-family: 'Manrope'; src: url('./fonts/Manrope.woff2') format('woff2'); font-weight: 400 700; font-style: normal; font-display: swap; }
 html { font-family: var(--oui-font); font-size: 13px; }
-body.orca-ui { margin: 0; color: var(--oui-text); background: var(--oui-background); }
+/* The page fills the whole tab at every height, and follows it when the window is resized: the page colour is on html
+   and body (never the host's grey under a short page), body is at least the viewport (dvh where the web view has it)
+   and the app root and its shell grow to fill it. min-height, not height: the document keeps the one scrollbar. */
+html { min-height: 100%; background: var(--oui-background); }
+body.orca-ui { margin: 0; color: var(--oui-text); background: var(--oui-background); min-height: 100vh; min-height: 100dvh;
+  display: flex; flex-direction: column; }
+body.orca-ui > #app { flex: 1 0 auto; display: flex; flex-direction: column; min-width: 0; }
+/* The shell grows: the app's one root element, or the page under an app bar when the app renders several. */
+body.orca-ui > #app > :where(:only-child, .oui-page, main) { flex: 1 0 auto; }
+/* As wide as the page, as in block layout: a flex item with auto margins (a centred column with a max-width) would
+   otherwise shrink to its content, and to nothing when it is a size container. Zero specificity: the page's own widths win. */
+:where(body.orca-ui > #app > *) { width: 100%; }
 .orca-ui { font-family: inherit; font-size: var(--oui-text-md); line-height: 1.4; accent-color: var(--oui-primary); caret-color: var(--oui-text);
   text-underline-offset: .2em; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
 .orca-ui *, .orca-ui *::before, .orca-ui *::after { box-sizing: border-box; }

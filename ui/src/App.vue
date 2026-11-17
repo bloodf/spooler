@@ -1,10 +1,9 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, watch } from 'vue';
 import Button from 'primevue/button';
-import { OuiAppBar, OuiIcon, OuiStatus, type OuiState, type OuiTab } from '../shared/src/components';
+import { OuiAppBar, OuiIcon, OuiStatus, OuiToastHost, type OuiState, type OuiTab } from '../shared/src/components';
 import { chart, download, note, printer, refresh as refreshIcon, settings, spool } from '../shared/src/icons';
 import Logo from './components/Logo.vue';
-import StatusArea from './components/StatusArea.vue';
 import CalibrationPanel from './components/CalibrationPanel.vue';
 import SpoolsView from './components/SpoolsView.vue';
 import PrinterView from './components/PrinterView.vue';
@@ -83,7 +82,6 @@ const state = computed<{ state: OuiState; label: string; text: string }>(() => {
     <SettingsView v-if="settingsOnly" />
     <template v-else>
       <main v-show="m.view === 'main'" class="oui-page">
-        <StatusArea />
         <CalibrationPanel />
         <div v-show="tab === 'spools'" role="tabpanel" aria-labelledby="oui-tab-spools"><SpoolsView /></div>
         <div v-if="m.showPrinterTab" v-show="tab === 'printer'" role="tabpanel" aria-labelledby="oui-tab-printer"><PrinterView /></div>
@@ -93,15 +91,14 @@ const state = computed<{ state: OuiState; label: string; text: string }>(() => {
     </template>
     <ConfirmDialog />
     <SlicePick v-if="!settingsOnly" />
+    <OuiToastHost :close-label="t('common.close')" :label="t('status.region')" />
   </div>
 </template>
 
 <style>
-html, body, #app { min-height: 100%; }
 /* Manrope has Latin glyphs only. Chinese text takes the system's Simplified Chinese font, named here so a Japanese or
    Traditional Chinese one isn't picked first for the shared Han characters. */
 html:lang(zh-CN) { --oui-font: 'Manrope', 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', 'Noto Sans SC', 'Source Han Sans SC', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
-.sp-shell { min-height: 100vh; }
 .oui-page > [role='tabpanel'] { min-width: 0; }
 /* Narrow bar (the 380 px dock): the page actions keep their icons and drop their words; the state keeps its chip. */
 @container oui-appbar (max-width: 520px) {

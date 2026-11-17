@@ -108,6 +108,7 @@ class RequirementsTest(unittest.TestCase):
         sp.save_settings({"spool_source": "bambu"})
         self.assertEqual(self.status()["id"], "bambu")
         self.assertEqual(self.status()["status"], "missing")
+        self.assertTrue(self.status()["signin"])
         sp.AUTH_FILE.write_text('{"access_token": "x", "account": "me@example.com"}', encoding="utf-8")
         self.assertEqual(self.status()["status"], "unknown")
         sp.heard(sp.BAMBU_KEY, True, "me@example.com")

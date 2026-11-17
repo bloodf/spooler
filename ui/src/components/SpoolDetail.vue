@@ -13,7 +13,7 @@ import { menu, closeDetail, setMode, sendAction, openEditor, type MenuMode } fro
 import { ask, prompt } from '../core/dialog';
 import { note } from '../state/main';
 import { t, tn, fmt, locale } from '../core/i18n';
-import { driedDays, gramsValid, formatWeight, levelTone, lowLevel, noteText, originalWeight, percentLeft, shown, spoolPaint, tagUids, type Spool } from '../logic/spools';
+import { driedDays, gramsValid, formatWeight, levelTone, lowLevel, noteText, originalWeight, percentLeft, shown, spoolDirection, spoolPaint, tagUids, type Spool } from '../logic/spools';
 
 // The selected spool, beside the list: what it is and how much is left (the page's one accent block), what you can do
 // to it (Spoolman only), its facts, its weekly use and the prints that used it. The plugin sends the print history
@@ -129,7 +129,7 @@ async function save() {
     </template>
 
     <div class="sd-hero oui-hero" :class="{ 'oui-on-band': !stale }" :data-tone="stale ? 'neutral' : undefined">
-      <OuiSpool v-bind="spoolPaint(f)" :fraction="pct === null ? null : pct / 100" :size="112" />
+      <OuiSpool v-bind="spoolPaint(f)" :direction="spoolDirection(f)" :fraction="pct === null ? null : pct / 100" :size="112" />
       <div class="sd-id">
         <SpoolChips :spool="s" band />
         <p class="sd-name">{{ name }}<Button v-if="canAct" severity="secondary" text rounded size="small" class="sd-edit" :aria-label="t('editor.editTitle', { id: s.id })" :title="t('editor.editTitle', { id: s.id })"
