@@ -112,7 +112,7 @@ class FreshVersionTest(unittest.TestCase):
     def test_send_changes_checks_the_version_fresh(self):
         src = Path(sp.__file__).read_text(encoding="utf-8")
         body = src[src.index("def _send_changes"):src.index("def native_value")]
-        self.assertIn("spoolman_at_least(SPOOLMAN_EXTRA_PARTIAL, fresh=True)", body)
+        self.assertIn("spoolman_version(fresh=True)", body)
 
 
 class LinkStatusOwnerTest(unittest.TestCase):

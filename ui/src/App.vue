@@ -5,6 +5,7 @@ import { OuiAppBar, OuiIcon, OuiStatus, type OuiState, type OuiTab } from '../sh
 import { chart, download, note, printer, refresh as refreshIcon, settings, spool } from '../shared/src/icons';
 import Logo from './components/Logo.vue';
 import StatusArea from './components/StatusArea.vue';
+import CalibrationPanel from './components/CalibrationPanel.vue';
 import SpoolsView from './components/SpoolsView.vue';
 import PrinterView from './components/PrinterView.vue';
 import StatsView from './components/StatsView.vue';
@@ -83,6 +84,7 @@ const state = computed<{ state: OuiState; label: string; text: string }>(() => {
     <template v-else>
       <main v-show="m.view === 'main'" class="oui-page">
         <StatusArea />
+        <CalibrationPanel />
         <div v-show="tab === 'spools'" role="tabpanel" aria-labelledby="oui-tab-spools"><SpoolsView /></div>
         <div v-if="m.showPrinterTab" v-show="tab === 'printer'" role="tabpanel" aria-labelledby="oui-tab-printer"><PrinterView /></div>
         <div v-if="statsOn" v-show="tab === 'stats'" role="tabpanel" aria-labelledby="oui-tab-stats"><StatsView /></div>

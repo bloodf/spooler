@@ -155,7 +155,7 @@ OrcaSlicer gives plugins no way to change a slot's colour, so the action sets th
 <details>
 <summary>I pressed Save on a Spooler preset. Why did it stop following Spoolman?</summary>
 
-OrcaSlicer can't save over a preset a plugin owns, so Save makes a separate copy. Spooler sends that copy's changed calibration settings to Spoolman, and the Spooler preset has them after its next rebuild. To change a preset and keep it following Spoolman, edit it and use <b>Send Preset Edits to Spoolman</b>.
+OrcaSlicer can't save over a preset a plugin owns, so Save makes a separate copy. Spooler shows that copy's changed calibration settings, old and new, and asks before saving them to Spoolman (Settings can make it save automatically or never); once saved, the Spooler preset has them after its next rebuild. To change a preset and keep it following Spoolman, edit it and use <b>Send Preset Edits to Spoolman</b>.
 </details>
 
 <details>
