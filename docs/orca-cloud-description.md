@@ -52,7 +52,7 @@ Each plugin works on its own; installed together they share data where it helps.
 
 ## Source code
 
-https://github.com/bloodf/spooler (MIT). Based on Spoolio by Dan J Moore. Not affiliated with Spoolman, OrcaSlicer, Snapmaker, Sovol, Anycubic or Bambu Lab.
+https://github.com/bloodf/spooler (GPL-3.0-only). Based on Spoolio by Dan J Moore. Not affiliated with Spoolman, OrcaSlicer, Snapmaker, Sovol, Anycubic or Bambu Lab.
 ```
 
 ## Português (Brasil)
@@ -105,5 +105,5 @@ Cada plugin funciona sozinho; instalados juntos, compartilham dados onde ajuda.
 
 ## Código-fonte
 
-https://github.com/bloodf/spooler (MIT). Baseado no Spoolio, de Dan J Moore. Sem afiliação com Spoolman, OrcaSlicer, Snapmaker, Sovol, Anycubic ou Bambu Lab.
+https://github.com/bloodf/spooler (GPL-3.0-only). Baseado no Spoolio, de Dan J Moore. Sem afiliação com Spoolman, OrcaSlicer, Snapmaker, Sovol, Anycubic ou Bambu Lab.
 ```

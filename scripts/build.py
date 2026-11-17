@@ -78,7 +78,7 @@ def build_wheel(text):
             f"Version: {version}\n"
             f"Summary: {_header(text, 'description')}\n"
             f"Author: {_header(text, 'author')}\n"
-            "License: MIT\n"
+            "License: GPL-3.0-only\n"
             "Requires-Python: >=3.12\n"
         ).encode("utf-8"),
         f"{dist_info}/WHEEL": (
