@@ -167,7 +167,7 @@ O que você escolhe em <b>Perfil do OrcaSlicer</b> nos detalhes da bobina, nunca
 <details>
 <summary>Uma bobina pode usar um perfil de filamento meu, já ajustado, em vez do do Spooler?</summary>
 
-Pode. Em Editar bobina, escolha-o em <b>Perfil do OrcaSlicer</b>, para a bobina ou para o filamento (todas as bobinas dele). O Spooler guarda o nome num campo extra de texto do Spoolman, <code>orca_filament_preset</code>, que você também pode preencher no próprio Spoolman: o nome exato do perfil, na bobina ou no filamento (o da bobina prevalece). O Spooler então não cria perfil para essa bobina e escolhe o seu onde escolheria o dele. O U1 Control e o Kobra Control leem o mesmo campo. Use um perfil compatível com a impressora.
+Pode. Em Editar bobina, escolha-o em <b>Perfil do OrcaSlicer</b>, para a bobina ou para o filamento (todas as bobinas dele). O Spooler guarda o nome num campo extra de texto do Spoolman, <code>orca_filament_preset</code>, que você também pode preencher no próprio Spoolman: o nome exato do perfil, na bobina ou no filamento (o da bobina prevalece). O Spooler então não cria perfil para essa bobina e escolhe o seu onde escolheria o dele, nas impressoras com que o seu perfil é compatível; nas outras, a bobina mantém o perfil do Spooler. Para uma impressora que não está selecionada, o Spooler segue a lista de impressoras compatíveis do perfil, então um perfil limitado só por uma condição, ou que lista só uma cópia sua de um perfil de impressora, é usado nela só enquanto ela estiver selecionada. O U1 Control e o Kobra Control leem o mesmo campo.
 </details>
 
 <details>

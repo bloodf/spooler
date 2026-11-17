@@ -119,6 +119,12 @@ itself: the exact name of the preset as OrcaSlicer shows it under User presets.
   and no condition fits every printer). There Sync Presets makes no Spooler preset for the spool (with
   presets per filament: for the filament), and Load Printer Filaments and Keep Slots Synced pick yours.
   On a printer it doesn't fit, or when no preset of yours has that name, Spooler's own preset is kept.
+- Limits of that check for a printer other than the selected one: Spooler can't evaluate a
+  compatibility condition (such as `nozzle_diameter[0]==0.4`) there, so a preset that is limited only
+  by a condition is used on the selected printer alone. And a preset's compatible printers are matched
+  by the system printer preset's name (`Snapmaker U1 (0.4 nozzle)`), so one that lists only your own
+  copy of a printer preset (`... - Copy`) is used on that printer only while it is selected. In both
+  cases the spool keeps Spooler's preset on the other printers.
 - A name starting with `_local/` (a plugin's preset, Spooler's own included) can't be linked.
 - Send to Spoolman refuses a link set on the spool only: Spoolman keeps settings on the filament,
   which every spool of it shares. Link the filament, or keep the changes in your preset.

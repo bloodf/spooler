@@ -21,6 +21,7 @@ Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); 
 
 ### Fixed
 
+- The spool detail also lists Spooler's presets for the printers a linked preset doesn't fit, after the linked one, and Send is off, with the reason, for a link set on the spool alone.
 - Changing or clearing a spool's or filament's OrcaSlicer preset link in Edit Spool no longer reports a conflict with Spoolman every time.
 - Send to Spoolman on your own linked preset no longer mistakes your preset's saved values for changes made in Spoolman, and the spool detail now preselects the preset open in OrcaSlicer's filament settings, else the selected printer's.
 - A linked preset is only used on the printers it fits (OrcaSlicer's compatibility for the selected printer, the preset's compatible printers for the others); elsewhere the spool keeps Spooler's preset. Names of a plugin's presets (`_local/...`) can't be linked.

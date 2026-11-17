@@ -474,6 +474,12 @@ test('S03: Send acts on the preset picked in the spool detail, and explains itse
   await post({type: 'spool_detail', detail: {id: 1, sign: '£', grams: 0, cost: null, rate: null, weeks: null, prints: [],
     presets: [{name: 'My PLA', label: 'Snapmaker U1', linked: true}]}});
   await until(() => text(byTest('preset-pick')).includes('My PLA (your preset)'), 'a linked preset is named as yours');
+  await post({type: 'sent', ok: true, text: 'Sent.'});
+  await until(() => !byTest('send').disabled, 'a filament link sends');
+  await post({type: 'spool_detail', detail: {id: 1, sign: '£', grams: 0, cost: null, rate: null, weeks: null, prints: [],
+    presets: [{name: 'My PLA', label: 'Snapmaker U1', linked: true, own: true}, {name: '_local/spooler/PLA #1 @Sovol SV06', label: 'Sovol SV06', linked: false}]}});
+  await until(() => byTest('send').disabled, 'a link of this spool alone is not sent');
+  assert(text(byTest('send-help')).includes('Linked to this spool only'), 'and says why');
   await post({type: 'spool_detail', detail: {id: 1, sign: '£', grams: 0, cost: null, rate: null, weeks: null, prints: [], presets: []}});
   await until(() => byTest('no-presets'), 'no preset yet: says how to get one');
   assert(!byTest('send'), 'nothing to send');

@@ -167,7 +167,7 @@ The one you pick under <b>OrcaSlicer preset</b> in the spool's detail, never whi
 <details>
 <summary>Can a spool use my own tuned filament preset instead of Spooler's?</summary>
 
-Yes. In Edit Spool, pick it under <b>OrcaSlicer preset</b>, for the spool or for its filament (every spool of it). Spooler keeps the name in a Spoolman text extra field, <code>orca_filament_preset</code>, which you can also fill in Spoolman: the preset's exact name, on the spool or on the filament (the spool's wins). Spooler then makes no preset for that spool and picks yours wherever it would pick its own. U1 Control and Kobra Control read the same field. Use a preset compatible with the printer.
+Yes. In Edit Spool, pick it under <b>OrcaSlicer preset</b>, for the spool or for its filament (every spool of it). Spooler keeps the name in a Spoolman text extra field, <code>orca_filament_preset</code>, which you can also fill in Spoolman: the preset's exact name, on the spool or on the filament (the spool's wins). Spooler then makes no preset for that spool and picks yours wherever it would pick its own, on the printers your preset is compatible with; on the others the spool keeps Spooler's preset. For a printer that isn't selected, Spooler goes by the preset's compatible printers list, so a preset limited only by a condition, or listing only your own copy of a printer preset, is used there only while that printer is selected. U1 Control and Kobra Control read the same field.
 </details>
 
 <details>
