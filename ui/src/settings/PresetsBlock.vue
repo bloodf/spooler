@@ -6,7 +6,7 @@ import Select from 'primevue/select';
 import { OuiBanner, OuiFormRow, OuiFormSection } from '../../shared/src/components';
 import { files } from '../../shared/src/icons';
 import EditorNumber from '../components/EditorNumber.vue';
-import { form } from './state';
+import { form, saved } from './state';
 import { t } from '../core/i18n';
 import { TUNE_FIELDS, basesFor, matName, setTune, tuneMaterials, type TuneKey } from '../logic/presets';
 
@@ -14,6 +14,8 @@ import { TUNE_FIELDS, basesFor, matName, setTune, tuneMaterials, type TuneKey } 
 // off, the presets are made exactly as before).
 const modes = ['filament', 'spool'] as const;
 const mode = computed({ get: () => (form.presets.per_spool ? 'spool' : 'filament'), set: v => { form.presets = { ...form.presets, per_spool: v === 'spool' }; } });
+// Said only while the mode differs from the saved one: that save renames every Spooler preset.
+const switching = computed(() => form.presets.per_spool !== !!saved.value.presets?.per_spool);
 const tuning = computed({ get: () => form.presets.tuning, set: v => { form.presets = { ...form.presets, tuning: !!v }; } });
 
 const mat = ref('PLA');
@@ -35,7 +37,7 @@ function set(key: TuneKey | 'parent', v: number | string | null): void {
     </OuiFormRow>
     <div class="set-pad">
       <p class="oui-meta" data-test="preset-mode-help">{{ form.presets.per_spool ? t('presets.spoolHelp') : t('presets.filamentHelp') }}</p>
-      <OuiBanner tone="info" :title="t('presets.unsaved')" data-test="preset-unsaved" />
+      <OuiBanner v-if="switching" tone="info" :title="t('presets.unsaved')" data-test="preset-unsaved" />
     </div>
 
     <OuiFormRow :label="t('presets.tuning')" for="tune-on" :hint="t('presets.tuningHelp')">

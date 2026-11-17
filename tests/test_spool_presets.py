@@ -27,7 +27,28 @@ from test_profiles import (
 )
 from test_spool_actions import Settings
 from test_spool_actions import sp as asp
-from test_spool_editor import SPOOL, Spoolman
+from test_spool_editor import FIELDS, SPOOL, Spoolman
+
+USE_WITH_DEF = {"key": "use_with", "name": "Use with", "field_type": "text"}
+
+
+class FieldSpoolman(Spoolman):
+    """The editor's stand-in Spoolman, with or without the Use with field; adding it adds it."""
+
+    def __init__(self, *args, field=True, refuse_field=False, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.field, self.refuse_field = field, refuse_field
+
+    def __call__(self, method, path, body=None):
+        if path == "field/spool/use_with":
+            self.writes.append((method, path, body))
+            if self.refuse_field:
+                raise rules.refuse(400, "field key is taken")
+            self.field = True
+            return []
+        if method == "GET" and path == "field/spool":
+            return FIELDS["spool"] + ([USE_WITH_DEF] if self.field else [])
+        return super().__call__(method, path, body)
 
 SPOOL_MODE = sp.parse_presets({"per_spool": True})
 OFF = sp.parse_presets(None)
@@ -139,6 +160,39 @@ class ParseTest(unittest.TestCase):
             self.assertEqual(real_get()["low_stock_grams"], 114)
 
 
+class FieldsTest(unittest.TestCase):
+    def ensure(self, per_spool):
+        calls = []
+        sp._fields_ready.clear()
+        answer = lambda m, p, b=None: calls.append((m, p)) or [{"key": k} for k in (  # noqa: E731
+            "dried", "orca_flow_ratio", "orca_pressure_advance", "orca_max_volumetric_speed")]
+        with mock.patch.object(sp, "spoolman_call", answer), \
+                mock.patch.object(sp, "presets_settings", return_value={**OFF, "per_spool": per_spool}), \
+                mock.patch.object(sp, "get_settings", return_value={"spoolman_url": "http://spoolman:7912"}):
+            sp.ensure_fields()
+        sp._fields_ready.clear()
+        return [p for m, p in calls if m == "POST"]
+
+    def test_use_with_is_added_only_while_presets_are_per_spool(self):
+        self.assertEqual(self.ensure(False), [])
+        self.assertEqual(self.ensure(True), ["field/spool/use_with"])
+
+
+class SavePrintersTest(unittest.TestCase):
+    def test_a_printer_save_still_prunes_codes_and_syncs_live_links(self):
+        with tempfile.TemporaryDirectory() as tmp, \
+                mock.patch.object(sp, "SETTINGS_FILE", Path(tmp) / "s.json"), mock.patch.object(sp, "OLD_SETTINGS", Path(tmp) / "x"), \
+                mock.patch.object(sp, "prune_codes") as prune, mock.patch.object(sp, "_local_sync") as live, \
+                mock.patch.object(sp, "source", return_value="spoolman"):
+            sp.save_settings({"spoolman_url": "http://spoolman:7912", "ui_language": "de"})
+            sp.save_printers([{"id": "p1", "name": "X1C", "type": "bambu", "units": []}])
+            settings = sp.get_settings()
+        prune.assert_called_once_with()
+        live.assert_called_once_with()
+        self.assertEqual([p["id"] for p in settings["printers"]["spoolman"]], ["p1"])
+        self.assertEqual(settings["ui_language"], "de", "other keys stay")
+
+
 class OffIsTodayTest(unittest.TestCase):
     def test_off_makes_exactly_the_presets_of_before(self):
         before = sp.profile_files(SPOOLS, snapshot(), OFF)
@@ -149,6 +203,12 @@ class OffIsTodayTest(unittest.TestCase):
             self.assertEqual(sp.profile_files(SPOOLS, snapshot()), before)
         self.assertEqual(sp.profile_digest(before[0]), sp.profile_digest(sp.profile_files(SPOOLS, snapshot(), OFF)[0]))
         self.assertTrue(all(len(key) == 2 for key in before[1]))
+
+    def test_profiles_json_keeps_its_order(self):
+        # As before: by filament id as text, then printer; so an upgrade doesn't rewrite profiles.json.
+        _, by_key = sp.profile_files(SPOOLS, snapshot(), OFF)
+        order = list(sp.profile_map(by_key, snapshot()["printers"]))
+        self.assertEqual(order, sorted({str(k[0]) for k in by_key}))
 
 
 class SpoolNameTest(unittest.TestCase):
@@ -298,6 +358,15 @@ class TuningTest(unittest.TestCase):
         self.assertEqual(sp.tuning_for(filament(1, "x", "PLA+"), opts), {"pressure_advance": 0.03})
         self.assertEqual(sp.tuning_for(filament(1, "x", "SilkPLA"), opts), {"pressure_advance": 0.03})  # an OrcaSlicer alias
         self.assertEqual(sp.tuning_for(filament(1, "x", "PETG"), opts), {})
+        self.assertEqual(sp.tuning_for(filament(1, "x", "PLA-CF"), opts), {"pressure_advance": 0.03})
+
+    def test_another_material_that_starts_the_same_is_not_a_variant(self):
+        opts = sp.parse_presets({"tuning": True, "materials": {"PC": {"parent": "Generic PC"}, "PP": {"fan_max_speed": 30},
+                                                               "PET": {"fan_max_speed": 40}}})
+        for material in ("PCTG", "PPA-CF", "PPS", "PETG"):
+            self.assertEqual(sp.tuning_for(filament(1, "x", material), opts), {}, material)
+        self.assertEqual(sp.tuning_for(filament(1, "x", "PC-CF"), opts), {"parent": "Generic PC"})
+        self.assertEqual(sp.tuning_for(filament(1, "x", "pp_gf"), opts), {"fan_max_speed": 30})
 
     def test_spoolman_values_win_over_tuning(self):
         field = {"*": {"filament_retraction_length": "1.2"}}
@@ -352,16 +421,14 @@ class EditorUseWithTest(Settings):
 
     def setUp(self):
         super().setUp()
-        self.ensured = []
-        patches = [mock.patch.object(asp, "ensure_fields", lambda: self.ensured.append(1)),
-                   mock.patch.dict(asp._ui_snap, {"printers": [{"target": U1, "label": "Snapmaker U1", "hosts": []},
+        patches = [mock.patch.dict(asp._ui_snap, {"printers": [{"target": U1, "label": "Snapmaker U1", "hosts": []},
                                                               {"target": SV06, "label": "Sovol SV06", "hosts": []}]})]
         for patch in patches:
             patch.start()
             self.addCleanup(patch.stop)
 
     def save(self, use, was=None, spool=None, version="0.26.0"):
-        server = Spoolman(spool, version=version)
+        server = FieldSpoolman(spool, version=version)
         with mock.patch.object(asp, "spoolman_call", server):
             result = asp.spool_action({"action": "save", "id": 7, "spool": {"use_with": use},
                                       "was": {"spool": {"use_with": was}}})
@@ -382,7 +449,6 @@ class EditorUseWithTest(Settings):
             self.assertTrue(result["ok"], result)
             self.assertEqual(server.writes, [("PATCH", "spool/7", {"extra": use_with(SV06)})])
             self.assertEqual(server.spool["extra"]["dryer"], '"Box 1"')
-        self.assertTrue(self.ensured)
 
     def test_back_to_automatic_writes_empty_text_even_where_null_is_refused(self):
         stored = copy.deepcopy(SPOOL)
@@ -404,7 +470,21 @@ class EditorUseWithTest(Settings):
         result, server = self.save([U1], was=None, spool=stored)
         self.assertTrue(result["ok"], result)
         self.assertEqual(server.writes, [])
-        self.assertIn("use_with", result["text"])
+        self.assertIn("Use with", result["text"])
+
+    def test_the_field_is_added_first_when_spoolman_lacks_it(self):
+        server = FieldSpoolman(field=False)
+        with mock.patch.object(asp, "spoolman_call", server):
+            result = asp.spool_action({"action": "save", "id": 7, "spool": {"use_with": [U1]}, "was": {"spool": {"use_with": None}}})
+        self.assertTrue(result["ok"], result)
+        self.assertEqual(server.writes, [("POST", "field/spool/use_with", {"name": "Use with", "field_type": "text", "order": 101}),
+                                         ("PATCH", "spool/7", {"extra": use_with(U1)})])
+        refused = FieldSpoolman(field=False, refuse_field=True)
+        with mock.patch.object(asp, "spoolman_call", refused):
+            result = asp.spool_action({"action": "save", "id": 7, "spool": {"use_with": [U1]}, "was": {"spool": {"use_with": None}}})
+        self.assertFalse(result["ok"])
+        self.assertIn("Use with field", result["text"])
+        self.assertEqual([w[0] for w in refused.writes], ["POST"], "no PATCH after the refusal")
 
     def test_bad_values_write_nothing(self):
         for bad in ("Snapmaker U1", [1], [""], ["x"] * 17):

@@ -96,8 +96,7 @@ class FieldAndActionTest(Store):
         with mock.patch.object(sp, "spoolman_call",
                                lambda m, p, b=None: calls.append((m, p, b)) or [{"key": "dried"}, {"key": "orca_flow_ratio"},
                                                                                 {"key": "orca_pressure_advance"},
-                                                                                {"key": "orca_max_volumetric_speed"},
-                                                                                {"key": "use_with"}]):
+                                                                                {"key": "orca_max_volumetric_speed"}]):
             sp.ensure_fields()
         self.assertEqual([c for c in calls if c[0] == "POST"], [])
 

@@ -1042,9 +1042,11 @@ test('settings: presets per spool and Advanced tuning, off by default, saved wit
     presets: {per_spool: false, tuning: false, materials: {}}, parents: [{name: 'Generic PLA', type: 'PLA'}, {name: 'Generic PLA Silk', type: 'PLA'}, {name: 'Generic PETG', type: 'PETG'}]});
   await until(() => byTest('preset-mode-filament'), 'Presets section');
   assert(q('#pm-filament').checked && !q('#pm-spool').checked, 'one per filament by default');
-  assert(text(byTest('preset-unsaved')).includes('ungespeicherte'), 'says unsaved preset edits hold the reload');
+  assert(!byTest('preset-unsaved'), 'nothing to say while the mode stays');
   assert(!q('#tune-on').checked && !byTest('tune-mat'), 'Advanced tuning off by default, its fields hidden');
   await click(q('#pm-spool'));
+  await until(() => byTest('preset-unsaved'), 'switching: the rename note');
+  assert(text(byTest('preset-unsaved')).includes('ungespeicherte'), 'says unsaved preset edits hold the reload');
   assert(text(byTest('preset-mode-help')).includes('#12'), 'per-spool names explained: ' + text(byTest('preset-mode-help')));
   await click(q('#tune-on'));
   await until(() => byTest('tune-base'), 'tuning fields');
