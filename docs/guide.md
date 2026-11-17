@@ -114,11 +114,15 @@ filament (it adds the field the first time you save one). You can also fill that
 itself: the exact name of the preset as OrcaSlicer shows it under User presets.
 
 - The spool's field wins over the filament's. Empty both to go back to Spooler's preset.
-- Sync Presets makes no preset for a linked spool (with presets per filament: for a linked filament),
-  and wherever Spooler would pick its own preset (Load Printer Filaments, Keep Slots Synced) it picks
-  yours, on every printer. Pick a preset that is compatible with the printer: OrcaSlicer won't put an
-  incompatible preset in a slot, and the slot is then reported as not changed.
-- Send to Spoolman works on a linked preset too: unsaved edits are sent as usual; with none, the saved
+- The link is used on each printer your preset fits: for the selected printer, OrcaSlicer's own
+  compatibility check; for another printer, the preset's compatible printers (a preset with none listed
+  and no condition fits every printer). There Sync Presets makes no Spooler preset for the spool (with
+  presets per filament: for the filament), and Load Printer Filaments and Keep Slots Synced pick yours.
+  On a printer it doesn't fit, or when no preset of yours has that name, Spooler's own preset is kept.
+- A name starting with `_local/` (a plugin's preset, Spooler's own included) can't be linked.
+- Send to Spoolman refuses a link set on the spool only: Spoolman keeps settings on the filament,
+  which every spool of it shares. Link the filament, or keep the changes in your preset.
+- Send to Spoolman works on a filament's linked preset too: unsaved edits are sent as usual; with none, the saved
   settings that differ from the preset Spooler would have made for the selected printer are written
   into the filament's `orca_settings` section for that printer.
 - U1 Control and Kobra Control read the same field when they apply a toolhead's spool to the project.

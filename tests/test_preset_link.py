@@ -20,6 +20,14 @@ from test_spool_presets import OFF, SPOOL_MODE
 MINE = "My PETG @Snapmaker U1"
 
 
+# MINE as OrcaSlicer sees it: one of your presets, compatible with the selected U1 and made for it only.
+COMPAT = {MINE: {"now": True, "printers": [U1], "cond": ""}}
+
+
+def linked_snapshot(printers=(U1,), compat=None):
+    return {**snapshot(printers), "selected": U1, "user_compat": COMPAT if compat is None else compat}
+
+
 def linked(holder, name):
     """holder with the field as Spoolman stores it: JSON text."""
     return {**holder, "extra": {**(holder.get("extra") or {}), "orca_filament_preset": json.dumps(name)}}
@@ -44,7 +52,7 @@ class FieldTest(unittest.TestCase):
         self.assertEqual(sp._link_value(" " + MINE), json.dumps(MINE))
         self.assertEqual(sp._link_value(None), json.dumps(""))
         self.assertEqual(sp._link_value(""), json.dumps(""))
-        for bad in (3, "  ", "a\nb", "x" * 300, ["x"]):
+        for bad in (3, "  ", "a\nb", "x" * 300, ["x"], "_local/spooler/Foo @Snapmaker U1", " _local/other/x"):
             self.assertIsNone(sp._link_value(bad), bad)
 
 
@@ -53,23 +61,48 @@ class SyncTest(unittest.TestCase):
 
     def test_per_filament_a_linked_filament_gets_none(self):
         pla, petg = filament(1, "Preto", "PLA", vendor="3D Procer"), linked(filament(2, "Branco", "PETG", vendor="MasterPrint"), MINE)
-        _, by_key = sp.profile_files([spool(1, pla), spool(2, petg)], snapshot((U1,)), OFF)
+        _, by_key = sp.profile_files([spool(1, pla), spool(2, petg)], linked_snapshot(), OFF)
         self.assertEqual(list(by_key), [(1, U1)])
 
     def test_per_spool_only_the_linked_spool_gets_none(self):
         pla = filament(1, "Preto", "PLA", vendor="3D Procer")
-        _, by_key = sp.profile_files([spool(1, pla), linked(spool(2, pla), MINE)], snapshot((U1,)), SPOOL_MODE)
+        _, by_key = sp.profile_files([spool(1, pla), linked(spool(2, pla), MINE)], linked_snapshot(), SPOOL_MODE)
         self.assertEqual(list(by_key), [(1, U1, 1)])
+
+    def test_a_printer_the_link_doesnt_fit_keeps_spoolers_preset(self):
+        # The #38 reporter's case: a U1 and a Voron, the link made for one of them.
+        pla = filament(1, "Preto", "PLA", vendor="3D Procer")
+        _, by_key = sp.profile_files([linked(spool(1, pla), MINE)], linked_snapshot((U1, SV06)), SPOOL_MODE)
+        self.assertEqual(list(by_key), [(1, SV06, 1)])
+
+    def test_a_link_that_isnt_your_preset_keeps_spoolers_preset(self):
+        pla = filament(1, "Preto", "PLA", vendor="3D Procer")
+        _, by_key = sp.profile_files([linked(spool(1, pla), "Typo")], linked_snapshot(), SPOOL_MODE)
+        self.assertEqual(list(by_key), [(1, U1, 1)])
+
+    def test_where_a_link_fits(self):
+        snap = {"selected": U1, "user_compat": {
+            "A": {"now": True, "printers": [], "cond": "nozzle_diameter[0]==0.4"},
+            "B": {"now": False, "printers": [U1], "cond": ""},
+            "C": {"now": True, "printers": [], "cond": ""}}}
+        self.assertTrue(sp.link_fits("A", U1, snap), "the selected printer: OrcaSlicer's own check")
+        self.assertFalse(sp.link_fits("B", U1, snap))
+        self.assertFalse(sp.link_fits("A", SV06, snap), "a condition can't be judged for another printer")
+        self.assertTrue(sp.link_fits("C", SV06, snap), "no printers, no condition: every printer")
+        self.assertFalse(sp.link_fits("Unknown", U1, snap))
+        self.assertFalse(sp.link_fits("", U1, snap))
 
     def test_real_spools_unchanged_without_links(self):
         self.assertEqual(sp.profile_files(SPOOLS, snapshot())[1], sp.profile_files(copy.deepcopy(SPOOLS), snapshot())[1])
 
-    def test_the_linked_preset_is_the_spools_preset_everywhere(self):
+    def test_the_linked_preset_is_the_spools_preset_where_it_fits(self):
         pla = filament(1, "Preto", "PLA")
-        with mock.patch.dict(sp._profiles, names={(1, U1): "Preto @Snapmaker U1"}):
+        with mock.patch.dict(sp._profiles, names={(1, U1): "Preto @Snapmaker U1", (1, SV06, 1): "Preto #1 @Sovol SV06"}), \
+                mock.patch.dict(sp._ui_snap, linked_snapshot()):
             self.assertEqual(sp.profile_for_spool(spool(1, pla), U1), sp.PROFILE_PREFIX + "Preto @Snapmaker U1")
             self.assertEqual(sp.profile_for_spool(linked(spool(1, pla), MINE), U1), MINE)
-            self.assertEqual(sp.profile_for_spool(linked(spool(1, pla), MINE), SV06), MINE)
+            self.assertEqual(sp.profile_for_spool(linked(spool(1, pla), MINE), SV06), sp.PROFILE_PREFIX + "Preto #1 @Sovol SV06",
+                             "not on a printer it doesn't fit")
             tray = sp._spool_tray(1, linked(spool(1, pla), MINE), U1)
         self.assertEqual(tray["profile"], MINE)
         # Load Printer Filaments and Keep Slots Synced take it like any other preset OrcaSlicer has.
@@ -82,6 +115,20 @@ class UserPresetsTest(unittest.TestCase):
         bundle.filaments._presets += [Preset("_local/spooler/X @Snapmaker U1", {}), Preset("Hidden", {}, visible=False),
                                       Preset("a tuned PLA", {})]
         self.assertEqual(sp.user_filament_presets(bundle.filaments), ["a tuned PLA", "My TPU"])
+
+    def test_parent_settings_are_the_saved_ones_not_unsaved_edits(self):
+        saved = Preset("Generic PLA @System", {"pressure_advance": "0.02"}, system=True)
+        edited = Preset("Generic PLA @System", {"pressure_advance": "0.09"}, system=True)
+        bundle = chosen_bundle(edited, saved)
+        configs = sp.parent_configs(bundle.filaments, [{"name": "Generic PLA @System", "printers": []}], {U1}, {})
+        self.assertEqual(configs["Generic PLA @System"]["pressure_advance"], "0.02")
+
+    def test_your_presets_printers_are_read(self):
+        bundle = Bundle("/data")
+        bundle.filaments._presets += [Preset("For U1", {"compatible_printers": [U1], "compatible_printers_condition": ""})]
+        compat = sp.user_filament_compat(bundle.filaments)
+        self.assertEqual(compat["For U1"], {"now": True, "printers": [U1], "cond": ""})
+        self.assertNotIn("Generic PLA @System", compat)
 
     def test_a_failure_lists_none_and_keeps_the_snapshot(self):
         broken = types.SimpleNamespace(size=lambda: 2, preset=lambda i: 1 / 0)
@@ -101,7 +148,7 @@ class ChosenTest(unittest.TestCase):
         self.spools = [spool(1, self.pla), linked(spool(2, self.pla), MINE)]
         patches = [mock.patch.dict(sp._spool_cache, spools=self.spools),
                    mock.patch.dict(sp._profiles, names={(1, U1): "Preto @Snapmaker U1", (1, SV06): "Preto @Sovol SV06"}),
-                   mock.patch.dict(sp._ui_snap, {**snapshot(), "selected": U1}),
+                   mock.patch.dict(sp._ui_snap, linked_snapshot((U1, SV06))),
                    mock.patch.object(sp, "presets_settings", lambda: OFF)]
         for patch in patches:
             patch.start()
@@ -178,8 +225,18 @@ class ChosenTest(unittest.TestCase):
         posted = []
         with mock.patch.object(sp, "source", lambda: "spoolman"), mock.patch.object(sp, "refresh_snapshot", lambda: {}):
             sp.start_send(posted.append, chosen={"spool": 1, "preset": name})
-        self.assertEqual(posted, [{"type": "sent", "ok": True, "text":
-                                   "Preto @Snapmaker U1 has no unsaved changes, and its saved settings match Spoolman: nothing to send."}])
+        self.assertEqual(posted, [{"type": "sent", "ok": True, "text": "Preto @Snapmaker U1 has no unsaved changes to send."}])
+
+    def test_nothing_to_send_on_a_linked_preset_says_why(self):
+        self.spools[1] = spool(2, linked(self.pla, MINE))
+        sp._spool_cache["spools"] = self.spools
+        base = sp.build_preset(self.pla, MINE, (1, U1), sp._ui_snap, OFF, self.spools)
+        same = {k: (v if isinstance(v, str) else ",".join(v)) for k, v in base.items()}
+        self.use(Preset("Other", {}), Preset("Other", {}), [Preset(MINE, same)])
+        posted = []
+        with mock.patch.object(sp, "source", lambda: "spoolman"), mock.patch.object(sp, "refresh_snapshot", lambda: {}):
+            sp.start_send(posted.append, chosen={"spool": 2, "preset": MINE})
+        self.assertEqual(posted[0]["text"], f"{MINE} has no unsaved changes, and its saved settings match Spoolman: nothing to send.")
 
     def test_presets_read_on_the_ui_thread_and_sent_off_it(self):
         name = "_local/spooler/Preto @Snapmaker U1"

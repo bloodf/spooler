@@ -58,6 +58,9 @@ class Collection:
     def selected_preset(self):
         return self._presets[self._selected]
 
+    def get_selected_preset(self):
+        return self._presets[self._selected]
+
     def get_edited_preset(self):
         return self._presets[self._selected]
 
