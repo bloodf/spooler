@@ -3,7 +3,7 @@ import * as bridge from '../core/bridge';
 import { boot } from '../core/boot';
 import { t } from '../core/i18n';
 import { computeDupes, type Spool } from '../logic/spools';
-import { computeInUse, liveSig, type LivePrinter, type ManualPrinter, type Words } from '../logic/printers';
+import { computeInUse, liveSig, type LivePrinter, type ManualPrinter, type SlicePick, type Words } from '../logic/printers';
 
 export interface UsageRow { slot: number; grams: number; colour?: string; material?: string; label?: string; spool?: number | null;
   how?: string; state?: string; error?: string; op?: string }
@@ -35,6 +35,9 @@ export const m = reactive({
   columns: 1 as 1 | 2,
   cfg: [] as ManualPrinter[],
   printersRev: 0,
+  slicePicks: [] as SlicePick[],
+  sliceMap: {} as Record<string, string>,
+  printerPresets: [] as string[],
   showPrinterTab: true,
   liveOn: false,
   live: { status: 'off', printers: [] as LivePrinter[], links: {} as Record<string, string> },
@@ -91,7 +94,7 @@ export function settle(key: string, ok: boolean, text: string): void {
 
 // ------------------------------------------------------------------ derived
 export const words = computed<Words>(() => ({
-  ams: t('printer.ams'), ht: t('printer.ht'), ext: t('printer.external'), externalShort: t('printer.externalShort'),
+  ams: t('printer.ams'), ht: t('printer.ht'), ext: t('printer.external'), gate: t('printer.gates'), gateN: n => t('printer.gateN', { n }), externalShort: t('printer.externalShort'),
   slot: (unit, n) => t('printer.slotOf', { unit, n }), head: n => `T${n}`,
 }));
 export const inUse = computed(() => computeInUse(m.live.printers, m.cfg, words.value));
@@ -145,6 +148,9 @@ function render(p: any): void {
   if (p.spool_columns) m.columns = p.spool_columns === 2 ? 2 : 1;
   if (Array.isArray(p.printers)) m.cfg = p.printers;
   if (typeof p.printers_rev === 'number') m.printersRev = p.printers_rev;
+  if (Array.isArray(p.slice_picks)) m.slicePicks = p.slice_picks;
+  if (p.slice_map && typeof p.slice_map === 'object') m.sliceMap = p.slice_map;
+  if (Array.isArray(p.printer_presets)) m.printerPresets = p.printer_presets;
   if (typeof p.show_printer_tab === 'boolean') m.showPrinterTab = p.show_printer_tab;
   m.liveOn = p.live_ok === true;
   if (p.usage) setUsage(p.usage, false);
@@ -194,6 +200,8 @@ function onMessage(d: any): void {
     case 'live': {
       // Spooler changed the saved printers itself (a slice filled the toolheads): take them, or the next edit saves over it.
       if (typeof d.printers_rev === 'number' && d.printers_rev !== m.printersRev) { m.printersRev = d.printers_rev; if (Array.isArray(d.printers)) m.cfg = d.printers; }
+      if (Array.isArray(d.slice_picks)) m.slicePicks = d.slice_picks;
+      if (Array.isArray(d.printer_presets)) m.printerPresets = d.printer_presets;
       const key = liveSig(d.live);
       if (key !== m.liveKey) { m.liveKey = key; m.live = d.live; }
       if (d.usage) setUsage(d.usage, false);
