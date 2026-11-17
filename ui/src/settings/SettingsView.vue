@@ -17,7 +17,7 @@ import { m } from '../state/main';
 import { t, tn, langPref, setLangPref, autoLocale, onLangPref } from '../core/i18n';
 import { LOCALES } from '../core/i18n-core';
 import type { LangPref } from '../core/i18n-core';
-import { form, saving, dirty, ready, saveWhy, update, save, checkUpdate, startSettings, openWizard, wizard, leave } from './state';
+import { form, saving, dirty, ready, saveWhy, update, save, checkUpdate, startSettings, openWizard, wizard, leave, rfidSkipped, unskipRfid } from './state';
 
 const stop = startSettings();
 onBeforeUnmount(stop);
@@ -165,6 +165,9 @@ const sections = computed<OuiSettingsSection[]>(() => [
             <RadioButton v-model="form.progress.idle" :input-id="`idle-${v}`" name="progress-idle" :value="v" :disabled="!form.progress.on" /><label :for="`idle-${v}`">{{ t(`set.idle.${v}`) }}</label></span></div>
         </OuiFormRow>
         <OuiFormRow :label="t('set.autoKeep')" for="auto-keep" :hint="t('set.autoKeepHelp')"><Checkbox v-model="form.auto_keep_slots" input-id="auto-keep" binary aria-describedby="auto-keep-help" /><span id="auto-keep-help" class="oui-sr">{{ t('set.autoKeepHelp') }}</span></OuiFormRow>
+        <OuiFormRow :label="t('rfid.skippedLabel')" :hint="t('rfid.skippedHelp')">
+          <div class="oui-row"><span class="oui-meta" data-test="rfid-skipped">{{ rfidSkipped ? tn('rfid.skipped', rfidSkipped) : t('rfid.skippedNone') }}</span>
+            <Button v-if="rfidSkipped" severity="secondary" size="small" :label="t('rfid.unskip')" data-test="rfid-unskip" @click="unskipRfid" /></div></OuiFormRow>
         <div class="set-pad"><div class="set-pv oui-well">
           <p class="oui-label">{{ t('set.preview') }}</p>
           <p v-if="!form.progress.on" class="oui-meta">{{ t('set.progressHidden') }}</p>
