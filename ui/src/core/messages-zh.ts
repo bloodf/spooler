@@ -131,7 +131,7 @@ export const zhCN: Record<MessageKey, string> = {
   'detail.used': '已使用', 'detail.rfid': 'RFID 标签', 'detail.sameFilament': '同款耗材丝', 'detail.usedPerWeek': '每周用量',
   'detail.rateNote': '每周平均，最近 4 周', 'detail.weeksAria': '最近 8 周每周使用的克数，从最早的一周开始：{values}',
   'detail.lastPrints': '使用此料盘的最近打印',
-  'detail.preset': 'OrcaSlicer 预设', 'detail.presetLinked': '{name}（你的预设）', 'detail.noPresets': '此料盘还没有 OrcaSlicer 预设：“同步预设”会创建。', 'editor.presetLink': 'OrcaSlicer 预设', 'editor.presetLinkHelp': '为此料盘选择你自己的一个耗材丝预设。Spooler 将不再为它生成预设，而是选用你的预设。留空：使用耗材丝上的选择，否则使用 Spooler 的预设。', 'editor.presetLinkFilHelp': '为此耗材丝的所有料盘选择你自己的一个耗材丝预设；料盘上的选择优先。留空：使用 Spooler 的预设。', 'editor.presetLinkNone': 'Spooler 的预设',
+  'detail.preset': 'OrcaSlicer 预设', 'detail.presetLinked': '{name}（你的预设）', 'detail.noPresets': '此料盘还没有 OrcaSlicer 预设：“同步预设”会创建。', 'detail.ownLink': '仅关联到此料盘。Spoolman 将设置保存在其所有料盘共用的耗材丝上，因此不会发送此预设：请在预设中保存更改，或改为关联耗材丝。', 'editor.presetLink': 'OrcaSlicer 预设', 'editor.presetLinkHelp': '为此料盘选择你自己的一个耗材丝预设。Spooler 将不再为它生成预设，而是选用你的预设。留空：使用耗材丝上的选择，否则使用 Spooler 的预设。', 'editor.presetLinkFilHelp': '为此耗材丝的所有料盘选择你自己的一个耗材丝预设；料盘上的选择优先。留空：使用 Spooler 的预设。', 'editor.presetLinkNone': 'Spooler 的预设',
   'progress.l.about': '大约', 'progress.l.left': '剩余', 'progress.l.done': '预计完成', 'progress.l.took': '用时', 'progress.l.finished': '完成时间', 'progress.l.layer': '层',
 
   'plate.title': '当前盘', 'plate.attention_one': '1 项需要注意', 'plate.attention_other': '{n} 项需要注意', 'plate.ok': '用量充足',

@@ -20,7 +20,7 @@ import { driedDays, gramsValid, formatWeight, levelTone, lowLevel, noteText, ori
 // to it (Spoolman only), its facts, its weekly use and the prints that used it. The plugin sends the print history
 // (spool_detail) when the spool is picked.
 interface Detail { prints: { time: number; name?: string; grams: number; cost?: number | null }[]; grams: number; cost: number | null; sign: string; rate: number | null; weeks: number | null;
-  presets?: { name: string; label: string; linked: boolean }[] }
+  presets?: { name: string; label: string; linked: boolean; own?: boolean }[] }
 const props = defineProps<{ spool: Spool }>();
 const s = computed(() => props.spool);
 const f = computed(() => s.value.filament || {});
@@ -81,6 +81,8 @@ const noteLine = computed(() => noteText(s.value, { ...m.disp, comment: true }, 
 const presets = computed(() => (detail.value?.presets ?? []).map(p => ({ value: p.name,
   label: p.linked ? t('detail.presetLinked', { name: p.name }) : p.name.replace(/^_local\/spooler\//, '') })));
 const presetPick = ref('');
+// A link of this spool alone: Spoolman keeps settings on the filament every spool of it shares, so the plugin won't send it.
+const ownLink = computed(() => !!detail.value?.presets?.find(p => p.name === presetPick.value)?.own);
 watch(presets, list => { if (!list.some(o => o.value === presetPick.value)) presetPick.value = list[0]?.value ?? ''; }, { immediate: true });
 const date = (unix: number) => new Intl.DateTimeFormat(locale.value, { dateStyle: 'medium' }).format(new Date(unix * 1000));
 
@@ -181,9 +183,9 @@ async function save() {
       <template v-if="presets.length">
         <div class="oui-field"><label :for="`sd-preset-${s.id}`">{{ t('detail.preset') }}</label>
           <Select v-model="presetPick" :input-id="`sd-preset-${s.id}`" :options="presets" option-label="label" option-value="value" size="small" aria-describedby="sd-send-h" data-test="preset-pick" /></div>
-        <Button severity="secondary" size="small" :label="t('list.send')" :disabled="!!sourceOff || pending('send') || !presetPick" aria-describedby="sd-send-h" data-test="send"
+        <Button severity="secondary" size="small" :label="t('list.send')" :disabled="!!sourceOff || pending('send') || !presetPick || ownLink" aria-describedby="sd-send-h" data-test="send"
                 @click="sendEdits(s.id, presetPick)"><template #icon><OuiIcon :icon="upload" :size="14" /></template></Button>
-        <p id="sd-send-h" class="oui-meta sd-help">{{ t('list.sendHelp') }}</p>
+        <p id="sd-send-h" class="oui-meta sd-help" data-test="send-help">{{ ownLink ? t('detail.ownLink') : t('list.sendHelp') }}</p>
       </template>
       <p v-else class="oui-meta" data-test="no-presets">{{ t('detail.noPresets') }}</p>
     </div>

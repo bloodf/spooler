@@ -161,8 +161,10 @@ class ChosenTest(unittest.TestCase):
     def test_a_spools_presets(self):
         self.assertEqual([(p["name"], p["label"], p["linked"]) for p in sp.spool_presets(self.spools[0])], [
             ("_local/spooler/Preto @Snapmaker U1", "Snapmaker U1", False), ("_local/spooler/Preto @Sovol SV06", "Sovol SV06", False)])
-        self.assertEqual(sp.spool_presets(self.spools[1]),
-                         [{"name": MINE, "label": "Snapmaker U1", "linked": True, "where": (1, U1), "own": True}])
+        self.assertEqual(sp.spool_presets(self.spools[1]), [
+            {"name": MINE, "label": "Snapmaker U1", "linked": True, "where": (1, U1), "own": True},
+            {"name": "_local/spooler/Preto @Snapmaker U1", "label": "Snapmaker U1", "linked": False, "where": (1, U1)},
+            {"name": "_local/spooler/Preto @Sovol SV06", "label": "Sovol SV06", "linked": False, "where": (1, SV06)}])
 
     def test_the_preset_to_pick_leads(self):
         names = lambda: [p["name"] for p in sp.spool_presets(self.spools[0])]  # noqa: E731
@@ -258,7 +260,8 @@ class ChosenTest(unittest.TestCase):
     def test_detail_lists_the_presets(self):
         with mock.patch.object(sp, "hist_load", lambda: []), mock.patch.object(sp, "plate_spools", lambda url: []):
             detail = sp.spool_detail(2)
-        self.assertEqual(detail["presets"], [{"name": MINE, "label": "Snapmaker U1", "linked": True, "own": True}])
+        self.assertEqual(detail["presets"][0], {"name": MINE, "label": "Snapmaker U1", "linked": True, "own": True})
+        self.assertEqual(detail["presets"][-1], {"name": "_local/spooler/Preto @Sovol SV06", "label": "Sovol SV06", "linked": False})
 
 
 class LinkedSendTest(unittest.TestCase):
