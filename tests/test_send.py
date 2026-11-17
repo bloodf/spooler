@@ -87,6 +87,8 @@ class SendTest(unittest.TestCase):
         self.calls.append((method, path, body))
         if (method, path) == ("GET", "filament/7"):
             return self.filament
+        if (method, path) == ("GET", "info"):
+            return {"version": "0.21.0"}  # replaces the whole extra map: every field goes back
         return self.fields if (method, path) == ("GET", "field/filament") else {}
 
     def send(self, **changes):
@@ -328,7 +330,7 @@ class AutoSendTest(unittest.TestCase):
         self.originals = (sp.start_send, sp.source, sp.get_settings)
         sp.start_send = lambda post, edits=None, auto=False: self.started.append(edits)
         sp.source = lambda: "spoolman"
-        sp.get_settings = lambda: {}
+        sp.get_settings = lambda: {"save_calibration": "auto"}
         sp._auto.update(seen=None, sent=None, busy=False)
 
     def tearDown(self):
