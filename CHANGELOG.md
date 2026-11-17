@@ -160,7 +160,7 @@ Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); 
 - Two-column list: cards in the same row share its height, so the columns read as rows instead of leaving gaps under shorter cards.
 - Grouped (stacked) cards line up with single cards: same picture width, same title weight, and the colour dot next to the name.
 - The card no longer shows a tooltip repeating its name and weight; it could float over the neighbouring card.
-- Stats (from a fix in Spoolio 0.10.1, written independently): a single-colour print could be counted entirely as purge when the printer's change-filament template, which OrcaSlicer copies into the G-code settings block, contained a flush marker. Only a bare `; FLUSH_START` / `; FLUSH_END` line counts now, and the settings block is skipped.
+- Stats (same bug as fixed in Spoolio 0.10.1; fixed independently): a single-colour print could be counted entirely as purge when the printer's change-filament template, which OrcaSlicer copies into the G-code settings block, contained a flush marker. Only a bare `; FLUSH_START` / `; FLUSH_END` line counts now, and the settings block is skipped.
 - Settings, booking state, stats history and printer codes that cannot be read (for example a file left half written by a crash) are kept as `<name>.bad` instead of being replaced by the next save, so the history can be merged back by hand. Printer codes are now written in one step, private (0600) before they take their real name.
 
 ## [0.22.1] - 2026-11-13
