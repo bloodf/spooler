@@ -50,7 +50,9 @@ if (SCN === 'stats') { const s = [...__t.sent].reverse().find(m => m.type === 's
   const h = document.querySelector('.stv-hh'); if (h) h.click(); }
 if (SCN === 'menu') { document.querySelector('[data-stack] .st-head').click(); await settle(); document.querySelector('tr[data-spool="3"]').click(); await settle();
   document.querySelector('[data-detail] [data-focus-key="act:use"]').click(); }
-if (SCN === 'stale') __t.handler({type: 'spools', ok: false, origin: 1, error: 'Connection refused', error_code: 'read_failed'});
+if (SCN === 'toasts') { __t.handler({type: 'sent', ok: false, text: 'Spoolman refused the filament: 422 Unprocessable Entity'});
+  __t.handler({type: 'action_result', ok: true, text: 'Spool #3 moved to Dry box'}); __t.handler({type: 'calibration', asks: []}); }
+if (SCN === 'stale' || SCN === 'toasts') __t.handler({type: 'spools', ok: false, origin: 1, error: 'Connection refused', error_code: 'read_failed'});
 if (SCN === 'tabsettings') { __t.handler({type: 'show_view', view: 'settings', ...${JSON.stringify(SETTINGS)}}); }
 await settle();
 // The detail asks for the shown spool's print history: answer it as the plugin would.
@@ -67,11 +69,11 @@ const SCENES = [
   ['spools', 'main', 'light', 'pt_BR', 380, 900, 1], ['spools', 'main', 'dark', 'en', 380, 900, 1],
   ['menu', 'tab', 'dark', 'en', 1280, 720, 1], ['menu', 'tab', 'light', 'pt_BR', 720, 1000, 1],
   ['empty', 'tab', 'light', 'pt_BR', 1280, 720, 1], ['nourl', 'tab', 'dark', 'en', 1280, 720, 1], ['nourl', 'main', 'light', 'en', 380, 900, 1], ['error', 'tab', 'light', 'en', 1280, 720, 1],
-  ['stale', 'tab', 'dark', 'en', 1280, 720, 1],
+  ['stale', 'tab', 'dark', 'en', 1280, 720, 1], ['toasts', 'tab', 'light', 'en', 1280, 720, 1], ['toasts', 'tab', 'dark', 'en', 1280, 720, 1], ['toasts', 'main', 'dark', 'en', 380, 900, 1],
   ['printer', 'tab', 'light', 'en', 1900, 1000, 1], ['printer', 'tab', 'dark', 'en', 1280, 720, 1], ['printer', 'tab', 'dark', 'pt_BR', 720, 1000, 1], ['printer', 'tab', 'light', 'en', 640, 900, 2],
   ['stats', 'tab', 'dark', 'en', 1900, 1000, 1], ['stats', 'tab', 'light', 'en', 1280, 720, 1], ['stats', 'tab', 'light', 'pt_BR', 720, 1000, 1],
   ['tabsettings', 'tab', 'dark', 'en', 1900, 1000, 1], ['settings', 'settings', 'light', 'en', 1280, 720, 1], ['settings', 'settings', 'dark', 'pt_BR', 1280, 720, 1],
-  ['settings', 'settings', 'dark', 'en', 720, 1000, 1], ['settings', 'settings', 'light', 'pt_BR', 640, 900, 2],
+  ['settings', 'settings', 'dark', 'en', 720, 1000, 1], ['reqs', 'settings', 'light', 'en', 1280, 720, 1], ['reqs', 'settings', 'dark', 'en', 380, 900, 1], ['settings', 'settings', 'light', 'pt_BR', 640, 900, 2],
   ['wizard', 'settings', 'dark', 'en', 1280, 720, 1], ['wizard', 'settings', 'light', 'pt_BR', 720, 1000, 1],
 ];
 const dir = await mkdtemp(join(tmpdir(), 'spooler-shots-'));
@@ -89,7 +91,7 @@ try {
     await p.goto(pathToFileURL(file).href + '?theme=' + theme);
     const m = await p.evaluate(`(async () => { ${HELPERS} const SCN = ${JSON.stringify(scn)};
       await until(() => document.querySelector('#app > *'));
-      ${mode === 'settings' ? 'await sleep(400);' : STATE}
+      ${mode === 'settings' ? `await sleep(400); if (SCN === 'reqs') { __t.handler({type: 'test_result', source: 'spoolman', ok: false, url: 'http://192.168.1.10:7912', error: 'Can’t reach http://192.168.1.10:7912: connection refused'}); await sleep(300); }` : STATE}
       const over = [...document.querySelectorAll('body *')].filter(e => { const r = e.getBoundingClientRect(); return r.width && r.right > innerWidth + 1 && getComputedStyle(e).position !== 'fixed'; })
         .slice(0, 5).map(e => e.tagName + '.' + String(e.className).slice(0, 40));
       const b = document.querySelector('.p-button'); const cs = b ? getComputedStyle(b) : null;

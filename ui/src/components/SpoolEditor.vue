@@ -17,7 +17,7 @@ import { m, note } from '../state/main';
 import { editor, submitEditor } from '../state/menu';
 import { ask } from '../core/dialog';
 import { t, tn, locale } from '../core/i18n';
-import { formatWeight, spoolPaint, swatchHex, type Filament } from '../logic/spools';
+import { formatWeight, spoolDirection, spoolPaint, swatchHex, type Filament } from '../logic/spools';
 import { matchFilament, rfidPrefill } from '../logic/rfid';
 import { changed, densityFor, editable, filamentForm, filamentPayload, filled, previewFilament, problems, spoolForm, spoolPayload, wasOf,
   type FilamentForm, type Raw, type SpoolForm } from '../logic/editor';
@@ -205,7 +205,7 @@ async function save() {
         <aside class="se-preview" :aria-label="t('editor.preview')" data-test="editor-preview">
           <p class="oui-label">{{ t('editor.preview') }}</p>
           <div class="se-card oui-hero oui-on-band">
-            <OuiSpool v-bind="spoolPaint(pf)" :fraction="fraction" :size="120" />
+            <OuiSpool v-bind="spoolPaint(pf)" :direction="spoolDirection(pf)" :fraction="fraction" :size="120" />
             <div class="se-id">
               <p class="oui-meta">{{ adding ? t('editor.newSpool') : t('spool.numbered', { id: editor.id }) }}</p>
               <p class="se-name" data-test="preview-name">{{ pf.name || t('editor.unnamed') }}</p>

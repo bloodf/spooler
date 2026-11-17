@@ -159,12 +159,15 @@ const text = el => (el ? el.textContent.replace(/\\s+/g, ' ').trim() : '');
 const btn = (label, root = document) => qa('button', root).find(b => text(b) === label || b.getAttribute('aria-label') === label);
 const dialogEl = () => document.querySelector('.p-dialog');
 const dialogOpen = () => !!dialogEl();
-async function click(el) { assert(el, 'element to click'); el.click(); await settle(); }
+// Settings show one section at a time (OuiSettings tabs): acting on a field in another section opens its tab first, as a user would.
+async function reveal(el) { const sec = el && el.closest && el.closest('.oui-settings-body [hidden]'); if (!sec) return;
+  const tab = document.querySelector('.oui-settings-link[data-section="' + CSS.escape(sec.id) + '"]'); if (tab) { tab.click(); await settle(); } }
+async function click(el) { assert(el, 'element to click'); await reveal(el); el.click(); await settle(); }
 let __n = 0;
 async function cdp(req) { const id = 'r' + (++__n); __cdp(JSON.stringify({ ...req, id })); await until(() => __t.acks.has(id), 'cdp ' + req.op); await settle(); }
-async function type(el, value) { assert(el, 'element to type into'); el.focus(); if (el.select) el.select(); await cdp({ op: 'key', key: 'Backspace' }); if (value !== '') await cdp({ op: 'type', text: value }); }
+async function type(el, value) { assert(el, 'element to type into'); await reveal(el); el.focus(); if (el.select) el.select(); await cdp({ op: 'key', key: 'Backspace' }); if (value !== '') await cdp({ op: 'type', text: value }); }
 const press = (key, shift) => cdp({ op: 'key', key, shift: !!shift });
-async function mouse(el) { assert(el, 'element for a real click'); el.scrollIntoView({ block: 'center' }); await settle(); const r = el.getBoundingClientRect(); await cdp({ op: 'clickAt', x: r.left + r.width / 2, y: r.top + r.height / 2 }); }
+async function mouse(el) { assert(el, 'element for a real click'); await reveal(el); el.scrollIntoView({ block: 'center' }); await settle(); const r = el.getBoundingClientRect(); await cdp({ op: 'clickAt', x: r.left + r.width / 2, y: r.top + r.height / 2 }); }
 async function answer(which) { await until(dialogOpen, 'dialog'); const el = dialogEl(); await click(q('[data-dlg="' + which + '"]', el)); await until(() => dialogEl() !== el, 'dialog closed'); }
 const yes = () => answer('confirm');
 const no = () => answer('cancel');

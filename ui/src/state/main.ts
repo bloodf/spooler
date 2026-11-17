@@ -2,6 +2,7 @@ import { computed, reactive, watch } from 'vue';
 import * as bridge from '../core/bridge';
 import { boot } from '../core/boot';
 import { t } from '../core/i18n';
+import { useToast } from '../../shared/src/components';
 import { computeDupes, type Spool } from '../logic/spools';
 import { computeInUse, liveSig, type LivePrinter, type ManualPrinter, type SlicePick, type Words } from '../logic/printers';
 import type { RfidOffer } from '../logic/rfid';
@@ -15,10 +16,9 @@ export interface PlateRow { status: string; colour: string; slots: string; name:
   need_pct: number; headline: string; detail: string; ids: number[]; first: number }
 export interface CalibChange { key: string; old: string; new: string; unit?: string }
 export interface CalibAsk { name: string; changes: CalibChange[] }
-export interface Note { id: number; kind: 'error' | 'unknown' | 'success' | 'info' | 'pending'; text: string; key?: string; at: number }
+export type NoteKind = 'error' | 'unknown' | 'success' | 'info' | 'pending';
 
 export const PENDING_TIMEOUT_MS = 30_000;
-export const SUCCESS_MS = 8_000;
 
 export const m = reactive({
   received: false,
@@ -27,6 +27,7 @@ export const m = reactive({
   source: 'spoolman' as string,
   loadError: '',
   errorCode: '',
+  readFails: 0,   // failed reads in a row: one can be a blip, so a shown list keeps its actions until the second
   loadedAt: 0,
   profiles: {} as { count?: number; error?: string },
   low: boot.low_stock_default,
@@ -45,15 +46,12 @@ export const m = reactive({
   liveKey: '',
   rfid: [] as RfidOffer[],   // Bambu RFID spools no Spoolman spool carries (RfidPanel)
   usage: { enabled: false, mode: 'ask', prints: [] } as Usage,
-  usageNotice: '',
   progress: { ...boot.settings.progress },
   stats: { ...boot.settings.stats },
   plate: null as null | { rows: PlateRow[]; time?: string },
   calibration: [] as CalibAsk[],
   peers: { u1control: false },
   locations: [] as string[],
-  moonNote: null as null | { id: string; ok: boolean; text: string },
-  notes: [] as Note[],
   now: Date.now(),
   tab: readTab(),
   view: boot.view as 'main' | 'settings',
@@ -69,27 +67,29 @@ export function setTab(v: 'spools' | 'printer' | 'stats'): void {
   if (v === 'printer') pollLive();
 }
 
-// ------------------------------------------------------------------ status region (B-20)
-let nextNote = 0;
-const timers = new Map<number, number>();
-export function note(kind: Note['kind'], text: string, key?: string): number {
-  if (key) for (const n of m.notes.filter(n => n.key === key)) dismiss(n.id);   // one note per action
-  const id = ++nextNote;
-  m.notes.push({ id, kind, text, key, at: Date.now() });
-  if (kind === 'success' || kind === 'info') timers.set(id, window.setTimeout(() => dismiss(id), SUCCESS_MS));
-  if (kind === 'pending') timers.set(id, window.setTimeout(() => {
-    if (m.notes.some(n => n.id === id)) { dismiss(id); note('unknown', t('status.noAnswer', { action: text }), key); }
-  }, PENDING_TIMEOUT_MS));
-  return id;
+// ------------------------------------------------------------------ toasts (B-20)
+// Every action result is a toast in the page's one host (App.vue). An action waiting for its answer keeps its key in
+// `waits` (its buttons show busy); the answer replaces the waiting toast, or after 30 s a "result unknown" one does.
+const toast = useToast();
+const waits = reactive(new Map<string, number>());
+const TONE = { error: 'error', unknown: 'warn', success: 'success', info: 'info', pending: 'info' } as const;
+function stopWait(key: string): void { clearTimeout(waits.get(key)); waits.delete(key); }
+export function note(kind: NoteKind, text: string, key?: string): void {
+  if (key) stopWait(key);
+  if (kind === 'pending' && key) waits.set(key, window.setTimeout(() => { waits.delete(key); note('unknown', t('status.noAnswer', { action: text }), key); }, PENDING_TIMEOUT_MS));
+  const said = kind === 'error' ? t('status.errorPrefix') : kind === 'unknown' ? t('status.unknownPrefix') : '';
+  // An unknown outcome stays until closed, like an error: the user has to check Spoolman before trying again. A waiting
+  // toast stays until its answer (or the "result unknown" one) replaces it, however long that takes.
+  const stays = kind === 'unknown' || (kind === 'pending' && !!key);
+  toast.show({ tone: TONE[kind], title: said || text, ...(said ? { body: text } : {}), ...(key ? { key } : {}), ...(stays ? { timeout: 0 } : {}) });
 }
-export function dismiss(id: number): void {
-  const i = m.notes.findIndex(n => n.id === id);
-  if (i >= 0) m.notes.splice(i, 1);
-  clearTimeout(timers.get(id));
-  timers.delete(id);
+/** Forgets an action's waiting state and its toast (the plugin answered without a result to show). */
+export function quiet(key: string): void {
+  stopWait(key);
+  for (const x of toast.list.list.filter(x => x.key === key)) toast.dismiss(x.id);
 }
-export const pending = (key: string) => m.notes.some(n => n.key === key && n.kind === 'pending');
-/** A reply for an action: replaces its pending note; errors stay until dismissed. */
+export const pending = (key: string) => waits.has(key);
+/** A reply for an action: replaces its waiting toast; errors stay until closed. */
 export function settle(key: string, ok: boolean, text: string): void {
   note(ok ? 'success' : 'error', text, key);
 }
@@ -112,11 +112,12 @@ export const plateSlots = computed(() => {
 export const plateAttention = computed(() => (m.plate?.rows ?? []).filter(r => ['barely', 'mixed', 'short'].includes(r.status)).length);
 export const usageAttention = computed(() => m.usage.enabled && m.usage.prints.some(p => p.state === 'pending' || p.state === 'unknown'));
 export const statsOn = computed(() => m.stats.on && m.usage.enabled);
-/** S02: why actions that need the spool source are off ('' when they can run). */
+/** S02: why actions that need the spool source are off ('' when they can run). A source that failed two reads in a
+ * row turns them off too, even with the old list still shown; the next good read turns them back on. */
 export const sourceOff = computed(() => {
   if (!m.received) return t('status.waitingList');
   if (m.errorCode === 'no_url') return t('list.noUrl.short');
-  if (m.loadError && !m.spools.length) return t('list.readFailed.short');
+  if (m.loadError && (!m.spools.length || m.readFails >= 2)) return t('list.readFailed.short');
   return '';
 });
 
@@ -130,6 +131,7 @@ export const on = <K extends keyof typeof listeners>(k: K, h: Parameters<(typeof
 function render(p: any): void {
   m.received = true;
   m.peers = { u1control: !!p.peers?.u1control };
+  m.readFails = p.ok ? 0 : m.readFails + 1;
   if (!p.ok) {
     m.loadError = p.error || t('common.unknownError');
     m.errorCode = p.error_code || 'read_failed';
@@ -179,7 +181,7 @@ function onMessage(d: any): void {
     case 'plate': m.plate = Array.isArray(d.rows) && d.rows.length ? { rows: d.rows, time: d.time } : null; listeners.plate.forEach(h => h()); break;
     case 'calibration': setCalibration(Array.isArray(d.asks) ? d.asks : []); break;
     case 'plate_clear': m.plate = null; listeners.plate.forEach(h => h()); break;
-    case 'usage': m.usageNotice = d.usage?.notice || ''; setUsage(d.usage, true); if (m.tab === 'stats') askStats(); break;
+    case 'usage': if (d.usage?.notice) note('error', d.usage.notice, 'usage'); setUsage(d.usage, true); if (m.tab === 'stats') askStats(); break;
     case 'spool_detail': listeners.detail.forEach(h => h(d.detail)); break;
     case 'stats_export': listeners.statsExport.forEach(h => h(d)); break;
     case 'stats': listeners.stats.forEach(h => h(d.stats)); break;
@@ -188,14 +190,13 @@ function onMessage(d: any): void {
       if (d.action === 'locations') { m.locations = d.ok ? d.locations || [] : []; return; }
       if (d.action === 'editor' || d.action === 'create' || d.action === 'save') listeners.editor.forEach(h => h(d));
       if (d.action === 'editor') return;
-      if (d.text) settle('spool-action', !!d.ok, d.text); else for (const n of m.notes.filter(n => n.key === 'spool-action')) dismiss(n.id);
+      if (d.text) settle('spool-action', !!d.ok, d.text); else quiet('spool-action');
       if (d.ok) listeners.actionOk.forEach(h => h());
       bridge.postMain({ type: 'refresh' });
       break;
     case 'moon_spool':
       // The printer is printing: the plugin changed nothing and asks first (state/printers.ts).
-      if (d.confirm) { for (const n of m.notes.filter(n => n.key === 'moon:' + d.id)) dismiss(n.id); listeners.moonConfirm.forEach(h => h(d)); break; }
-      m.moonNote = { id: d.id, ok: !!d.ok, text: d.text || '' };
+      if (d.confirm) { quiet('moon:' + d.id); listeners.moonConfirm.forEach(h => h(d)); break; }
       settle('moon:' + d.id, !!d.ok, d.text || '');
       break;
     case 'sent': settle('send', !!d.ok, d.text || ''); break;

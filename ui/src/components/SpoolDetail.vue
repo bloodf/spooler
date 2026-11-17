@@ -8,12 +8,12 @@ import { OuiIcon, OuiKeyValue, OuiLevel, OuiPanel, OuiReadout, OuiSpark, OuiSpoo
 import { archive as archiveIcon, edit, external, hourglass, scale, spool as spoolIcon, x } from '../../shared/src/icons';
 import SpoolChips from './SpoolChips.vue';
 import { boot } from '../core/boot';
-import { m, dupes } from '../state/main';
+import { m, dupes, sourceOff } from '../state/main';
 import { menu, closeDetail, setMode, sendAction, openEditor, type MenuMode } from '../state/menu';
 import { ask, prompt } from '../core/dialog';
 import { note } from '../state/main';
 import { t, tn, fmt, locale } from '../core/i18n';
-import { driedDays, gramsValid, formatWeight, levelTone, lowLevel, noteText, originalWeight, percentLeft, shown, spoolPaint, tagUids, type Spool } from '../logic/spools';
+import { driedDays, gramsValid, formatWeight, levelTone, lowLevel, noteText, originalWeight, percentLeft, shown, spoolDirection, spoolPaint, tagUids, type Spool } from '../logic/spools';
 
 // The selected spool, beside the list: what it is and how much is left (the page's one accent block), what you can do
 // to it (Spoolman only), its facts, its weekly use and the prints that used it. The plugin sends the print history
@@ -112,7 +112,7 @@ async function addSpool() {
   sendAction('add', { filament: f.value.id, ...(count > 1 ? { count } : {}) });
 }
 async function save() {
-  if (!gramsOk.value) return;
+  if (!gramsOk.value || sourceOff.value) return;
   if (menu.mode === 'note') { sendAction('comment', { comment: menu.val }); return; }
   if (menu.mode === 'remain') { sendAction('remaining', { grams: menu.val.replace(',', '.') }); return; }
   if (menu.mode !== 'move') { sendAction(menu.mode, { grams: menu.val.replace(',', '.') }); return; }
@@ -129,7 +129,7 @@ async function save() {
     </template>
 
     <div class="sd-hero oui-hero" :class="{ 'oui-on-band': !stale }" :data-tone="stale ? 'neutral' : undefined">
-      <OuiSpool v-bind="spoolPaint(f)" :fraction="pct === null ? null : pct / 100" :size="112" />
+      <OuiSpool v-bind="spoolPaint(f)" :direction="spoolDirection(f)" :fraction="pct === null ? null : pct / 100" :size="112" />
       <div class="sd-id">
         <SpoolChips :spool="s" band />
         <p class="sd-name">{{ name }}<Button v-if="canAct" severity="secondary" text rounded size="small" class="sd-edit" :aria-label="t('editor.editTitle', { id: s.id })" :title="t('editor.editTitle', { id: s.id })"
@@ -151,11 +151,11 @@ async function save() {
           <InputText v-else-if="menu.mode === 'note'" :id="`sc-in-${s.id}`" v-model="menu.val" maxlength="1024" aria-describedby="sc-help" />
           <InputText v-else :id="`sc-in-${s.id}`" v-model="menu.val" inputmode="decimal" :invalid="menu.val !== '' && !gramsOk" aria-describedby="sc-help" /></div>
         <datalist v-if="menu.mode === 'move'" :id="`sc-locs-${s.id}`"><option v-for="l in locations" :key="l" :value="l" /></datalist>
-        <Button type="submit" :label="t('common.save')" :disabled="!gramsOk" data-act="sp-go" />
+        <Button type="submit" :label="t('common.save')" :disabled="!gramsOk || !!sourceOff" data-act="sp-go" />
         <Button severity="secondary" text :label="t('common.cancel')" @click="cancel" />
         <p id="sc-help" class="oui-meta sd-help" :class="{ 'sd-bad': menu.val !== '' && !gramsOk }">{{ help }}</p>
       </form>
-      <div v-else class="sd-actions">
+      <fieldset v-else class="sd-actions" :disabled="!!sourceOff" :aria-describedby="sourceOff ? 'sd-off' : undefined" data-test="spool-actions">
         <Button :label="t('menu.weigh')" data-focus-key="act:weigh" @click="setMode('weigh')"><template #icon><OuiIcon :icon="scale" :size="14" /></template></Button>
         <Button severity="secondary" :label="t('menu.use')" data-focus-key="act:use" @click="setMode('use')" />
         <Button severity="secondary" :label="t('menu.remain')" data-focus-key="act:remain" @click="setMode('remain')" />
@@ -167,7 +167,8 @@ async function save() {
         <span class="oui-spacer" />
         <Button v-if="s.archived" severity="secondary" :label="t('menu.unarchive')" @click="sendAction('unarchive')"><template #icon><OuiIcon :icon="archiveIcon" :size="14" /></template></Button>
         <Button v-else severity="danger" outlined :label="t('menu.archive')" @click="archive"><template #icon><OuiIcon :icon="archiveIcon" :size="14" /></template></Button>
-      </div>
+      </fieldset>
+      <p v-if="sourceOff && !menu.mode" id="sd-off" class="oui-meta" data-test="actions-off">{{ t('detail.actionsOff', { reason: sourceOff }) }}</p>
     </div>
     <hr class="oui-divider sd-rule">
 
@@ -209,7 +210,7 @@ async function save() {
 .sd-sub { display: flex; align-items: center; gap: 6px; }
 .sd-amount { display: flex; flex-wrap: wrap; gap: var(--oui-s3) var(--oui-s8); margin-block: var(--oui-s2) var(--oui-s1); }
 .sd-act { margin-top: var(--oui-s4); }
-.sd-actions { display: flex; flex-wrap: wrap; gap: var(--oui-s2); }
+.sd-actions { display: flex; flex-wrap: wrap; gap: var(--oui-s2); margin: 0; padding: 0; border: 0; min-width: 0; }
 .sd-form { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--oui-s2); padding: var(--oui-s3); }
 .sd-form > .oui-field { flex: 1 1 200px; }
 .sd-help { flex: 1 0 100%; }
