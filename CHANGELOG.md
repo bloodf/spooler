@@ -14,9 +14,6 @@ Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); 
 - Settings lists what the spool source needs (Spoolman reachable, or a Bambu Cloud sign-in), whether it was found, and how to get it, with Check again.
 - The page fills the whole tab at every height, also after the window is resized: no more grey under a short page.
 - Settings are tabs: one section at a time, and the save bar stays on screen at any window height.
-
-### Changed
-
 - Spooler's filament presets are now standalone copies: each one holds its parent preset's whole set of settings (with Spooler's values on top) instead of inheriting them, and has a `filament_id` of its own (`SPL` plus a short hash of its filament, printer and, with presets per spool, spool). OrcaSlicer's "sync from AMS" only loads standalone presets, so this is what lets Kobra Control and U1 Control have it load the Spooler preset of a linked spool. Copies are refreshed whenever Spooler rewrites its presets and on Sync Presets, which also re-reads the parent presets. Existing presets are converted the next time they are written and keep their names, so projects still find them. The preset's description says which preset it was copied from.
 
 ### Fixed
