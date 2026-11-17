@@ -5,6 +5,8 @@ Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); 
 
 ## [Unreleased]
 
+## [0.29.0] - 2026-11-17
+
 ### Added
 - Add and edit spools without leaving OrcaSlicer. "Add Spool" above the spool list (and in the empty list) walks you through it: pick a filament Spoolman already has to restock it, or make a new one (manufacturer, name, material, one or several colours, diameter, density, nozzle and bed temperatures, filament and empty spool weight), then fill in the spool (starting weight, grams left, location, lot, price, note, archived). The density fills in for common materials.
 - A pencil beside each spool's name, in the list and in its detail, opens Edit Spool. Changes to the spool are saved to that spool; changes to the filament (colour, temperatures, density and so on) are saved to the filament in Spoolman, and the editor says how many other spools share it.
