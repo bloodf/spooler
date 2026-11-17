@@ -1864,7 +1864,10 @@ def _install_profiles(root: Path, snapshot: dict, files: dict, digest: str, forc
 # from <OrcaSlicer data folder>/spooler/, so both plugins pick the same preset for a spool and
 # only one of them changes the plate's slots:
 #   profiles.json:   {"version": 1, "updated": <unix s>,
-#                     "filaments": {"<filament id>": {"<printer label>": "_local/spooler/<preset>"}}}
+#                     "filaments": {"<filament id>": {"<printer label>": "_local/spooler/<preset>"}},
+#                     "spools": {"<spool id>": {"<printer label>": "_local/spooler/<preset>"}}}
+#                    "spools" is there only with presets per spool: each spool's own preset, which readers
+#                    use before the filament's.
 #   keep_slots.json: {"active": true, "printer": "<label>", "ts": <unix s>} while Keep Slots Synced
 #                    runs, refreshed every pass; {"active": false, "ts": ...} once it stops.
 BRIDGE_PROFILES = "profiles.json"
@@ -1890,15 +1893,28 @@ def profile_map(by_key: dict, printers: list[dict]) -> dict:
     return out
 
 
+def spool_map(by_key: dict, printers: list[dict]) -> dict:
+    """{"<spool id>": {"<printer label>": "_local/spooler/<preset>"}} for presets made per spool; {} otherwise."""
+    labels = {p["target"]: p["label"] for p in printers}
+    out: dict = {}
+    for key, name in sorted(by_key.items(), key=lambda item: str(item[0][2] if len(item[0]) > 2 else "").zfill(12)):
+        if len(key) > 2 and key[1] in labels:
+            out.setdefault(str(key[2]), {}).setdefault(labels[key[1]], PROFILE_PREFIX + name)
+    return out
+
+
 def publish_profiles(by_key: dict, printers: list[dict]) -> None:
     """Write profiles.json when the presets changed (or it is missing). Never raises."""
-    filaments = profile_map(by_key, printers)
+    doc = {"filaments": profile_map(by_key, printers)}
+    spools = spool_map(by_key, printers)
+    if spools:
+        doc["spools"] = spools
     path = bridge_dir() / BRIDGE_PROFILES
-    if filaments == _bridge["profiles"] and path.exists():
+    if doc == _bridge["profiles"] and path.exists():
         return
     try:
-        _write_json(path, {"version": 1, "updated": int(time.time()), "filaments": filaments})
-        _bridge["profiles"] = filaments
+        _write_json(path, {"version": 1, "updated": int(time.time()), **doc})
+        _bridge["profiles"] = doc
     except OSError as exc:
         log.warning("Could not write %s: %s", path, exc)
 

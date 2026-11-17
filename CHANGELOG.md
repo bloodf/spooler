@@ -5,6 +5,10 @@ Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); 
 
 ## [Unreleased]
 
+### Fixed
+
+- With presets per spool, `profiles.json` also lists each spool's own preset under `"spools"`, so U1 Control and Kobra Control pick that spool's preset rather than the one of its filament's lowest-numbered spool. The file keeps version 1 and its `"filaments"` map; with presets per filament it is unchanged.
+
 ## [0.29.0] - 2026-11-17
 
 ### Added

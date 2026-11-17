@@ -43,7 +43,7 @@ Settings > Presets (`presets` in the settings file, `parse_presets()`) changes t
   printer it is loaded on (`loaded_targets()`: Printer tab slots and Live Link trays, matched to a
   printer preset by host address), else every printer. Preset names are then keyed
   `(filament id, printer preset, spool id)`; `profiles.json` keeps one preset per filament and printer
-  (the lowest-numbered spool's). Send Preset Edits still writes to the filament, which every spool of it
+  (the lowest-numbered spool's) under `"filaments"`, and each spool's own under `"spools"`. Send Preset Edits still writes to the filament, which every spool of it
   shares. Switching renames every preset: OrcaSlicer refuses a reload that removes or renames the
   selected preset while it has unsaved changes ("A modified selected preset was removed or renamed"),
   and the usual back-off retries it.
@@ -152,7 +152,8 @@ automatic loop off for the session with a notification pointing at Plugins > Run
 On the Snapmaker U1, [u1control](https://github.com/bloodf/u1control) can run next to Spooler. They
 share files in `<OrcaSlicer data folder>/spooler/`:
 
-- `profiles.json`: every Spooler preset by filament and printer, so u1control picks the same one.
+- `profiles.json`: every Spooler preset by filament and printer, and with presets per spool by spool
+  too, so u1control (and kobracontrol's printer agent) pick the same one.
 - `keep_slots.json`: refreshed while Keep Slots Synced runs, so u1control leaves the slots alone.
 
 u1control binds a toolhead's spool as the Spoolman location `<printer name> T<n>`. Spooler reads

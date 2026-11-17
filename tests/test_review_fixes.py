@@ -821,6 +821,14 @@ class ContractTest(unittest.TestCase):
             data = json.loads((Path(tmp) / sp.BRIDGE_PROFILES).read_text())
             self.assertEqual(set(data), {"version", "updated", "filaments"})
             self.assertEqual((data["version"], data["filaments"]), (1, {"7": {"Snapmaker U1": "_local/spooler/PLA @U1"}}))
+            # Presets per spool: each spool's own preset under "spools", the filament's lowest spool under "filaments".
+            sp.publish_profiles({(7, U1, 31): "PLA #31 @U1", (7, U1, 12): "PLA #12 @U1"},
+                                [{"target": U1, "label": "Snapmaker U1"}])
+            data = json.loads((Path(tmp) / sp.BRIDGE_PROFILES).read_text())
+            self.assertEqual(set(data), {"version", "updated", "filaments", "spools"})
+            self.assertEqual(data["filaments"], {"7": {"Snapmaker U1": "_local/spooler/PLA #12 @U1"}})
+            self.assertEqual(data["spools"], {"12": {"Snapmaker U1": "_local/spooler/PLA #12 @U1"},
+                                              "31": {"Snapmaker U1": "_local/spooler/PLA #31 @U1"}})
             sp.mark_keep_slots(True, "Snapmaker U1")
             self.assertEqual(set(json.loads((Path(tmp) / sp.BRIDGE_KEEP).read_text())), {"active", "printer", "ts"})
             sp.mark_keep_slots(False)
