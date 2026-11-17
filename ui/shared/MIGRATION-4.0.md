@@ -214,7 +214,7 @@ For all: measure the built page before and after (`ui/build.json`), and report t
 4. `OuiSetpoint` holds its own draft value and emits `set`/`off`; it has no v-model and does not validate beyond `min`/`max`.
 5. `OuiSpool` paints the filament's colours side by side, coaxial or longitudinal; it shows no per-spool picture. A spool photo goes in `OuiThumb`.
 6. `OuiSlot` has one layout. A slot with more than two lines of extra content gets tall; keep extras short or put them behind Edit. Its amount block can be replaced with `#amount` (since 4.0.1); the sample band, badge and spool cannot.
-7. `OuiSettings` follows the scroll with `IntersectionObserver` on the page scroller; inside a nested scrolling container the index does not follow.
+7. `OuiSettings` (4.1.0) shows one section at a time and sizes itself to the window under what sits above it. Inside a nested scrolling container of fixed height, give the container the height instead; the settings still fill what they are given.
 8. `OuiConfirm` has two buttons. A dialog with a field or a third choice stays a plain PrimeVue `Dialog`.
 9. The icon set has 97 icons. Missing ones are added in the foundation.
 10. The illustrations are not in the snapshot; a plugin copies its one file. They were generated; the three marked with reservations in `assets/manifest.json` may be replaced.

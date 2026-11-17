@@ -174,7 +174,7 @@ Import each from `shared/src/components` (or its own `.vue` file). They are not 
 | `OuiKeyValue` | facts about one object, as an aligned list or `inline` columns |
 | `OuiToolbar` | search and filters, a result count, then the list's actions |
 | `OuiEmpty` | empty, loading, error, offline, with a solid icon tile or an `image`; `compact` for a one-row version |
-| `OuiSettings`, `OuiFormSection`, `OuiFormRow` | the settings page: section index that follows the scroll, sections in columns, rows with a shared label column, one save bar |
+| `OuiSettings`, `OuiFormSection`, `OuiFormRow` | the settings page: section tabs (side list wide, strip narrow), one section at a time scrolling inside, rows with a shared label column, one save bar always on screen |
 | `OuiConfirm` | the confirmation dialog: action named on the button, focus on the way back when destructive |
 | `OuiIcon` | an icon from `src/icons.ts`: mono, toned, or in a tinted tile (see Icons) |
 
@@ -189,7 +189,7 @@ Use PrimeVue directly for controls (Button, InputText, InputNumber, Select, Chec
 - A panel that has nothing to show yet is one row (`OuiEmpty compact`), not a reserved hole. A camera that is off must not push the printer's state down.
 - Lists of things with a detail: list and detail side by side from about 1160 px, detail under the list below that.
 - Tables: `DataTable size="small"`, fixed layout, name and one meta line in the first column, numbers right-aligned with `oui-num`, the row action last and quiet. The first cell holds an `OuiSpool` or an `OuiThumb`.
-- Settings: `OuiSettings`. Group sections into two `.oui-stack` columns in reading order. A hint is at most one short line; what a whole section needs explained goes in its description, once.
+- Settings: `OuiSettings`, one `OuiFormSection` per tab, in reading order. A hint is at most one short line; what a whole section needs explained goes in its description, once.
 - The dock shows one thing at a time (form, running job, or result); the same parts sit side by side in a tab.
 - Text is short and plain, in both languages. Buttons do not wrap; labels and names truncate with a `title`; nothing relies on a fixed text width.
 
