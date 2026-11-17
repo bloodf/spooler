@@ -837,6 +837,33 @@ test('low-stock preview lists the spools under the typed weight', `
   await post({type: 'show_view', view: 'settings', url: 'x', source: 'spoolman', low_stock: 100, display: DEFAULTS, drying: {}, progress: {}, stats: {}});
   assert(text(q('#s-reorder').closest('section')).includes('1 spool is under 100 g'), 'preview');
 `);
+test('requirements: the source row says why and how to install it; Check again asks the plugin', `
+  await until(() => byTest('requirements'));
+  await post({type: 'test_result', source: 'spoolman', ok: false, url: '', error: 'No Spoolman URL configured yet',
+    requirements: [{id: 'spoolman', status: 'missing', details: 'No Spoolman URL configured yet'}]});
+  const sec = byTest('requirements');
+  assert(text(byTest('req-status')).includes('Missing') && text(sec).includes('No Spoolman URL configured yet'), 'missing, with the reason');
+  assert(['docker run', 'Sync Presets', 'macOS', 'Windows', 'Linux'].every(s => text(sec).includes(s)), 'why, and how per OS');
+  await click(byTest('req-install'));
+  eq(sentOf('spoolman_help').length, 1, 'install guide opened by the plugin');
+  await click(byTest('req-check'));
+  eq(sentOf('requirements').length, 1, 'check again asked');
+  assert(text(byTest('req-status')).includes('Checking'), 'checking');
+  await post({type: 'test_result', source: 'spoolman', ok: true, url: 'http://spoolman:7912', version: '0.22',
+    requirements: [{id: 'spoolman', status: 'ok', details: '0.22'}]});
+  assert(text(byTest('req-status')).includes('Found') && !byTest('req-install') && !text(sec).includes('docker run'), 'found: no install help');
+`, { mode: 'settings' });
+test('spool actions are off with the reason while the source cannot be read, back after a good read', `
+  const grouped = {display: {...DEFAULTS, group_same: false}};
+  await spools(SPOOLS, grouped);
+  await open(1);
+  assert(!byTest('spool-actions').disabled && !byTest('actions-off'), 'on');
+  await post({type: 'spools', ok: false, origin: 3, error: 'SYNTHETIC OFFLINE', error_code: 'read_failed'});
+  assert(byTest('spool-actions').disabled && text(byTest('actions-off')).includes('couldn’t be read'), 'off, with the reason');
+  assert(byTest('sync').disabled, 'Sync off too');
+  await spools(SPOOLS, grouped);
+  assert(!byTest('spool-actions').disabled && !byTest('actions-off') && !byTest('sync').disabled, 'back');
+`);
 
 // ------------------------------------------------------------------ language, theme, layout
 test('X04: pt-BR from the host: tabs, empty states, weights and dialogs in Portuguese', `

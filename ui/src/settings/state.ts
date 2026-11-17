@@ -14,6 +14,10 @@ export const conn = reactive({ verifiedUrl: norm(boot.settings.verified_url), ve
 export const bambu = reactive({ verified: false, account: '', pane: 'login' as 'in' | 'login' | 'code', step: 'password', tfa: false,
   text: '', kind: 'pending' as 'ok' | 'pending' | 'error', email: '', password: '', region: 'global', code: '' });
 export const update = reactive({ busy: false, text: '', newer: '' });
+// The saved source as a requirement, from the plugin's connection test (no extra probe): Check again re-runs it.
+export interface Requirement { id: string; status: 'ok' | 'missing' | 'unknown'; details: string }
+export const req = reactive({ checking: true, list: [] as Requirement[] });
+export function checkRequirements(): void { req.checking = true; bridge.postSettings({ type: 'requirements' }); }
 export const saving = ref(false);
 export const wizard = reactive({ open: false, step: 0 });
 // Skipped RFID spools: not part of the form; Ask again acts at once.
@@ -108,6 +112,7 @@ function onMessage(d: any): void {
     else { bambu.step = d.step; bambu.tfa = d.step === 'tfa'; bambu.pane = 'code'; bambu.text = t('bambu.enterCode'); bambu.kind = 'pending'; }
   } else if (d.type === 'test_result') {
     saving.value = false;
+    if (Array.isArray(d.requirements)) { req.list = d.requirements; req.checking = false; }
     if (d.source === 'bambu') {
       bambu.account = d.account || '';
       bambu.verified = !!d.ok;

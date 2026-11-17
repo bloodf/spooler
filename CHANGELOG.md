@@ -4,6 +4,10 @@ Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); 
 0.9.0 are Spoolio's.
 
 ## [Unreleased]
+### Added
+- Settings has a Requirements section. It shows the spool source in use (a Spoolman server, or a Bambu Cloud sign-in) as found, missing or not checked yet, with the reason, what needs it, and how to get it: for Spoolman a Docker command, a line each for macOS, Windows and Linux, and a button that opens Spoolman's install guide. Check again re-runs the connection test Settings already makes when it opens; no extra request is made at start-up.
+### Changed
+- While the spool source can't be read, Sync Presets, Send Preset Edits, Add Spool and the spool actions in the detail panel are off, with a one-line reason, even when the last list is still shown. They come back with the next good read. Automatic sending of preset edits also waits for that read instead of failing every few seconds.
 
 ## [0.29.0] - 2026-11-17
 

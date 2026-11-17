@@ -7,17 +7,18 @@ import Select from 'primevue/select';
 import Checkbox from 'primevue/checkbox';
 import RadioButton from 'primevue/radiobutton';
 import { OuiFormRow, OuiFormSection, OuiIcon, OuiSettings, OuiStatus, OuiSwatch, type OuiSettingsSection } from '../../shared/src/components';
-import { chart, check, drop, eye, files, info, languages, layers, plus, printer, save as saveIcon, scale, spoolman, store, x } from '../../shared/src/icons';
+import { chart, check, drop, eye, files, info, languages, layers, plug, plus, printer, save as saveIcon, scale, spoolman, store, x } from '../../shared/src/icons';
 import SourceBlock from './SourceBlock.vue';
 import PresetsBlock from './PresetsBlock.vue';
 import SetupWizard from './SetupWizard.vue';
+import RequirementRow from './RequirementRow.vue';
 import * as bridge from '../core/bridge';
 import { boot } from '../core/boot';
 import { m } from '../state/main';
 import { t, tn, langPref, setLangPref, autoLocale, onLangPref } from '../core/i18n';
 import { LOCALES } from '../core/i18n-core';
 import type { LangPref } from '../core/i18n-core';
-import { form, saving, dirty, ready, saveWhy, update, save, checkUpdate, startSettings, openWizard, wizard, leave, rfidSkipped, unskipRfid } from './state';
+import { form, saving, dirty, ready, saveWhy, update, save, checkUpdate, startSettings, openWizard, wizard, leave, rfidSkipped, unskipRfid, req, checkRequirements, type Requirement } from './state';
 
 const stop = startSettings();
 onBeforeUnmount(stop);
@@ -60,9 +61,15 @@ const langOptions = computed(() => [{ value: 'auto', label: t('lang.auto', { cur
   ...LOCALES.map(value => ({ value, label: t(`lang.${value}`) }))]);
 const setDisp = (k: string, v: unknown) => { form.display = { ...form.display, [k]: !!v }; };
 
+// Requirements: the saved spool source. Spoolman installs with Docker on every desktop system.
+const SPOOLMAN_DOCKER = 'docker run -d --name spoolman -p 7912:8000 -v spoolman-data:/home/app/.local/share/spoolman ghcr.io/donkie/spoolman:latest';
+const reqSteps = (r: Requirement) => (r.id === 'bambu' ? [t('req.bambuHow')] : [t('req.os.mac'), t('req.os.win'), t('req.os.linux'), t('req.then')]);
+const reqMissing = computed(() => req.list.some(r => r.status === 'missing'));
+
 // The index beside the sections; the source flags itself until it passed a test (Save waits for it).
 const sections = computed<OuiSettingsSection[]>(() => [
   { id: 's-src', label: t('set.source'), icon: spoolman, ...(ready.value ? {} : { state: 'warn' as const }) },
+  { id: 's-req', label: t('req.title'), icon: plug, ...(reqMissing.value ? { state: 'warn' as const } : {}) },
   { id: 's-reorder', label: t('set.reorder'), icon: store },
   { id: 's-weights', label: t('set.weights'), icon: scale },
   { id: 's-layout', label: t('set.layout'), icon: layers },
@@ -88,6 +95,18 @@ const sections = computed<OuiSettingsSection[]>(() => [
           <div class="oui-row" role="radiogroup" :aria-label="t('set.calibration')" data-test="save-calibration"><span v-for="v in ['ask', 'auto', 'never'] as const" :key="v" class="oui-row set-opt">
             <RadioButton v-model="form.save_calibration" :input-id="`cal-${v}`" name="save-calibration" :value="v" /><label :for="`cal-${v}`">{{ t(`set.calibration.${v}`) }}</label></span></div>
         </OuiFormRow>
+      </OuiFormSection>
+
+      <OuiFormSection id="s-req" :icon="plug" tone="neutral" :title="t('req.title')" :description="t('req.help')">
+        <div class="set-pad" aria-live="polite" data-test="requirements">
+          <RequirementRow v-for="r in req.list" :key="r.id" :name="r.id === 'bambu' ? 'Bambu Cloud' : 'Spoolman'" :status="req.checking ? 'unknown' : r.status"
+                          :label="req.checking ? t('req.checking') : t(`req.status.${r.status}`)" :details="req.checking ? '' : r.details"
+                          :why="t(r.id === 'bambu' ? 'req.why.bambu' : 'req.why.spoolman')" :code="r.id === 'bambu' ? '' : SPOOLMAN_DOCKER" :steps="reqSteps(r)">
+            <Button v-if="r.id !== 'bambu' && r.status !== 'ok'" severity="secondary" size="small" :label="t('req.install')" data-test="req-install" @click="bridge.postSettings({ type: 'spoolman_help' })" />
+            <Button severity="secondary" size="small" :label="t('req.check')" :loading="req.checking" data-test="req-check" @click="checkRequirements" />
+          </RequirementRow>
+          <p v-if="!req.list.length" class="oui-meta">{{ t('req.checking') }}</p>
+        </div>
       </OuiFormSection>
 
       <OuiFormSection id="s-reorder" :icon="store" tone="lime" :title="t('set.reorder')">

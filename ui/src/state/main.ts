@@ -112,11 +112,12 @@ export const plateSlots = computed(() => {
 export const plateAttention = computed(() => (m.plate?.rows ?? []).filter(r => ['barely', 'mixed', 'short'].includes(r.status)).length);
 export const usageAttention = computed(() => m.usage.enabled && m.usage.prints.some(p => p.state === 'pending' || p.state === 'unknown'));
 export const statsOn = computed(() => m.stats.on && m.usage.enabled);
-/** S02: why actions that need the spool source are off ('' when they can run). */
+/** S02: why actions that need the spool source are off ('' when they can run). An unreachable source turns
+ * them off too, even with the old list still shown, rather than failing each try; the next good read turns them back on. */
 export const sourceOff = computed(() => {
   if (!m.received) return t('status.waitingList');
   if (m.errorCode === 'no_url') return t('list.noUrl.short');
-  if (m.loadError && !m.spools.length) return t('list.readFailed.short');
+  if (m.loadError) return t('list.readFailed.short');
   return '';
 });
 
