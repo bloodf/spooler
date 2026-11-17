@@ -3,7 +3,7 @@
   "version": "0.29.0",
   "private": true,
   "type": "module",
-  "description": "Spooler pages (Vue 3 + PrimeVue 5, shared Orca UI foundation 4.0.1), built into one offline HTML file embedded in plugin/spooler/spooler_any.py",
+  "description": "Spooler pages (Vue 3 + PrimeVue 5, shared Orca UI foundation 4.1.0), built into one offline HTML file embedded in plugin/spooler/spooler_any.py",
   "scripts": {
     "check:shared": "node shared/scripts/check.mjs",
     "typecheck": "node shared/scripts/vue-tsc.mjs --noEmit",

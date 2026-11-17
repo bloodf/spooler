@@ -5,6 +5,9 @@ Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); 
 
 ## [Unreleased]
 
+### Changed
+- Spools are drawn with the photo spool again.
+
 ## [0.29.0] - 2026-11-17
 
 ### Added

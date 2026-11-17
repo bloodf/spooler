@@ -2,7 +2,7 @@
 
 For the agent rolling 4.0.0 out to one plugin. `DESIGN.md` is the specification (what a page should look like and why); this file is the procedure. The reference screen for each plugin is in `ui-foundation/gallery/screens/` and its screenshots in `ui-foundation/evidence-4.0.0/after/`: build the plugin's page to match its reference, with the plugin's real data and every control it has today.
 
-Current release: **4.0.1** (4.0.0 plus `OuiSlot #amount`, page-language number formatting in `OuiSlot`, and `attrs`/`attention` on `OuiTab`; nothing removed). Vendor the latest snapshot; the check prints its version's file count and passes only on an unmodified copy.
+Current release: **4.1.0** (4.0.1 with the photo spool back in `OuiSpool`, see README; 4.0.1 was 4.0.0 plus `OuiSlot #amount`, page-language number formatting in `OuiSlot`, and `attrs`/`attention` on `OuiTab`; nothing removed). Vendor the latest snapshot; the check prints its version's file count and passes only on an unmodified copy.
 
 One rule above the others: **do not patch the vendored copy.** `ui/shared/` must stay byte-identical to the release (its check fails otherwise). If the foundation is wrong or lacks something, report it to the session lead; a fix ships as 4.0.1 for all six plugins.
 
@@ -84,7 +84,7 @@ Import from `shared/src/components` (not from `shared/src`). Controls stay plain
 | state pills and text | `OuiStatus` |
 | warning/notice strips, `TargetBanner`, `StatusArea`, `PanelNotices`, `PeerNote`, `SpoolerHint`, `InlineAlert` | `OuiBanner`, said once (DESIGN.md, States) |
 | `ConfirmDialog.vue` | `OuiConfirm` (keeps `data-dlg`, `data-dlg="confirm"`, `data-dlg="cancel"`) |
-| `SpoolFigure.vue` + `assets/spool/*.webp` + `spool-level.ts` picture logic | `OuiSpool` (vector). Delete the 15 WebP files |
+| `SpoolFigure.vue` + `assets/spool/*.webp` + `spool-level.ts` picture logic | `OuiSpool` (the same photo spool since 4.1.0; the layers live in the foundation). Delete the 15 WebP files |
 | `LevelBar.vue` | `OuiLevel` |
 | `SettingsView.vue` | `OuiSettings` + `OuiFormSection` + `OuiFormRow`, one save bar |
 | empty/loading/error blocks | `OuiEmpty` (the plugin's illustration for first run: copy its one file from `ui-foundation/assets/illustrations/`) |
@@ -212,7 +212,7 @@ For all: measure the built page before and after (`ui/build.json`), and report t
 2. PrimeVue components the preset does not style explicitly (Toast, Popover, Drawer, Menu, Tabs used inside a page, Paginator, DatePicker, Tooltip beyond colours) fall back to Aura's neutral grey ramp and will look untinted. Report which one you need.
 3. `OuiAppBar` renders the tabs only. It does not render or switch the views, and does not scroll the active tab into view on a narrow bar.
 4. `OuiSetpoint` holds its own draft value and emits `set`/`off`; it has no v-model and does not validate beyond `min`/`max`.
-5. `OuiSpool` draws at most the filament's colours side by side; it has no picture mode. A spool photo goes in `OuiThumb`.
+5. `OuiSpool` paints the filament's colours side by side, coaxial or longitudinal; it shows no per-spool picture. A spool photo goes in `OuiThumb`.
 6. `OuiSlot` has one layout. A slot with more than two lines of extra content gets tall; keep extras short or put them behind Edit. Its amount block can be replaced with `#amount` (since 4.0.1); the sample band, badge and spool cannot.
 7. `OuiSettings` follows the scroll with `IntersectionObserver` on the page scroller; inside a nested scrolling container the index does not follow.
 8. `OuiConfirm` has two buttons. A dialog with a field or a third choice stays a plain PrimeVue `Dialog`.

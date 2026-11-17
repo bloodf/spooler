@@ -233,6 +233,9 @@ export function spoolPaint(f: Filament): { color: string | null; colors: string[
   return cs.length > 1 ? { color: cs[0], colors: cs } : { color: swatchHex(f.color_hex) || cs[0] || null, colors: null };
 }
 
+/** How the drawn spool lays out a multi-colour filament's colours: around the spool unless Spoolman says along it. */
+export const spoolDirection = (f: Filament): 'coaxial' | 'longitudinal' => (f.multi_color_direction === 'longitudinal' ? 'longitudinal' : 'coaxial');
+
 /** Remaining weight as it shows in a list: grams, percent, or both, following Settings. */
 export function leftLabel(grams: unknown, percent: number | null, mode: 'grams' | 'percent' | 'both', exact: boolean, locale: string): string {
   const w = formatWeight(grams, exact, locale);

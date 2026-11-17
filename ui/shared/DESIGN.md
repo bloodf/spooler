@@ -114,7 +114,7 @@ Where icons go: every app-bar tab, every panel and settings section header (as a
 
 Three kinds, in this order of preference:
 
-1. Drawn objects that take data. `OuiSpool` is the spool: its winding is the filament colour and as deep as the filament left. The printer drawings in the gallery (`gallery/art/`) show the Kobra with its four-spool box and the U1 with four toolheads; the spools and heads take the real colours and the print grows with the job. They are vector, follow the theme through the palette, contain no text and cost under 2 kB each. A plugin's own drawings live in that plugin.
+1. Drawn objects that take data. `OuiSpool` is the spool: a product render of the reel whose winding is tinted to the filament colour and is as deep as the filament left. The printer drawings in the gallery (`gallery/art/`) show the Kobra with its four-spool box and the U1 with four toolheads; the spools and heads take the real colours and the print grows with the job. They are vector, follow the theme through the palette, contain no text and cost under 2 kB each. A plugin's own drawings live in that plugin.
 2. Icon tiles, for empty states and section identity.
 3. One raster illustration per plugin for its empty or first-run state (`OuiEmpty image`), and listing or README art. Nowhere else in a page: the pages are single files with a size budget, and a picture cannot follow the theme or the language. The six that exist are in `assets/illustrations/` (320 px WebP with transparency, 2.4 to 18.2 kB each, 43.6 kB together); they use white, two greys and a mid tone of the plugin's accent chosen to hold on both its dark and its light page.
 
@@ -168,7 +168,7 @@ Import each from `shared/src/components` (or its own `.vue` file). They are not 
 | `OuiSpark` | one series over time, as a filled line (with an optional dashed `target`) or bars, in a tone. Shape only: the value is in text beside it and `label` describes it |
 | `OuiJob` | a running job: state, name, percentage or count, bar, stats, actions. `hero` fills it with the accent (56 px figure, 12 px white bar) with the actions under the block; `compact` for the dock; `stale` is grey; unknown progress is indeterminate, not 0 % |
 | `OuiSlot` | a toolhead or slot: a sample of the filament colour across the top (framed by the card, hatched when empty) carrying the identity badge and the state chip; then the drawn spool, filament, amount left with its level (or whatever `#amount` provides), extra rows, actions; `active` |
-| `OuiSpool` | the spool, drawn in vector: winding in the filament colour (or colours), as deep as the filament left; unknown and empty have their own look |
+| `OuiSpool` | the photo spool: eight renders of the reel, the winding tinted to the filament colour (or colours, side by side, coaxial or longitudinal) and as deep as the filament left; unknown and empty show the bare reel |
 | `OuiSwatch`, `OuiLevel` | a filament colour dot; an amount bar: green, amber `low`, red `critical`, unknown hatched. The swatch carries the filament's colour, the bar carries amount and state |
 | `OuiThumb` | a picture in a fixed pixel box, fitted, never stretching its row |
 | `OuiKeyValue` | facts about one object, as an aligned list or `inline` columns |
