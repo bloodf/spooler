@@ -331,6 +331,7 @@ export const zhCN: Record<MessageKey, string> = {
   'detail.actionsOff': '料盘操作已关闭：{reason}。',
   'req.help': 'Spooler 在 OrcaSlicer 之外需要的东西。依赖缺失项的功能会关闭并说明原因，直到找到为止。',
   'req.status.ok': '已找到',
+  'req.status.unreachable': '无法连接',
   'req.status.missing': '缺失',
   'req.status.unknown': '尚未检查',
   'req.checking': '正在检查…',

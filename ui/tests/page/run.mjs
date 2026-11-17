@@ -852,13 +852,20 @@ test('requirements: the source row says why and how to install it; Check again a
   await post({type: 'test_result', source: 'spoolman', ok: true, url: 'http://spoolman:7912', version: '0.22',
     requirements: [{id: 'spoolman', status: 'ok', details: '0.22'}]});
   assert(text(byTest('req-status')).includes('Found') && !byTest('req-install') && !text(sec).includes('docker run'), 'found: no install help');
+  await post({type: 'test_result', source: 'spoolman', ok: false, url: 'http://spoolman:7912', error: 'Could not reach Spoolman (timed out)',
+    requirements: [{id: 'spoolman', status: 'unreachable', details: 'Could not reach Spoolman (timed out)'}]});
+  assert(text(byTest('req-status')).includes('Not reachable') && text(sec).includes('timed out'), 'reached before: not reachable, with the error');
+  assert(!byTest('req-install') && !text(sec).includes('docker run'), 'no install guide for a server that ran before');
 `, { mode: 'settings' });
-test('spool actions are off with the reason while the source cannot be read, back after a good read', `
+test('spool actions: one failed read keeps them; two in a row turn them off with the reason; a good read brings them back', `
   const grouped = {display: {...DEFAULTS, group_same: false}};
   await spools(SPOOLS, grouped);
   await open(1);
   assert(!byTest('spool-actions').disabled && !byTest('actions-off'), 'on');
-  await post({type: 'spools', ok: false, origin: 3, error: 'SYNTHETIC OFFLINE', error_code: 'read_failed'});
+  const readFails = () => post({type: 'spools', ok: false, origin: 3, error: 'SYNTHETIC OFFLINE', error_code: 'read_failed'});
+  await readFails();
+  assert(byTest('stale') && !byTest('spool-actions').disabled && !byTest('actions-off') && !byTest('sync').disabled, 'one failure: a blip, actions stay');
+  await readFails();
   assert(byTest('spool-actions').disabled && text(byTest('actions-off')).includes('couldn’t be read'), 'off, with the reason');
   assert(byTest('sync').disabled, 'Sync off too');
   await spools(SPOOLS, grouped);

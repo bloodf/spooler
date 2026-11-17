@@ -15,7 +15,7 @@ export const bambu = reactive({ verified: false, account: '', pane: 'login' as '
   text: '', kind: 'pending' as 'ok' | 'pending' | 'error', email: '', password: '', region: 'global', code: '' });
 export const update = reactive({ busy: false, text: '', newer: '' });
 // The saved source as a requirement, from the plugin's connection test (no extra probe): Check again re-runs it.
-export interface Requirement { id: string; status: 'ok' | 'missing' | 'unknown'; details: string }
+export interface Requirement { id: string; status: 'ok' | 'missing' | 'unreachable' | 'unknown'; details: string }
 export const req = reactive({ checking: true, list: [] as Requirement[] });
 export function checkRequirements(): void { req.checking = true; bridge.postSettings({ type: 'requirements' }); }
 export const saving = ref(false);

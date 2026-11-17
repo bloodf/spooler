@@ -331,6 +331,7 @@ export const es: Record<MessageKey, string> = {
   'detail.actionsOff': 'Las acciones de carrete están desactivadas: {reason}.',
   'req.help': 'Lo que Spooler necesita fuera de OrcaSlicer. Las funciones que dependen de algo que falta quedan desactivadas, con el motivo, hasta que se encuentre.',
   'req.status.ok': 'Encontrado',
+  'req.status.unreachable': 'No accesible',
   'req.status.missing': 'Falta',
   'req.status.unknown': 'Aún sin comprobar',
   'req.checking': 'Comprobando…',

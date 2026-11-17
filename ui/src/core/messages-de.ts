@@ -331,6 +331,7 @@ export const de: Record<MessageKey, string> = {
   'detail.actionsOff': 'Spulenaktionen sind aus: {reason}.',
   'req.help': 'Was Spooler außerhalb von OrcaSlicer braucht. Funktionen, die etwas Fehlendes brauchen, bleiben mit Begründung aus, bis es gefunden wird.',
   'req.status.ok': 'Gefunden',
+  'req.status.unreachable': 'Nicht erreichbar',
   'req.status.missing': 'Fehlt',
   'req.status.unknown': 'Noch nicht geprüft',
   'req.checking': 'Wird geprüft…',

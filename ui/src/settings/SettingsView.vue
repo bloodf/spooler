@@ -64,7 +64,7 @@ const setDisp = (k: string, v: unknown) => { form.display = { ...form.display, [
 // Requirements: the saved spool source. Spoolman installs with Docker on every desktop system.
 const SPOOLMAN_DOCKER = 'docker run -d --name spoolman -p 7912:8000 -v spoolman-data:/home/app/.local/share/spoolman ghcr.io/donkie/spoolman:latest';
 const reqSteps = (r: Requirement) => (r.id === 'bambu' ? [t('req.bambuHow')] : [t('req.os.mac'), t('req.os.win'), t('req.os.linux'), t('req.then')]);
-const reqMissing = computed(() => req.list.some(r => r.status === 'missing'));
+const reqMissing = computed(() => req.list.some(r => r.status === 'missing' || r.status === 'unreachable'));
 
 // The index beside the sections; the source flags itself until it passed a test (Save waits for it).
 const sections = computed<OuiSettingsSection[]>(() => [
@@ -102,7 +102,7 @@ const sections = computed<OuiSettingsSection[]>(() => [
           <RequirementRow v-for="r in req.list" :key="r.id" :name="r.id === 'bambu' ? 'Bambu Cloud' : 'Spoolman'" :status="req.checking ? 'unknown' : r.status"
                           :label="req.checking ? t('req.checking') : t(`req.status.${r.status}`)" :details="req.checking ? '' : r.details"
                           :why="t(r.id === 'bambu' ? 'req.why.bambu' : 'req.why.spoolman')" :code="r.id === 'bambu' ? '' : SPOOLMAN_DOCKER" :steps="reqSteps(r)">
-            <Button v-if="r.id !== 'bambu' && r.status !== 'ok'" severity="secondary" size="small" :label="t('req.install')" data-test="req-install" @click="bridge.postSettings({ type: 'spoolman_help' })" />
+            <Button v-if="r.id !== 'bambu' && r.status === 'missing'" severity="secondary" size="small" :label="t('req.install')" data-test="req-install" @click="bridge.postSettings({ type: 'spoolman_help' })" />
             <Button severity="secondary" size="small" :label="t('req.check')" :loading="req.checking" data-test="req-check" @click="checkRequirements" />
           </RequirementRow>
           <p v-if="!req.list.length" class="oui-meta">{{ t('req.checking') }}</p>

@@ -54,20 +54,48 @@ class RequirementsTest(unittest.TestCase):
         posted = settings.post.call_args[0][0]
         self.assertEqual(posted["requirements"], [self.status()])
 
-    def test_missing_after_a_failed_read_until_a_good_one(self):
-        sp.save_settings({"spoolman_url": "http://spoolman:7912"})
-        with mock.patch.object(sp, "_spoolman_open", side_effect=urllib.error.URLError("refused")):
-            sp.get_spools("http://spoolman:7912")
-        self.assertEqual(self.status()["status"], "missing")
-        self.assertIn("Could not reach Spoolman", self.status()["details"])
+    def read(self, ok):
+        url = "http://spoolman:7912"
+        if not ok:
+            with mock.patch.object(sp, "_spoolman_open", side_effect=urllib.error.URLError("refused")):
+                return sp.get_spools(url)
         with mock.patch.object(sp, "_spoolman_open", return_value=[]), \
                 mock.patch.object(sp, "publish_stock"), mock.patch.object(sp, "rfid_known", return_value={}):
-            sp.get_spools("http://spoolman:7912")
+            return sp.get_spools(url)
+
+    def test_one_failed_read_is_a_blip_two_in_a_row_are_missing(self):
+        sp.save_settings({"spoolman_url": "http://spoolman:7912"})
+        self.read(False)
+        self.assertEqual(self.status()["status"], "unknown")
+        self.assertFalse(sp.source_failing())
+        self.read(False)
+        self.assertEqual(self.status()["status"], "missing")
+        self.assertIn("Could not reach Spoolman", self.status()["details"])
+        self.assertTrue(sp.source_failing())
+        self.read(True)
         self.assertEqual(self.status()["status"], "ok")
 
-    def test_check_again_forgets_and_asks_again(self):
+    def test_reached_once_then_failing_is_unreachable_not_missing(self):
         sp.save_settings({"spoolman_url": "http://spoolman:7912"})
-        sp.heard("http://spoolman:7912", False, "old failure")
+        sp.heard("http://spoolman:7912", True, "0.22.1")
+        self.read(False)
+        self.assertEqual(self.status(), {"id": "spoolman", "status": "ok", "details": "0.22.1"})
+        self.read(False)
+        self.assertEqual(self.status()["status"], "unreachable")
+        self.assertIn("Could not reach Spoolman", self.status()["details"])
+        self.read(True)
+        self.assertEqual(self.status(), {"id": "spoolman", "status": "ok", "details": "0.22.1"})
+
+    def test_a_failed_settings_test_counts_at_once(self):
+        sp.save_settings({"spoolman_url": "http://spoolman:7912"})
+        window = sp.SpoolerWindow()
+        window._settings_window = mock.Mock(is_open=lambda: True)
+        with mock.patch.object(sp, "_spoolman_open", side_effect=urllib.error.URLError("refused")):
+            window._on_settings({"type": "ready"})
+        self.assertEqual(self.status()["status"], "missing")
+
+    def test_check_again_asks_again(self):
+        sp.save_settings({"spoolman_url": "http://spoolman:7912"})
         for host in (sp.SpoolerWindow(), sp.SpoolerPage()):
             asked = []
             host._check_connection = lambda url, window, src=None: asked.append(url)
@@ -75,7 +103,6 @@ class RequirementsTest(unittest.TestCase):
                 host._settings_window = mock.Mock()
             host._on_settings({"type": "requirements"})
             self.assertEqual(asked, ["http://spoolman:7912"])
-            self.assertEqual(self.status()["status"], "unknown")
 
     def test_bambu_signed_out_is_missing_signed_in_is_found(self):
         sp.save_settings({"spool_source": "bambu"})
@@ -86,8 +113,24 @@ class RequirementsTest(unittest.TestCase):
         sp.heard(sp.BAMBU_KEY, True, "me@example.com")
         self.assertEqual(self.status()["status"], "ok")
 
+    def test_bambu_reads_are_heard(self):
+        sp.save_settings({"spool_source": "bambu"})
+        sp.AUTH_FILE.write_text('{"access_token": "x", "account": "me@example.com"}', encoding="utf-8")
+        good = {"ok": True, "auth": {"account": "me@example.com"}, "spools": []}
+        with mock.patch.object(sp, "bambu_fetch", return_value=good):
+            sp.get_bambu_spools()
+        self.assertEqual(self.status(), {"id": "bambu", "status": "ok", "details": "me@example.com"})
+        bad = {"ok": False, "error": "Could not reach Bambu Cloud (timeout)", "account": "me@example.com"}
+        with mock.patch.object(sp, "bambu_fetch", return_value=bad):
+            sp.get_bambu_spools()
+            self.assertEqual(self.status()["status"], "ok")  # one failure: a blip
+            sp.get_bambu_spools()
+        self.assertEqual(self.status()["status"], "unreachable")
+        self.assertIn("Could not reach Bambu Cloud", self.status()["details"])
+
     def test_auto_send_waits_while_the_source_is_missing(self):
         sp.save_settings({"spoolman_url": "http://spoolman:7912"})
+        sp.heard("http://spoolman:7912", False, "Could not reach Spoolman")
         sp.heard("http://spoolman:7912", False, "Could not reach Spoolman")
         with mock.patch.object(sp, "edited_changes", side_effect=AssertionError("not while missing")):
             sp.auto_send(lambda msg: self.fail(f"posted {msg}"))
