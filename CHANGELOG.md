@@ -5,6 +5,11 @@ Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); 
 
 ## [Unreleased]
 
+## [0.29.1] - 2026-11-17
+
+### Changed
+- The plugin icon is the new brand tile.
+
 ## [0.29.0] - 2026-11-17
 
 ### Added
