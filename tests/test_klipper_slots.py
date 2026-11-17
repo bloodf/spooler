@@ -195,6 +195,18 @@ class PollTest(KlipperCase):
         doc, _ = sp.moon_poll(BASE)
         self.assertTrue(doc["hh"])
 
+    def test_managed_printer_never_shows_the_active_spool(self):
+        self.moonraker({**extruders(1), "mmu": {"num_gates": 1, "gate_status": [1], "gate_material": ["PLA"]}}, active=4)
+        sp.moon_poll(BASE)
+        self.moonraker({}, active=4)  # one empty answer
+        doc, heads = sp.moon_poll(BASE)
+        self.assertNotIn("vt_tray", doc["print"])
+        sp.live_apply(PID, "Voron", doc, link=PID, full=True)
+        with sp._live_lock:
+            sp.moon_mark(PID, doc, heads)
+        self.addCleanup(sp._live["printers"].pop, PID, None)
+        self.assertFalse(next(p for p in sp.live_snapshot()["printers"] if p["id"] == PID)["spool_set"])
+
     def test_no_active_spool_post_to_a_managed_printer_on_an_empty_poll(self):
         sp._local[PID] = {"link": {"kind": "moonraker", "ip": BASE, "name": "Voron"}, "stop": None, "thread": None}
         self.addCleanup(sp._local.pop, PID, None)

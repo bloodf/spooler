@@ -4093,6 +4093,11 @@ def moon_poll(base: str) -> tuple[dict, bool]:
     doc["hh"] = doc["hh"] or bool(found.get("hh"))
     if entry is not None and not entry["managed"]:
         heads = moon_manual(doc, entry["units"], spools, target)
+    elif entry is not None and "vt_tray" in doc["print"]:
+        # It reported its own spools before (U1, lane_data, Happy Hare) and this answer was empty: show no
+        # slots this time, never Moonraker's active spool, so the page can't offer to set one (spool_set).
+        doc["print"].pop("vt_tray")
+        doc["print"]["ams"] = {"ams": []}
     doc["print"].update(moon_progress(status))
     return doc, heads
 
