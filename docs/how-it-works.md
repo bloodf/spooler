@@ -80,8 +80,10 @@ Unsaved edits are the edited copy against `get_selected_preset()`, the saved pre
 
 A spool linked to your own preset (`orca_filament_preset`, a text extra field on the spool, else on
 its filament, JSON-encoded like every Spoolman extra value; `linked_preset()`) gets no Spooler preset
-(`profile_files()` skips it), and `profile_for_spool()` answers the linked name instead, so Load
-Printer Filaments and Keep Slots Synced pick it. The editor offers your own filament presets
+on the printers it fits (`link_fits()`: `is_compatible` for the selected printer, the preset's
+compatible printers for another, both read with the snapshot on the UI thread; `profile_files()` skips
+it there), and `profile_for_spool()` answers the linked name on those printers, so Load Printer
+Filaments and Keep Slots Synced pick it. The editor offers your own filament presets
 (`user_filament_presets()`, read with the snapshot on the UI thread) and adds the field to Spoolman the
 first time one is saved.
 
