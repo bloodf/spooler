@@ -395,6 +395,8 @@ test('B-20: action errors stay until closed and are announced; successes clear',
   await spools(SPOOLS);
   await click(byTest('sync'));
   assert(toasts().includes('Syncing presets'), 'pending announced: ' + toasts());
+  await sleep(6000);
+  assert(toasts().includes('Syncing presets'), 'a waiting toast outlives the 5 s info timeout until its answer: ' + toasts());
   await post({type: 'sent', ok: false, text: 'Spoolman refused the filament'});
   assert(alerts().includes('Error:') && alerts().includes('Spoolman refused the filament'), 'error in role=alert: ' + alerts());
   assert(!toasts().includes('Syncing presets'), 'the answer replaces the waiting toast: ' + toasts());
@@ -853,6 +855,28 @@ test('settings: the source is a requirement row; Check again runs the test', `
   assert(text(req()).includes('Connected') && !q('a.oui-req-link', req()), 'connected, no install line');
   await type(q('#url'), 'x');
   await until(() => req().dataset.status === 'unknown', 'an edited address waits for Test');
+`);
+test('settings: the Bambu Cloud row follows the connection: signed out, connected, unreachable, checking', `
+  await until(() => byTest('settings-btn'));
+  await click(byTest('settings-btn'));
+  await post({type: 'show_view', view: 'settings', url: '', source: 'bambu', low_stock: 100, display: DEFAULTS, drying: {}, progress: {}, stats: {}});
+  const req = () => byTest('bambu-status');
+  await until(() => req(), 'Bambu Cloud row');
+  assert(text(req()).includes('Bambu Cloud') && !text(req()).includes(' x '), 'a real row, not a placeholder: ' + text(req()));
+  await post({type: 'test_result', source: 'bambu', ok: false, signin: true, error: 'sign in first', view: 'settings'});
+  await until(() => req().dataset.status === 'missing', 'signed out is missing: ' + req().dataset.status);
+  assert(text(req()).includes('Not signed in'), 'says not signed in: ' + text(req()));
+  await post({type: 'test_result', source: 'bambu', ok: true, account: 'me@example.com', view: 'settings'});
+  await until(() => req().dataset.status === 'found', 'found');
+  assert(text(req()).includes('Connected'), 'connected: ' + text(req()));
+  await post({type: 'test_result', source: 'bambu', ok: false, signin: false, error: 'timed out', view: 'settings'});
+  await until(() => req().dataset.status === 'missing', 'unreachable is missing');
+  assert(text(req()).includes('Not reachable') && !text(req()).includes('Not signed in'), 'signed in but not reachable: ' + text(req()));
+  const before = sentOf('test').length;
+  await click(btn('Check again', req()));
+  eq(sentOf('test').length, before + 1, 'Check again sends the Bambu check');
+  eq(lastOf('test').source, 'bambu', 'the Bambu check');
+  await until(() => req().dataset.status === 'checking', 'checking');
 `);
 test('settings: leaving with unsaved edits asks; going back keeps them', `
   await post({type: 'show_view', view: 'settings', url: 'http://s:7912', source: 'spoolman', low_stock: 100, display: DEFAULTS, drying: {}, progress: {}, stats: {}});

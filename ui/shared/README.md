@@ -1,4 +1,17 @@
-# Orca UI foundation 4.2.0 — Vue and PrimeVue
+# Orca UI foundation 4.2.1 — Vue and PrimeVue
+
+Version 4.2.1 fixes the 4.2.0 notices; nothing is removed:
+
+- When the stack is full, the toast that leaves is the oldest that is neither an error nor carries an action; only when every toast is one of those does the oldest leave.
+- A toast's action runs, and the toast closes even if the action throws.
+- Closing a toast that holds focus (its X, its action, from code, or the stack making room) puts focus back where it came from at that moment, not after the leave animation. A plugin's own focus workaround can go.
+- A toast's title and body are separated by a space in the text, so they read as two sentences to screen readers and tests.
+- `OuiRequirement` takes `disabled` (Check again off, for example while there is nothing to check against yet).
+- `OuiSettings` lifts the toast stack above its save bar itself while the bar is on screen (`--oui-toast-bottom` on the root) and gives the space back when Settings is hidden or unmounted. Delete a plugin's own `--oui-toast-bottom` for Settings.
+
+To update from 4.2.0, replace `ui/shared/` with the 4.2.1 snapshot and rebuild.
+
+## 4.2.0
 
 Version 4.2.0 adds notices that never stay on screen for good, and a row for what a feature needs:
 

@@ -16,7 +16,8 @@ export interface OuiToastInput {
 export interface OuiToastItem { id: number; tone: OuiToastTone; title: string; body?: string; action?: OuiToastAction; key?: string; timeout: number }
 
 export const TOAST_TIMEOUT: Record<OuiToastTone, number> = { info: 5000, success: 5000, warn: 8000, error: 0 };
-/** More than this and the oldest leaves first. */
+/** More than this and the oldest leaves first: the oldest that is neither an error nor carries an action (those are
+ * what the user still has to read or act on); only when every toast is one of those, the oldest of all. */
 export const TOAST_MAX = 4;
 
 const state = reactive<{ list: OuiToastItem[] }>({ list: [] });
@@ -47,7 +48,10 @@ export function showToast(input: OuiToastInput): number {
   const timeout = input.timeout ?? TOAST_TIMEOUT[tone];
   const same = input.key ? state.list.find(x => x.key === input.key) : undefined;
   if (same) dismissToast(same.id);
-  while (state.list.length >= TOAST_MAX) dismissToast(state.list[0].id);
+  while (state.list.length >= TOAST_MAX) {
+    const quiet = state.list.find(x => x.tone !== 'error' && !x.action);
+    dismissToast((quiet ?? state.list[0]).id);
+  }
   const id = next++;
   state.list = [...state.list, { id, tone, title: input.title, body: input.body, action: input.action, key: input.key, timeout }];
   if (timeout > 0) { left.set(id, { ms: timeout, since: Date.now() }); arm(id); }

@@ -6,7 +6,7 @@ import './base.css';
 
 export type OrcaLocale = 'en' | 'pt-BR';
 export type OrcaTheme = 'light' | 'dark';
-export const UI_VERSION = '4.2.0';
+export const UI_VERSION = '4.2.1';
 export { PRIMEUI_LICENSE_EXPIRES } from './license';
 // Shared components are a separate entry (./components) so a page only pays for the ones it imports.
 export { OrcaPreset, palette };

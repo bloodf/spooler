@@ -77,8 +77,10 @@ export function note(kind: NoteKind, text: string, key?: string): void {
   if (key) stopWait(key);
   if (kind === 'pending' && key) waits.set(key, window.setTimeout(() => { waits.delete(key); note('unknown', t('status.noAnswer', { action: text }), key); }, PENDING_TIMEOUT_MS));
   const said = kind === 'error' ? t('status.errorPrefix') : kind === 'unknown' ? t('status.unknownPrefix') : '';
-  // An unknown outcome stays until closed, like an error: the user has to check Spoolman before trying again.
-  toast.show({ tone: TONE[kind], title: said || text, ...(said ? { body: text } : {}), ...(key ? { key } : {}), ...(kind === 'unknown' ? { timeout: 0 } : {}) });
+  // An unknown outcome stays until closed, like an error: the user has to check Spoolman before trying again. A waiting
+  // toast stays until its answer (or the "result unknown" one) replaces it, however long that takes.
+  const stays = kind === 'unknown' || (kind === 'pending' && !!key);
+  toast.show({ tone: TONE[kind], title: said || text, ...(said ? { body: text } : {}), ...(key ? { key } : {}), ...(stays ? { timeout: 0 } : {}) });
 }
 /** Forgets an action's waiting state and its toast (the plugin answered without a result to show). */
 export function quiet(key: string): void {

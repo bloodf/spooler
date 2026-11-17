@@ -2,6 +2,7 @@
 import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import OuiIcon from './OuiIcon.vue';
 import { error, warning, type OuiIconData } from '../icons';
+import { toastList } from './toast';
 
 /*
  * The settings page: one section at a time, picked from tabs (a side list when wide, a scrolling strip when narrow), and
@@ -19,6 +20,26 @@ const props = defineProps<{ sections: OuiSettingsSection[]; navLabel: string }>(
 const root = ref<HTMLElement>();
 const body = ref<HTMLElement>();
 const tabs = ref<HTMLElement>();
+const foot = ref<HTMLElement>();
+// While the save bar is on screen the toast stack sits above it (--oui-toast-bottom on the root, read by OuiToastHost).
+// A settings view kept mounted but hidden (v-show on another tab) has a bar of height 0 and gives the space back.
+let footSet = false;
+function liftToasts() {
+  const r = foot.value?.getBoundingClientRect();
+  const style = document.documentElement.style;
+  // From the top of the bar to the bottom of the window, plus a gap: right whether the bar is at the very bottom or the
+  // page has a little room under it.
+  if (r && r.height > 0 && r.top < innerHeight) {
+    const value = `${Math.ceil(innerHeight - r.top) + 12}px`;
+    if (style.getPropertyValue('--oui-toast-bottom') !== value) style.setProperty('--oui-toast-bottom', value);
+    footSet = true;
+  } else if (footSet) { style.removeProperty('--oui-toast-bottom'); footSet = false; }
+}
+let liftFrame = 0;
+const relift = () => { if (!liftFrame) liftFrame = requestAnimationFrame(() => { liftFrame = 0; liftToasts(); }); };
+// Measured again whenever a toast comes, so the stack is placed against where the bar is now, whatever moved it.
+watch(() => toastList.list.length, () => { liftToasts(); relift(); }, { flush: 'post' });
+let footSizes: ResizeObserver | undefined;
 
 const storeKey = () => 'oui-settings:' + location.pathname + ':' + props.sections.map(s => s.id).join(',');
 const known = (id: string | null | undefined) => !!id && props.sections.some(s => s.id === id);
@@ -93,6 +114,7 @@ function measure() {
   const below = trailing(el);
   const value = `${Math.round(above + below)}px`;
   if (el.style.getPropertyValue('--oui-settings-offset') !== value) el.style.setProperty('--oui-settings-offset', value);
+  relift();   // the bar moves with the settings' height
 }
 // Measured on the next frame, not inside the observer's own callback: setting the height there would resize what it
 // observes in the same frame (the browser reports that as a ResizeObserver loop).
@@ -114,16 +136,24 @@ onMounted(() => {
   }
   measure();
   window.addEventListener('resize', remeasure);
+  window.addEventListener('resize', relift);
+  window.addEventListener('scroll', relift, { passive: true });
   body.value?.addEventListener('focusin', onFocusIn);
   window.addEventListener('hashchange', onHash);
   if (typeof ResizeObserver !== 'undefined') {
+    footSizes = new ResizeObserver(relift);
+    if (foot.value) footSizes.observe(foot.value);
+    footSizes.observe(document.body);
+    if (root.value) footSizes.observe(root.value);
     sizes = new ResizeObserver(remeasure);
     sizes.observe(document.body);
     if (root.value?.parentElement) sizes.observe(root.value.parentElement);
   }
 });
 onBeforeUnmount(() => {
-  mutations?.disconnect(); sizes?.disconnect();
+  mutations?.disconnect(); sizes?.disconnect(); footSizes?.disconnect(); cancelAnimationFrame(liftFrame);
+  window.removeEventListener('resize', relift); window.removeEventListener('scroll', relift);
+  if (footSet) document.documentElement.style.removeProperty('--oui-toast-bottom');
   cancelAnimationFrame(frame);
   window.removeEventListener('resize', remeasure); window.removeEventListener('hashchange', onHash);
 });
@@ -141,7 +171,7 @@ onBeforeUnmount(() => {
       </div>
     </nav>
     <div id="oui-settings-panel" ref="body" class="oui-settings-body" role="tabpanel" :aria-labelledby="'oui-settings-tab-' + current" tabindex="-1"><slot /></div>
-    <footer v-if="$slots.footer" class="oui-settings-foot"><slot name="footer" /></footer>
+    <footer v-if="$slots.footer" ref="foot" class="oui-settings-foot"><slot name="footer" /></footer>
   </div></div>
 </template>
 <style>

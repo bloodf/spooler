@@ -15,7 +15,7 @@ const props = defineProps<{ name: string; /** What the plugin uses it for. */ wh
   status: 'found' | 'missing' | 'checking' | 'unknown'; /** The status chip text ("Found", "Not found"). */ statusLabel: string;
   /** Where it was found, or what was found ("/usr/bin/ffmpeg · 7.1"). */ detail?: string;
   /** How to install it, one line. */ installText?: string; installUrl?: string; installLabel?: string;
-  checkLabel: string; checking?: boolean }>();
+  checkLabel: string; checking?: boolean; /** Check again is off (nothing to check against yet); the row still shows. */ disabled?: boolean }>();
 const emit = defineEmits<{ check: []; open: [url: string] }>();
 const STATE = { found: 'ok', missing: 'warn', checking: 'busy', unknown: 'idle' } as const;
 const listens = !!getCurrentInstance()?.vnode.props?.onOpen;
@@ -38,7 +38,7 @@ function onLink(event: MouseEvent) {
     </div>
     <div class="oui-req-side">
       <OuiStatus :state="STATE[status]">{{ statusLabel }}</OuiStatus>
-      <button type="button" class="oui-req-check" :disabled="checking || status === 'checking'" @click="emit('check')">
+      <button type="button" class="oui-req-check" :disabled="disabled || checking || status === 'checking'" @click="emit('check')">
         <OuiIcon :icon="refresh" :size="14" /><span>{{ checkLabel }}</span>
       </button>
     </div>

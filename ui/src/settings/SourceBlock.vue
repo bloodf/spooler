@@ -24,7 +24,16 @@ const smReq = computed(() => {
   const status = conn.kind === 'idle' ? 'unknown' as const : STATUS[conn.kind as Exclude<Kind, 'idle'>];
   return { status, label: t(({ found: 'req.connected', missing: 'req.unreachable', checking: 'req.checking', unknown: 'req.untested' } as const)[status]) };
 });
-const bbReq = computed(() => ({ status: "found" as const, label: "x" }));
+// Bambu Cloud: connected once verified; while a sign-in or check is out, checking; signed out (the login or code pane),
+// or a check that asks for a sign-in, is "Not signed in"; signed in but the check failed is "Not reachable".
+const bbReq = computed(() => {
+  const signedOut = bambu.pane !== 'in';
+  const status = bambu.kind === 'pending' ? 'checking' as const : bambu.kind === 'ok' && bambu.verified ? 'found' as const
+    : bambu.kind === 'error' || signedOut ? 'missing' as const : 'unknown' as const;
+  const label = status === 'checking' ? 'req.checking' : status === 'found' ? 'req.connected' : status === 'unknown' ? 'req.untested'
+    : signedOut ? 'req.signedOut' : 'req.unreachable';
+  return { status, label: t(label) };
+});
 </script>
 <template>
   <div class="sb">

@@ -59,7 +59,7 @@ const state = computed<{ state: OuiState; label: string; text: string }>(() => {
 </script>
 
 <template>
-  <div class="sp-shell" :class="{ 'sp-on-settings': settingsOnly || m.view === 'settings' }">
+  <div class="sp-shell">
     <OuiAppBar name="Spooler" :tabs="settingsOnly ? undefined : tabs" :model-value="current" :tabs-label="t('nav.label')" @update:model-value="go">
       <template #mark><Logo /></template>
       <template #status>
@@ -100,9 +100,6 @@ const state = computed<{ state: OuiState; label: string; text: string }>(() => {
    Traditional Chinese one isn't picked first for the shared Han characters. */
 html:lang(zh-CN) { --oui-font: 'Manrope', 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', 'Noto Sans SC', 'Source Han Sans SC', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
 .oui-page > [role='tabpanel'] { min-width: 0; }
-/* Settings keeps Save and Cancel in a bar along the bottom edge: toasts sit above it.
-   ponytail: fixed lift for the bar's usual height (one or two lines); measure the bar if it grows. */
-.sp-on-settings { --oui-toast-bottom: 96px; }
 /* Narrow bar (the 380 px dock): the page actions keep their icons and drop their words; the state keeps its chip. */
 @container oui-appbar (max-width: 520px) {
   .sp-sync .p-button-label, .sp-state { display: none; }
