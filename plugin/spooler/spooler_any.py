@@ -5288,21 +5288,41 @@ def _all_tags(spools: list) -> set:
     return set().union(*(spool_tags(s) for s in spools if isinstance(s, dict)))
 
 
+ARCHIVED_SECS = 300
+_archived_tags: dict = {"url": "", "time": 0.0, "tags": set()}  # archived spools' tags, per Spoolman address
+
+
+def _archived(url: str) -> set:
+    """The tags of a Spoolman's archived spools, read again after ARCHIVED_SECS or a card action.
+    Raises when Spoolman can't be read."""
+    if _archived_tags["url"] != url or time.monotonic() - _archived_tags["time"] >= ARCHIVED_SECS:
+        spools = _spoolman_open(url, "spool?allow_archived=true") or []
+        tags = _all_tags([s for s in spools if isinstance(s, dict) and s.get("archived")])
+        _archived_tags.update(url=url, time=time.monotonic(), tags=tags)
+    return _archived_tags["tags"]
+
+
 def rfid_known(url: str, data: list, with_archived: bool) -> dict:
     """For the spool cache, read with each spool list: every tag Spoolman holds, archived spools
     included (an archived spool still in the AMS is no new spool), and the tray tags checked against
-    them. Archived spools are read only when the list left them out and a tray carries a tag no
-    active spool has. Called off the UI thread."""
+    them. Archived spools are read (and kept ARCHIVED_SECS) only when the list left them out and a
+    tray carries a tag no active spool has and that wasn't skipped. Called off the UI thread."""
     known = _all_tags(data if with_archived else active_spools(data))
+    skipped = _rfid_skipped()
     with _live_lock:
-        trays = [tray for state in _live["printers"].values() for _u, _s, tray in _live_trays(state)]
-    wanted = {offer["tag"] for offer in (rfid_offer(tray, known) for tray in trays) if offer}
+        trays = [(pid, tray) for pid, state in _live["printers"].items() for _u, _s, tray in _live_trays(state)]
+    wanted = set()
+    for pid, tray in trays:
+        offer = rfid_offer(tray, known)
+        if offer and not _tag_ids([tray.get("tag_uid"), tray.get("tray_uuid")]) & set(skipped.get(pid, [])):
+            wanted.add(offer["tag"])
     if wanted and not with_archived:
         try:
-            known |= _all_tags(_spoolman_open(url, "spool?allow_archived=true") or [])
+            known |= _archived(url)
         except Exception as exc:
-            log.warning("Could not read the archived spools' RFID tags: %s", exc)
+            _report("Archived spool tags", str(exc))
             return {"rfid_known": known, "rfid_checked": set()}  # unsure: offer nothing until the next read
+        _report("Archived spool tags", None)
     return {"rfid_known": known, "rfid_checked": wanted}
 
 
@@ -6457,6 +6477,7 @@ def start_spool_action(data: object, post) -> None:
         result = spool_action(data)
         if action not in ("locations", "editor"):
             _spool_cache["time"] = 0.0
+            _archived_tags["time"] = 0.0  # an archive or unarchive changes them
         ref = data.get("ref") if isinstance(data, dict) else None  # the editor's own count: its answer finds the right editor
         post({"type": "action_result", "action": action, **result,
               **({"ref": ref} if isinstance(ref, int) and not isinstance(ref, bool) else {})})

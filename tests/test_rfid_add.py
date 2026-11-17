@@ -64,6 +64,9 @@ class OffersTest(Settings):
         super().setUp()
         self.live = mock.patch.dict(sp._live["printers"], clear=True)
         self.live.start()
+        archived = mock.patch.dict(sp._archived_tags, {"url": "", "time": 0.0, "tags": set()})
+        archived.start()
+        self.addCleanup(archived.stop)
         sp.live_apply("p1", "X1C", REPORT, link="p1")
         self.cache()
 
@@ -109,6 +112,44 @@ class OffersTest(Settings):
                                                            {"id": 6, "extra": {"tag": json.dumps(SILK)}}], False)
         server.assert_not_called()
         self.assertEqual(found["rfid_checked"], set())
+
+    def test_a_skipped_spool_doesnt_read_the_archived_spools(self):
+        self.assertTrue(sp.rfid_skip("p1", MATTE))
+        self.assertTrue(sp.rfid_skip("p1", "C4D5E6F700000100"))   # the external spool, by its chip uid
+        with mock.patch.object(sp, "_spoolman_open") as server:
+            found = sp.rfid_known("http://spoolman:7912", [LINKED], False)
+        server.assert_not_called()
+        self.assertEqual(found["rfid_checked"], set())
+
+    def test_archived_tags_are_kept_a_few_minutes_and_read_again_after_an_action(self):
+        archived = [{"id": 8, "archived": True, "extra": {"tag": json.dumps(MATTE)}}]
+        with mock.patch.object(sp, "_spoolman_open", return_value=archived) as server:
+            for _ in range(3):
+                self.assertIn(MATTE, sp.rfid_known("http://spoolman:7912", [LINKED], False)["rfid_known"])
+            self.assertEqual(server.call_count, 1, "one read for three list reads")
+            sp._archived_tags["time"] -= sp.ARCHIVED_SECS
+            sp.rfid_known("http://spoolman:7912", [LINKED], False)
+            self.assertEqual(server.call_count, 2, "read again once they are old")
+            sp.rfid_known("http://other:7912", [LINKED], False)
+            self.assertEqual(server.call_count, 3, "another Spoolman: its own")
+        with mock.patch.object(sp, "spoolman_call"), mock.patch.object(sp, "spawn", lambda f, *a, **k: f(*a)):
+            sp.start_spool_action({"action": "unarchive", "id": 8}, lambda msg: None)
+        self.assertEqual(sp._archived_tags["time"], 0.0, "an archive or unarchive drops them")
+
+    def test_the_spool_list_read_in_both_display_modes_feeds_the_offers(self):
+        archived = {"id": 8, "archived": True, "extra": {"tag": json.dumps(MATTE)}, "filament": {"id": 1}}
+        for shown in (False, True):
+            sp._archived_tags.update(time=0.0)
+            sp.save_display({**sp.display_settings(), "archived": shown})
+            paths = []
+
+            def server(base, path, *rest):
+                paths.append(path)
+                return [LINKED, archived] if "allow_archived" in path else [LINKED]
+            with mock.patch.object(sp, "_spoolman_open", server):
+                self.assertTrue(sp.get_spools("http://spoolman:7912")["ok"])
+            self.assertEqual(paths, ["spool?allow_archived=true"] if shown else ["spool", "spool?allow_archived=true"], shown)
+            self.assertEqual(self.tags(), [("p1", "ext", 0, SILK)], f"archived shown: {shown}")
 
     def test_nothing_is_offered_when_the_archived_spools_cant_be_read(self):
         with mock.patch.object(sp, "_spoolman_open", side_effect=OSError("refused")):
