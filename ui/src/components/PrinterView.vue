@@ -9,6 +9,7 @@ import LinkedPanel from './LinkedPanel.vue';
 import PlatePanel from './PlatePanel.vue';
 import UsagePanel from './UsagePanel.vue';
 import PeerNote from './PeerNote.vue';
+import RfidPanel from './RfidPanel.vue';
 import { m } from '../state/main';
 import { addPrinter } from '../state/printers';
 import { t } from '../core/i18n';
@@ -21,6 +22,7 @@ const side = computed(() => !!m.plate || (m.usage.enabled && (m.liveOn || m.usag
     <PeerNote where="printer" />
     <div class="pv-grid" :class="{ 'pv-side': side }">
       <div class="oui-stack">
+        <RfidPanel />
         <ProgressPanel />
         <PrinterPanel v-for="p in m.cfg" :key="p.id" :p="p" />
         <LinkedPanel v-if="linkedAny" />

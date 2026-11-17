@@ -4,6 +4,7 @@ import { boot } from '../core/boot';
 import { t } from '../core/i18n';
 import { computeDupes, type Spool } from '../logic/spools';
 import { computeInUse, liveSig, type LivePrinter, type ManualPrinter, type Words } from '../logic/printers';
+import type { RfidOffer } from '../logic/rfid';
 
 export interface UsageRow { slot: number; grams: number; colour?: string; material?: string; label?: string; spool?: number | null;
   how?: string; state?: string; error?: string; op?: string }
@@ -37,6 +38,7 @@ export const m = reactive({
   liveOn: false,
   live: { status: 'off', printers: [] as LivePrinter[], links: {} as Record<string, string> },
   liveKey: '',
+  rfid: [] as RfidOffer[],   // Bambu RFID spools no Spoolman spool carries (RfidPanel)
   usage: { enabled: false, mode: 'ask', prints: [] } as Usage,
   usageNotice: '',
   progress: { ...boot.settings.progress },
@@ -191,6 +193,7 @@ function onMessage(d: any): void {
       if (typeof d.printers_rev === 'number' && d.printers_rev !== m.printersRev) { m.printersRev = d.printers_rev; if (Array.isArray(d.printers)) m.cfg = d.printers; }
       const key = liveSig(d.live);
       if (key !== m.liveKey) { m.liveKey = key; m.live = d.live; }
+      m.rfid = Array.isArray(d.rfid) ? d.rfid : [];
       if (d.usage) setUsage(d.usage, false);
       break;
     }

@@ -2,6 +2,7 @@ import { reactive, watch } from 'vue';
 import * as bridge from '../core/bridge';
 import { m, note, on, setTab } from './main';
 import { t } from '../core/i18n';
+import type { RfidOffer } from '../logic/rfid';
 
 // The spool whose detail is open beside the list, and the action form open in it (Spoolman only). `id` is the
 // spool the user picked; with none picked the list shows its first spool until the user closes the detail.
@@ -70,10 +71,12 @@ export function sendAction(action: string, extra: Record<string, unknown> = {}):
 // ------------------------------------------------------------------ spool editor (Add Spool, Edit Spool)
 // The plugin answers "editor" with Spoolman's extra-field definitions, filaments, vendors and (for an edit) the spool as
 // Spoolman has it now; a save or create answers like any card action. The editor stays open on a refusal, showing why.
-export const editor = reactive({ open: false, id: null as number | null, data: null as any, busy: false, error: '', made: null as number | null, ref: 0 });
+export const editor = reactive({ open: false, id: null as number | null, data: null as any, busy: false, error: '', made: null as number | null, ref: 0,
+  rfid: null as null | { offer: RfidOffer; where: string } });
 // Each editor opened gets its own ref, which the plugin sends back: an answer for an editor closed since never touches the next one.
-export function openEditor(id: number | null): void {
-  Object.assign(editor, { open: true, id, data: null, busy: false, error: '', made: null, ref: editor.ref + 1 });
+// rfid: Add Spool for a new RFID spool in a printer slot, pre-filled from the printer; its tag goes with the create.
+export function openEditor(id: number | null, rfid: { offer: RfidOffer; where: string } | null = null): void {
+  Object.assign(editor, { open: true, id, data: null, busy: false, error: '', made: null, ref: editor.ref + 1, rfid: id == null ? rfid : null });
   bridge.postMain({ type: 'spool_action', action: 'editor', ...(id == null ? {} : { id }), origin: m.origin, ref: editor.ref });
 }
 export function submitEditor(message: Record<string, unknown>): void {

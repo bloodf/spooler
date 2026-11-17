@@ -917,6 +917,78 @@ test('editor: pt-BR wording and the empty list offers Add Spool', `
   assert(text(dialogEl()).includes('Etapa 1 de 2') && text(dialogEl()).includes('Filamento existente'), 'Portuguese: ' + text(dialogEl()).slice(0, 80));
 `, { lang: 'pt_BR' });
 
+// ------------------------------------------------------------------ new RFID spools (Printer tab)
+const RFID_PRELUDE = `
+  const TAG = '7A1F3B9C2D4E4F60A1B2C3D4E5F60718';
+  const OFFER = {tag: TAG, printer: 'p1', unit: 0, slot: 2, type: 'PLA', name: 'PLA Matte', colours: ['3C3C3C'], remain: 80, weight: 1000, diameter: 1.75, nozzle: [190, 230]};
+  const X1 = {id: 'p1', link: 'p1', name: 'X1C', age: 0, units: [{id: 0, kind: 'ams', trays: [0, 1, 2, 3].map(i => ({slot: i, empty: i !== 2, type: i === 2 ? 'PLA' : '', name: 'PLA Matte', colour: '3C3C3C', remain: 80, rfid: i === 2}))}], ext: null};
+  const MATTE = {id: 12, name: 'PLA Matte Charcoal', material: 'PLA', color_hex: '3C3C3C', density: 1.31, diameter: 1.75, weight: 1000, vendor: {id: 6, name: 'Bambu Lab'}};
+  async function offered(rfid) {
+    await spools(SPOOLS, {printers: [{id: 'p1', name: 'X1C', ip: '10.0.0.9', has_code: true, units: []}], live_ok: true});
+    await tab('printer');
+    await post({type: 'live', live: {links: {p1: 'live'}, printers: [X1]}, rfid: rfid || [OFFER]});
+    await until(() => byTest('rfid'), 'the offer');
+  }
+  async function editorWith(filaments) {
+    await post({...editorData(), editor: {...editorData().editor, filaments}});
+    await until(() => dialogEl() && !/enter|leave/.test(dialogEl().className) && dialogEl().contains(document.activeElement), 'editor open and focused');
+  }
+`;
+test('rfid: a new RFID spool is offered; Add opens the editor on the matching filament and sends the tag', RFID_PRELUDE + `
+  await offered();
+  const o = byTest('rfid-offer');
+  for (const s of ['New RFID spool in X1C · AMS 1 slot 3', 'Bambu Lab PLA Matte', '~80% left, about 800 g'])
+    assert(text(o).includes(s), 'offer says ' + s + ': ' + text(o));
+  await click(byTest('rfid-add'));
+  eq(lastOf('spool_action'), {type: 'spool_action', action: 'editor', origin: 3, ref: 1}, 'Add Spool, as from the list');
+  await editorWith([...FILS, MATTE]);
+  assert(text(byTest('editor-rfid')).includes('RFID spool in X1C · AMS 1 slot 3'), 'the editor says where the spool is');
+  eq(text(byTest('preview-name')), 'PLA Matte Charcoal', 'the matching Bambu Lab filament is picked');
+  await click(byTest('editor-next'));
+  assert(text(byTest('preview-weight')).includes('800 g of 1,000 g'), 'weights from the tray: ' + text(byTest('preview-weight')));
+  await click(byTest('editor-save'));
+  eq(lastOf('spool_action'), {type: 'spool_action', origin: 3, action: 'create', filament_id: 12,
+    spool: {initial_weight: 1000, remaining_weight: 800, archived: false}, tag: TAG, ref: 1}, 'create with the tag');
+  await post({type: 'action_result', action: 'create', ok: true, text: 'Added spool #44.', ref: editorRef()});
+  await until(() => !dialogOpen(), 'the editor closes');
+  await post({type: 'live', live: {links: {p1: 'live'}, printers: [X1]}, rfid: []});
+  assert(!byTest('rfid'), 'known from now on: no offer');
+`);
+test('rfid: with no matching filament, Add fills in a new Bambu Lab filament from the tray', RFID_PRELUDE + `
+  await offered([{...OFFER, colours: ['FF0000', '00FF00'], nozzle: [200, 230]}]);
+  assert(text(byTest('rfid-offer')).includes('Bambu Lab PLA Matte'), 'offer');
+  await click(byTest('rfid-add'));
+  await editorWith(FILS);
+  assert(byTest('editor-filament'), 'a new filament');
+  eq([q('#se-vendor').value, q('#se-name').value, q('#se-mat').value, q('#se-col-0').value, q('#se-col-1').value],
+    ['Bambu Lab', 'PLA Matte', 'PLA', '#ff0000', '#00ff00'], 'vendor, name, material and both colours');
+  await click(byTest('editor-next'));
+  await click(byTest('editor-save'));
+  const made = lastOf('spool_action');
+  eq([made.action, made.tag, made.filament.vendor, made.filament.multi_color_hexes, made.filament.density, made.filament.diameter, made.filament.settings_extruder_temp, made.filament.weight],
+    ['create', TAG, 'Bambu Lab', 'FF0000,00FF00', 1.24, 1.75, 215, 1000], 'the new filament as the tray reports it');
+  eq(made.spool, {initial_weight: 1000, remaining_weight: 800, archived: false}, 'the spool weights');
+`);
+test('rfid: Skip remembers the spool for that printer; Settings asks again', RFID_PRELUDE + `
+  await offered();
+  await click(byTest('rfid-skip'));
+  eq(lastOf('rfid_skip'), {type: 'rfid_skip', printer: 'p1', tag: TAG}, 'skip names the printer and the tag');
+  assert(!byTest('rfid'), 'the offer goes');
+  await click(byTest('settings-btn'));
+  await post({type: 'show_view', view: 'settings', url: 'http://spoolman:7912', source: 'spoolman', low_stock: 100, plate_check: true, plate_margin: 10,
+    weight_display: 'both', show_cart: false, spool_columns: 1, display: DEFAULTS, drying: {}, progress: {on: true}, stats: {on: true, cur: 'spoolman'}, cur_code: 'GBP',
+    wizard: false, rfid_skipped: 1});
+  await until(() => byTest('rfid-skipped'), 'the skipped row');
+  eq(text(byTest('rfid-skipped')), '1 spool skipped', 'the count');
+  await click(byTest('rfid-unskip'));
+  eq(lastOf('rfid_unskip'), {type: 'rfid_unskip', view: 'settings'}, 'ask again');
+  eq(text(byTest('rfid-skipped')), 'None', 'none skipped now');
+`);
+test('rfid: pt-BR wording', RFID_PRELUDE + `
+  await offered();
+  assert(text(byTest('rfid')).includes('Nova bobina RFID em X1C') && btn('Adicionar') && btn('Ignorar'), 'Portuguese: ' + text(byTest('rfid')));
+`, { lang: 'pt_BR' });
+
 // ------------------------------------------------------------------ runner
 async function bounded(work, stage, ms = 30000) {
   let timer;

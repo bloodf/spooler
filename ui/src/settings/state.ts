@@ -16,6 +16,9 @@ export const bambu = reactive({ verified: false, account: '', pane: 'login' as '
 export const update = reactive({ busy: false, text: '', newer: '' });
 export const saving = ref(false);
 export const wizard = reactive({ open: false, step: 0 });
+// Skipped RFID spools: not part of the form; Ask again acts at once.
+export const rfidSkipped = ref(boot.settings.rfid_skipped ?? 0);
+export function unskipRfid(): void { rfidSkipped.value = 0; bridge.postSettings({ type: 'rfid_unskip' }); }
 
 export function norm(u: string): string { return String(u || '').trim().replace(/\/+$/, ''); }
 export const dirty = computed(() => JSON.stringify(form) !== JSON.stringify(saved.value));
@@ -79,6 +82,7 @@ function onMessage(d: any): void {
   if (d.type === 'show_view') {
     m.view = d.view === 'settings' ? 'settings' : 'main';
     if (d.view !== 'settings') { saving.value = false; return; }
+    if (typeof d.rfid_skipped === 'number') rfidSkipped.value = d.rfid_skipped;
     reset({ url: d.url || '', source: d.source || 'spoolman', low_stock: d.low_stock, plate_check: d.plate_check !== false,
       ...(d.plate_margin !== undefined ? { plate_margin: d.plate_margin } : {}), weight_display: d.weight_display || 'both', show_cart: d.show_cart === true,
       spool_columns: d.spool_columns === 2 ? 2 : 1, progress: { on: true, finish: true, slot: true, idle: 'line', ...(d.progress || {}) },
@@ -88,6 +92,7 @@ function onMessage(d: any): void {
     return;
   }
   if (boot.mode === 'tab' && d.view !== 'settings') return;
+  if (d.type === 'rfid_skipped') { rfidSkipped.value = typeof d.count === 'number' ? d.count : 0; return; }
   if (d.type === 'update_result') {
     update.busy = false;
     update.text = !d.ok ? d.error || t('common.unknownError') : d.newer ? '' : t('settings.upToDate');

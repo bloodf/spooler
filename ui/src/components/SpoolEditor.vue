@@ -8,7 +8,7 @@ import SelectButton from 'primevue/selectbutton';
 import Textarea from 'primevue/textarea';
 import ToggleSwitch from 'primevue/toggleswitch';
 import { OuiBanner, OuiFormRow, OuiIcon, OuiLevel, OuiSpool, OuiSwatch } from '../../shared/src/components';
-import { plus, x } from '../../shared/src/icons';
+import { plus, rfid, x } from '../../shared/src/icons';
 import EditorNumber from './EditorNumber.vue';
 import EditorExtra from './EditorExtra.vue';
 import { boot } from '../core/boot';
@@ -17,6 +17,7 @@ import { editor, submitEditor } from '../state/menu';
 import { ask } from '../core/dialog';
 import { t, tn, locale } from '../core/i18n';
 import { formatWeight, spoolPaint, swatchHex, type Filament } from '../logic/spools';
+import { matchFilament, rfidPrefill } from '../logic/rfid';
 import { changed, densityFor, editable, filamentForm, filamentPayload, filled, previewFilament, problems, spoolForm, spoolPayload, wasOf,
   type FilamentForm, type Raw, type SpoolForm } from '../logic/editor';
 
@@ -37,11 +38,14 @@ let suggested: number | null = null;
 
 watch(data, d => {
   if (!d) return;
-  sf.value = spoolForm(raw.value, defs.value.spool);
-  ff.value = filamentForm(rawFil.value, defs.value.filament);
+  // A new RFID spool opens as the printer reported it, on the Spoolman filament it restocks when one matches.
+  const pre = editor.rfid ? rfidPrefill(editor.rfid.offer) : null;
+  sf.value = spoolForm(pre?.spool ?? raw.value, defs.value.spool);
+  ff.value = filamentForm(pre?.filament ?? rawFil.value, defs.value.filament);
   step.value = 1;
-  source.value = (d.filaments ?? []).length ? 'existing' : 'new';
-  pickId.value = null; tried.value = false; suggested = null;
+  pickId.value = editor.rfid ? matchFilament(d.filaments, editor.rfid.offer) : null;
+  source.value = (d.filaments ?? []).length && (!pre || pickId.value !== null) ? 'existing' : 'new';
+  tried.value = false; suggested = pre?.filament.density ?? null;
 }, { immediate: true });
 // The new filament was made but Spoolman refused the spool: it is an existing filament now, picked for the retry.
 watch(() => editor.made, id => {
@@ -94,8 +98,9 @@ async function save() {
   if (Object.keys(issues.value).length || editor.busy) return;
   const spool = spoolPayload(sf.value, defs.value.spool);
   if (adding.value) {
-    submitEditor(source.value === 'existing' ? { action: 'create', filament_id: pickId.value, spool: filled(spool) }
-      : { action: 'create', spool: filled(spool), filament: filled(filamentPayload(ff.value, defs.value.filament)) });
+    const tag = editor.rfid ? { tag: editor.rfid.offer.tag } : {};
+    submitEditor(source.value === 'existing' ? { action: 'create', filament_id: pickId.value, spool: filled(spool), ...tag }
+      : { action: 'create', spool: filled(spool), filament: filled(filamentPayload(ff.value, defs.value.filament)), ...tag });
     return;
   }
   const sCh = changed(spool, spoolPayload(spoolForm(raw.value, defs.value.spool), defs.value.spool));
@@ -116,6 +121,7 @@ async function save() {
           :style="{ width: 'min(940px, calc(100vw - 32px))' }" :close-button-props="{ severity: 'secondary', text: true, rounded: true, 'aria-label': t('common.close') }">
     <div class="se">
       <OuiBanner v-if="editor.error" tone="error" :title="editor.error" role="alert" data-test="editor-error" />
+      <OuiBanner v-if="editor.rfid" tone="info" :icon="rfid" :title="t('rfid.editorTitle', { where: editor.rfid.where })" data-test="editor-rfid">{{ t('rfid.editorText') }}</OuiBanner>
       <p v-if="!data && !editor.error" class="oui-meta" role="status">{{ t('common.loading') }}</p>
       <div v-if="data" class="se-grid">
         <form id="se-form" class="se-form" novalidate @submit.prevent="save">
