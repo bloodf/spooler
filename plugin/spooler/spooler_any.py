@@ -9,6 +9,11 @@
 # version = "0.29.0"
 # ///
 
+# Spooler - Spoolman inventory for OrcaSlicer, a fork of Spoolio
+# Copyright (C) 2026 Dan J Moore
+# Copyright (C) 2026 Heitor Ramon Ribeiro and Spooler contributors
+# SPDX-License-Identifier: GPL-3.0-only
+
 import asyncio
 import base64
 import csv

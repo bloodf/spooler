@@ -7,6 +7,7 @@ Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); 
 ### Added
 - Settings has a Requirements section. It shows the spool source in use (a Spoolman server, or a Bambu Cloud sign-in) as found, missing, not reachable (it answered earlier, so no install steps) or not checked yet, with the reason, what needs it, and how to get it: for Spoolman a Docker command, a line each for macOS, Windows and Linux, and a button that opens Spoolman's install guide. Check again re-runs the connection test Settings already makes when it opens; no extra request is made at start-up.
 ### Changed
+- Licence is GPL-3.0 again (GPL-3.0-only), as required by Spoolio's licence. The copyright notices of Dan J Moore and of Spooler's contributors are kept in NOTICE.md and at the top of `spooler_any.py`.
 - When the spool source fails two reads in a row, Sync Presets, Send Preset Edits, Add Spool and the spool actions in the detail panel are off, with a one-line reason, even when the last list is still shown. A single failed read is treated as a blip. They come back with the next good read. Automatic sending of preset edits also waits for that read instead of failing every few seconds.
 - Spools are drawn with the photo spool again.
 - Notifications appear bottom-left and each one can be closed; warnings and notices on the page can be dismissed.

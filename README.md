@@ -211,6 +211,6 @@ Bug reports, printer data and pull requests are welcome: [report a bug](https://
 
 ## 📄 License
 
-MIT. See [LICENSE](LICENSE).
+GPL-3.0-only. See [LICENSE](LICENSE).
 
 <p align="center"><sub>by bloodf</sub></p>

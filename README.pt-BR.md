@@ -211,6 +211,6 @@ Relatos de bugs, dados de impressoras e pull requests são bem-vindos: [relate u
 
 ## 📄 Licença
 
-MIT. Veja [LICENSE](LICENSE).
+GPL-3.0-only. Veja [LICENSE](LICENSE).
 
 <p align="center"><sub>by bloodf</sub></p>
