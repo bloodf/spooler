@@ -426,11 +426,29 @@ def plate_settings() -> tuple[bool, int]:
 _settings_lock = threading.RLock()
 
 
-def update_settings(changes: dict) -> bool:
+def settings_form(url, low_stock, plate_check=True, plate_margin=DEFAULT_MARGIN, weight="both", cart=False,
+                  src="spoolman", progress=None, columns=None, stats=None) -> dict:
+    """The keys the Settings form owns, checked, as a Save writes them with update_settings()."""
+    form = {"spool_source": parse_source(src), "low_stock_grams": parse_low(low_stock),
+            "plate_check": parse_flag(plate_check), "plate_margin_percent": parse_margin(plate_margin),
+            "weight_display": parse_weights(weight), "show_cart": parse_flag(cart, default=False)}
+    if form["spool_source"] == "spoolman":
+        form["spoolman_url"] = url
+    for key, value, parse in (("spool_columns", columns, parse_columns), ("progress", progress, parse_progress),
+                              ("stats", stats, parse_stats)):
+        if value is not None:
+            form[key] = parse(value)
+    return form
+
+
+def update_settings(changes) -> bool:
     """Write these keys over the saved settings in one locked read-modify-write, so two writers
-    (a Settings save and a worker thread, say) never drop each other's change."""
+    (a Settings save and a worker thread, say) never drop each other's change. changes is a dict,
+    or a function of the settings as saved now returning one (for a value built on the current
+    one); every key it doesn't name stays as saved."""
     with _settings_lock:
-        return save_settings({**get_settings(), **changes})
+        current = get_settings()
+        return save_settings({**current, **(changes(current) if callable(changes) else changes)})
 
 
 def save_settings(settings: dict) -> bool:
@@ -486,8 +504,8 @@ def sync_config(capability) -> None:
                 except Exception:
                     log.warning("Ignored %s=%r from OrcaSlicer's plugin manager", key, value)
             if changed:
+                update_settings(changed)
                 settings = {**settings, **changed}
-                save_settings(settings)
                 log.info("Took %s from OrcaSlicer's plugin manager", ", ".join(sorted(changed)))
                 auto_keep_check()
         current = config_view(settings)
@@ -2729,9 +2747,8 @@ def answer_calibration(data: dict, post) -> None:
         if changes is not None:
             _save_asks(asks)
             if skip:
-                settings = get_settings()
-                skipped = {**(settings.get("calibration_skipped") or {}), name: _calib_mark(changes)}
-                save_settings({**settings, "calibration_skipped": skipped})
+                update_settings(lambda now: {"calibration_skipped": {
+                    **(now.get("calibration_skipped") or {}), name: _calib_mark(changes)}})
     if changes is None or skip:
         post({"type": "calibration", "asks": calibration_asks()})
         return
@@ -2743,11 +2760,9 @@ def answer_calibration(data: dict, post) -> None:
                 asks = _asks()
                 if name not in asks:  # not written: still waiting, unless a newer set replaced it
                     _save_asks({**asks, name: changes})
-            else:
-                settings = get_settings()
-                skipped = dict(settings.get("calibration_skipped") or {})
-                if skipped.pop(name, None) is not None:
-                    save_settings({**settings, "calibration_skipped": skipped})
+            elif name in (get_settings().get("calibration_skipped") or {}):
+                update_settings(lambda now: {"calibration_skipped": {
+                    k: v for k, v in (now.get("calibration_skipped") or {}).items() if k != name}})
         post(result)
         post({"type": "calibration", "asks": calibration_asks()})
 
@@ -2862,11 +2877,9 @@ def printers_cfg() -> list[dict]:
 
 
 def save_printers(value: object) -> None:
-    settings = get_settings()
-    saved = settings.get("printers") if isinstance(settings.get("printers"), dict) else {}
-    saved[source()] = parse_printers(value)
-    settings["printers"] = saved
-    save_settings(settings)
+    printers = parse_printers(value)
+    update_settings(lambda now: {"printers": {**(now["printers"] if isinstance(now.get("printers"), dict) else {}),
+                                              source(): printers}})
     prune_codes()
     _local_sync()
 
@@ -6110,9 +6123,7 @@ def usage_resolve(entry_id: str, slot: object, outcome: object) -> str:
 def usage_action(data: dict) -> dict:
     kind = data.get("type")
     if kind == "usage_mode":
-        settings = get_settings()
-        settings["book_usage"] = data.get("mode") if data.get("mode") in USAGE_MODES else "ask"
-        save_settings(settings)
+        update_settings({"book_usage": data.get("mode") if data.get("mode") in USAGE_MODES else "ask"})
         _local_sync()
     notice = ""
     try:
@@ -8563,22 +8574,8 @@ class SpoolerWindow(orca.script.ScriptPluginCapabilityBase):
                        plate_margin=DEFAULT_MARGIN, weight="both", cart=False, src="spoolman",
                        progress=None, columns=None, stats=None):
         sync_config(self)  # take a pending plugin-manager edit first, so this save wins over it
-        settings = get_settings()
-        settings["spool_source"] = parse_source(src)
-        if settings["spool_source"] == "spoolman":
-            settings["spoolman_url"] = url
-        settings["low_stock_grams"] = parse_low(low_stock)
-        settings["plate_check"] = parse_flag(plate_check)
-        settings["plate_margin_percent"] = parse_margin(plate_margin)
-        settings["weight_display"] = parse_weights(weight)
-        settings["show_cart"] = parse_flag(cart, default=False)
-        if columns is not None:
-            settings["spool_columns"] = parse_columns(columns)
-        if progress is not None:
-            settings["progress"] = parse_progress(progress)
-        if stats is not None:
-            settings["stats"] = parse_stats(stats)
-        if save_settings(settings):
+        settings = settings_form(url, low_stock, plate_check, plate_margin, weight, cart, src, progress, columns, stats)
+        if update_settings(settings):
             log.info("Settings saved (url=%s, low stock=%s g, filament check=%s, margin=%s%%)",
                      url, settings["low_stock_grams"], settings["plate_check"],
                      settings["plate_margin_percent"])
@@ -9033,22 +9030,8 @@ if _PAGES:
                            plate_margin=DEFAULT_MARGIN, weight="both", cart=False, src="spoolman",
                            progress=None, columns=None, stats=None):
             sync_config(self)  # take a pending plugin-manager edit first, so this save wins over it
-            settings = get_settings()
-            settings["spool_source"] = parse_source(src)
-            if settings["spool_source"] == "spoolman":
-                settings["spoolman_url"] = url
-            settings["low_stock_grams"] = parse_low(low_stock)
-            settings["plate_check"] = parse_flag(plate_check)
-            settings["plate_margin_percent"] = parse_margin(plate_margin)
-            settings["weight_display"] = parse_weights(weight)
-            settings["show_cart"] = parse_flag(cart, default=False)
-            if columns is not None:
-                settings["spool_columns"] = parse_columns(columns)
-            if progress is not None:
-                settings["progress"] = parse_progress(progress)
-            if stats is not None:
-                settings["stats"] = parse_stats(stats)
-            if save_settings(settings):
+            settings = settings_form(url, low_stock, plate_check, plate_margin, weight, cart, src, progress, columns, stats)
+            if update_settings(settings):
                 log.info("Settings saved (url=%s, low stock=%s g, filament check=%s, margin=%s%%)",
                          url, settings["low_stock_grams"], settings["plate_check"],
                          settings["plate_margin_percent"])

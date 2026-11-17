@@ -24,6 +24,7 @@ Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); 
 - A prompt waiting for an answer is still there after OrcaSlicer restarts.
 
 ### Fixed
+- A Settings save that happened while Spooler was writing a calibration prompt, a printer list or another setting could drop that write. Every settings write now updates only its own keys, one at a time.
 - When Spooler can't read Spoolman's version, Send to Spoolman now says so and writes nothing, instead of sending every extra field of the filament back as read, which on a Spoolman that merges them could undo a change made in between.
 - On Spoolman 0.22 to 0.25, Clear Dried Date did nothing: the spool kept its dried date while Spooler said it was cleared. These versions can't remove the date, so Spooler now says so and writes nothing; Spoolman 0.26 or newer removes it as before.
 - On Spoolman 0.22 to 0.25, Mark Dried Today and Send to Spoolman sent back every extra field of the spool or filament, as read just before, instead of only the one they change, so a change made in Spoolman in between could be undone. They now send only their own field; only Spoolman older than 0.22, which replaces the whole map, still gets it whole.

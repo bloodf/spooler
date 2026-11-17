@@ -7,6 +7,7 @@ import json
 import math
 import tempfile
 import threading
+import types
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -101,6 +102,41 @@ class ParseTest(unittest.TestCase):
             for thread in threads:
                 thread.join()
             self.assertEqual({k: v for k, v in sp.get_settings().items() if k.startswith("k")}, {f"k{i}": i for i in range(20)})
+
+
+    def test_settings_save_racing_a_calibration_ask_keeps_both(self):
+        """A Settings Save (the window's _save_settings) and a calibration prompt written from a worker
+        at the same time: the save writes only the keys its form owns, so the prompt survives."""
+        real_get = sp.get_settings
+
+        def slow_get():  # widens the read-to-write window, as a busy disk would
+            value = real_get()
+            sp.time.sleep(0.002)
+            return value
+
+        with tempfile.TemporaryDirectory() as tmp, \
+                mock.patch.object(sp, "SETTINGS_FILE", Path(tmp) / "s.json"), mock.patch.object(sp, "OLD_SETTINGS", Path(tmp) / "x"), \
+                mock.patch.object(sp, "get_settings", slow_get):
+            sp.save_settings({"spoolman_url": "http://spoolman:7912"})
+            window = types.SimpleNamespace()  # no plugin-manager config: sync_config does nothing
+            names = [f"Preset {i}" for i in range(15)]
+
+            def saves():
+                for grams in range(15):
+                    sp.SpoolerWindow._save_settings(window, "http://spoolman:7912", 100 + grams)
+
+            def asks():
+                for name in names:
+                    with sp._calib_lock:
+                        sp._save_asks({**sp._asks(), name: {"filament_flow_ratio": ("0.95", "0.98")}})
+
+            threads = [threading.Thread(target=saves), threading.Thread(target=asks)]
+            for thread in threads:
+                thread.start()
+            for thread in threads:
+                thread.join()
+            self.assertEqual(list(sp._asks()), names)
+            self.assertEqual(real_get()["low_stock_grams"], 114)
 
 
 class OffIsTodayTest(unittest.TestCase):
