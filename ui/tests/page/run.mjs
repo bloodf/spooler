@@ -34,7 +34,7 @@ const spools = (list, extra) => post({type: 'spools', ok: true, origin: 3, sourc
 const vis = el => (el ? el.innerText.replace(/\\s+/g, ' ').trim() : '');
 async function tab(name) { await click(q('[data-tab="' + name + '"]')); await sleep(50); }
 async function pick(root, label) {
-  assert(root, 'select to open'); root.click(); await until(() => q('.p-select-overlay') && !q('.p-select-overlay[class*="enter-active"]'), 'select overlay open');
+  assert(root, 'select to open'); await reveal(root); root.click(); await until(() => q('.p-select-overlay') && !q('.p-select-overlay[class*="enter-active"]'), 'select overlay open');
   const opt = qa('.p-select-overlay [role=option]').find(o => text(o) === label);
   assert(opt, 'option ' + label + ' in ' + qa('.p-select-overlay [role=option]').map(text).join('|'));
   await mouse(opt); await until(() => !q('.p-select-overlay'), 'overlay closed'); await settle();
@@ -42,7 +42,10 @@ async function pick(root, label) {
 const sentOf = type => __t.sent.filter(m => m.type === type);
 const lastOf = type => [...__t.sent].reverse().find(m => m.type === type);
 const card = id => q('[data-spool="' + id + '"]');
-const alerts = () => qa('[role=alert] .oui-banner').map(text).join(' | ');
+// Toasts (the shared host, bottom-left); one leaving stays in the DOM for its transition.
+const liveToasts = () => qa('.oui-toast:not(.oui-toast-leave-active)');
+const toasts = () => liveToasts().map(text).join(' | ');
+const alerts = () => liveToasts().filter(x => x.getAttribute('role') === 'alert').map(text).join(' | ');
 // The list is a table of rows; the picked spool's detail, with its actions, sits beside it.
 const row = id => q('tr[data-spool="' + id + '"]');
 const panel = id => q('[data-detail="' + id + '"]');
@@ -166,7 +169,7 @@ test('card actions only for Spoolman; archived spool; move that unlinks a U1 too
   await yes();
   const mv = sentOf('spool_action').find(m => m.action === 'move');
   eq([mv.id, mv.location, mv.origin], [3, 'Shelf', 3], 'moves with the list origin');
-  assert(text(q('.sa')).includes('Sending to Spoolman'), 'pending shown');
+  assert(toasts().includes('Sending to Spoolman'), 'pending shown');
   await open(1);
   await click(btn('Archive', panel(1)));
   assert(dialogText().includes('Archive Black'), 'archive asks');
@@ -388,21 +391,74 @@ test('S02: a failed first read offers retry and Settings', `
   await click(btn('Open Settings', byTest('empty-error')));
   eq(lastOf('settings').type, 'settings', 'settings asked');
 `);
-test('B-20: action errors stay until dismissed and are announced; successes clear', `
+test('B-20: action errors stay until closed and are announced; successes clear', `
   await spools(SPOOLS);
   await click(byTest('sync'));
-  assert(text(q('.sa [role=status]')).includes('Syncing presets'), 'pending announced');
+  assert(toasts().includes('Syncing presets'), 'pending announced: ' + toasts());
+  await sleep(6000);
+  assert(toasts().includes('Syncing presets'), 'a waiting toast outlives the 5 s info timeout until its answer: ' + toasts());
   await post({type: 'sent', ok: false, text: 'Spoolman refused the filament'});
   assert(alerts().includes('Error:') && alerts().includes('Spoolman refused the filament'), 'error in role=alert: ' + alerts());
+  assert(!toasts().includes('Syncing presets'), 'the answer replaces the waiting toast: ' + toasts());
   await sleep(9000);
   assert(alerts().includes('Spoolman refused'), 'still there after 9 s');
-  await click(btn('Dismiss', q('.sa')));
-  assert(!alerts(), 'dismissed');
+  await click(btn('Close', liveToasts().find(x => x.getAttribute('role') === 'alert')));
+  await until(() => !alerts(), 'closed');
   await post({type: 'action_result', ok: true, text: 'Spool #1 updated'});
-  assert(text(q('.sa [role=status]')).includes('Spool #1 updated'), 'success shown');
-  await sleep(8500);
-  assert(!text(q('.sa')).includes('Spool #1 updated'), 'success clears');
+  assert(toasts().includes('Spool #1 updated'), 'success shown');
+  await sleep(5600);
+  await until(() => !toasts().includes('Spool #1 updated'), 'success clears after 5 s');
 `, { slow: true });
+test('toasts: one stack bottom-left, each with a Close button', `
+  await spools(SPOOLS);
+  await post({type: 'sent', ok: false, text: 'First failure'});
+  await post({type: 'action_result', ok: true, text: 'Spool #2 updated'});
+  const host = q('.oui-toasts');
+  eq(qa('.oui-toasts').length, 1, 'one host');
+  assert(host.getAttribute('aria-label') === 'Messages', 'named region');
+  const items = liveToasts();
+  eq(items.length, 2, 'stacked: ' + toasts());
+  const r = items[1].getBoundingClientRect();
+  assert(r.left <= 24 && innerHeight - r.bottom <= 24, 'bottom-left: ' + r.left + ',' + (innerHeight - r.bottom));
+  assert(items[0].getBoundingClientRect().top < r.top, 'newest at the bottom');
+  assert(items.every(x => btn('Close', x)), 'every toast has Close');
+  await click(btn('Close', items[0]));
+  await until(() => liveToasts().length === 1 && !toasts().includes('First failure'), 'closed one leaves');
+`, { width: 380 });
+test('banners: a dismissed notice stays dismissed while the same condition lasts, and comes back when it changes', `
+  await spools([{id: 1, remaining_weight: 100, filament: {id: 1, name: 'OldSpool', material: 'PLA'}}]);
+  await post({type: 'spools', ok: false, origin: 3, error: 'SYNTHETIC OFFLINE A', error_code: 'read_failed'});
+  assert(byTest('stale'), 'shown');
+  await click(btn('Close', byTest('stale')));
+  await until(() => !byTest('stale'), 'dismissed');
+  await post({type: 'spools', ok: false, origin: 3, error: 'SYNTHETIC OFFLINE A', error_code: 'read_failed'});
+  await post({type: 'spools', ok: false, origin: 3, error: 'SYNTHETIC OFFLINE A', error_code: 'read_failed'});
+  await settle();
+  assert(!byTest('stale'), 'same condition on the next polls: stays dismissed');
+  await post({type: 'spools', ok: false, origin: 3, error: 'SYNTHETIC OFFLINE B', error_code: 'read_failed'});
+  await until(() => byTest('stale'), 'a new condition: back');
+  assert(text(byTest('stale')).includes('SYNTHETIC OFFLINE B'), 'with the new reason');
+  await spools(SPOOLS, {peers: {u1control: true}});
+  const peer = () => qa('[data-test="peer-u1"]').find(e => e.offsetParent !== null);
+  await click(btn('Close', peer()));
+  await until(() => !peer(), 'peer note dismissed');
+  await spools(SPOOLS, {peers: {u1control: true}});
+  await settle();
+  assert(!peer(), 'peer note stays dismissed while U1 Control runs');
+`);
+test('banners: a closed notice shows again when its condition clears and later returns', `
+  await spools([{id: 1, remaining_weight: 100, filament: {id: 1, name: 'OldSpool', material: 'PLA'}}]);
+  await post({type: 'spools', ok: false, origin: 3, error: 'SYNTHETIC OFFLINE R', error_code: 'read_failed'});
+  assert(byTest('stale'), 'shown');
+  await click(btn('Close', byTest('stale')));
+  await until(() => !byTest('stale'), 'closed');
+  await spools([{id: 1, remaining_weight: 100, filament: {id: 1, name: 'OldSpool', material: 'PLA'}}]);
+  await settle();
+  assert(!byTest('stale'), 'condition cleared');
+  await post({type: 'spools', ok: false, origin: 3, error: 'SYNTHETIC OFFLINE R', error_code: 'read_failed'});
+  await until(() => byTest('stale'), 'the same problem returning shows again');
+  assert(text(byTest('stale')).includes('SYNTHETIC OFFLINE R'), 'same reason');
+`);
 test('S03: Send is named for what it does and explains itself', `
   await spools(SPOOLS);
   eq(text(byTest('send')), 'Send Preset Edits to Spoolman', 'label');
@@ -472,8 +528,7 @@ test('single-extruder Klipper card: change spool, clear only with a spool, resul
   await yes();
   eq(lastOf('moon_spool'), {type: 'moon_spool', id: 'auto-sv', spool: null}, 'clear sent');
   await post({type: 'moon_spool', id: 'auto-sv', ok: false, text: 'SV06 refused <x>'});
-  assert(text(q('.lu')).includes('SV06 refused <x>') && q('.lu [data-test="moon-note"] [data-state="error"]'), 'result as text on the card');
-  assert(alerts().includes('SV06 refused'), 'and persists in the status area');
+  assert(alerts().includes('SV06 refused <x>'), 'result as an error toast, as text: ' + alerts());
   await post({type: 'live', live: {links: {'auto-sv': 'live'}, printers: [sv(null)]}});
   assert(btn('Change spool') && !btn('Clear'), 'no active spool: change only');
   await click(btn('Change spool'));
@@ -723,7 +778,7 @@ test('stats tiles, shelf, waste, failed marker, history and export', `
   await click(byTest('export'));
   eq(lastOf('stats_export').period, d.period, 'export asked');
   await post({type: 'stats_export', ok: true, text: 'Saved to ~/x.csv'});
-  assert(text(byTest('history')).includes('Saved to ~/x.csv'), 'result shown');
+  assert(toasts().includes('Saved to ~/x.csv'), 'result shown as a toast: ' + toasts());
 `);
 
 // ------------------------------------------------------------------ settings and wizard (test_wizard, test_display, test_drying)
@@ -733,7 +788,7 @@ test('calibrated values from a saved copy wait for Save or Skip', `
   await spools(SPOOLS, {calibration: [ASK]});
   const box = () => byTest('calibration');
   await until(box, 'prompt shown');
-  assert(text(q('.sa [role=status]')).includes('calibrated values to review'), 'announced politely');
+  assert(toasts().includes('calibrated values to review'), 'announced politely');
   assert(text(box()).includes('Acme PLA Black @U1') && text(box()).includes('Nothing is written to Spoolman until you save'), 'names the filament: ' + text(box()));
   eq(qa('[data-test=calibration] tbody tr').map(r => vis(r)), ['Flow ratio 0.98 0.95', 'Ironing flow — 15%', 'Max volumetric speed 18 mm³/s 21.5 mm³/s'], 'each setting: old and new');
   eq(sentOf('calibration_save').length + sentOf('calibration_skip').length, 0, 'nothing sent before an answer');
@@ -743,11 +798,11 @@ test('calibrated values from a saved copy wait for Save or Skip', `
   await post({type: 'calibration', asks: [ASK]});
   await click(byTest('cal-save'));
   eq(lastOf('calibration_save'), {type: 'calibration_save', name: 'Acme PLA Black @U1'}, 'save names the change set');
-  assert(text(q('.sa [role=status]')).includes('Saving calibrated values'), 'saving announced');
+  assert(toasts().includes('Saving calibrated values'), 'saving announced');
   assert(byTest('cal-save').disabled, 'no second save while one runs');
   await post({type: 'sent', ok: true, text: 'Sent filament_flow_ratio to Spoolman.'});
   await post({type: 'calibration', asks: []});
-  assert(!box() && text(q('.sa [role=status]')).includes('Sent filament_flow_ratio'), 'saved: gone, result shown');
+  assert(!box() && toasts().includes('Sent filament_flow_ratio'), 'saved: gone, result shown');
   await spools(SPOOLS);
   assert(!box(), 'a list without asks shows none');
 `);
@@ -789,6 +844,51 @@ test('settings: one switch per Display option, drying table, save waits for a pa
   const s = lastOf('save');
   eq([s.view, s.display.diameter, s.drying['NYLON CF'], s.drying.HIPS, s.url, s.auto_keep_slots, s.save_calibration],
     ['settings', true, 0, 9, 'http://spoolman:7912', true, 'auto'], 'saved');
+`);
+test('settings: the source is a requirement row; Check again runs the test', `
+  await until(() => byTest('settings-btn'));
+  await click(byTest('settings-btn'));
+  await post({type: 'show_view', view: 'settings', url: 'http://spoolman:7912', source: 'spoolman', low_stock: 100, display: DEFAULTS, drying: {}, progress: {}, stats: {}});
+  const req = () => byTest('conn-status');
+  await until(() => req() && req().dataset.status === 'checking', 'checking on open: ' + (req() && req().dataset.status));
+  assert(text(req()).includes('Spoolman') && text(req()).includes('books filament use'), 'names it and why');
+  await post({type: 'test_result', source: 'spoolman', ok: false, url: 'http://spoolman:7912', error: 'Connection refused', view: 'settings'});
+  await until(() => req().dataset.status === 'missing', 'missing');
+  assert(text(req()).includes('Not reachable') && text(req()).includes('Connection refused'), 'status and why: ' + text(req()));
+  const link = q('a.oui-req-link', req());
+  assert(link && link.href === 'https://github.com/Donkie/Spoolman', 'how to get it');
+  const before = sentOf('test').length;
+  await click(btn('Check again', req()));
+  eq(sentOf('test').length, before + 1, 'Check again sends the test');
+  eq(lastOf('test'), {type: 'test', source: 'spoolman', url: 'http://spoolman:7912', view: 'settings'}, 'the same test');
+  await until(() => req().dataset.status === 'checking', 'checking');
+  await post({type: 'test_result', source: 'spoolman', ok: true, url: 'http://spoolman:7912', version: '0.22', view: 'settings'});
+  await until(() => req().dataset.status === 'found', 'found');
+  assert(text(req()).includes('Connected') && !q('a.oui-req-link', req()), 'connected, no install line');
+  await type(q('#url'), 'x');
+  await until(() => req().dataset.status === 'unknown', 'an edited address waits for Test');
+`);
+test('settings: the Bambu Cloud row follows the connection: signed out, connected, unreachable, checking', `
+  await until(() => byTest('settings-btn'));
+  await click(byTest('settings-btn'));
+  await post({type: 'show_view', view: 'settings', url: '', source: 'bambu', low_stock: 100, display: DEFAULTS, drying: {}, progress: {}, stats: {}});
+  const req = () => byTest('bambu-status');
+  await until(() => req(), 'Bambu Cloud row');
+  assert(text(req()).includes('Bambu Cloud') && !text(req()).includes(' x '), 'a real row, not a placeholder: ' + text(req()));
+  await post({type: 'test_result', source: 'bambu', ok: false, signin: true, error: 'sign in first', view: 'settings'});
+  await until(() => req().dataset.status === 'missing', 'signed out is missing: ' + req().dataset.status);
+  assert(text(req()).includes('Not signed in'), 'says not signed in: ' + text(req()));
+  await post({type: 'test_result', source: 'bambu', ok: true, account: 'me@example.com', view: 'settings'});
+  await until(() => req().dataset.status === 'found', 'found');
+  assert(text(req()).includes('Connected'), 'connected: ' + text(req()));
+  await post({type: 'test_result', source: 'bambu', ok: false, signin: false, error: 'timed out', view: 'settings'});
+  await until(() => req().dataset.status === 'missing', 'unreachable is missing');
+  assert(text(req()).includes('Not reachable') && !text(req()).includes('Not signed in'), 'signed in but not reachable: ' + text(req()));
+  const before = sentOf('test').length;
+  await click(btn('Check again', req()));
+  eq(sentOf('test').length, before + 1, 'Check again sends the Bambu check');
+  eq(lastOf('test').source, 'bambu', 'the Bambu check');
+  await until(() => req().dataset.status === 'checking', 'checking');
 `);
 test('settings: leaving with unsaved edits asks; going back keeps them', `
   await post({type: 'show_view', view: 'settings', url: 'http://s:7912', source: 'spoolman', low_stock: 100, display: DEFAULTS, drying: {}, progress: {}, stats: {}});

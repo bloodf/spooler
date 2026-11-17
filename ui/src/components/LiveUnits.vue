@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import Button from 'primevue/button';
-import { OuiStatus } from '../../shared/src/components';
 import TrayCard from './TrayCard.vue';
 import SpoolPicker from './SpoolPicker.vue';
 import { m } from '../state/main';
@@ -50,7 +49,6 @@ function pick(id: number) { ui.picking = null; moonSet(props.link, id); }
           </template>
         </TrayCard>
       </div>
-      <p v-if="m.moonNote && m.moonNote.id === link" role="status" data-test="moon-note"><OuiStatus :state="m.moonNote.ok ? 'ok' : 'error'" variant="plain">{{ m.moonNote.text }}</OuiStatus></p>
     </template>
     <template v-else>
       <template v-for="(x, k) in units" :key="String(x.u.id) + ':' + k">

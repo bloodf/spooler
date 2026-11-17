@@ -5,6 +5,14 @@ Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); 
 
 ## [Unreleased]
 
+### Changed
+- Spools are drawn with the photo spool again.
+- Notifications appear bottom-left and each one can be closed; warnings and notices on the page can be dismissed.
+- Notifications wait while OrcaSlicer is in another tab or app; errors stay until closed. A closed warning shows again if its problem goes away and later comes back.
+- Settings lists what the spool source needs (Spoolman reachable, or a Bambu Cloud sign-in), whether it was found, and how to get it, with Check again.
+- The page fills the whole tab at every height, also after the window is resized: no more grey under a short page.
+- Settings are tabs: one section at a time, and the save bar stays on screen at any window height.
+
 ## [0.29.0] - 2026-11-17
 
 ### Added
