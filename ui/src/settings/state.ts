@@ -2,7 +2,7 @@ import { computed, reactive, ref } from 'vue';
 import * as bridge from '../core/bridge';
 import { boot, type SettingsBoot } from '../core/boot';
 import { t } from '../core/i18n';
-import { m } from '../state/main';
+import { m, note } from '../state/main';
 import { ask, rememberOpener } from '../core/dialog';
 
 // Settings form. It resets to the saved values each time Settings opens (show_view), so abandoned edits don't
@@ -10,10 +10,15 @@ import { ask, rememberOpener } from '../core/dialog';
 const clone = (x: SettingsBoot) => JSON.parse(JSON.stringify(x)) as SettingsBoot;
 export const saved = ref<SettingsBoot>(clone(boot.settings));
 export const form = reactive<SettingsBoot>(clone(boot.settings));
-export const conn = reactive({ verifiedUrl: norm(boot.settings.verified_url), verifiedText: '', text: '', kind: 'pending' as 'ok' | 'pending' | 'error' });
+// kind: 'pending' while a check is on its way, 'idle' when none was asked for (an edited address waits for Test).
+export const conn = reactive({ verifiedUrl: norm(boot.settings.verified_url), verifiedText: '', text: '', kind: 'pending' as 'ok' | 'pending' | 'idle' | 'error' });
 export const bambu = reactive({ verified: false, account: '', pane: 'login' as 'in' | 'login' | 'code', step: 'password', tfa: false,
-  text: '', kind: 'pending' as 'ok' | 'pending' | 'error', email: '', password: '', region: 'global', code: '' });
-export const update = reactive({ busy: false, text: '', newer: '' });
+  text: '', kind: 'pending' as 'ok' | 'pending' | 'idle' | 'error', email: '', password: '', region: 'global', code: '' });
+export const update = reactive({ busy: false, newer: '' });
+// The saved source as a requirement, from the plugin's connection test (no extra probe): Check again re-runs it.
+export interface Requirement { id: string; status: 'ok' | 'missing' | 'unreachable' | 'unknown'; details: string; signin?: boolean }
+export const req = reactive({ checking: true, list: [] as Requirement[] });
+export function checkRequirements(): void { req.checking = true; bridge.postSettings({ type: 'requirements' }); }
 export const saving = ref(false);
 export const wizard = reactive({ open: false, step: 0 });
 // Skipped RFID spools: not part of the form; Ask again acts at once.
@@ -30,14 +35,14 @@ function reset(values: Partial<SettingsBoot>): void {
   if (!next.url) next.url = '';
   saved.value = clone(next);
   Object.assign(form, clone(next));
-  update.text = ''; update.newer = '';
+  update.newer = '';
   conn.text = conn.verifiedUrl && norm(form.url) === conn.verifiedUrl ? conn.verifiedText : t('settings.checking');
   conn.kind = conn.verifiedUrl && norm(form.url) === conn.verifiedUrl ? 'ok' : 'pending';
 }
 
 export function onUrlInput(): void {
   if (norm(form.url) === conn.verifiedUrl && conn.verifiedText) { conn.text = conn.verifiedText; conn.kind = 'ok'; }
-  else { conn.text = t('settings.pressTest'); conn.kind = 'pending'; }
+  else { conn.text = t('settings.pressTest'); conn.kind = 'idle'; }
 }
 export function test(): void {
   conn.text = t('settings.testing'); conn.kind = 'pending';
@@ -57,7 +62,7 @@ export function setSource(v: 'spoolman' | 'bambu', byUser: boolean): void {
   form.source = v;
   if (v === 'bambu' && !bambu.verified && byUser) checkBambu();
 }
-export function checkUpdate(): void { update.busy = true; update.text = t('settings.checkingUpdate'); update.newer = ''; bridge.postSettings({ type: 'check_update' }); }
+export function checkUpdate(): void { update.busy = true; update.newer = ''; bridge.postSettings({ type: 'check_update' }); }
 
 export function save(): void {
   if (!ready.value || saving.value) return;
@@ -99,15 +104,17 @@ function onMessage(d: any): void {
   if (d.type === 'rfid_skipped') { rfidSkipped.value = typeof d.count === 'number' ? d.count : 0; return; }
   if (d.type === 'update_result') {
     update.busy = false;
-    update.text = !d.ok ? d.error || t('common.unknownError') : d.newer ? '' : t('settings.upToDate');
+    if (!d.ok) note('error', d.error || t('common.unknownError'), 'update');
+    else if (!d.newer) note('success', t('settings.upToDate'), 'update');
     update.newer = d.ok && d.newer ? d.version : '';
   } else if (d.type === 'bambu_auth_result') {
     if (!d.ok) { bambu.text = d.error || t('bambu.signInFailed'); bambu.kind = 'error'; }
     else if (d.step === 'done') { bambu.code = ''; checkBambu(); }
-    else if (d.step === 'out') { bambu.pane = 'login'; bambu.account = ''; bambu.text = t('bambu.signedOut'); bambu.kind = 'pending'; }
-    else { bambu.step = d.step; bambu.tfa = d.step === 'tfa'; bambu.pane = 'code'; bambu.text = t('bambu.enterCode'); bambu.kind = 'pending'; }
+    else if (d.step === 'out') { bambu.pane = 'login'; bambu.account = ''; bambu.text = t('bambu.signedOut'); bambu.kind = 'idle'; }
+    else { bambu.step = d.step; bambu.tfa = d.step === 'tfa'; bambu.pane = 'code'; bambu.text = t('bambu.enterCode'); bambu.kind = 'idle'; }
   } else if (d.type === 'test_result') {
     saving.value = false;
+    if (Array.isArray(d.requirements)) { req.list = d.requirements; req.checking = false; }
     if (d.source === 'bambu') {
       bambu.account = d.account || '';
       bambu.verified = !!d.ok;
@@ -138,6 +145,7 @@ export function startSettings(): () => void {
   // Confirms the listener is registered before the plugin sends anything unprompted (its "ready" handler).
   bridge.postSettings({ type: 'ready' });
   conn.text = conn.verifiedUrl && norm(form.url) === conn.verifiedUrl ? t('settings.checking') : t('settings.pressTest');
+  conn.kind = conn.verifiedUrl && norm(form.url) === conn.verifiedUrl ? 'pending' : 'idle';
   if (form.source === 'bambu') checkBambu();
   if (boot.settings.wizard && (boot.mode === 'settings' || boot.view === 'settings')) openWizard();
   return () => { off(); };

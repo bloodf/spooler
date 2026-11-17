@@ -34,6 +34,9 @@ class Preset:
     def label(self, no_alias=False):
         return self.name
 
+    def is_user(self):
+        return not self.is_system and not self.is_default
+
 
 class Collection:
     def __init__(self, presets, selected=0):
@@ -53,6 +56,12 @@ class Collection:
         return next((p for p in self._presets if p.name == name), None)
 
     def selected_preset(self):
+        return self._presets[self._selected]
+
+    def get_selected_preset(self):
+        return self._presets[self._selected]
+
+    def get_edited_preset(self):
         return self._presets[self._selected]
 
 

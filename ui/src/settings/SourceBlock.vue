@@ -15,6 +15,7 @@ import { form, conn, bambu, test, checkBambu, bambuSend, setSource, onUrlInput }
 const regions = [{ value: 'global', label: 'Global' }, { value: 'china', label: 'China' }];
 function signIn() { bambuSend('password', { account: bambu.email, password: bambu.password, region: bambu.region }); bambu.password = ''; }
 const tone = (k: string) => (k === 'ok' ? 'success' : k === 'error' ? 'error' : 'neutral');
+// Whether the source is there at all, with how to get it, is the Requirements section (SettingsView).
 </script>
 <template>
   <div class="sb">
@@ -47,9 +48,9 @@ const tone = (k: string) => (k === 'ok' ? 'success' : k === 'error' ? 'error' : 
           <Button severity="secondary" :label="t('common.goBack')" @click="bambu.pane = 'login'" />
           <Button v-if="!bambu.tfa" text :label="t('bambu.resend')" @click="bambuSend('resend')" /></div>
       </form>
-      <div aria-live="polite"><OuiBanner v-if="bambu.text" :tone="tone(bambu.kind)" :title="bambu.text" /></div>
-      <OuiBanner tone="warn" :title="t('bambu.experimental')" />
+      <div aria-live="polite"><OuiBanner v-if="bambu.text" :tone="tone(bambu.kind)" :title="bambu.text" data-test="bambu-status" /></div>
     </template>
+    <OuiBanner :show="form.source === 'bambu'" tone="warn" :title="t('bambu.experimental')" dismissible dismiss-key="bambu-experimental" :close-label="t('common.close')" data-test="bambu-experimental" />
   </div>
 </template>
 <style scoped>

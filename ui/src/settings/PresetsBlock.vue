@@ -37,7 +37,8 @@ function set(key: TuneKey | 'parent', v: number | string | null): void {
     </OuiFormRow>
     <div class="set-pad">
       <p class="oui-meta" data-test="preset-mode-help">{{ form.presets.per_spool ? t('presets.spoolHelp') : t('presets.filamentHelp') }}</p>
-      <OuiBanner v-if="switching" tone="info" :title="t('presets.unsaved')" data-test="preset-unsaved" />
+      <OuiBanner :show="switching" tone="info" :title="t('presets.unsaved')" data-test="preset-unsaved"
+                 dismissible :dismiss-key="`preset-switch:${form.presets.per_spool ? 'spool' : 'filament'}`" :close-label="t('common.close')" />
     </div>
 
     <OuiFormRow :label="t('presets.tuning')" for="tune-on" :hint="t('presets.tuningHelp')">

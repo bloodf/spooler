@@ -253,7 +253,7 @@ class UnknownVersionTest(unittest.TestCase):
     def ticks(self, error):
         calls, posted = [], []
 
-        def send(name, changes, snapshot):
+        def send(name, changes, snapshot, where=None):
             calls.append(changes)
             raise error
 

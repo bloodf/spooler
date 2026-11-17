@@ -145,7 +145,7 @@
       "height": 512,
       "bytes": 203458,
       "sha256": "119d83e23e4ca9c19153bf99aada0c6797a34b360e76dacceb37b464af55abc3",
-      "date": "2026-11-16"
+      "date": "2026-11-17"
     },
     {
       "file": "assets/orca-cloud/spooler-main-en.png",
@@ -169,9 +169,9 @@
       "operation": "scaled; page screenshot (left, dark, en, 681x655 at 2x) placed in the empty square, corners rounded 13.4 px",
       "width": 1600,
       "height": 900,
-      "bytes": 1317629,
-      "sha256": "3dfee90412d5c5b9d220eb3e2b780caaba5bc213b1f8046fca812eeef329003e",
-      "date": "2026-11-16"
+      "bytes": 1335312,
+      "sha256": "08e5fc2026741ba83244d0bbdb973693a1e27e9ff5c352a2a5d46845db86afc7",
+      "date": "2026-11-17"
     },
     {
       "file": "assets/orca-cloud/spooler-main-square-en.png",
@@ -195,9 +195,9 @@
       "operation": "scaled; page screenshot (left, dark, en, 677x668 at 2x) placed in the empty square, corners rounded 10.0 px",
       "width": 900,
       "height": 900,
-      "bytes": 860653,
-      "sha256": "7b1fa3d6902fd497b3be817d5be64690d70be0e426df4d3ad7b17999c56f1fb8",
-      "date": "2026-11-16"
+      "bytes": 866896,
+      "sha256": "f024e505c54ac4a0987718cc541b049718da6fa682493f7da0c3bea1baa88f65",
+      "date": "2026-11-17"
     },
     {
       "file": "assets/orca-cloud/spooler-feature-01-stock-en.png",
@@ -218,12 +218,12 @@
         1527,
         753
       ],
-      "operation": "scaled; page screenshot (stock, dark, en, 680x656 at 2x) placed in the empty square, corners rounded 9.6 px",
+      "operation": "scaled; page screenshot (stock, dark, en, 758x731 at 2x) placed in the empty square, corners rounded 9.6 px",
       "width": 1600,
       "height": 900,
-      "bytes": 1357387,
-      "sha256": "a179061506c90a789a7214cc09d74f4e7b35198cd8a01071348480526f3e965a",
-      "date": "2026-11-16"
+      "bytes": 1342208,
+      "sha256": "a9efa0c01a54dcc5e45fe725a70102413420cdf7493f6a0ca7b3af7fe8b2b224",
+      "date": "2026-11-17"
     },
     {
       "file": "assets/orca-cloud/spooler-feature-02-presets-en.png",
@@ -247,9 +247,9 @@
       "operation": "scaled; page screenshot (presets, dark, en, 682x655 at 2x) placed in the empty square, corners rounded 13.4 px",
       "width": 1600,
       "height": 900,
-      "bytes": 1365913,
-      "sha256": "11b11a9d05ab408d8ad6491b75482dca9499f28ff07424a13ba53d3fb7d8c7f5",
-      "date": "2026-11-16"
+      "bytes": 1345156,
+      "sha256": "30aaa1c2d3ffe5f9e119c71f3a8ebe5af842be9f22953224b7fa64d1225f7f13",
+      "date": "2026-11-17"
     },
     {
       "file": "assets/orca-cloud/spooler-feature-03-slots-en.png",
@@ -273,9 +273,9 @@
       "operation": "scaled; page screenshot (slots, dark, en, 681x654 at 2x) placed in the empty square, corners rounded 9.6 px",
       "width": 1600,
       "height": 900,
-      "bytes": 1354799,
-      "sha256": "7c2264ebeca5aa6cabc3ea00bccaf57ea29baedfde4c83ca582f9d91b0804f77",
-      "date": "2026-11-16"
+      "bytes": 1360094,
+      "sha256": "404c1e3de39e0dcf657d0c6bb953a0f49e86cbed9b88a5002d9e8b737f585864",
+      "date": "2026-11-17"
     },
     {
       "file": "assets/orca-cloud/spooler-feature-04-check-en.png",
@@ -299,9 +299,9 @@
       "operation": "scaled; page screenshot (check, dark, en, 681x656 at 2x) placed in the empty square, corners rounded 13.4 px",
       "width": 1600,
       "height": 900,
-      "bytes": 1357832,
-      "sha256": "8693d40bb5da26567388a419439a55bc8ea96d6203a40e539104772f09c57e00",
-      "date": "2026-11-16"
+      "bytes": 1361364,
+      "sha256": "862fb7fb86c38fa4b499201d3b80ffd1133629716bc00626cd82d2774fc0538c",
+      "date": "2026-11-17"
     },
     {
       "file": "assets/social/spooler-social-preview-en.png",
@@ -322,12 +322,12 @@
         1220,
         535
       ],
-      "operation": "scaled; page screenshot (left, dark, en, 765x722 at 2x) placed in the empty square, corners rounded 7.2 px",
+      "operation": "scaled; page screenshot (left, dark, en, 755x712 at 2x) placed in the empty square, corners rounded 7.2 px",
       "width": 1280,
       "height": 640,
-      "bytes": 837252,
-      "sha256": "67f6927920ae5fac104e8401a784b1fed835f6138f4abba8511dc9473e5e333e",
-      "date": "2026-11-16"
+      "bytes": 851672,
+      "sha256": "50e7fe90625863064fcba1230c705d67dcf9c8d9c5d420718479c3b64980287c",
+      "date": "2026-11-17"
     },
     {
       "file": "assets/readme/spooler-hero-dark-en.png",
@@ -351,9 +351,9 @@
       "operation": "scaled; page screenshot (left, dark, en, 679x655 at 2x) placed in the empty square, corners rounded 13.4 px",
       "width": 1600,
       "height": 900,
-      "bytes": 1339958,
-      "sha256": "c13349ba27eefc84da8e0a7531ab6ea26d3da48fddbec6670c0316078e0c9009",
-      "date": "2026-11-16"
+      "bytes": 1356863,
+      "sha256": "5a1b1263f352645c62d9773512cee046fd44b7d8f92f7f823600d8c724071b07",
+      "date": "2026-11-17"
     },
     {
       "file": "assets/readme/spooler-hero-light-en.png",
@@ -377,9 +377,9 @@
       "operation": "scaled; page screenshot (left, light, en, 684x656 at 2x) placed in the empty square, corners rounded 13.4 px",
       "width": 1600,
       "height": 900,
-      "bytes": 1343219,
-      "sha256": "5d7ed5c9dc13c233c006ae16a3f1e26db0ebc611b13049512ebf1f154cb18193",
-      "date": "2026-11-16"
+      "bytes": 1357804,
+      "sha256": "b890877fd3c8f9464adf1358dfd40432b51ecde0ece27783c25bfa23c27799a5",
+      "date": "2026-11-17"
     },
     {
       "file": "assets/orca-cloud/spooler-main-pt-BR.png",
@@ -403,9 +403,9 @@
       "operation": "scaled; page screenshot (left, dark, pt-BR, 681x655 at 2x) placed in the empty square, corners rounded 9.6 px",
       "width": 1600,
       "height": 900,
-      "bytes": 1323230,
-      "sha256": "0b6a2b4458f0966dad1fbf0bdaa83ebaf6775f00d1e5e60f97f2addb51e78f31",
-      "date": "2026-11-16"
+      "bytes": 1328140,
+      "sha256": "2b130118a0b9fa6678434eafecad96539e40d9c6f2da99e51c9249509ff1411f",
+      "date": "2026-11-17"
     },
     {
       "file": "assets/orca-cloud/spooler-main-square-pt-BR.png",
@@ -429,9 +429,9 @@
       "operation": "scaled; page screenshot (left, dark, pt-BR, 691x675 at 2x) placed in the empty square, corners rounded 7.2 px",
       "width": 900,
       "height": 900,
-      "bytes": 872230,
-      "sha256": "4b24af4ee74c11c64827331857c40f4623056926a52544c9f77aaf75e4e4748f",
-      "date": "2026-11-16"
+      "bytes": 879387,
+      "sha256": "6bf4fa0944edf3cfc8cb3c8e4fed2e6bf916cbfe5ea13348a30266d06ff37f7d",
+      "date": "2026-11-17"
     },
     {
       "file": "assets/orca-cloud/spooler-feature-01-stock-pt-BR.png",
@@ -452,12 +452,12 @@
         1527,
         752
       ],
-      "operation": "scaled; page screenshot (stock, dark, pt-BR, 680x654 at 2x) placed in the empty square, corners rounded 9.6 px",
+      "operation": "scaled; page screenshot (stock, dark, pt-BR, 758x729 at 2x) placed in the empty square, corners rounded 9.6 px",
       "width": 1600,
       "height": 900,
-      "bytes": 1383800,
-      "sha256": "6e54146240f9edfd51690f6981bbf959a56dacceeb8e450117cec4b433710643",
-      "date": "2026-11-16"
+      "bytes": 1369059,
+      "sha256": "e28711469ac69631f7bcd61d67317a3501612a2bf7baf77451348e4e79244550",
+      "date": "2026-11-17"
     },
     {
       "file": "assets/orca-cloud/spooler-feature-02-presets-pt-BR.png",
@@ -481,9 +481,9 @@
       "operation": "scaled; page screenshot (presets, dark, pt-BR, 681x656 at 2x) placed in the empty square, corners rounded 13.4 px",
       "width": 1600,
       "height": 900,
-      "bytes": 1353731,
-      "sha256": "a8b3f187958aefb4a7ae6f13f438e2cd3df2cb85d3e7e098ece15b2003de099e",
-      "date": "2026-11-16"
+      "bytes": 1342108,
+      "sha256": "cbddccf7c52295a7a4f8efc9f01187e9b6c6a8d3aba1b17d270896235100cf39",
+      "date": "2026-11-17"
     },
     {
       "file": "assets/orca-cloud/spooler-feature-03-slots-pt-BR.png",
@@ -507,9 +507,9 @@
       "operation": "scaled; page screenshot (slots, dark, pt-BR, 680x655 at 2x) placed in the empty square, corners rounded 9.6 px",
       "width": 1600,
       "height": 900,
-      "bytes": 1351334,
-      "sha256": "5276d681605eb4866a98ec1d35f85a8cea50d2020b7d3b77c07776065b806843",
-      "date": "2026-11-16"
+      "bytes": 1356983,
+      "sha256": "72c3a8b98a4e714741773a9ffd84e66a0444643b747fbf9dc212f1b65452738e",
+      "date": "2026-11-17"
     },
     {
       "file": "assets/orca-cloud/spooler-feature-04-check-pt-BR.png",
@@ -533,9 +533,9 @@
       "operation": "scaled; page screenshot (check, dark, pt-BR, 681x656 at 2x) placed in the empty square, corners rounded 13.4 px",
       "width": 1600,
       "height": 900,
-      "bytes": 1354379,
-      "sha256": "63981b62fe8b6a73d061bf6febe1c60d27a13d86af2827c643c4663959bf7f7d",
-      "date": "2026-11-16"
+      "bytes": 1371269,
+      "sha256": "d98fcc548d60adcf3f2d887c5e12fa200c6b8a6fa80a85f35c1f99badf11f0d3",
+      "date": "2026-11-17"
     },
     {
       "file": "assets/social/spooler-social-preview-pt-BR.png",
@@ -556,12 +556,12 @@
         1221,
         536
       ],
-      "operation": "scaled; page screenshot (left, dark, pt-BR, 760x716 at 2x) placed in the empty square, corners rounded 7.2 px",
+      "operation": "scaled; page screenshot (left, dark, pt-BR, 750x706 at 2x) placed in the empty square, corners rounded 7.2 px",
       "width": 1280,
       "height": 640,
-      "bytes": 822892,
-      "sha256": "ffb04ab8a90540052c808599c4994aba6213cc846337b5397ff098e72be5cbe8",
-      "date": "2026-11-16"
+      "bytes": 834531,
+      "sha256": "e7729825775f0324ac51f8da79a3040083526e3cd21465034e6a0bfacec610d5",
+      "date": "2026-11-17"
     },
     {
       "file": "assets/readme/spooler-hero-dark-pt-BR.png",
@@ -585,9 +585,9 @@
       "operation": "scaled; page screenshot (left, dark, pt-BR, 681x656 at 2x) placed in the empty square, corners rounded 13.4 px",
       "width": 1600,
       "height": 900,
-      "bytes": 1316093,
-      "sha256": "cb6d07d93d1209d0ba183c8a8076644db24b7f327bfe47a1166849b537d4ba1d",
-      "date": "2026-11-16"
+      "bytes": 1320382,
+      "sha256": "ad2ddca13f4f5851533c83912279fd054d5ab9108393e648da0cf6410e58871d",
+      "date": "2026-11-17"
     },
     {
       "file": "assets/readme/spooler-hero-light-pt-BR.png",
@@ -611,9 +611,9 @@
       "operation": "scaled; page screenshot (left, light, pt-BR, 684x658 at 2x) placed in the empty square, corners rounded 13.4 px",
       "width": 1600,
       "height": 900,
-      "bytes": 1352876,
-      "sha256": "668cbf137333457a8e6d4b78888f417165b94a64f785079e32342c7fb1ad8001",
-      "date": "2026-11-16"
+      "bytes": 1354204,
+      "sha256": "218cff6e096008d2531254f88280d0d42d5a8a88a26b7d1739babb2b3d7330f6",
+      "date": "2026-11-17"
     },
     {
       "file": "assets/readme/spooler-screen-spools-dark-en.png",
@@ -624,9 +624,9 @@
       "operation": "page screenshot (wide, dark, en, 1280x720 at 2x)",
       "width": 2560,
       "height": 1440,
-      "bytes": 479320,
-      "sha256": "95715825a115d3f9f9ec185b5b844e0a823ce8009d2f48485d7c9ab53432a997",
-      "date": "2026-11-16"
+      "bytes": 566370,
+      "sha256": "0353f2dea18dfde254f74bf88d9e79a56e105e84d28d61ef0474d5bd80259d74",
+      "date": "2026-11-17"
     },
     {
       "file": "assets/readme/spooler-screen-setup-dark-en.png",
@@ -637,9 +637,9 @@
       "operation": "page screenshot (setup, dark, en, 1280x720 at 2x)",
       "width": 2560,
       "height": 1440,
-      "bytes": 369973,
-      "sha256": "ad6bf4023e313e75bae7f2c901f9714e2bc79f6a814698b2dcb2d10af46612e5",
-      "date": "2026-11-16"
+      "bytes": 241664,
+      "sha256": "78b3fc4124bfc233c277ec2850c6ec043fd1e4b90f7a84339e109e383f0d7f52",
+      "date": "2026-11-17"
     },
     {
       "file": "assets/readme/spooler-screen-spools-light-en.png",
@@ -650,9 +650,9 @@
       "operation": "page screenshot (wide, light, en, 1280x720 at 2x)",
       "width": 2560,
       "height": 1440,
-      "bytes": 483847,
-      "sha256": "85bb75bf8c8914d0ce2eaa302f7268d0f58eb393b10e50b28bd314a1bdb24423",
-      "date": "2026-11-16"
+      "bytes": 543849,
+      "sha256": "72eb9e815ce9e595ae7f167a63c721eb74d25c4ef34cc076365f30efa838ade4",
+      "date": "2026-11-17"
     },
     {
       "file": "assets/readme/spooler-screen-setup-light-en.png",
@@ -663,9 +663,9 @@
       "operation": "page screenshot (setup, light, en, 1280x720 at 2x)",
       "width": 2560,
       "height": 1440,
-      "bytes": 402768,
-      "sha256": "958e067b55bd7048bbb07e8316d10d42c26b7b7f9b54c43ad86ed751cdd37ef4",
-      "date": "2026-11-16"
+      "bytes": 255634,
+      "sha256": "a8eb1086ca9dc18f63e22bac50ff1593ca45f75fa690931879460d5b7c9e4228",
+      "date": "2026-11-17"
     },
     {
       "file": "assets/readme/spooler-screen-spools-dark-pt-BR.png",
@@ -676,9 +676,9 @@
       "operation": "page screenshot (wide, dark, pt-BR, 1280x720 at 2x)",
       "width": 2560,
       "height": 1440,
-      "bytes": 475489,
-      "sha256": "9cd28ed0e435ed9a8454669b6227bf1d5b497690e391dd29e0efc16fc87be8da",
-      "date": "2026-11-16"
+      "bytes": 565786,
+      "sha256": "62e1360bc49aef0e9392242cd2a22732bf3a204ebe92bf7b33f79b6dd185479f",
+      "date": "2026-11-17"
     },
     {
       "file": "assets/readme/spooler-screen-setup-dark-pt-BR.png",
@@ -689,9 +689,9 @@
       "operation": "page screenshot (setup, dark, pt-BR, 1280x720 at 2x)",
       "width": 2560,
       "height": 1440,
-      "bytes": 404301,
-      "sha256": "2cb922068ccf1564c445f80e4d16b88b91c09261ee963fdda5fbf94fafe5be68",
-      "date": "2026-11-16"
+      "bytes": 254714,
+      "sha256": "a99218f16bb10e2e4ef1553d1e697cc1119eb7878ff8acad38bcd9e9de26df64",
+      "date": "2026-11-17"
     },
     {
       "file": "assets/readme/spooler-screen-spools-light-pt-BR.png",
@@ -702,9 +702,9 @@
       "operation": "page screenshot (wide, light, pt-BR, 1280x720 at 2x)",
       "width": 2560,
       "height": 1440,
-      "bytes": 479681,
-      "sha256": "1c982dfb6ac8c6c30a0ca24f6d2c7f224c1415ef0fa3dcbf2af1aa3673587d8d",
-      "date": "2026-11-16"
+      "bytes": 542697,
+      "sha256": "4b9d0370f8a85a9740d75935189631a5e58e1c45642756f6a4b55e93425e11ca",
+      "date": "2026-11-17"
     },
     {
       "file": "assets/readme/spooler-screen-setup-light-pt-BR.png",
@@ -715,9 +715,9 @@
       "operation": "page screenshot (setup, light, pt-BR, 1280x720 at 2x)",
       "width": 2560,
       "height": 1440,
-      "bytes": 442128,
-      "sha256": "3c52ad063699c2f7586e1742e74b75dc554838d970c9cc1cf7f3326afccb8a87",
-      "date": "2026-11-16"
+      "bytes": 270387,
+      "sha256": "d7377ef8474c175bf907962f4ce3afc567ba6c88e7cc1cbb5fdd2a2d906c5892",
+      "date": "2026-11-17"
     }
   ]
 }

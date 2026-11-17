@@ -2,6 +2,7 @@ import json
 import re
 import tempfile
 import unittest
+import unittest.mock
 from pathlib import Path
 
 from fake_bundle import FIXTURES, SV06, U1, Bundle
@@ -310,6 +311,65 @@ class SnapshotTest(unittest.TestCase):
         sp._auto_printers.clear()
 
 
+class FlatPresetTest(unittest.TestCase):
+    """Presets are standalone (root) copies of their parent, so OrcaSlicer's sync from AMS can load them."""
+    PARENT = {"filament_type": '"PETG"', "nozzle_temperature": "240,240", "filament_vendor": '"SUNLU"',
+              "inherits": '"fdm_filament_petg"', "compatible_printers": '""', "filament_settings_id": '"SUNLU PETG"',
+              "filament_start_gcode": '"; start\\nM104"', "filament_flow_ratio": "0.95,0.95"}
+
+    def snap(self):
+        return {**snapshot(), "configs": {"SUNLU PETG @System": dict(self.PARENT)}}
+
+    def test_flatten_output(self):
+        spools = [spool(1, filament(1, "Black", "PETG", settings_extruder_temp=235))]
+        files, by_key = sp.profile_files(spools, self.snap())
+        preset = files["SUNLU PETG Black @Snapmaker U1.json"]
+        self.assertEqual(preset["inherits"], "")
+        self.assertRegex(preset["filament_id"], r"^SPL[0-9A-F]{10}$")
+        self.assertEqual(preset["filament_type"], '"PETG"')                       # the parent's keys are there
+        self.assertEqual(preset["filament_start_gcode"], '"; start\\nM104"')
+        self.assertEqual(preset["filament_flow_ratio"], "0.95,0.95")
+        self.assertEqual(preset["nozzle_temperature"], ["235", "235"])           # Spooler's, on both variants
+        self.assertEqual(preset["filament_vendor"], ["SUNLU"])
+        self.assertEqual(preset["compatible_printers"], [U1])                    # still only this printer
+        self.assertEqual(preset["filament_settings_id"], [preset["name"]])
+        self.assertIn("SUNLU PETG @System", preset["description"])               # what it was copied from
+        self.assertEqual(sp.preset_problem(preset), "")
+        other = files["SUNLU PETG Black @Sovol SV06.json"]   # same parent, another printer: its own id
+        self.assertEqual(other["inherits"], "")
+        self.assertNotEqual(other["filament_id"], preset["filament_id"])
+        files, _ = sp.profile_files(spools, snapshot())   # the parent's settings weren't read: it inherits
+        self.assertEqual(files["SUNLU PETG Black @Snapmaker U1.json"]["inherits"], "SUNLU PETG @System")
+        self.assertNotIn("filament_id", files["SUNLU PETG Black @Snapmaker U1.json"])
+
+    def test_ids_are_stable_unique_and_not_orcas(self):
+        key = (1, U1)
+        self.assertEqual(sp.spooler_filament_id(key), sp.spooler_filament_id((1, U1)))
+        ids = {sp.spooler_filament_id(k) for k in [(1, U1), (2, U1), (1, SV06), (1, U1, 7), (1, U1, 8)]}
+        self.assertEqual(len(ids), 5)
+        spools = [spool(1, filament(1, "Black", "PETG"))]
+        first, _ = sp.profile_files(spools, self.snap())
+        again, _ = sp.profile_files(spools, self.snap())
+        self.assertEqual(first, again)   # same files, so no rewrite and no reload
+        self.assertEqual(first["SUNLU PETG Black @Snapmaker U1.json"]["filament_id"], sp.spooler_filament_id(key))
+        self.assertFalse(any(p["name"].startswith(sp.FILAMENT_ID_PREFIX) for p in PARENTS))
+
+    def test_parent_configs_read_once_for_usable_parents(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        filaments = Bundle(Path(tmp.name)).filaments
+        cache = {}
+        u1_only = [p["name"] for p in PARENTS if p["printers"] == [U1]]
+        anywhere = [p["name"] for p in PARENTS if not p["printers"]]
+        self.assertTrue(u1_only and anywhere)
+        self.assertEqual(sorted(sp.parent_configs(filaments, PARENTS, {SV06}, {})), sorted(anywhere))  # not U1's
+        configs = sp.parent_configs(filaments, PARENTS, {U1}, cache)
+        self.assertIn(u1_only[0], configs)
+        self.assertEqual(configs[u1_only[0]]["filament_type"], filaments.find_preset(u1_only[0]).config_value("filament_type"))
+        cache[u1_only[0]] = {"x": "1"}
+        self.assertEqual(sp.parent_configs(filaments, PARENTS, {U1}, cache)[u1_only[0]], {"x": "1"})   # not read again
+
+
 class SyncTest(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
@@ -338,6 +398,21 @@ class SyncTest(unittest.TestCase):
         self.assertEqual(orca.reloads, ["spooler"])
         self.assertEqual(sp.profile_for_spool(spools[0], U1), "_local/spooler/SUNLU PETG Black @Snapmaker U1")
         self.assertEqual(sp.profile_for_spool(spools[0], "Other"), "")
+
+    def test_inherited_presets_are_migrated_to_standalone_ones_with_the_same_names(self):
+        spools = [spool(1, filament(1, "Black", "PETG"))]
+        sp.profile_sync(spools, snapshot())   # written by an earlier version: inherits its parent
+        path = self.bundle_dir() / "filament" / "SUNLU PETG Black @Snapmaker U1.json"
+        self.assertEqual(json.loads(path.read_text())["inherits"], "SUNLU PETG @System")
+        snap = {**snapshot(), "configs": {"SUNLU PETG @System": {"filament_type": '"PETG"'}}}
+        sp._bridge["profiles"] = None
+        with unittest.mock.patch.object(sp, "bridge_dir", lambda: self.root / "bridge"):
+            sp.profile_sync(spools, snap)
+            published = json.loads((self.root / "bridge" / "profiles.json").read_text())
+        preset = json.loads(path.read_text())   # same file name, so projects still find it
+        self.assertEqual((preset["inherits"], preset["filament_type"]), ("", '"PETG"'))
+        self.assertEqual(orca.reloads, ["spooler", "spooler"])
+        self.assertEqual(published["ids"]["_local/spooler/SUNLU PETG Black @Snapmaker U1"], preset["filament_id"])
 
     def test_forced_sync_reloads_even_when_unchanged_or_backing_off(self):
         spools = [spool(1, filament(1, "Black", "PETG"))]

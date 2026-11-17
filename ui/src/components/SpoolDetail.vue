@@ -4,21 +4,23 @@ import Button from 'primevue/button';
 import Column from 'primevue/column';
 import DataTable from 'primevue/datatable';
 import InputText from 'primevue/inputtext';
+import Select from 'primevue/select';
 import { OuiIcon, OuiKeyValue, OuiLevel, OuiPanel, OuiReadout, OuiSpark, OuiSpool, OuiSwatch, type OuiFact } from '../../shared/src/components';
-import { archive as archiveIcon, edit, external, hourglass, scale, spool as spoolIcon, x } from '../../shared/src/icons';
+import { archive as archiveIcon, edit, external, hourglass, scale, spool as spoolIcon, upload, x } from '../../shared/src/icons';
 import SpoolChips from './SpoolChips.vue';
 import { boot } from '../core/boot';
-import { m, dupes } from '../state/main';
+import { m, dupes, sourceOff, pending, sendEdits } from '../state/main';
 import { menu, closeDetail, setMode, sendAction, openEditor, type MenuMode } from '../state/menu';
 import { ask, prompt } from '../core/dialog';
 import { note } from '../state/main';
 import { t, tn, fmt, locale } from '../core/i18n';
-import { driedDays, gramsValid, formatWeight, levelTone, lowLevel, noteText, originalWeight, percentLeft, shown, spoolPaint, tagUids, type Spool } from '../logic/spools';
+import { driedDays, gramsValid, formatWeight, levelTone, lowLevel, noteText, originalWeight, percentLeft, shown, spoolDirection, spoolPaint, tagUids, type Spool } from '../logic/spools';
 
 // The selected spool, beside the list: what it is and how much is left (the page's one accent block), what you can do
 // to it (Spoolman only), its facts, its weekly use and the prints that used it. The plugin sends the print history
 // (spool_detail) when the spool is picked.
-interface Detail { prints: { time: number; name?: string; grams: number; cost?: number | null }[]; grams: number; cost: number | null; sign: string; rate: number | null; weeks: number | null }
+interface Detail { prints: { time: number; name?: string; grams: number; cost?: number | null }[]; grams: number; cost: number | null; sign: string; rate: number | null; weeks: number | null;
+  presets?: { name: string; label: string; linked: boolean; own?: boolean }[] }
 const props = defineProps<{ spool: Spool }>();
 const s = computed(() => props.spool);
 const f = computed(() => s.value.filament || {});
@@ -75,6 +77,13 @@ const facts = computed<OuiFact[]>(() => [
   ...(dupe.value ? [{ label: t('detail.sameFilament'), value: t('spool.together', { n: dupe.value.count, w: w(dupe.value.total) }) }] : []),
 ]);
 const noteLine = computed(() => noteText(s.value, { ...m.disp, comment: true }, boot.own_fields, v => t('spool.lot', { lot: v })));
+// Send to Spoolman acts on the preset picked here: your own linked one, else Spooler's preset of this spool for each printer.
+const presets = computed(() => (detail.value?.presets ?? []).map(p => ({ value: p.name,
+  label: p.linked ? t('detail.presetLinked', { name: p.name }) : p.name.replace(/^_local\/spooler\//, '') })));
+const presetPick = ref('');
+// A link of this spool alone: Spoolman keeps settings on the filament every spool of it shares, so the plugin won't send it.
+const ownLink = computed(() => !!detail.value?.presets?.find(p => p.name === presetPick.value)?.own);
+watch(presets, list => { if (!list.some(o => o.value === presetPick.value)) presetPick.value = list[0]?.value ?? ''; }, { immediate: true });
 const date = (unix: number) => new Intl.DateTimeFormat(locale.value, { dateStyle: 'medium' }).format(new Date(unix * 1000));
 
 // ------------------------------------------------------------------ actions
@@ -112,7 +121,7 @@ async function addSpool() {
   sendAction('add', { filament: f.value.id, ...(count > 1 ? { count } : {}) });
 }
 async function save() {
-  if (!gramsOk.value) return;
+  if (!gramsOk.value || sourceOff.value) return;
   if (menu.mode === 'note') { sendAction('comment', { comment: menu.val }); return; }
   if (menu.mode === 'remain') { sendAction('remaining', { grams: menu.val.replace(',', '.') }); return; }
   if (menu.mode !== 'move') { sendAction(menu.mode, { grams: menu.val.replace(',', '.') }); return; }
@@ -129,7 +138,7 @@ async function save() {
     </template>
 
     <div class="sd-hero oui-hero" :class="{ 'oui-on-band': !stale }" :data-tone="stale ? 'neutral' : undefined">
-      <OuiSpool v-bind="spoolPaint(f)" :fraction="pct === null ? null : pct / 100" :size="112" />
+      <OuiSpool v-bind="spoolPaint(f)" :direction="spoolDirection(f)" :fraction="pct === null ? null : pct / 100" :size="112" />
       <div class="sd-id">
         <SpoolChips :spool="s" band />
         <p class="sd-name">{{ name }}<Button v-if="canAct" severity="secondary" text rounded size="small" class="sd-edit" :aria-label="t('editor.editTitle', { id: s.id })" :title="t('editor.editTitle', { id: s.id })"
@@ -151,11 +160,11 @@ async function save() {
           <InputText v-else-if="menu.mode === 'note'" :id="`sc-in-${s.id}`" v-model="menu.val" maxlength="1024" aria-describedby="sc-help" />
           <InputText v-else :id="`sc-in-${s.id}`" v-model="menu.val" inputmode="decimal" :invalid="menu.val !== '' && !gramsOk" aria-describedby="sc-help" /></div>
         <datalist v-if="menu.mode === 'move'" :id="`sc-locs-${s.id}`"><option v-for="l in locations" :key="l" :value="l" /></datalist>
-        <Button type="submit" :label="t('common.save')" :disabled="!gramsOk" data-act="sp-go" />
+        <Button type="submit" :label="t('common.save')" :disabled="!gramsOk || !!sourceOff" data-act="sp-go" />
         <Button severity="secondary" text :label="t('common.cancel')" @click="cancel" />
         <p id="sc-help" class="oui-meta sd-help" :class="{ 'sd-bad': menu.val !== '' && !gramsOk }">{{ help }}</p>
       </form>
-      <div v-else class="sd-actions">
+      <fieldset v-else class="sd-actions" :disabled="!!sourceOff" :aria-describedby="sourceOff ? 'sd-off' : undefined" data-test="spool-actions">
         <Button :label="t('menu.weigh')" data-focus-key="act:weigh" @click="setMode('weigh')"><template #icon><OuiIcon :icon="scale" :size="14" /></template></Button>
         <Button severity="secondary" :label="t('menu.use')" data-focus-key="act:use" @click="setMode('use')" />
         <Button severity="secondary" :label="t('menu.remain')" data-focus-key="act:remain" @click="setMode('remain')" />
@@ -167,7 +176,18 @@ async function save() {
         <span class="oui-spacer" />
         <Button v-if="s.archived" severity="secondary" :label="t('menu.unarchive')" @click="sendAction('unarchive')"><template #icon><OuiIcon :icon="archiveIcon" :size="14" /></template></Button>
         <Button v-else severity="danger" outlined :label="t('menu.archive')" @click="archive"><template #icon><OuiIcon :icon="archiveIcon" :size="14" /></template></Button>
-      </div>
+      </fieldset>
+      <p v-if="sourceOff && !menu.mode" id="sd-off" class="oui-meta" data-test="actions-off">{{ t('detail.actionsOff', { reason: sourceOff }) }}</p>
+    </div>
+    <div v-if="canAct && detail" class="sd-preset" data-test="detail-preset">
+      <template v-if="presets.length">
+        <div class="oui-field"><label :for="`sd-preset-${s.id}`">{{ t('detail.preset') }}</label>
+          <Select v-model="presetPick" :input-id="`sd-preset-${s.id}`" :options="presets" option-label="label" option-value="value" size="small" aria-describedby="sd-send-h" data-test="preset-pick" /></div>
+        <Button severity="secondary" size="small" :label="t('list.send')" :disabled="!!sourceOff || pending('send') || !presetPick || ownLink" aria-describedby="sd-send-h" data-test="send"
+                @click="sendEdits(s.id, presetPick)"><template #icon><OuiIcon :icon="upload" :size="14" /></template></Button>
+        <p id="sd-send-h" class="oui-meta sd-help" data-test="send-help">{{ ownLink ? t('detail.ownLink') : t('list.sendHelp') }}</p>
+      </template>
+      <p v-else class="oui-meta" data-test="no-presets">{{ t('detail.noPresets') }}</p>
     </div>
     <hr class="oui-divider sd-rule">
 
@@ -209,13 +229,15 @@ async function save() {
 .sd-sub { display: flex; align-items: center; gap: 6px; }
 .sd-amount { display: flex; flex-wrap: wrap; gap: var(--oui-s3) var(--oui-s8); margin-block: var(--oui-s2) var(--oui-s1); }
 .sd-act { margin-top: var(--oui-s4); }
-.sd-actions { display: flex; flex-wrap: wrap; gap: var(--oui-s2); }
+.sd-actions { display: flex; flex-wrap: wrap; gap: var(--oui-s2); margin: 0; padding: 0; border: 0; min-width: 0; }
 .sd-form { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--oui-s2); padding: var(--oui-s3); }
 .sd-form > .oui-field { flex: 1 1 200px; }
 .sd-help { flex: 1 0 100%; }
 .sd-help:empty { display: none; }
 .sd-bad { color: var(--oui-danger); }
 .sd-rule { margin-block: var(--oui-s4); }
+.sd-preset { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--oui-s2); margin-top: var(--oui-s4); }
+.sd-preset > .oui-field { flex: 1 1 220px; min-width: 0; }
 .sd-note { display: grid; gap: 2px; margin-top: var(--oui-s3); overflow-wrap: anywhere; }
 .sd-usage { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: var(--oui-s3); margin-top: var(--oui-s5); padding: var(--oui-s3) var(--oui-s4);
   border-radius: var(--oui-radius); background: var(--oui-primary-soft); }

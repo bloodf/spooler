@@ -7,7 +7,7 @@ import Select from 'primevue/select';
 import { OuiBanner, OuiEmpty, OuiIcon, OuiLevel, OuiPanel, OuiReadout, OuiStatus, OuiSwatch, materialTone, type OuiTone } from '../../shared/src/components';
 import { boxes, chart, chevronDown, chevronRight, coins, download, error as errorIcon, history, hourglass, layers, percent, printer, refresh, scale, target, trash, warehouse, warning } from '../../shared/src/icons';
 import * as bridge from '../core/bridge';
-import { on } from '../state/main';
+import { note, on } from '../state/main';
 import { t, tn, fmt, locale } from '../core/i18n';
 
 // Stats from the prints Spooler booked: tiles, weekly use, materials, most used, running low, shelf, waste and
@@ -17,7 +17,6 @@ const period = ref(readPeriod());
 function readPeriod() { try { return localStorage.getItem('spooler.period') || '30'; } catch { return '30'; } }
 const data = ref<any>(null);
 const error = ref('');
-const exportNote = ref<{ ok: boolean; text: string } | null>(null);
 const exporting = ref(false);
 const histOpen = ref(readFlag());
 function readFlag() { try { return localStorage.getItem('spooler.history') === '1'; } catch { return false; } }
@@ -29,7 +28,7 @@ function ask() { bridge.postMain({ type: 'stats', period: period.value }); }
 let offs: (() => void)[] = [];
 onMounted(() => {
   offs = [on('stats', (d: any) => { if (d && d.period === period.value) { data.value = d; error.value = d.error || ''; } }),
-    on('statsExport', (d: any) => { exporting.value = false; exportNote.value = { ok: d.ok !== false, text: d.text || '' }; })];
+    on('statsExport', (d: any) => { exporting.value = false; if (d.text) note(d.ok !== false ? 'success' : 'error', d.text, 'stats-export'); })];
   ask();
 });
 onBeforeUnmount(() => offs.forEach(f => f()));
@@ -39,7 +38,7 @@ function setPeriod(v: string) {
   ask();
 }
 function toggleHist() { histOpen.value = !histOpen.value; try { localStorage.setItem('spooler.history', histOpen.value ? '1' : '0'); } catch { /* per viewer */ } }
-function exportCsv() { exporting.value = true; exportNote.value = null; bridge.postMain({ type: 'stats_export', period: period.value }); }
+function exportCsv() { exporting.value = true; bridge.postMain({ type: 'stats_export', period: period.value }); }
 
 const periods = computed(() => (['30', '90', 'year', 'all'] as const).map(v => ({ value: v, label: t(`stats.period.${v}`) })));
 const w = (g: number) => (g >= 1000 ? `${fmt.number(g / 1000, 2)} kg` : `${fmt.number(Math.round(g))} g`);
@@ -83,7 +82,7 @@ const soonLabel = (s: any) => {
       <Select :model-value="period" :options="periods" option-label="label" option-value="value" aria-labelledby="stv-p" data-test="period" @update:model-value="setPeriod" />
       <span class="oui-meta">{{ since ? t('stats.since', { date: since }) : t('stats.fillIn') }}</span>
     </div>
-    <OuiBanner v-if="error" tone="error" :title="error">
+    <OuiBanner :show="!!error" tone="error" :title="error" dismissible :dismiss-key="`stats-error:${period}:${error}`" :close-label="t('common.close')" data-test="stats-error">
       <template #actions><Button severity="secondary" size="small" :label="t('common.retry')" @click="ask"><template #icon><OuiIcon :icon="refresh" :size="14" /></template></Button></template></OuiBanner>
     <OuiPanel v-if="!data"><OuiEmpty compact state="loading" :title="t('stats.loading')" role="status" /></OuiPanel>
     <template v-else>
@@ -170,7 +169,6 @@ const soonLabel = (s: any) => {
             <div class="oui-row stv-pad">
               <Button v-if="data.history.length > shownN" severity="secondary" size="small" :label="t('stats.more')" @click="shownN += 20" />
               <Button v-if="data.history.length" severity="secondary" size="small" :label="t('stats.export')" :loading="exporting" data-test="export" @click="exportCsv"><template #icon><OuiIcon :icon="download" :size="14" /></template></Button>
-              <span v-if="exportNote" role="status"><OuiStatus :state="exportNote.ok ? 'ok' : 'error'" variant="plain">{{ exportNote.text }}</OuiStatus></span>
             </div>
           </div></OuiPanel>
       </div>

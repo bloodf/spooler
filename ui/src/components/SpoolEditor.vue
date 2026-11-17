@@ -17,7 +17,7 @@ import { m, note } from '../state/main';
 import { editor, submitEditor } from '../state/menu';
 import { ask } from '../core/dialog';
 import { t, tn, locale } from '../core/i18n';
-import { formatWeight, spoolPaint, swatchHex, type Filament } from '../logic/spools';
+import { formatWeight, spoolDirection, spoolPaint, swatchHex, type Filament } from '../logic/spools';
 import { matchFilament, rfidPrefill } from '../logic/rfid';
 import { changed, densityFor, editable, filamentForm, filamentPayload, filled, previewFilament, problems, spoolForm, spoolPayload, wasOf,
   type FilamentForm, type Raw, type SpoolForm } from '../logic/editor';
@@ -40,6 +40,12 @@ const tried = ref(false);
 const uw = computed<UseWithInfo | undefined>(() => data.value?.use_with);
 const showUseWith = computed(() => !adding.value && !!uw.value?.printers?.length && (uw.value.on || uw.value.value !== null));
 const useWith = ref<string[]>([]);
+// OrcaSlicer preset (orca_filament_preset): one of your own filament presets for the spool, or for every spool of the filament.
+// Typed names are taken too (a preset of a printer not selected now is not listed by OrcaSlicer's compatibility).
+const pl = computed<{ presets: string[]; spool: string; filament: string } | undefined>(() => data.value?.preset_link);
+const linkSpool = ref('');
+const linkFil = ref('');
+const linkOf = (v: unknown) => (typeof v === 'string' ? v.trim() : '');
 let suggested: number | null = null;
 
 watch(data, d => {
@@ -53,6 +59,7 @@ watch(data, d => {
   source.value = (d.filaments ?? []).length && (!pre || pickId.value !== null) ? 'existing' : 'new';
   tried.value = false; suggested = pre?.filament.density ?? null;
   useWith.value = [...(d.use_with?.value ?? [])];
+  linkSpool.value = d.preset_link?.spool ?? ''; linkFil.value = d.preset_link?.filament ?? '';
 }, { immediate: true });
 // The new filament was made but Spoolman refused the spool: it is an existing filament now, picked for the retry.
 watch(() => editor.made, id => {
@@ -115,14 +122,19 @@ async function save() {
   if ('initial_weight' in sCh && spool.remaining_weight !== null) sCh.remaining_weight = spool.remaining_weight;
   if (showUseWith.value && useWithChanged(useWith.value, uw.value?.value ?? null)) sCh.use_with = useWithPayload(useWith.value);
   const fCh = changed(filamentPayload(ff.value, defs.value.filament), filamentPayload(filamentForm(rawFil.value, defs.value.filament), defs.value.filament));
+  if (pl.value && linkOf(linkSpool.value) !== pl.value.spool) sCh.preset_link = linkOf(linkSpool.value) || null;
+  if (pl.value && linkOf(linkFil.value) !== pl.value.filament) fCh.preset_link = linkOf(linkFil.value) || null;
   if (!Object.keys(sCh).length && !Object.keys(fCh).length) { editor.open = false; note('info', t('editor.noChanges'), 'spool-action'); return; }
   // A new location unlinks a U1 toolhead bound by its location: asked first, as the detail's Move does.
   const listed = m.spools.find(s => s.id === editor.id);
   if ('location' in sCh && listed?.u1_bound && !await ask({ title: t('menu.move'), text: t('confirm.unlink', { location: listed.location }),
     yes: t('confirm.unlinkYes'), no: t('common.goBack'), danger: true })) return;
   // Use with is kept as Spoolman stores it, so the plugin can tell whether it changed there meanwhile.
-  const wasSpool = { ...wasOf(raw.value, sCh), ...('use_with' in sCh ? { use_with: raw.value?.extra?.use_with ?? null } : {}) };
-  submitEditor({ action: 'save', spool: sCh, filament: fCh, was: { spool: wasSpool, filament: { ...wasOf(rawFil.value, fCh), id: rawFil.value?.id ?? null } } });
+  const wasSpool = { ...wasOf(raw.value, sCh), ...('use_with' in sCh ? { use_with: raw.value?.extra?.use_with ?? null } : {}),
+    ...('preset_link' in sCh ? { preset_link: raw.value?.extra?.orca_filament_preset ?? null } : {}) };
+  const wasFil = { ...wasOf(rawFil.value, fCh), id: rawFil.value?.id ?? null,
+    ...('preset_link' in fCh ? { preset_link: rawFil.value?.extra?.orca_filament_preset ?? null } : {}) };
+  submitEditor({ action: 'save', spool: sCh, filament: fCh, was: { spool: wasSpool, filament: wasFil } });
 }
 </script>
 
@@ -166,6 +178,8 @@ async function save() {
               <MultiSelect v-model="useWith" input-id="se-usewith" :options="uw?.printers ?? []" option-label="label" option-value="target" display="chip"
                            :placeholder="t('presets.useWithAuto')" :show-toggle-all="false" fluid aria-describedby="se-usewith-h" data-test="editor-usewith" />
               <span id="se-usewith-h" class="oui-sr">{{ t('presets.useWithHelp') }}</span></OuiFormRow>
+            <OuiFormRow v-if="!adding && pl" :label="t('editor.presetLink')" for="se-link" :hint="t('editor.presetLinkHelp')">
+              <Select v-model="linkSpool" input-id="se-link" :options="pl.presets" editable show-clear :placeholder="t('editor.presetLinkNone')" fluid data-test="editor-link" /></OuiFormRow>
             <OuiFormRow v-for="d in defs.spool" :key="d.key" :label="d.name || d.key" :for="`se-sx-${d.key}`" :error="err('spool.' + d.key)">
               <EditorExtra v-model="sf.extra[d.key]" :def="d" :id="`se-sx-${d.key}`" :invalid="!!err('spool.' + d.key)" /></OuiFormRow>
           </section>
@@ -197,6 +211,8 @@ async function save() {
             <OuiFormRow :label="t('editor.bed')" for="se-bed"><EditorNumber id="se-bed" v-model="ff.settings_bed_temp" :min="0" :max="300" unit="°C" /></OuiFormRow>
             <OuiFormRow :label="t('editor.weight')" for="se-fw"><EditorNumber id="se-fw" v-model="ff.weight" :min="0" :max="100000" :digits="1" unit="g" /></OuiFormRow>
             <OuiFormRow :label="t('editor.spoolWeight')" for="se-sw"><EditorNumber id="se-sw" v-model="ff.spool_weight" :min="0" :max="100000" :digits="1" unit="g" /></OuiFormRow>
+            <OuiFormRow v-if="!adding && pl" :label="t('editor.presetLink')" for="se-link-fil" :hint="t('editor.presetLinkFilHelp')">
+              <Select v-model="linkFil" input-id="se-link-fil" :options="pl.presets" editable show-clear :placeholder="t('editor.presetLinkNone')" fluid data-test="editor-link-fil" /></OuiFormRow>
             <OuiFormRow v-for="d in defs.filament" :key="d.key" :label="d.name || d.key" :for="`se-fx-${d.key}`" :error="err('filament.' + d.key)">
               <EditorExtra v-model="ff.extra[d.key]" :def="d" :id="`se-fx-${d.key}`" :invalid="!!err('filament.' + d.key)" /></OuiFormRow>
           </section>
@@ -205,7 +221,7 @@ async function save() {
         <aside class="se-preview" :aria-label="t('editor.preview')" data-test="editor-preview">
           <p class="oui-label">{{ t('editor.preview') }}</p>
           <div class="se-card oui-hero oui-on-band">
-            <OuiSpool v-bind="spoolPaint(pf)" :fraction="fraction" :size="120" />
+            <OuiSpool v-bind="spoolPaint(pf)" :direction="spoolDirection(pf)" :fraction="fraction" :size="120" />
             <div class="se-id">
               <p class="oui-meta">{{ adding ? t('editor.newSpool') : t('spool.numbered', { id: editor.id }) }}</p>
               <p class="se-name" data-test="preview-name">{{ pf.name || t('editor.unnamed') }}</p>

@@ -34,7 +34,7 @@ const spools = (list, extra) => post({type: 'spools', ok: true, origin: 3, sourc
 const vis = el => (el ? el.innerText.replace(/\\s+/g, ' ').trim() : '');
 async function tab(name) { await click(q('[data-tab="' + name + '"]')); await sleep(50); }
 async function pick(root, label) {
-  assert(root, 'select to open'); root.click(); await until(() => q('.p-select-overlay') && !q('.p-select-overlay[class*="enter-active"]'), 'select overlay open');
+  assert(root, 'select to open'); await reveal(root); root.click(); await until(() => q('.p-select-overlay') && !q('.p-select-overlay[class*="enter-active"]'), 'select overlay open');
   const opt = qa('.p-select-overlay [role=option]').find(o => text(o) === label);
   assert(opt, 'option ' + label + ' in ' + qa('.p-select-overlay [role=option]').map(text).join('|'));
   await mouse(opt); await until(() => !q('.p-select-overlay'), 'overlay closed'); await settle();
@@ -42,7 +42,10 @@ async function pick(root, label) {
 const sentOf = type => __t.sent.filter(m => m.type === type);
 const lastOf = type => [...__t.sent].reverse().find(m => m.type === type);
 const card = id => q('[data-spool="' + id + '"]');
-const alerts = () => qa('[role=alert] .oui-banner').map(text).join(' | ');
+// Toasts (the shared host, bottom-left); one leaving stays in the DOM for its transition.
+const liveToasts = () => qa('.oui-toast:not(.oui-toast-leave-active)');
+const toasts = () => liveToasts().map(text).join(' | ');
+const alerts = () => liveToasts().filter(x => x.getAttribute('role') === 'alert').map(text).join(' | ');
 // The list is a table of rows; the picked spool's detail, with its actions, sits beside it.
 const row = id => q('tr[data-spool="' + id + '"]');
 const panel = id => q('[data-detail="' + id + '"]');
@@ -166,7 +169,7 @@ test('card actions only for Spoolman; archived spool; move that unlinks a U1 too
   await yes();
   const mv = sentOf('spool_action').find(m => m.action === 'move');
   eq([mv.id, mv.location, mv.origin], [3, 'Shelf', 3], 'moves with the list origin');
-  assert(text(q('.sa')).includes('Sending to Spoolman'), 'pending shown');
+  assert(toasts().includes('Sending to Spoolman'), 'pending shown');
   await open(1);
   await click(btn('Archive', panel(1)));
   assert(dialogText().includes('Archive Black'), 'archive asks');
@@ -373,7 +376,7 @@ test('F10: a read error keeps the old list of the same source, marked; another s
   await post({type: 'spools', ok: false, error: 'No Spoolman URL configured yet', error_code: 'no_url'});
   assert(!card(1) && byTest('empty-no-url'), 'another source: list dropped, first-use state');
   assert(btn('Open Settings', byTest('empty-no-url')), 'next step offered (S02)');
-  assert(byTest('sync').disabled && byTest('send').disabled, 'actions that need Spoolman are off (S02)');
+  assert(byTest('sync').disabled, 'actions that need Spoolman are off (S02)');
   assert(document.body.textContent.includes('no Spoolman address set'), 'with the reason');
   await post({type: 'spools', ok: true, origin: 4, source: 'spoolman', spools: [], peers: {u1control: false}});
   assert(byTest('empty-none') && !byTest('stale') && !byTest('empty-no-url'), 'empty stock is not an error (S01)');
@@ -388,27 +391,98 @@ test('S02: a failed first read offers retry and Settings', `
   await click(btn('Open Settings', byTest('empty-error')));
   eq(lastOf('settings').type, 'settings', 'settings asked');
 `);
-test('B-20: action errors stay until dismissed and are announced; successes clear', `
+test('B-20: action errors stay until closed and are announced; successes clear', `
   await spools(SPOOLS);
   await click(byTest('sync'));
-  assert(text(q('.sa [role=status]')).includes('Syncing presets'), 'pending announced');
+  assert(toasts().includes('Syncing presets'), 'pending announced: ' + toasts());
+  await sleep(6000);
+  assert(toasts().includes('Syncing presets'), 'a waiting toast outlives the 5 s info timeout until its answer: ' + toasts());
   await post({type: 'sent', ok: false, text: 'Spoolman refused the filament'});
   assert(alerts().includes('Error:') && alerts().includes('Spoolman refused the filament'), 'error in role=alert: ' + alerts());
+  assert(!toasts().includes('Syncing presets'), 'the answer replaces the waiting toast: ' + toasts());
   await sleep(9000);
   assert(alerts().includes('Spoolman refused'), 'still there after 9 s');
-  await click(btn('Dismiss', q('.sa')));
-  assert(!alerts(), 'dismissed');
+  await click(btn('Close', liveToasts().find(x => x.getAttribute('role') === 'alert')));
+  await until(() => !alerts(), 'closed');
   await post({type: 'action_result', ok: true, text: 'Spool #1 updated'});
-  assert(text(q('.sa [role=status]')).includes('Spool #1 updated'), 'success shown');
-  await sleep(8500);
-  assert(!text(q('.sa')).includes('Spool #1 updated'), 'success clears');
+  assert(toasts().includes('Spool #1 updated'), 'success shown');
+  await sleep(5600);
+  await until(() => !toasts().includes('Spool #1 updated'), 'success clears after 5 s');
 `, { slow: true });
-test('S03: Send is named for what it does and explains itself', `
+test('toasts: one stack bottom-left, each with a Close button', `
   await spools(SPOOLS);
-  eq(text(byTest('send')), 'Send Preset Edits to Spoolman', 'label');
-  assert(byTest('send').getAttribute('aria-describedby') && text(q('#sv-why')).includes('unsaved edits of the Spooler preset'), 'description');
+  await post({type: 'sent', ok: false, text: 'First failure'});
+  await post({type: 'action_result', ok: true, text: 'Spool #2 updated'});
+  const host = q('.oui-toasts');
+  eq(qa('.oui-toasts').length, 1, 'one host');
+  assert(host.getAttribute('aria-label') === 'Messages', 'named region');
+  const items = liveToasts();
+  eq(items.length, 2, 'stacked: ' + toasts());
+  const r = items[1].getBoundingClientRect();
+  assert(r.left <= 24 && innerHeight - r.bottom <= 24, 'bottom-left: ' + r.left + ',' + (innerHeight - r.bottom));
+  assert(items[0].getBoundingClientRect().top < r.top, 'newest at the bottom');
+  assert(items.every(x => btn('Close', x)), 'every toast has Close');
+  await click(btn('Close', items[0]));
+  await until(() => liveToasts().length === 1 && !toasts().includes('First failure'), 'closed one leaves');
+`, { width: 380 });
+test('banners: a dismissed notice stays dismissed while the same condition lasts, and comes back when it changes', `
+  await spools([{id: 1, remaining_weight: 100, filament: {id: 1, name: 'OldSpool', material: 'PLA'}}]);
+  await post({type: 'spools', ok: false, origin: 3, error: 'SYNTHETIC OFFLINE A', error_code: 'read_failed'});
+  assert(byTest('stale'), 'shown');
+  await click(btn('Close', byTest('stale')));
+  await until(() => !byTest('stale'), 'dismissed');
+  await post({type: 'spools', ok: false, origin: 3, error: 'SYNTHETIC OFFLINE A', error_code: 'read_failed'});
+  await post({type: 'spools', ok: false, origin: 3, error: 'SYNTHETIC OFFLINE A', error_code: 'read_failed'});
+  await settle();
+  assert(!byTest('stale'), 'same condition on the next polls: stays dismissed');
+  await post({type: 'spools', ok: false, origin: 3, error: 'SYNTHETIC OFFLINE B', error_code: 'read_failed'});
+  await until(() => byTest('stale'), 'a new condition: back');
+  assert(text(byTest('stale')).includes('SYNTHETIC OFFLINE B'), 'with the new reason');
+  await spools(SPOOLS, {peers: {u1control: true}});
+  const peer = () => qa('[data-test="peer-u1"]').find(e => e.offsetParent !== null);
+  await click(btn('Close', peer()));
+  await until(() => !peer(), 'peer note dismissed');
+  await spools(SPOOLS, {peers: {u1control: true}});
+  await settle();
+  assert(!peer(), 'peer note stays dismissed while U1 Control runs');
+`);
+test('banners: a closed notice shows again when its condition clears and later returns', `
+  await spools([{id: 1, remaining_weight: 100, filament: {id: 1, name: 'OldSpool', material: 'PLA'}}]);
+  await post({type: 'spools', ok: false, origin: 3, error: 'SYNTHETIC OFFLINE R', error_code: 'read_failed'});
+  assert(byTest('stale'), 'shown');
+  await click(btn('Close', byTest('stale')));
+  await until(() => !byTest('stale'), 'closed');
+  await spools([{id: 1, remaining_weight: 100, filament: {id: 1, name: 'OldSpool', material: 'PLA'}}]);
+  await settle();
+  assert(!byTest('stale'), 'condition cleared');
+  await post({type: 'spools', ok: false, origin: 3, error: 'SYNTHETIC OFFLINE R', error_code: 'read_failed'});
+  await until(() => byTest('stale'), 'the same problem returning shows again');
+  assert(text(byTest('stale')).includes('SYNTHETIC OFFLINE R'), 'same reason');
+`);
+test('S03: Send acts on the preset picked in the spool detail, and explains itself (#38)', `
+  await spools(SPOOLS, {display: {...DEFAULTS, group_same: false}});
+  await open(1);
+  assert(!byTest('send'), 'no Send before the detail says which presets the spool has');
+  await post({type: 'spool_detail', detail: {id: 1, sign: '£', grams: 0, cost: null, rate: null, weeks: null, prints: [],
+    presets: [{name: '_local/spooler/PLA #1 @Snapmaker U1', label: 'Snapmaker U1', linked: false}, {name: '_local/spooler/PLA #1 @Sovol SV06', label: 'Sovol SV06', linked: false}]}});
+  await until(() => byTest('send'), 'Send shown');
+  eq(text(byTest('send')), 'Send to Spoolman', 'label');
+  assert(text(q('#' + byTest('send').getAttribute('aria-describedby'))).includes('unsaved edits of the preset picked here'), 'description');
+  assert(text(byTest('preset-pick')).includes('PLA #1 @Snapmaker U1') && !text(byTest('preset-pick')).includes('_local'), 'first preset picked, shown by its name');
   await click(byTest('send'));
-  eq(lastOf('send').type, 'send', 'sent');
+  eq(lastOf('send'), {type: 'send', spool: 1, preset: '_local/spooler/PLA #1 @Snapmaker U1'}, 'sent with the spool and the picked preset');
+  await post({type: 'spool_detail', detail: {id: 1, sign: '£', grams: 0, cost: null, rate: null, weeks: null, prints: [],
+    presets: [{name: 'My PLA', label: 'Snapmaker U1', linked: true}]}});
+  await until(() => text(byTest('preset-pick')).includes('My PLA (your preset)'), 'a linked preset is named as yours');
+  await post({type: 'sent', ok: true, text: 'Sent.'});
+  await until(() => !byTest('send').disabled, 'a filament link sends');
+  await post({type: 'spool_detail', detail: {id: 1, sign: '£', grams: 0, cost: null, rate: null, weeks: null, prints: [],
+    presets: [{name: 'My PLA', label: 'Snapmaker U1', linked: true, own: true}, {name: '_local/spooler/PLA #1 @Sovol SV06', label: 'Sovol SV06', linked: false}]}});
+  await until(() => byTest('send').disabled, 'a link of this spool alone is not sent');
+  assert(text(byTest('send-help')).includes('Linked to this spool only'), 'and says why');
+  await post({type: 'spool_detail', detail: {id: 1, sign: '£', grams: 0, cost: null, rate: null, weeks: null, prints: [], presets: []}});
+  await until(() => byTest('no-presets'), 'no preset yet: says how to get one');
+  assert(!byTest('send'), 'nothing to send');
 `);
 test('X01/X05: with U1 Control running, each tab says where the U1 lives and why two tabs', `
   await spools(SPOOLS, {peers: {u1control: true}});
@@ -472,8 +546,7 @@ test('single-extruder Klipper card: change spool, clear only with a spool, resul
   await yes();
   eq(lastOf('moon_spool'), {type: 'moon_spool', id: 'auto-sv', spool: null}, 'clear sent');
   await post({type: 'moon_spool', id: 'auto-sv', ok: false, text: 'SV06 refused <x>'});
-  assert(text(q('.lu')).includes('SV06 refused <x>') && q('.lu [data-test="moon-note"] [data-state="error"]'), 'result as text on the card');
-  assert(alerts().includes('SV06 refused'), 'and persists in the status area');
+  assert(alerts().includes('SV06 refused <x>'), 'result as an error toast, as text: ' + alerts());
   await post({type: 'live', live: {links: {'auto-sv': 'live'}, printers: [sv(null)]}});
   assert(btn('Change spool') && !btn('Clear'), 'no active spool: change only');
   await click(btn('Change spool'));
@@ -723,7 +796,7 @@ test('stats tiles, shelf, waste, failed marker, history and export', `
   await click(byTest('export'));
   eq(lastOf('stats_export').period, d.period, 'export asked');
   await post({type: 'stats_export', ok: true, text: 'Saved to ~/x.csv'});
-  assert(text(byTest('history')).includes('Saved to ~/x.csv'), 'result shown');
+  assert(toasts().includes('Saved to ~/x.csv'), 'result shown as a toast: ' + toasts());
 `);
 
 // ------------------------------------------------------------------ settings and wizard (test_wizard, test_display, test_drying)
@@ -733,7 +806,7 @@ test('calibrated values from a saved copy wait for Save or Skip', `
   await spools(SPOOLS, {calibration: [ASK]});
   const box = () => byTest('calibration');
   await until(box, 'prompt shown');
-  assert(text(q('.sa [role=status]')).includes('calibrated values to review'), 'announced politely');
+  assert(toasts().includes('calibrated values to review'), 'announced politely');
   assert(text(box()).includes('Acme PLA Black @U1') && text(box()).includes('Nothing is written to Spoolman until you save'), 'names the filament: ' + text(box()));
   eq(qa('[data-test=calibration] tbody tr').map(r => vis(r)), ['Flow ratio 0.98 0.95', 'Ironing flow — 15%', 'Max volumetric speed 18 mm³/s 21.5 mm³/s'], 'each setting: old and new');
   eq(sentOf('calibration_save').length + sentOf('calibration_skip').length, 0, 'nothing sent before an answer');
@@ -743,11 +816,11 @@ test('calibrated values from a saved copy wait for Save or Skip', `
   await post({type: 'calibration', asks: [ASK]});
   await click(byTest('cal-save'));
   eq(lastOf('calibration_save'), {type: 'calibration_save', name: 'Acme PLA Black @U1'}, 'save names the change set');
-  assert(text(q('.sa [role=status]')).includes('Saving calibrated values'), 'saving announced');
+  assert(toasts().includes('Saving calibrated values'), 'saving announced');
   assert(byTest('cal-save').disabled, 'no second save while one runs');
   await post({type: 'sent', ok: true, text: 'Sent filament_flow_ratio to Spoolman.'});
   await post({type: 'calibration', asks: []});
-  assert(!box() && text(q('.sa [role=status]')).includes('Sent filament_flow_ratio'), 'saved: gone, result shown');
+  assert(!box() && toasts().includes('Sent filament_flow_ratio'), 'saved: gone, result shown');
   await spools(SPOOLS);
   assert(!box(), 'a list without asks shows none');
 `);
@@ -837,6 +910,58 @@ test('low-stock preview lists the spools under the typed weight', `
   await post({type: 'show_view', view: 'settings', url: 'x', source: 'spoolman', low_stock: 100, display: DEFAULTS, drying: {}, progress: {}, stats: {}});
   assert(text(q('#s-reorder').closest('section')).includes('1 spool is under 100 g'), 'preview');
 `);
+test('requirements: one block, the source row says why and how to install it; Check again asks the plugin', `
+  await until(() => byTest('requirements'));
+  await post({type: 'test_result', source: 'spoolman', ok: false, url: '', error: 'No Spoolman URL configured yet',
+    requirements: [{id: 'spoolman', status: 'missing', details: 'No Spoolman URL configured yet'}]});
+  const sec = byTest('requirements'), reqRow = () => byTest('req-row');
+  eq(qa('[data-test="requirements"]').length, 1, 'one Requirements block');
+  eq(qa('.oui-req').length, 1, 'one requirement row on the page');
+  assert(reqRow().dataset.status === 'missing' && text(reqRow()).includes('Missing') && text(reqRow()).includes('No Spoolman URL configured yet'), 'missing, with the reason');
+  assert(['docker run', 'Sync Presets', 'macOS', 'Windows', 'Linux'].every(s => text(sec).includes(s)), 'why, and how per OS');
+  const link = q('a.oui-req-link', reqRow());
+  assert(link && link.href === 'https://github.com/Donkie/Spoolman', 'install link');
+  await click(link);
+  eq(sentOf('spoolman_help').length, 1, 'install guide opened by the plugin');
+  await click(btn('Check again', reqRow()));
+  eq(sentOf('requirements').length, 1, 'check again asked');
+  eq(reqRow().dataset.status, 'checking', 'checking');
+  await post({type: 'test_result', source: 'spoolman', ok: true, url: 'http://spoolman:7912', version: '0.22',
+    requirements: [{id: 'spoolman', status: 'ok', details: '0.22'}]});
+  assert(reqRow().dataset.status === 'found' && text(reqRow()).includes('Connected') && !q('a.oui-req-link', reqRow()) && !text(sec).includes('docker run'), 'found: no install help');
+  await post({type: 'test_result', source: 'spoolman', ok: false, url: 'http://spoolman:7912', error: 'Could not reach Spoolman (timed out)',
+    requirements: [{id: 'spoolman', status: 'unreachable', details: 'Could not reach Spoolman (timed out)'}]});
+  assert(text(reqRow()).includes('Not reachable') && text(reqRow()).includes('timed out'), 'reached before: not reachable, with the error');
+  assert(!q('a.oui-req-link', reqRow()) && !text(sec).includes('docker run'), 'no install guide for a server that ran before');
+`, { mode: 'settings' });
+test('requirements: Bambu Cloud row: not signed in, connected, not reachable', `
+  await until(() => byTest('requirements'));
+  const reqRow = () => byTest('req-row');
+  await post({type: 'test_result', source: 'bambu', ok: false, signin: true, error: 'Signed out',
+    requirements: [{id: 'bambu', status: 'missing', details: 'Signed out', signin: true}]});
+  assert(text(reqRow()).includes('Bambu Cloud') && text(reqRow()).includes('Not signed in') && text(reqRow()).includes('Choose your source'), 'signed out: how to sign in');
+  assert(!q('a.oui-req-link', reqRow()) && !byTest('req-how'), 'no Spoolman install help');
+  await post({type: 'test_result', source: 'bambu', ok: true, account: 'me@example.com',
+    requirements: [{id: 'bambu', status: 'ok', details: 'me@example.com'}]});
+  assert(reqRow().dataset.status === 'found' && text(reqRow()).includes('Connected') && text(reqRow()).includes('me@example.com'), 'connected');
+  await post({type: 'test_result', source: 'bambu', ok: false, error: 'timed out',
+    requirements: [{id: 'bambu', status: 'unreachable', details: 'timed out'}]});
+  assert(text(reqRow()).includes('Not reachable') && !text(reqRow()).includes('Not signed in'), 'signed in but not reachable');
+`, { mode: 'settings' });
+test('spool actions: one failed read keeps them; two in a row turn them off with the reason; a good read brings them back', `
+  const grouped = {display: {...DEFAULTS, group_same: false}};
+  await spools(SPOOLS, grouped);
+  await open(1);
+  assert(!byTest('spool-actions').disabled && !byTest('actions-off'), 'on');
+  const readFails = () => post({type: 'spools', ok: false, origin: 3, error: 'SYNTHETIC OFFLINE', error_code: 'read_failed'});
+  await readFails();
+  assert(byTest('stale') && !byTest('spool-actions').disabled && !byTest('actions-off') && !byTest('sync').disabled, 'one failure: a blip, actions stay');
+  await readFails();
+  assert(byTest('spool-actions').disabled && text(byTest('actions-off')).includes('couldn’t be read'), 'off, with the reason');
+  assert(byTest('sync').disabled, 'Sync off too');
+  await spools(SPOOLS, grouped);
+  assert(!byTest('spool-actions').disabled && !byTest('actions-off') && !byTest('sync').disabled, 'back');
+`);
 
 // ------------------------------------------------------------------ language, theme, layout
 test('X04: pt-BR from the host: tabs, empty states, weights and dialogs in Portuguese', `
@@ -852,6 +977,7 @@ for (const [host, lang, nav, weights, empty] of [
   ['de', 'de', 'Spulen', '1.380 g von 2.000 g', 'Spoolman ist noch nicht eingerichtet'],
   ['zh_CN', 'zh-CN', '料盘', '1,380 g / 2,000 g', 'Spoolman 尚未设置'],
   ['zh_TW', 'zh-CN', '料盘', '1,380 g / 2,000 g', 'Spoolman 尚未设置'],
+  ['pl_PL', 'pl', 'Szpule', '1380 g z 2000 g', 'Spoolman nie jest jeszcze skonfigurowany'],
   ['fr_FR', 'en', 'Spools', '1,380 g of 2,000 g', 'Spoolman isn’t set up yet']]) {
   test(`X04: ${host} from the host: page in ${lang}`, `
   await spools(SPOOLS);
@@ -862,7 +988,7 @@ for (const [host, lang, nav, weights, empty] of [
   assert(text(byTest('empty-no-url')).includes(${JSON.stringify(empty)}), 'empty state: ' + text(byTest('empty-no-url')));
 `, { lang: host });
 }
-test('X04: Español, Deutsch and 简体中文 can be chosen over the host', `
+test('X04: Español, Deutsch, 简体中文 and Polski can be chosen over the host', `
   await until(() => q('[data-tab="spools"]'));
   await click(byTest('settings-btn'));
   await post({type: 'show_view', view: 'settings', url: '', source: 'spoolman', low_stock: 100, display: DEFAULTS, drying: {}, progress: {}, stats: {}});
@@ -872,6 +998,9 @@ test('X04: Español, Deutsch and 简体中文 can be chosen over the host', `
   await pick(byTest('lang'), '简体中文');
   assert(text(q('#s-lang .oui-panel-title')) === '语言', 'switched to Chinese');
   eq(document.documentElement.lang, 'zh-CN', 'lang');
+  await pick(byTest('lang'), 'Polski');
+  assert(text(q('#s-lang .oui-panel-title')) === 'Język', 'switched to Polish');
+  eq(document.documentElement.lang, 'pl', 'lang');
   await pick(byTest('lang'), 'Español');
   assert(text(q('#s-lang .oui-panel-title')) === 'Idioma', 'switched to Spanish');
   eq(lastOf('ui_language'), {type: 'ui_language', value: 'es', view: 'settings'}, 'last choice saved');
@@ -1109,6 +1238,19 @@ test('editor: Use with picks the printers of a spool preset, and sends only a ch
   await post({...editorData(RAW1), editor: {...editorData(RAW1).editor, use_with: {on: false, printers: ${PRINTERS}, value: null}}});
   await until(() => q('#se-loc'), 'editor open');
   assert(!byTest('editor-usewith'), 'hidden while presets are per filament and the spool has none');
+`);
+test('editor: OrcaSlicer preset links the spool or its filament to one of your presets, and sends only a change', `
+  await spools(SPOOLS, {display: {...DEFAULTS, group_same: false}});
+  await click(q('[data-edit="1"]'));
+  await post({...editorData(RAW1), editor: {...editorData(RAW1).editor, preset_link: {presets: ['My PLA', 'My PETG'], spool: '', filament: 'My PETG'}}});
+  await until(() => byTest('editor-link') && byTest('editor-link-fil'), 'both rows shown');
+  eq(q('#se-link-fil').value, 'My PETG', 'the filament link as Spoolman has it');
+  await type(q('#se-link'), 'My PLA');
+  await until(() => q('#se-link').value === 'My PLA', 'typed'); await settle();
+  await click(byTest('editor-save'));
+  eq(lastOf('spool_action').spool, {preset_link: 'My PLA'}, 'the spool link, and nothing else');
+  eq(lastOf('spool_action').filament, {}, 'the filament link unchanged');
+  eq(lastOf('spool_action').was.spool, {preset_link: null}, 'with what Spoolman held');
 `);
 test('settings: presets per spool and Advanced tuning, off by default, saved with decimals typed with a point', `
   await post({type: 'show_view', view: 'settings', url: 'http://spoolman:7912', source: 'spoolman', low_stock: 100, display: DEFAULTS, drying: {}, progress: {}, stats: {},

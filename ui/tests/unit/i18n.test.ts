@@ -1,15 +1,16 @@
 // The page's strings and locale rules, run directly in Node (node --test, type stripping). The page tests
-// drive the built page in each language for a few scenarios; these cover every key in all five.
+// drive the built page in each language for a few scenarios; these cover every key in all six.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { en, ptBR } from '../../src/core/messages.ts';
 import { es } from '../../src/core/messages-es.ts';
 import { de } from '../../src/core/messages-de.ts';
 import { zhCN } from '../../src/core/messages-zh.ts';
-import { LOCALES, formatMoney, interpolate, isLocale, normalizeLocale, resolveLocale } from '../../src/core/i18n-core.ts';
+import { pl, plPlurals } from '../../src/core/messages-pl.ts';
+import { LOCALES, formatMoney, interpolate, isLocale, normalizeLocale, pluralKey, resolveLocale } from '../../src/core/i18n-core.ts';
 import { formatWeight } from '../../src/logic/spools.ts';
 
-const dicts: Record<string, Record<string, string>> = { 'pt-BR': ptBR, es, de, 'zh-CN': zhCN };
+const dicts: Record<string, Record<string, string>> = { 'pt-BR': ptBR, es, de, 'zh-CN': zhCN, pl };
 const params = (text: string) => [...text.matchAll(/\{(\w+)\}/g)].map(m => m[1]).sort();
 const english = en as Record<string, string>;
 
@@ -35,7 +36,7 @@ test('no English text is empty', () => {
 
 // Product, protocol and unit names, and words the language shares with English. Anything else that equals the
 // English text was left untranslated by accident.
-const NAMES = ['lang.en', 'lang.pt-BR', 'lang.es', 'lang.de', 'lang.zh-CN', 'printer.ams', 'printer.ht', 'printer.addAms', 'printer.addHt', 'link.button'];
+const NAMES = ['lang.en', 'lang.pt-BR', 'lang.es', 'lang.de', 'lang.zh-CN', 'lang.pl', 'printer.ams', 'printer.ht', 'printer.addAms', 'printer.addHt', 'link.button'];
 // "Gate" is the MMU's own word (Happy Hare, ERCF): Spanish and German keep it.
 const GATE = ['printer.gateN'];
 const SAME: Record<string, string[]> = {
@@ -43,6 +44,9 @@ const SAME: Record<string, string[]> = {
   de: [...NAMES, ...GATE, 'common.ok', 'filters.material', 'disp.material', 'disp.head_material', 'spool.rfid', 'progress.hm', 'progress.m',
     'colour.orange', 'bambu.region', 'link.live', 'usage.slot'],
   'zh-CN': NAMES,
+  // Pressure advance stays in English, as in OrcaSlicer's Polish translation; Z-hop, Region and Slot are Polish too.
+  pl: [...NAMES, 'common.ok', 'spool.rfid', 'progress.hm', 'progress.m', 'cal.key.filament_z_hop', 'cal.key.pressure_advance',
+    'presets.key.pressure_advance', 'bambu.region', 'usage.slot', 'printer.slotN', 'stats.waste.model'],
 };
 for (const [lang, allowed] of Object.entries(SAME)) {
   test(`${lang}: nothing is left in English`, () => {
@@ -63,8 +67,8 @@ test('zh-CN: Chinese text with Chinese punctuation', () => {
 
 test('the language names are written in their own language everywhere', () => {
   for (const dict of [english, ...Object.values(dicts)]) {
-    assert.deepEqual([dict['lang.en'], dict['lang.pt-BR'], dict['lang.es'], dict['lang.de'], dict['lang.zh-CN']],
-      ['English', 'Português (Brasil)', 'Español', 'Deutsch', '简体中文']);
+    assert.deepEqual([dict['lang.en'], dict['lang.pt-BR'], dict['lang.es'], dict['lang.de'], dict['lang.zh-CN'], dict['lang.pl']],
+      ['English', 'Português (Brasil)', 'Español', 'Deutsch', '简体中文', 'Polski']);
   }
 });
 
@@ -82,6 +86,7 @@ test('locale tags', () => {
   assert.equal(normalizeLocale('zh-Hans-CN'), 'zh-CN');
   assert.equal(normalizeLocale('zh'), 'zh-CN');
   assert.equal(normalizeLocale('zh_TW'), 'zh-CN', 'Traditional Chinese takes the Simplified page, not English');
+  for (const code of ['pl', 'pl_PL', 'pl-PL', 'PL']) assert.equal(normalizeLocale(code), 'pl', code);
   assert.equal(normalizeLocale('fr_FR'), null);
   assert.equal(normalizeLocale('ja'), null);
   assert.equal(normalizeLocale('desktop'), null, 'only the language subtag counts, not a prefix');
@@ -90,12 +95,12 @@ test('locale tags', () => {
 });
 
 // The same cases as tests/test_i18n.py (test_auto_language_matches_the_page): page and Python texts agree.
-const AUTO_CASES: [unknown, string][] = [['pt_BR', 'pt-BR'], ['es_ES', 'es'], ['de', 'de'], ['zh_CN', 'zh-CN'], ['zh_TW', 'zh-CN'], ['en_GB', 'en'],
+const AUTO_CASES: [unknown, string][] = [['pt_BR', 'pt-BR'], ['es_ES', 'es'], ['de', 'de'], ['zh_CN', 'zh-CN'], ['zh_TW', 'zh-CN'], ['pl_PL', 'pl'], ['en_GB', 'en'],
   ['fr_FR', 'en'], ['ko', 'en'], ['', 'en'], [null, 'en']];
 
 test('explicit choice, then the host language, then English (never the browser)', () => {
   for (const [host, want] of AUTO_CASES) assert.equal(resolveLocale('auto', host), want, String(host));
-  for (const pref of ['en', 'es', 'de', 'zh-CN'] as const) assert.equal(resolveLocale(pref, 'pt_BR'), pref, 'the manual choice wins');
+  for (const pref of ['en', 'es', 'de', 'zh-CN', 'pl'] as const) assert.equal(resolveLocale(pref, 'pt_BR'), pref, 'the manual choice wins');
 });
 
 test('a saved choice is only taken when the page has that language', () => {
@@ -119,16 +124,20 @@ test('weights follow the language', () => {
   assert.equal(formatWeight(1380, false, 'de'), '1,38 kg');
   assert.equal(formatWeight(1380, false, 'es'), '1,38 kg');
   assert.equal(formatWeight(1380, false, 'zh-CN'), '1.38 kg');
+  assert.equal(formatWeight(1380, true, 'pl'), '1380 g');
+  assert.equal(formatWeight(12380, true, 'pl'), '12\u00a0380 g');
+  assert.equal(formatWeight(1380, false, 'pl'), '1,38 kg');
 });
 
 test('numbers and dates follow the language', () => {
   const n = (l: string) => new Intl.NumberFormat(l, { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(41.2);
-  assert.deepEqual(LOCALES.map(n), ['41.20', '41,20', '41,20', '41,20', '41.20']);
+  assert.deepEqual(LOCALES.map(n), ['41.20', '41,20', '41,20', '41,20', '41.20', '41,20']);
   const day = (l: string) => new Intl.DateTimeFormat(l, { dateStyle: 'medium', timeZone: 'UTC' }).format(new Date(Date.UTC(2026, 10, 16)));
   assert.equal(day('en'), 'Nov 16, 2026');
   assert.equal(day('de'), '16.11.2026');
   assert.equal(day('es'), '16 nov 2026');
   assert.equal(day('zh-CN'), '2026年11月16日');
+  assert.equal(day('pl'), '16 lis 2026');
   assert.match(day('pt-BR'), /^16 de nov\. de 2026$/);
 });
 
@@ -136,6 +145,7 @@ test('money: the sign where the language puts it', () => {
   assert.equal(formatMoney('€', '41.20', 'en'), '€41.20');
   assert.equal(formatMoney('€', '41,20', 'pt-BR'), '€41,20');
   assert.equal(formatMoney('€', '41.20', 'zh-CN'), '€41.20');
+  assert.equal(formatMoney('€', '41,20', 'pl'), '41,20\u00a0€');
   assert.equal(formatMoney('€', '41,20', 'de'), '41,20 €');
   assert.equal(formatMoney('CHF ', '41,20', 'de'), '41,20 CHF');
   assert.equal(formatMoney('$', '41,20', 'es'), '41,20 $');
@@ -150,6 +160,27 @@ test('plurals: one and other are all the page needs in these languages', () => {
   for (const [lang, dict] of Object.entries({ en: english, ...dicts })) {
     for (const k of Object.keys(en).filter(k => k.endsWith('_other') && params(english[k]).includes('n'))) {
       assert.ok(dict[k].includes('{n}'), `${lang} ${k} drops the count`);
+    }
+  }
+});
+
+test('pl: one, few and many, from Intl.PluralRules', () => {
+  const ns = [1, 2, 5, 12, 22];
+  assert.deepEqual(ns.map(n => pluralKey('pl', 'group.count', n, plPlurals)),
+    ['group.count_one', 'group.count_few', 'group.count_many', 'group.count_many', 'group.count_few']);
+  const text = (n: number) => { const k = pluralKey('pl', 'group.count', n, plPlurals); return interpolate(plPlurals[k] ?? pl[k as keyof typeof pl], { n }); };
+  assert.deepEqual(ns.map(text), ['1 szpula', '2 szpule', '5 szpul', '12 szpul', '22 szpule']);
+  // Other languages keep their two forms: plPlurals only applies to Polish.
+  assert.deepEqual([1, 2, 5].map(n => pluralKey('de', 'group.count', n)), ['group.count_one', 'group.count_other', 'group.count_other']);
+});
+
+test('pl: every plural pair has a _few and a _many form, with the same placeholders, and nothing else', () => {
+  const bases = Object.keys(en).filter(k => k.endsWith('_one')).map(k => k.slice(0, -4));
+  assert.deepEqual(Object.keys(plPlurals).sort(), bases.flatMap(b => [`${b}_few`, `${b}_many`]).sort());
+  for (const b of bases) {
+    for (const form of ['few', 'many']) {
+      const want = params(english[`${b}_other`]).join();
+      assert.equal(params(plPlurals[`${b}_${form}`]).join(), want, `${b}_${form}`);
     }
   }
 });

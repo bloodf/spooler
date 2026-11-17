@@ -38,21 +38,21 @@ No telemetry and no account. Spooler talks only to the servers you point it at: 
 
 ## Languages
 
-English, Brazilian Portuguese, Spanish, German and Simplified Chinese, following OrcaSlicer's language.
+English, Brazilian Portuguese, Spanish, German, Simplified Chinese and Polish, following OrcaSlicer's language.
 
 ## More plugins by bloodf
 
-- [Organizer](https://cloud.orcaslicer.com/p/5bf381fd42d4): arrange parts by their real outline and fill a plate with more copies.
-- [Embedder](https://cloud.orcaslicer.com/p/58222d4f9e52): magnet and NFC pockets, with the pause at the right layer.
-- [Print Calculator](https://cloud.orcaslicer.com/p/521c07cf6de2): price every plate: filament, energy, labour, fees and margin.
-- [Kobra Control](https://cloud.orcaslicer.com/p/59c786285255): run the Anycubic Kobra X from OrcaSlicer over your LAN.
-- [U1 Control](https://cloud.orcaslicer.com/p/55b8c347d443): run the Snapmaker U1 from OrcaSlicer: toolheads, camera, files.
+- [Organizer](https://cloud.orcaslicer.com/p/5bf381fd42d4): Arrange parts by their real outline and fill a plate with more copies.
+- [Embedder](https://cloud.orcaslicer.com/p/58222d4f9e52): Magnet and NFC pockets, with the pause at the right layer.
+- [Print Calculator](https://cloud.orcaslicer.com/p/521c07cf6de2): Price every plate: filament, energy, labour, fees and margin.
+- [Kobra Control](https://cloud.orcaslicer.com/p/59c786285255): Run the Anycubic Kobra X from OrcaSlicer over your LAN.
+- [U1 Control](https://cloud.orcaslicer.com/p/55b8c347d443): Run the Snapmaker U1 from OrcaSlicer: toolheads, camera, files.
 
 Each plugin works on its own; installed together they share data where it helps.
 
 ## Source code
 
-https://github.com/bloodf/spooler (MIT). Based on Spoolio by Dan J Moore. Not affiliated with Spoolman, OrcaSlicer, Snapmaker, Sovol, Anycubic or Bambu Lab.
+https://github.com/bloodf/spooler (GPL-3.0-only). Based on Spoolio by Dan J Moore. Not affiliated with Spoolman, OrcaSlicer, Snapmaker, Sovol, Anycubic or Bambu Lab.
 ```
 
 ## Português (Brasil)
@@ -91,19 +91,19 @@ Sem telemetria e sem conta. O Spooler fala só com os servidores que você indic
 
 ## Idiomas
 
-Inglês, português do Brasil, espanhol, alemão e chinês simplificado, seguindo o idioma do OrcaSlicer.
+Inglês, português do Brasil, espanhol, alemão, chinês simplificado e polonês, seguindo o idioma do OrcaSlicer.
 
 ## Mais plugins do bloodf
 
-- [Organizer](https://cloud.orcaslicer.com/p/5bf381fd42d4): organize as peças pelo contorno real e encha a mesa com mais cópias.
-- [Embedder](https://cloud.orcaslicer.com/p/58222d4f9e52): bolsos para ímãs e NFC, com a pausa na camada certa.
-- [Print Calculator](https://cloud.orcaslicer.com/p/521c07cf6de2): preço de cada mesa: filamento, energia, mão de obra, taxas e margem.
-- [Kobra Control](https://cloud.orcaslicer.com/p/59c786285255): controle a Anycubic Kobra X pelo OrcaSlicer na sua rede.
-- [U1 Control](https://cloud.orcaslicer.com/p/55b8c347d443): controle a Snapmaker U1 pelo OrcaSlicer: cabeças, câmera, arquivos.
+- [Organizer](https://cloud.orcaslicer.com/p/5bf381fd42d4): Organize as peças pelo contorno real e encha a mesa com mais cópias.
+- [Embedder](https://cloud.orcaslicer.com/p/58222d4f9e52): Bolsos para ímãs e NFC, com a pausa na camada certa.
+- [Print Calculator](https://cloud.orcaslicer.com/p/521c07cf6de2): Preço de cada mesa: filamento, energia, mão de obra, taxas e margem.
+- [Kobra Control](https://cloud.orcaslicer.com/p/59c786285255): Controle a Anycubic Kobra X pelo OrcaSlicer na sua rede.
+- [U1 Control](https://cloud.orcaslicer.com/p/55b8c347d443): Controle a Snapmaker U1 pelo OrcaSlicer: cabeças, câmera, arquivos.
 
 Cada plugin funciona sozinho; instalados juntos, compartilham dados onde ajuda.
 
 ## Código-fonte
 
-https://github.com/bloodf/spooler (MIT). Baseado no Spoolio, de Dan J Moore. Sem afiliação com Spoolman, OrcaSlicer, Snapmaker, Sovol, Anycubic ou Bambu Lab.
+https://github.com/bloodf/spooler (GPL-3.0-only). Baseado no Spoolio, de Dan J Moore. Sem afiliação com Spoolman, OrcaSlicer, Snapmaker, Sovol, Anycubic ou Bambu Lab.
 ```
