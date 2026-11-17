@@ -182,8 +182,15 @@ def demo_state(sp):
     return spools_msg, live_msg
 
 
-def demo_plate(sp, spools_msg: dict) -> dict:
-    """The filament check of a demo slice, worded by the plugin itself (plate_rows)."""
+def demo_plate(sp, spools_msg: dict, lang: str) -> dict:
+    """The filament check of a demo slice, worded by the plugin itself (plate_rows) in ``lang``, as OrcaSlicer
+    reports it: the plugin words these rows in Python, in the language it read when the page was built."""
+    with host_language(sp, lang):
+        sp.text_language(fresh=True)
+        return _demo_plate(sp, spools_msg)
+
+
+def _demo_plate(sp, spools_msg: dict) -> dict:
     by_id = {s["id"]: s for s in spools_msg["spools"]}
 
     def result(number: int, spool_id: int, need: float, status: str) -> dict:
@@ -405,7 +412,7 @@ def main() -> None:
     out_root = args.out.resolve()
     sp, _ = load()
     spools_msg, live_msg = demo_state(sp)
-    plate, detail = demo_plate(sp, spools_msg), demo_detail(sp)
+    plates, detail = {lang: demo_plate(sp, spools_msg, code) for lang, code in LANGS.items()}, demo_detail(sp)
     today = datetime.date.today().isoformat()
     sources, records = {}, []
     with tempfile.TemporaryDirectory() as tmp:
@@ -416,7 +423,7 @@ def main() -> None:
             scene, stem = SCENES[row["scene"]], Path(row["file"]).stem
             shown = {**spools_msg, "display": {**sp.DISPLAY_DEFAULTS, **scene.get("display", {})}}
             page = plugin_page(sp, scene["view"], shown, live_msg, scene.get("wizard_step"),
-                               lang=LANGS[row["lang"]], host_theme=False, after=(plate,) if scene.get("plate") else (),
+                               lang=LANGS[row["lang"]], host_theme=False, after=(plates[row["lang"]],) if scene.get("plate") else (),
                                replies={"spool_detail": detail}, script=scene["script"])
             (work / f"{stem}.html").write_text(page, encoding="utf-8")
             # The test launcher supplies --use-mock-keychain --password-store=basic.
