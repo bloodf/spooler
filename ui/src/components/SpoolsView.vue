@@ -146,7 +146,7 @@ const setArchived = (on: boolean) => bridge.postMain({ type: 'spool_action', act
 <template>
   <div class="oui-stack sv">
     <PeerNote where="spools" />
-    <OuiBanner v-if="staleAt" tone="warn" :title="t('list.stale', { error: m.loadError, time: staleAt })" data-test="stale"
+    <OuiBanner :show="!!staleAt" tone="warn" :title="t('list.stale', { error: m.loadError, time: staleAt })" data-test="stale"
                dismissible :dismiss-key="`stale:${m.source}:${m.loadError}`" :close-label="t('common.close')">
       <template #actions><Button severity="secondary" size="small" :label="t('common.retry')" @click="refresh"><template #icon><OuiIcon :icon="refreshIcon" :size="14" /></template></Button></template>
     </OuiBanner>

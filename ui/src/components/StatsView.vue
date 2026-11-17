@@ -82,7 +82,7 @@ const soonLabel = (s: any) => {
       <Select :model-value="period" :options="periods" option-label="label" option-value="value" aria-labelledby="stv-p" data-test="period" @update:model-value="setPeriod" />
       <span class="oui-meta">{{ since ? t('stats.since', { date: since }) : t('stats.fillIn') }}</span>
     </div>
-    <OuiBanner v-if="error" tone="error" :title="error" dismissible :dismiss-key="`stats-error:${period}:${error}`" :close-label="t('common.close')" data-test="stats-error">
+    <OuiBanner :show="!!error" tone="error" :title="error" dismissible :dismiss-key="`stats-error:${period}:${error}`" :close-label="t('common.close')" data-test="stats-error">
       <template #actions><Button severity="secondary" size="small" :label="t('common.retry')" @click="ask"><template #icon><OuiIcon :icon="refresh" :size="14" /></template></Button></template></OuiBanner>
     <OuiPanel v-if="!data"><OuiEmpty compact state="loading" :title="t('stats.loading')" role="status" /></OuiPanel>
     <template v-else>

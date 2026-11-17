@@ -70,8 +70,8 @@ const bbReq = computed(() => {
       </form>
       <div class="sb-req" aria-live="polite"><OuiRequirement name="Bambu Cloud" :why="t('req.bambuWhy')" :status="bbReq.status" :status-label="bbReq.label"
         :detail="bambu.text || undefined" :install-text="t('req.bambuInstall')" :check-label="t('req.check')" data-test="bambu-status" @check="checkBambu" /></div>
-      <OuiBanner tone="warn" :title="t('bambu.experimental')" dismissible dismiss-key="bambu-experimental" :close-label="t('common.close')" />
     </template>
+    <OuiBanner :show="form.source === 'bambu'" tone="warn" :title="t('bambu.experimental')" dismissible dismiss-key="bambu-experimental" :close-label="t('common.close')" data-test="bambu-experimental" />
   </div>
 </template>
 <style scoped>

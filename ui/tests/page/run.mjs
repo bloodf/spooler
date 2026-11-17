@@ -432,7 +432,6 @@ test('banners: a dismissed notice stays dismissed while the same condition lasts
   await click(btn('Close', byTest('stale')));
   await until(() => !byTest('stale'), 'dismissed');
   await post({type: 'spools', ok: false, origin: 3, error: 'SYNTHETIC OFFLINE A', error_code: 'read_failed'});
-  await spools([{id: 1, remaining_weight: 100, filament: {id: 1, name: 'OldSpool', material: 'PLA'}}]);
   await post({type: 'spools', ok: false, origin: 3, error: 'SYNTHETIC OFFLINE A', error_code: 'read_failed'});
   await settle();
   assert(!byTest('stale'), 'same condition on the next polls: stays dismissed');
@@ -446,6 +445,19 @@ test('banners: a dismissed notice stays dismissed while the same condition lasts
   await spools(SPOOLS, {peers: {u1control: true}});
   await settle();
   assert(!peer(), 'peer note stays dismissed while U1 Control runs');
+`);
+test('banners: a closed notice shows again when its condition clears and later returns', `
+  await spools([{id: 1, remaining_weight: 100, filament: {id: 1, name: 'OldSpool', material: 'PLA'}}]);
+  await post({type: 'spools', ok: false, origin: 3, error: 'SYNTHETIC OFFLINE R', error_code: 'read_failed'});
+  assert(byTest('stale'), 'shown');
+  await click(btn('Close', byTest('stale')));
+  await until(() => !byTest('stale'), 'closed');
+  await spools([{id: 1, remaining_weight: 100, filament: {id: 1, name: 'OldSpool', material: 'PLA'}}]);
+  await settle();
+  assert(!byTest('stale'), 'condition cleared');
+  await post({type: 'spools', ok: false, origin: 3, error: 'SYNTHETIC OFFLINE R', error_code: 'read_failed'});
+  await until(() => byTest('stale'), 'the same problem returning shows again');
+  assert(text(byTest('stale')).includes('SYNTHETIC OFFLINE R'), 'same reason');
 `);
 test('S03: Send is named for what it does and explains itself', `
   await spools(SPOOLS);

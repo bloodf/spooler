@@ -3,7 +3,9 @@
 Version 4.2.1 fixes the 4.2.0 notices; nothing is removed:
 
 - When the stack is full, the toast that leaves is the oldest that is neither an error nor carries an action; only when every toast is one of those does the oldest leave.
-- A toast's action runs, and the toast closes even if the action throws.
+- A toast's action runs, and the toast closes even if the action throws. A toast with an action stays 8 s by default.
+- Toasts count down only while the page is visible and has focus (`document.visibilityState === 'visible'` and `document.hasFocus()`): switching to another OrcaSlicer tab or app holds every timer, and coming back resumes each with the time it had left. Hover and focus still hold a toast. Errors never leave by themselves, whatever timeout is passed. Pages tested in jsdom or headless Chrome must report focus (`document.hasFocus`) for timed toasts to leave.
+- `OuiBanner` takes `show` (default true): pass the banner's condition there instead of `v-if`. When it turns false, or the `dismissKey` changes, the stored dismissal is forgotten, so the same problem coming back later shows again.
 - Closing a toast that holds focus (its X, its action, from code, or the stack making room) puts focus back where it came from at that moment, not after the leave animation. A plugin's own focus workaround can go.
 - A toast's title and body are separated by a space in the text, so they read as two sentences to screen readers and tests.
 - `OuiRequirement` takes `disabled` (Check again off, for example while there is nothing to check against yet).

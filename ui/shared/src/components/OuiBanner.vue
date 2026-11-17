@@ -10,9 +10,13 @@ import { check, error, info, warning, x as close, type OuiIconData } from '../ic
  * Nothing stays on screen for good: with `dismissible` it has a close button. A `dismissKey` remembers the dismissal
  * for the session (a reload of the tab included) under that key; put what the banner is about in the key
  * ("spoolman-down:http://host:7912", "unconfirmed:3") and it comes back when that changes, not on every poll.
+ * A banner is bound to its condition, never timed: pass the condition as `show` (instead of v-if) and when it clears
+ * the dismissal is forgotten, so the same problem coming back later shows again. A key that changes forgets the old
+ * one the same way.
  */
-const props = defineProps<{ tone?: 'info' | 'warn' | 'error' | 'success' | 'neutral'; title: string; icon?: OuiIconData; id?: string;
-  dismissible?: boolean; dismissKey?: string; /** Accessible name of the close button. */ closeLabel?: string }>();
+const props = withDefaults(defineProps<{ tone?: 'info' | 'warn' | 'error' | 'success' | 'neutral'; title: string; icon?: OuiIconData; id?: string;
+  dismissible?: boolean; dismissKey?: string; /** Accessible name of the close button. */ closeLabel?: string;
+  /** The banner's condition (default true). False hides it and forgets its dismissal. */ show?: boolean }>(), { show: true });
 const emit = defineEmits<{ dismiss: [] }>();
 const TONE = { info: 'info', warn: 'warn', error: 'danger', success: 'success', neutral: 'neutral' } as const;
 const ICON: Record<string, OuiIconData> = { info, warn: warning, error, success: check, neutral: info };
@@ -22,8 +26,14 @@ function remembered(key: string | undefined): boolean {
   if (!key) return false;
   try { return sessionStorage.getItem(storeKey(key)) === '1'; } catch { return false; }
 }
-const hidden = ref(remembered(props.dismissKey));
-watch(() => props.dismissKey, (key) => { hidden.value = remembered(key); });
+function forget(key: string | undefined) {
+  if (!key) return;
+  try { sessionStorage.removeItem(storeKey(key)); } catch { /* nothing stored */ }
+}
+if (!props.show) forget(props.dismissKey);   // the condition is not there now: a later one starts afresh
+const hidden = ref(props.show && remembered(props.dismissKey));
+watch(() => props.dismissKey, (key, old) => { if (old && old !== key) forget(old); hidden.value = remembered(key); });
+watch(() => props.show, (on) => { if (!on) { forget(props.dismissKey); hidden.value = false; } });
 function dismiss() {
   hidden.value = true;
   if (props.dismissKey) { try { sessionStorage.setItem(storeKey(props.dismissKey), '1'); } catch { /* remembered until the page reloads */ } }
@@ -31,7 +41,7 @@ function dismiss() {
 }
 </script>
 <template>
-  <div v-if="!hidden" :id="id" class="oui-banner" :data-dismissible="dismissible || undefined" :data-tone="TONE[props.tone ?? 'info']" :role="props.tone === 'error' ? 'alert' : 'status'">
+  <div v-if="show && !hidden" :id="id" class="oui-banner" :data-dismissible="dismissible || undefined" :data-tone="TONE[props.tone ?? 'info']" :role="props.tone === 'error' ? 'alert' : 'status'">
     <OuiIcon class="oui-banner-icon" :icon="icon ?? ICON[props.tone ?? 'info']" :size="16" tile :tone="TONE[props.tone ?? 'info']" />
     <p class="oui-banner-text"><strong>{{ title }}</strong> <span v-if="$slots.default"><slot /></span></p>
     <div v-if="$slots.actions" class="oui-banner-actions"><slot name="actions" /></div>
