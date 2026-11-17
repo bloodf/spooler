@@ -33,8 +33,10 @@ function skip(o: RfidOffer) {
 }
 </script>
 <template>
+  <!-- Always rendered, so a screen reader hears the first offer appear (a live region added with its content isn't read). -->
+  <p class="oui-sr" aria-live="polite" data-test="rfid-live">{{ offers.length ? tn('rfid.title', offers.length) : '' }}</p>
   <OuiPanel v-if="offers.length" :title="tn('rfid.title', offers.length)" :icon="rfid" tone="magenta" data-test="rfid">
-    <ul class="rf-rows" aria-live="polite">
+    <ul class="rf-rows">
       <li v-for="o in offers" :key="o.printer + ':' + o.tag" class="rf-row" data-test="rfid-offer">
         <OuiSwatch v-bind="paint(o)" :size="18" />
         <span class="rf-what"><strong>{{ t('rfid.offer', { where: where(o) }) }}</strong><span class="oui-meta">{{ line(o) }}</span></span>

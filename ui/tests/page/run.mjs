@@ -1022,6 +1022,7 @@ const RFID_PRELUDE = `
   async function offered(rfid) {
     await spools(SPOOLS, {printers: [{id: 'p1', name: 'X1C', ip: '10.0.0.9', has_code: true, units: []}], live_ok: true});
     await tab('printer');
+    assert(byTest('rfid-live') && !byTest('rfid'), 'the live region is there before any offer');
     await post({type: 'live', live: {links: {p1: 'live'}, printers: [X1]}, rfid: rfid || [OFFER]});
     await until(() => byTest('rfid'), 'the offer');
   }
@@ -1032,6 +1033,7 @@ const RFID_PRELUDE = `
 `;
 test('rfid: a new RFID spool is offered; Add opens the editor on the matching filament and sends the tag', RFID_PRELUDE + `
   await offered();
+  eq(text(byTest('rfid-live')), 'New RFID spool', 'announced by a live region that was there before the offer');
   const o = byTest('rfid-offer');
   for (const s of ['New RFID spool in X1C · AMS 1 slot 3', 'Bambu Lab PLA Matte', '~80% left, about 800 g'])
     assert(text(o).includes(s), 'offer says ' + s + ': ' + text(o));
