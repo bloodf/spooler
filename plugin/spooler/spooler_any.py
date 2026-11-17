@@ -546,7 +546,8 @@ def get_spools(spoolman_url: str) -> dict:
     if pinned is not None and not origin_live(pinned):
         return {"ok": True, "spools": data}  # read from a source the settings left: don't cache it
     # Archived spools are only for the Spools tab: everything else reads the cache.
-    _spool_cache.update(url=spoolman_url, time=time.monotonic(), spools=active_spools(data))
+    _spool_cache.update(url=spoolman_url, time=time.monotonic(), spools=active_spools(data),
+                        **rfid_known(spoolman_url, data, path != "spool"))
     publish_stock(spoolman_url, data)   # for u1control, only while it shows the stock
     notices = low_stock_crossed(spoolman_url, _spool_cache["spools"])
     if notices:
@@ -5276,24 +5277,52 @@ def rfid_unskip() -> bool:
     return update_settings({RFID_SKIP: {}})
 
 
+def _live_trays(state: dict) -> list[tuple]:
+    """(unit, slot, tray) for every slot a printer reports: AMS and toolhead slots, then the
+    external holder. Holds _live_lock."""
+    trays = [(unit, slot, tray) for unit, slots in sorted(state["units"].items()) for slot, tray in sorted(slots.items())]
+    return trays + ([("ext", 0, state["ext"])] if state["ext"] else [])
+
+
+def _all_tags(spools: list) -> set:
+    return set().union(*(spool_tags(s) for s in spools if isinstance(s, dict)))
+
+
+def rfid_known(url: str, data: list, with_archived: bool) -> dict:
+    """For the spool cache, read with each spool list: every tag Spoolman holds, archived spools
+    included (an archived spool still in the AMS is no new spool), and the tray tags checked against
+    them. Archived spools are read only when the list left them out and a tray carries a tag no
+    active spool has. Called off the UI thread."""
+    known = _all_tags(data if with_archived else active_spools(data))
+    with _live_lock:
+        trays = [tray for state in _live["printers"].values() for _u, _s, tray in _live_trays(state)]
+    wanted = {offer["tag"] for offer in (rfid_offer(tray, known) for tray in trays) if offer}
+    if wanted and not with_archived:
+        try:
+            known |= _all_tags(_spoolman_open(url, "spool?allow_archived=true") or [])
+        except Exception as exc:
+            log.warning("Could not read the archived spools' RFID tags: %s", exc)
+            return {"rfid_known": known, "rfid_checked": set()}  # unsure: offer nothing until the next read
+    return {"rfid_known": known, "rfid_checked": wanted}
+
+
 def rfid_offers() -> list[dict]:
-    """The new RFID spools in the printers Spooler reads, for the Printer tab. None until the spool
-    list of the Spoolman in Settings was read after the last write, so a spool just added (whose tag
-    that list doesn't hold yet) is never offered twice."""
+    """The new RFID spools in the printers Spooler reads, for the Printer tab. Only tags checked
+    against the spool list of the Spoolman in Settings (archived spools included), read after the
+    last write, so a spool just added, or archived, is never offered. A spool put in the AMS shows
+    with the next list read (every REFRESH_SECS while the page is open)."""
     url = current_origin()[0]
     if source() != "spoolman" or not url or _spool_cache["url"] != url or not _spool_cache["time"]:
         return []
-    known = set().union(*(spool_tags(s) for s in _spool_cache["spools"]))
+    known, checked = _spool_cache.get("rfid_known") or set(), _spool_cache.get("rfid_checked") or set()
     skipped, out, seen = _rfid_skipped(), [], set()
     with _live_lock:
         for pid, state in _live["printers"].items():
-            trays = [(unit, slot, tray) for unit, slots in sorted(state["units"].items()) for slot, tray in sorted(slots.items())]
-            trays += [("ext", 0, state["ext"])] if state["ext"] else []
-            for unit, slot, tray in trays:
+            for unit, slot, tray in _live_trays(state):
                 offer = rfid_offer(tray, known)
                 # Skipped by either id: a report may carry only tag_uid at first, then tray_uuid too.
                 ids = _tag_ids([tray.get("tag_uid"), tray.get("tray_uuid")])
-                if offer and offer["tag"] not in seen and not ids & set(skipped.get(pid, [])):
+                if offer and offer["tag"] in checked and offer["tag"] not in seen and not ids & set(skipped.get(pid, [])):
                     seen.add(offer["tag"])
                     out.append({**offer, "printer": pid, "unit": unit, "slot": slot})
     return out

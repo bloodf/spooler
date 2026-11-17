@@ -65,14 +65,17 @@ class OffersTest(Settings):
         self.live = mock.patch.dict(sp._live["printers"], clear=True)
         self.live.start()
         sp.live_apply("p1", "X1C", REPORT, link="p1")
-        self.cache(spools=[LINKED])
+        self.cache()
 
     def tearDown(self):
         self.live.stop()
         super().tearDown()
 
-    def cache(self, **values):
-        patch = mock.patch.dict(sp._spool_cache, {"url": sp.current_origin()[0], "time": 1.0, **values})
+    def cache(self, spools=(LINKED,), **values):
+        """The spool cache as a list read with archived spools shown leaves it."""
+        spools = list(spools)
+        patch = mock.patch.dict(sp._spool_cache, {"url": sp.current_origin()[0], "time": 1.0, "spools": sp.active_spools(spools),
+                                                  **sp.rfid_known("http://spoolman:7912", spools, True), **values})
         patch.start()
         self.addCleanup(patch.stop)
 
@@ -85,6 +88,38 @@ class OffersTest(Settings):
     def test_a_tag_stored_by_another_tool_is_known_too(self):
         self.cache(spools=[LINKED, {"id": 4, "extra": {"rfid": json.dumps("5E2A41C900000100")}}])
         self.assertEqual(self.tags(), [("p1", "ext", 0, SILK)])
+
+    def test_an_archived_spool_still_in_the_ams_is_not_offered(self):
+        self.cache(spools=[LINKED, {"id": 8, "archived": True, "extra": {"tag": json.dumps(MATTE)}}])
+        self.assertEqual(self.tags(), [("p1", "ext", 0, SILK)])
+
+    def test_archived_tags_are_read_when_the_list_left_archived_spools_out(self):
+        archived = {"id": 8, "archived": True, "extra": {"tag": json.dumps(MATTE)}}
+        with mock.patch.object(sp, "_spoolman_open", return_value=[LINKED, archived]) as server:
+            found = sp.rfid_known("http://spoolman:7912", [LINKED], False)
+        server.assert_called_once_with("http://spoolman:7912", "spool?allow_archived=true")
+        self.assertEqual(found["rfid_checked"], {MATTE, SILK}, "both trays were checked against every spool")
+        self.assertIn(MATTE, found["rfid_known"], "the archived spool's tag is known")
+        self.cache(**found)
+        self.assertEqual(self.tags(), [("p1", "ext", 0, SILK)])
+
+    def test_archived_spools_are_read_only_for_a_tray_with_an_unknown_tag(self):
+        with mock.patch.object(sp, "_spoolman_open") as server:
+            found = sp.rfid_known("http://spoolman:7912", [LINKED, {"id": 5, "extra": {"tag": json.dumps(MATTE)}},
+                                                           {"id": 6, "extra": {"tag": json.dumps(SILK)}}], False)
+        server.assert_not_called()
+        self.assertEqual(found["rfid_checked"], set())
+
+    def test_nothing_is_offered_when_the_archived_spools_cant_be_read(self):
+        with mock.patch.object(sp, "_spoolman_open", side_effect=OSError("refused")):
+            self.cache(**sp.rfid_known("http://spoolman:7912", [LINKED], False))
+        self.assertEqual(sp.rfid_offers(), [])
+
+    def test_a_spool_put_in_after_the_list_was_read_shows_with_the_next_read(self):
+        sp.live_apply("p2", "P1S", {"print": {"ams": {"ams": [{"id": "0", "tray": [{**TRAYS["0"], "tray_uuid": "AB" * 16}]}]}}}, link="p2")
+        self.assertNotIn("AB" * 16, [o["tag"] for o in sp.rfid_offers()], "not checked against Spoolman yet")
+        self.cache()
+        self.assertIn("AB" * 16, [o["tag"] for o in sp.rfid_offers()])
 
     def test_nothing_is_offered_before_the_spool_list_was_read_again(self):
         self.cache(time=0.0)   # a spool was just added: its tag isn't in the list read before
@@ -109,6 +144,7 @@ class OffersTest(Settings):
 
     def test_a_skip_by_the_chip_uid_holds_once_the_tray_uuid_shows(self):
         sp._live["printers"]["p1"]["units"][0][0]["tray_uuid"] = "0" * 32   # the first report: only the chip uid
+        self.cache()
         self.assertEqual(sp.rfid_offers()[0]["tag"], "5E2A41C900000100")
         self.assertTrue(sp.rfid_skip("p1", "5E2A41C900000100"))
         sp._live["printers"]["p1"]["units"][0][0]["tray_uuid"] = MATTE
