@@ -44,7 +44,7 @@ function read(): Partial<Boot> {
 const raw = read();
 export const boot: Boot = {
   mode: 'tab', view: 'main', version: 'dev', lang: null, low_stock_default: 100, refresh_ms: 60000,
-  display_defaults: DEFAULT_DISPLAY, own_fields: ['tag', 'orca_settings', 'dried', 'use_with'],
+  display_defaults: DEFAULT_DISPLAY, own_fields: ['tag', 'orca_settings', 'dried', 'use_with', 'orca_filament_preset'],
   ...raw,
   settings: {
     url: '', verified_url: '', default_url: 'http://localhost:7912', source: 'spoolman', low_stock: 100, plate_check: true,

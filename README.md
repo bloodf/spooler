@@ -80,7 +80,7 @@ Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer) b
 |---|---|---|
 | | Presets per printer | Each preset is a standalone copy of the closest preset OrcaSlicer has for that printer (refreshed on Sync Presets) and adds colour, vendor, nozzle and bed temperatures, density, diameter and cost from Spoolman. Example: `3D Procer PLA Pérola @Snapmaker U1`. |
 | | Calibrated settings | A JSON `orca_settings` field on the Spoolman filament, per printer or `*` for all, plus **Flow ratio**, **Pressure advance** and **Max volumetric speed** fields on Spoolman's filament form. |
-| | Edits go back | Change a Spooler preset in OrcaSlicer and it is sent to Spoolman after a few seconds, or at once with **Send Preset Edits to Spoolman**. |
+| | Edits go back | Change a Spooler preset in OrcaSlicer and it is sent to Spoolman after a few seconds, or at once with **Send to Spoolman** in the spool's detail. |
 | | Search and filters | Search matches name, location, lot number and comment, and `#12` finds spool 12. Material and colour filters, grouping, sorting, and **Closest colour**, which lists the 12 nearest spools. |
 | | Spool actions | **Set weight from scale**, **Use filament**, **Set grams left**, **Add a note**, **Move**, **Mark dried today**, **Add a spool of this filament** (1 to 20), **Archive** and **Open in Spoolman**. |
 | | Spool detail | What is left, how long it lasts, the prints that used the spool, grams and cost booked, and weekly use over the last 4 weeks. |
@@ -155,13 +155,19 @@ OrcaSlicer gives plugins no way to change a slot's colour, so the action sets th
 <details>
 <summary>I pressed Save on a Spooler preset. Why did it stop following Spoolman?</summary>
 
-OrcaSlicer can't save over a preset a plugin owns, so Save makes a separate copy. Spooler shows that copy's changed calibration settings, old and new, and asks before saving them to Spoolman (Settings can make it save automatically or never); once saved, the Spooler preset has them after its next rebuild. To change a preset and keep it following Spoolman, edit it and use <b>Send Preset Edits to Spoolman</b>.
+OrcaSlicer can't save over a preset a plugin owns, so Save makes a separate copy. Spooler shows that copy's changed calibration settings, old and new, and asks before saving them to Spoolman (Settings can make it save automatically or never); once saved, the Spooler preset has them after its next rebuild. To change a preset and keep it following Spoolman, edit it and use <b>Send to Spoolman</b> in the spool's detail. To keep a tuned preset of your own instead, link it to the spool (see below).
 </details>
 
 <details>
-<summary>Send Preset Edits to Spoolman says there are no unsaved changes. What now?</summary>
+<summary>Which preset does Send to Spoolman send?</summary>
 
-It sends the unsaved edits of the Spooler preset that is open in OrcaSlicer's filament settings, so open that preset and change a value first, without saving. Colour, vendor, material and name are changed in Spoolman. If it still refuses, add your log to <a href="https://github.com/bloodf/spooler/issues/38">issue 38</a>.
+The one you pick under <b>OrcaSlicer preset</b> in the spool's detail, never whichever preset was opened last. If that preset is open in OrcaSlicer's filament settings with unsaved edits, the edits are sent. If it has none, there is nothing new for a Spooler preset (its saved settings come from Spoolman) and Spooler says so; for your own linked preset, its saved settings that differ from Spooler's are sent. Colour, vendor, material and name are changed in Spoolman.
+</details>
+
+<details>
+<summary>Can a spool use my own tuned filament preset instead of Spooler's?</summary>
+
+Yes. In Edit Spool, pick it under <b>OrcaSlicer preset</b>, for the spool or for its filament (every spool of it). Spooler keeps the name in a Spoolman text extra field, <code>orca_filament_preset</code>, which you can also fill in Spoolman: the preset's exact name, on the spool or on the filament (the spool's wins). Spooler then makes no preset for that spool and picks yours wherever it would pick its own. U1 Control and Kobra Control read the same field. Use a preset compatible with the printer.
 </details>
 
 <details>

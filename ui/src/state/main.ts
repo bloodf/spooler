@@ -219,7 +219,8 @@ export function refresh(): void { bridge.postMain({ type: 'refresh' }); note('pe
 watch(() => m.loadedAt, () => { if (pending('refresh')) note('success', t('list.refreshed'), 'refresh'); });
 watch(() => m.loadError, e => { if (e && pending('refresh')) note('error', t('list.readFailedAt', { error: e }), 'refresh'); });
 export function syncPresets(): void { note('pending', t('list.syncing'), 'send'); bridge.postMain({ type: 'sync_presets' }); }
-export function sendEdits(): void { note('pending', t('list.sending'), 'send'); bridge.postMain({ type: 'send' }); }
+/** Send to Spoolman for one of a spool's OrcaSlicer presets (picked in its detail), never the one last opened in OrcaSlicer. */
+export function sendEdits(spool: number, preset: string): void { note('pending', t('list.sending'), 'send'); bridge.postMain({ type: 'send', spool, preset }); }
 /** Waiting calibrated values; a new one is also announced in the status region (the panel itself isn't a live region). */
 function setCalibration(asks: CalibAsk[]): void {
   const known = new Set(m.calibration.map(a => a.name));

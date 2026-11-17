@@ -48,7 +48,7 @@ Settings > Presets (`presets` in the settings file, `parse_presets()`) changes t
   printer it is loaded on (`loaded_targets()`: Printer tab slots and Live Link trays, matched to a
   printer preset by host address), else every printer. Preset names are then keyed
   `(filament id, printer preset, spool id)`; `profiles.json` keeps one preset per filament and printer
-  (the lowest-numbered spool's) under `"filaments"`, and each spool's own under `"spools"`. Send Preset Edits still writes to the filament, which every spool of it
+  (the lowest-numbered spool's) under `"filaments"`, and each spool's own under `"spools"`. Send to Spoolman still writes to the filament, which every spool of it
   shares. Switching renames every preset: OrcaSlicer refuses a reload that removes or renames the
   selected preset while it has unsaved changes ("A modified selected preset was removed or renamed"),
   and the usual back-off retries it.
@@ -68,6 +68,22 @@ OrcaSlicer won't save over a plugin's preset, so edits reach Spoolman in two way
 - **A saved copy** of a Spooler preset (`PresetSaved`) has its changed settings offered on the
   page for Save to Spoolman or Skip (`send_saved_copy()`, `answer_calibration()`). The
   `save_calibration` setting can send them at once (`auto`) or never (`never`) instead.
+- **Send to Spoolman** in a spool's detail (`start_send(chosen=...)`, `chosen_changes()`) acts on the
+  preset picked there (`spool_presets()`): its unsaved edits when it is the preset open in the filament
+  settings, else, for a linked preset of your own, its saved settings that differ from the preset
+  Spooler would build (`build_preset()`). Presets are read on the UI thread, where the page's messages
+  arrive; the write runs on a worker.
+
+Unsaved edits are the edited copy against `get_selected_preset()`, the saved preset it was made from.
+`find_preset()` can't be used for that: for the selected preset it returns the edited copy itself
+(`PresetCollection::preset(idx, real=false)`), so the comparison would never show a change.
+
+A spool linked to your own preset (`orca_filament_preset`, a text extra field on the spool, else on
+its filament, JSON-encoded like every Spoolman extra value; `linked_preset()`) gets no Spooler preset
+(`profile_files()` skips it), and `profile_for_spool()` answers the linked name instead, so Load
+Printer Filaments and Keep Slots Synced pick it. The editor offers your own filament presets
+(`user_filament_presets()`, read with the snapshot on the UI thread) and adds the field to Spoolman the
+first time one is saved.
 
 `send_changes()` writes density, diameter and cost to Spoolman's own fields and everything else to
 the filament's `orca_settings`, in the section for that printer. A value that changed in Spoolman

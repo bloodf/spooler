@@ -376,7 +376,7 @@ test('F10: a read error keeps the old list of the same source, marked; another s
   await post({type: 'spools', ok: false, error: 'No Spoolman URL configured yet', error_code: 'no_url'});
   assert(!card(1) && byTest('empty-no-url'), 'another source: list dropped, first-use state');
   assert(btn('Open Settings', byTest('empty-no-url')), 'next step offered (S02)');
-  assert(byTest('sync').disabled && byTest('send').disabled, 'actions that need Spoolman are off (S02)');
+  assert(byTest('sync').disabled, 'actions that need Spoolman are off (S02)');
   assert(document.body.textContent.includes('no Spoolman address set'), 'with the reason');
   await post({type: 'spools', ok: true, origin: 4, source: 'spoolman', spools: [], peers: {u1control: false}});
   assert(byTest('empty-none') && !byTest('stale') && !byTest('empty-no-url'), 'empty stock is not an error (S01)');
@@ -459,12 +459,24 @@ test('banners: a closed notice shows again when its condition clears and later r
   await until(() => byTest('stale'), 'the same problem returning shows again');
   assert(text(byTest('stale')).includes('SYNTHETIC OFFLINE R'), 'same reason');
 `);
-test('S03: Send is named for what it does and explains itself', `
-  await spools(SPOOLS);
-  eq(text(byTest('send')), 'Send Preset Edits to Spoolman', 'label');
-  assert(byTest('send').getAttribute('aria-describedby') && text(q('#sv-why')).includes('unsaved edits of the Spooler preset'), 'description');
+test('S03: Send acts on the preset picked in the spool detail, and explains itself (#38)', `
+  await spools(SPOOLS, {display: {...DEFAULTS, group_same: false}});
+  await open(1);
+  assert(!byTest('send'), 'no Send before the detail says which presets the spool has');
+  await post({type: 'spool_detail', detail: {id: 1, sign: '£', grams: 0, cost: null, rate: null, weeks: null, prints: [],
+    presets: [{name: '_local/spooler/PLA #1 @Snapmaker U1', label: 'Snapmaker U1', linked: false}, {name: '_local/spooler/PLA #1 @Sovol SV06', label: 'Sovol SV06', linked: false}]}});
+  await until(() => byTest('send'), 'Send shown');
+  eq(text(byTest('send')), 'Send to Spoolman', 'label');
+  assert(text(q('#' + byTest('send').getAttribute('aria-describedby'))).includes('unsaved edits of the preset picked here'), 'description');
+  assert(text(byTest('preset-pick')).includes('PLA #1 @Snapmaker U1') && !text(byTest('preset-pick')).includes('_local'), 'first preset picked, shown by its name');
   await click(byTest('send'));
-  eq(lastOf('send').type, 'send', 'sent');
+  eq(lastOf('send'), {type: 'send', spool: 1, preset: '_local/spooler/PLA #1 @Snapmaker U1'}, 'sent with the spool and the picked preset');
+  await post({type: 'spool_detail', detail: {id: 1, sign: '£', grams: 0, cost: null, rate: null, weeks: null, prints: [],
+    presets: [{name: 'My PLA', label: 'Snapmaker U1', linked: true}]}});
+  await until(() => text(byTest('preset-pick')).includes('My PLA (your preset)'), 'a linked preset is named as yours');
+  await post({type: 'spool_detail', detail: {id: 1, sign: '£', grams: 0, cost: null, rate: null, weeks: null, prints: [], presets: []}});
+  await until(() => byTest('no-presets'), 'no preset yet: says how to get one');
+  assert(!byTest('send'), 'nothing to send');
 `);
 test('X01/X05: with U1 Control running, each tab says where the U1 lives and why two tabs', `
   await spools(SPOOLS, {peers: {u1control: true}});
@@ -1220,6 +1232,19 @@ test('editor: Use with picks the printers of a spool preset, and sends only a ch
   await post({...editorData(RAW1), editor: {...editorData(RAW1).editor, use_with: {on: false, printers: ${PRINTERS}, value: null}}});
   await until(() => q('#se-loc'), 'editor open');
   assert(!byTest('editor-usewith'), 'hidden while presets are per filament and the spool has none');
+`);
+test('editor: OrcaSlicer preset links the spool or its filament to one of your presets, and sends only a change', `
+  await spools(SPOOLS, {display: {...DEFAULTS, group_same: false}});
+  await click(q('[data-edit="1"]'));
+  await post({...editorData(RAW1), editor: {...editorData(RAW1).editor, preset_link: {presets: ['My PLA', 'My PETG'], spool: '', filament: 'My PETG'}}});
+  await until(() => byTest('editor-link') && byTest('editor-link-fil'), 'both rows shown');
+  eq(q('#se-link-fil').value, 'My PETG', 'the filament link as Spoolman has it');
+  await type(q('#se-link'), 'My PLA');
+  await until(() => q('#se-link').value === 'My PLA', 'typed'); await settle();
+  await click(byTest('editor-save'));
+  eq(lastOf('spool_action').spool, {preset_link: 'My PLA'}, 'the spool link, and nothing else');
+  eq(lastOf('spool_action').filament, {}, 'the filament link unchanged');
+  eq(lastOf('spool_action').was.spool, {preset_link: null}, 'with what Spoolman held');
 `);
 test('settings: presets per spool and Advanced tuning, off by default, saved with decimals typed with a point', `
   await post({type: 'show_view', view: 'settings', url: 'http://spoolman:7912', source: 'spoolman', low_stock: 100, display: DEFAULTS, drying: {}, progress: {}, stats: {},

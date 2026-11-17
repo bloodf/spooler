@@ -4,11 +4,12 @@ import Button from 'primevue/button';
 import Column from 'primevue/column';
 import DataTable from 'primevue/datatable';
 import InputText from 'primevue/inputtext';
+import Select from 'primevue/select';
 import { OuiIcon, OuiKeyValue, OuiLevel, OuiPanel, OuiReadout, OuiSpark, OuiSpool, OuiSwatch, type OuiFact } from '../../shared/src/components';
-import { archive as archiveIcon, edit, external, hourglass, scale, spool as spoolIcon, x } from '../../shared/src/icons';
+import { archive as archiveIcon, edit, external, hourglass, scale, spool as spoolIcon, upload, x } from '../../shared/src/icons';
 import SpoolChips from './SpoolChips.vue';
 import { boot } from '../core/boot';
-import { m, dupes, sourceOff } from '../state/main';
+import { m, dupes, sourceOff, pending, sendEdits } from '../state/main';
 import { menu, closeDetail, setMode, sendAction, openEditor, type MenuMode } from '../state/menu';
 import { ask, prompt } from '../core/dialog';
 import { note } from '../state/main';
@@ -18,7 +19,8 @@ import { driedDays, gramsValid, formatWeight, levelTone, lowLevel, noteText, ori
 // The selected spool, beside the list: what it is and how much is left (the page's one accent block), what you can do
 // to it (Spoolman only), its facts, its weekly use and the prints that used it. The plugin sends the print history
 // (spool_detail) when the spool is picked.
-interface Detail { prints: { time: number; name?: string; grams: number; cost?: number | null }[]; grams: number; cost: number | null; sign: string; rate: number | null; weeks: number | null }
+interface Detail { prints: { time: number; name?: string; grams: number; cost?: number | null }[]; grams: number; cost: number | null; sign: string; rate: number | null; weeks: number | null;
+  presets?: { name: string; label: string; linked: boolean }[] }
 const props = defineProps<{ spool: Spool }>();
 const s = computed(() => props.spool);
 const f = computed(() => s.value.filament || {});
@@ -75,6 +77,11 @@ const facts = computed<OuiFact[]>(() => [
   ...(dupe.value ? [{ label: t('detail.sameFilament'), value: t('spool.together', { n: dupe.value.count, w: w(dupe.value.total) }) }] : []),
 ]);
 const noteLine = computed(() => noteText(s.value, { ...m.disp, comment: true }, boot.own_fields, v => t('spool.lot', { lot: v })));
+// Send to Spoolman acts on the preset picked here: your own linked one, else Spooler's preset of this spool for each printer.
+const presets = computed(() => (detail.value?.presets ?? []).map(p => ({ value: p.name,
+  label: p.linked ? t('detail.presetLinked', { name: p.name }) : p.name.replace(/^_local\/spooler\//, '') })));
+const presetPick = ref('');
+watch(presets, list => { if (!list.some(o => o.value === presetPick.value)) presetPick.value = list[0]?.value ?? ''; }, { immediate: true });
 const date = (unix: number) => new Intl.DateTimeFormat(locale.value, { dateStyle: 'medium' }).format(new Date(unix * 1000));
 
 // ------------------------------------------------------------------ actions
@@ -170,6 +177,16 @@ async function save() {
       </fieldset>
       <p v-if="sourceOff && !menu.mode" id="sd-off" class="oui-meta" data-test="actions-off">{{ t('detail.actionsOff', { reason: sourceOff }) }}</p>
     </div>
+    <div v-if="canAct && detail" class="sd-preset" data-test="detail-preset">
+      <template v-if="presets.length">
+        <div class="oui-field"><label :for="`sd-preset-${s.id}`">{{ t('detail.preset') }}</label>
+          <Select v-model="presetPick" :input-id="`sd-preset-${s.id}`" :options="presets" option-label="label" option-value="value" size="small" aria-describedby="sd-send-h" data-test="preset-pick" /></div>
+        <Button severity="secondary" size="small" :label="t('list.send')" :disabled="!!sourceOff || pending('send') || !presetPick" aria-describedby="sd-send-h" data-test="send"
+                @click="sendEdits(s.id, presetPick)"><template #icon><OuiIcon :icon="upload" :size="14" /></template></Button>
+        <p id="sd-send-h" class="oui-meta sd-help">{{ t('list.sendHelp') }}</p>
+      </template>
+      <p v-else class="oui-meta" data-test="no-presets">{{ t('detail.noPresets') }}</p>
+    </div>
     <hr class="oui-divider sd-rule">
 
     <OuiKeyValue inline :items="facts" />
@@ -217,6 +234,8 @@ async function save() {
 .sd-help:empty { display: none; }
 .sd-bad { color: var(--oui-danger); }
 .sd-rule { margin-block: var(--oui-s4); }
+.sd-preset { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--oui-s2); margin-top: var(--oui-s4); }
+.sd-preset > .oui-field { flex: 1 1 220px; min-width: 0; }
 .sd-note { display: grid; gap: 2px; margin-top: var(--oui-s3); overflow-wrap: anywhere; }
 .sd-usage { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: var(--oui-s3); margin-top: var(--oui-s5); padding: var(--oui-s3) var(--oui-s4);
   border-radius: var(--oui-radius); background: var(--oui-primary-soft); }
