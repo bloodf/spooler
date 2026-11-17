@@ -190,7 +190,7 @@ Each plugin has its own tab. U1 Control runs the Snapmaker U1 and links spools t
 
 ## 🌍 Languages
 
-English, Brazilian Portuguese, Spanish, German and Simplified Chinese. The page follows OrcaSlicer's language, and Settings > **Language** changes it.
+English, Brazilian Portuguese, Spanish, German, Simplified Chinese and Polish. The page follows OrcaSlicer's language, and Settings > **Language** changes it.
 
 ## 🧩 More plugins by bloodf
 

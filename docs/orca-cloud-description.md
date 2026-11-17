@@ -38,7 +38,7 @@ No telemetry and no account. Spooler talks only to the servers you point it at: 
 
 ## Languages
 
-English, Brazilian Portuguese, Spanish, German and Simplified Chinese, following OrcaSlicer's language.
+English, Brazilian Portuguese, Spanish, German, Simplified Chinese and Polish, following OrcaSlicer's language.
 
 ## More plugins by bloodf
 
@@ -91,7 +91,7 @@ Sem telemetria e sem conta. O Spooler fala só com os servidores que você indic
 
 ## Idiomas
 
-Inglês, português do Brasil, espanhol, alemão e chinês simplificado, seguindo o idioma do OrcaSlicer.
+Inglês, português do Brasil, espanhol, alemão, chinês simplificado e polonês, seguindo o idioma do OrcaSlicer.
 
 ## Mais plugins do bloodf
 
