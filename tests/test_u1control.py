@@ -66,7 +66,7 @@ class LocationTest(Snapshot):
         status["print_task_config"]["filament_spool_id"] = [105, 0, 0, 0]
         trays = self.trays(status)
         self.assertEqual(trays[0]["spool_id"], 105)
-        self.assertNotIn("linked", trays[0])
+        self.assertEqual(trays[0]["linked"], "printer")  # set on the printer: the page offers no link for it
         self.assertEqual(trays[1]["spool_id"], 103)  # no id for T2: its location still counts
 
     def test_location_comes_before_rfid_and_colour(self):
@@ -119,12 +119,13 @@ class LocationTest(Snapshot):
         # The page's wording ("Spool linked by U1 Control", review X05) is a page scenario now (ui/tests/page/run.mjs).
 
     def test_only_the_cards_move_action_writes_a_spool_location(self):
-        # Outside the Spools tab's card actions and Edit Spool (which the user starts, with a second
-        # click when a move unlinks a toolhead), every Spoolman write is a filament PATCH, a spool use
-        # PUT or the used-weight PATCH of an undo.
+        # Outside the Spools tab's card actions, Edit Spool (which the user starts, with a second click when a
+        # move unlinks a toolhead) and a slot card's Assign spool (slot_bind, U1 Control's own location form),
+        # every Spoolman write is a filament PATCH, a spool use PUT or the used-weight PATCH of an undo.
         action = inspect.getsource(sp._spool_write)
         self.assertIn('"location"', action)
-        source = PLUGIN.read_text(encoding="utf-8").replace(action, "").replace(inspect.getsource(sp.editor_save), "")
+        source = (PLUGIN.read_text(encoding="utf-8").replace(action, "").replace(inspect.getsource(sp.editor_save), "")
+                  .replace(inspect.getsource(sp.slot_bind), ""))
         writes = re.findall(r'"(PATCH|POST|PUT|DELETE)",\s*f?"([^"]+)"', source)
         self.assertTrue(writes)
         for method, path in writes:

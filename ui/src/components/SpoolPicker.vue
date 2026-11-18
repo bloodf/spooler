@@ -43,7 +43,7 @@ function key(e: KeyboardEvent) {
       <button v-for="s in items" :key="s.id" type="button" class="pk-item" :data-pick="s.id" @click="emit('pick', s.id)">
         <OuiSpool v-bind="spoolPaint(s.filament || {})" :direction="spoolDirection(s.filament || {})" :fraction="spoolFraction(s)" :size="32" />
         <span class="pk-t"><span class="oui-truncate">{{ s.filament?.name || t('spool.numbered', { id: s.id }) }}</span>
-          <small class="oui-meta oui-truncate">{{ [s.filament?.vendor?.name, '#' + s.id, s.location].filter(Boolean).join(' · ') }}</small></span>
+          <small class="oui-meta oui-truncate">{{ [s.filament?.vendor?.name, s.filament?.material, '#' + s.id, s.location].filter(Boolean).join(' · ') }}</small></span>
         <span class="oui-num">{{ formatWeight(s.remaining_weight, shown(m.disp, 'exact_weight'), locale) }}</span>
       </button>
       <p v-if="!items.length" class="oui-meta pk-none">{{ q.trim() ? t('picker.noMatch') : t('picker.none') }}</p>
