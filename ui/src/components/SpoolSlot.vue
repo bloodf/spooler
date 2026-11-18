@@ -11,8 +11,8 @@ const props = defineProps<{ label: string; tool?: 1 | 2 | 3 | 4; spool?: Spool |
 const f = computed(() => props.spool?.filament || {});
 const pct = computed(() => (props.spool ? percentLeft(props.spool) : null));
 const level = computed(() => lowLevel(props.spool?.remaining_weight, m.low));
-// OuiSlot draws an unknown amount as a 60 % spool; 0 of 1 draws the bare reel instead, never a made-up level.
-const fill = computed(() => spoolFraction(props.spool) ?? 0);
+// The drawn spool: Spoolman's weight; null when unknown (the full reel with the unknown badge), never a made-up level.
+const fill = computed(() => spoolFraction(props.spool));
 const ex = computed(() => shown(m.disp, 'exact_weight'));
 const original = computed(() => (props.spool ? originalWeight(props.spool) : null));
 const meta = computed(() => [shown(m.disp, 'vendor') ? f.value.vendor?.name : '', shown(m.disp, 'material') ? f.value.material : '',

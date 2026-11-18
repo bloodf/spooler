@@ -32,7 +32,7 @@ const grams = (n: number) => Math.round(n).toLocaleString(document.documentEleme
       <span v-if="$slots.state" class="oui-slot-state"><slot name="state" /></span>
     </header>
     <div class="oui-slot-main">
-      <OuiSpool :color="empty ? null : color" :colors="colors" :fraction="empty ? null : fraction ?? 0.6" :size="52" />
+      <OuiSpool :color="empty ? null : color" :colors="empty ? null : colors" :fraction="empty ? null : fraction" :size="52" />
       <div class="oui-slot-id">
         <p class="oui-slot-name" :title="name ?? undefined">{{ empty ? emptyLabel : name || material }}</p>
         <p v-if="!empty" class="oui-meta oui-truncate"><slot name="meta">{{ material }}</slot></p>

@@ -36,7 +36,7 @@ export function percentLeft(s: Spool): number | null {
 }
 
 /** How full the drawn spool is, 0..1: Spoolman's remaining of initial weight, else the printer's percentage, else null
- *  (unknown, drawn as the bare reel). Never a made-up level. */
+ *  (unknown: the full reel with the unknown badge when there is a colour, else the bare reel). Never a made-up level. */
 export function spoolFraction(s?: Spool | null, printerPct?: number | null): number | null {
   const o = s ? originalWeight(s) : null, r = s?.remaining_weight;
   if (typeof o === 'number' && o > 0 && typeof r === 'number') return Math.max(0, Math.min(1, r / o));

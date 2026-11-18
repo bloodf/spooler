@@ -1,4 +1,13 @@
-# Orca UI foundation 4.2.1 — Vue and PrimeVue
+# Orca UI foundation 4.2.2 — Vue and PrimeVue
+
+Version 4.2.2 draws a loaded spool whose amount is unknown as loaded, not as empty:
+
+- `OuiSpool` with a `color` (or `colors`) and `fraction` null draws the full reel in that colour with a small "?" badge in its top-right corner, in the page's surface and text colours, and sets `data-unknown` (with `data-level="1"`). With no colour, `fraction` null is still the bare reel (`data-level="8"`), as is a fraction of 0. A known fraction draws as before. The spool stays `aria-hidden`: keep saying "weight unknown" in the text next to it.
+- `OuiSlot` passes an unknown amount through as null instead of drawing a made-up 60 % level; an empty slot is still the bare reel. A slot with `#amount` still draws its spool from `remaining` and `initial`: a percent-only tray passes `:remaining="64" :initial="100"` alongside its `#amount`, or the spool shows the unknown badge next to a known percentage.
+
+Plugins that passed `remaining` 0 of `initial` 1 (or a fraction of 0) to avoid the 60 % level should pass the real fraction, or null when unknown. To update from 4.2.1, replace `ui/shared/` with the 4.2.2 snapshot and rebuild.
+
+## 4.2.1
 
 Version 4.2.1 fixes the 4.2.0 notices; nothing is removed:
 

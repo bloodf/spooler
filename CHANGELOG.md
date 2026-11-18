@@ -6,7 +6,7 @@ Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); 
 ## [Unreleased]
 ### Changed
 - Spools show as the drawn spool, filled to what is left, in more places: the spool pickers (assign a slot, pick after a slice), the RFID offers, and the Stats "Most used" and "Running low" lists. The weight and percentage text stay as they were.
-- A printer slot's drawn spool follows the real amount: Spoolman's weight, else the printer's percentage. When neither is known it is the bare reel, no longer a made-up level (a slot with no reading drew as full or 60 %).
+- A printer slot's drawn spool follows the real amount: Spoolman's weight, else the printer's percentage. When neither is known a loaded slot shows a full reel in its colour with a small "?" badge, the amount unknown, no longer a made-up level (a slot with no reading drew as full or 60 %); an empty slot shows the bare reel (shared UI foundation 4.2.2).
 
 ## [0.29.1] - 2026-11-17
 

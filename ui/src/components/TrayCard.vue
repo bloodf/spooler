@@ -15,9 +15,9 @@ const pct = computed(() => (tr.value.remain == null ? null : Math.round(tr.value
 const profile = computed(() => (tr.value.profile || '').split('/').pop() || '');
 const spool = computed(() => (tr.value.spool != null ? m.spools.find(s => String(s.id) === String(tr.value.spool) && !s.archived) ?? null : null));
 const d = computed(() => m.disp);
-// The drawn spool: Spoolman's weight, else the printer's percentage. OuiSlot draws an unknown amount as a 60 % spool;
-// 0 of 1 draws the bare reel instead, never a made-up level.
-const fill = computed(() => spoolFraction(spool.value, tr.value.remain) ?? 0);
+// The drawn spool: Spoolman's weight, else the printer's percentage; null when neither is known (the full reel in the
+// slot's colour with the unknown badge), never a made-up level.
+const fill = computed(() => spoolFraction(spool.value, tr.value.remain));
 const ex = computed(() => shown(d.value, 'exact_weight'));
 const level = computed(() => lowLevel(spool.value?.remaining_weight, m.low));
 const sub = computed(() => [shown(d.value, 'head_vendor') ? spool.value?.filament?.vendor?.name || '' : '', shown(d.value, 'head_material') ? tr.value.type || '' : '',
