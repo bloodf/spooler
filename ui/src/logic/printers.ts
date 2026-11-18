@@ -3,7 +3,9 @@ export interface Tray { slot?: number; empty?: boolean; type?: string; name?: st
   spool?: number | string | null; profile?: string; linked?: string }
 export interface LiveUnit { id: number | string; kind: string; trays: Tray[] }
 export interface LivePrinter { id?: string; link?: string; name: string; heads?: boolean; unit_label?: string; units: LiveUnit[]; ext?: Tray | null;
-  age?: number; spool_set?: boolean; hh?: boolean; job?: Job | null }
+  age?: number; spool_set?: boolean; hh?: boolean; job?: Job | null;
+  /** The slots the page may link a spool to: 'T' U1 toolheads (U1 Control's location), 'S' Anycubic ACE slots (Kobra Control's). */
+  bind?: '' | 'T' | 'S' }
 export interface Job { state: string; name?: string; pct?: number; stage?: string; layer?: number; layers?: number; left?: number | null;
   took?: number; end?: number; tray?: { unit: number | string; slot: number } | null }
 export type UnitKind = 'ams' | 'ht' | 'ext' | 'tool' | 'gate';
@@ -40,6 +42,8 @@ export function mapPresets(map: Record<string, string>, id: string, presets: str
 export const KINDS: Record<string, number> = { tool: 1, ams: 4, ht: 1, ext: 1 };
 export const RANK: Record<string, number> = { tool: 0, ams: 1, ht: 2, ext: 3 };
 export const LIVE_STALE = 180;
+/** How long a live printer may take to report its first slots before the page says it may not. */
+export const WAIT_SLOTS_MS = 45_000;
 export const PROG_LIVE = ['RUNNING', 'PREPARE', 'SLICING', 'PAUSE'];
 export const PROG_STATES: Record<string, { cls: string; fill: string }> = {
   RUNNING: { cls: '', fill: '' }, PREPARE: { cls: '', fill: 'prep' }, SLICING: { cls: '', fill: 'prep' },

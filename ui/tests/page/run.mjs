@@ -666,6 +666,8 @@ test('Klipper printer: hand-set gates, toolheads, slice fill switch and presets 
   await click(q('[data-test="klipper-fill"] input') || q('[data-test="klipper-fill"]'));
   eq(lastOf('printers').printers.find(p => p.id === 'auto-v').slice_fill, false, 'slice fill off');
   assert(qa('[data-test="presets"]').length === 2, 'two fillable printers: each asks for its presets');
+  // Opened where it is seen: the overlay closes when the page scrolls, as a click on an option would make it.
+  q('.p-multiselect', kc()).scrollIntoView({ block: 'start' }); await settle();
   q('.p-multiselect', kc()).click();
   await until(() => qa('.p-multiselect-overlay [role=option]').length === 2, 'presets listed');
   await mouse(qa('.p-multiselect-overlay [role=option]').find(o => text(o).includes('Voron 0.4')));
@@ -676,6 +678,80 @@ test('Klipper printer: hand-set gates, toolheads, slice fill switch and presets 
   await spools(SPOOLS, {printers: [{...voron, managed: true}], printer_presets: []});
   assert(!q('[data-test="klipper-slots"]') && !q('[data-test="presets"]'), 'printer reporting its own gates: read-only, nothing to set');
 `);
+// ------------------------------------------------------------------ Printer tab: linking spools to live slots, notes, overflow
+const LIVE_SLOTS = `
+const auto = (id, name) => ({id, name, auto: true, kind: 'moonraker', managed: true, ip: 'http://' + id + '.example', units: []});
+const LONG = 'Very Long Manufacturer Name PLA Matte Extra Long Colour Name';
+const lt = (slot, spool, linked, extra) => ({slot, empty: false, type: 'PLA', name: 'Black', colour: '111111', remain: null, rfid: false, spool,
+  profile: spool ? LONG + ' @Anycubic Kobra X with a long preset name' : '', linked, ...(extra || {})});
+const LIVE3 = (job) => ({links: {'auto-k': 'live', 'auto-u': 'live', 'auto-s': 'live'}, printers: [
+  {id: 'auto-k', link: 'auto-k', name: 'Anycubic Kobra X', age: 0, heads: false, unit_label: 'ACE', bind: 'S', ext: null,
+    units: [{id: 0, kind: 'ams', trays: [lt(0, 1, 'kobracontrol'), lt(1, null, ''), {slot: 2, empty: true}, lt(3, 2, '')]}], job: job || null},
+  {id: 'auto-u', link: 'auto-u', name: 'Snapmaker U1', age: 0, heads: true, bind: 'T', ext: null,
+    units: [{id: 0, kind: 'ams', trays: [lt(0, 2, 'u1control'), lt(1, 1, 'printer')]}]},
+  {id: 'auto-s', link: 'auto-s', name: 'Sovol SV06', age: 0, heads: false, hh: true, ext: null, units: []}]});
+async function three(job) {
+  await spools(SPOOLS, {printers: [auto('auto-k', 'Anycubic Kobra X'), auto('auto-u', 'Snapmaker U1'), auto('auto-s', 'Sovol SV06')], live_ok: true});
+  await tab('printer');
+  await post({type: 'live', live: LIVE3(job)});
+}
+const panelOf = name => qa('.pp').find(p => text(p.querySelector('.pp-name')) === name);
+`;
+test('assign spool: a Kobra ACE slot and a U1 toolhead take a spool from a searchable picker; unassign asks first', LIVE_SLOTS + `
+  await three();
+  const k = panelOf('Anycubic Kobra X'), u = panelOf('Snapmaker U1'), s = panelOf('Sovol SV06');
+  eq(qa('[data-act="bind"]', k).map(text), ['Change spool', 'Assign spool', 'Assign spool'], 'ACE: change the linked slot, assign the others, nothing on an empty slot');
+  eq(qa('[data-act="bind"]', u).map(text), ['Change spool'], 'U1: a spool the printer itself reports (extended firmware) is not offered');
+  assert(!q('[data-act="bind"]', s), 'nothing to link on a printer that is neither');
+  await click(qa('[data-act="bind"]', k)[1]);
+  const picker = q('.pk', k);
+  assert(picker && q('.oui-spool', picker) && text(picker).includes('Acme · PLA · #1') && text(picker).includes('400 g'), 'picker shows the spool, its material and weight: ' + text(picker));
+  await type(q('[data-test="picker-search"]', k), 'Shelf B');
+  eq(qa('[data-pick]', k).map(b => b.dataset.pick), ['2'], 'search narrows the list');
+  await click(q('[data-pick="2"]', k));
+  eq(lastOf('spool_action'), {type: 'spool_action', action: 'bind', id: 2, printer: 'auto-k', slot: 1, origin: 3}, 'ACE slot 2 linked, with the list origin');
+  await click(qa('[data-act="bind"]', u)[0]); await click(q('[data-pick="1"]', u));
+  eq(lastOf('spool_action'), {type: 'spool_action', action: 'bind', id: 1, printer: 'auto-u', slot: 0, origin: 3}, 'U1 T1 linked');
+  await click(q('[data-act="unbind"]', u));
+  await until(dialogOpen, 'unassign asks'); await no();
+  eq(sentOf('spool_action').filter(m => m.action === 'unbind').length, 0, 'going back sends nothing');
+  await click(q('[data-act="unbind"]', u)); await yes();
+  eq(lastOf('spool_action'), {type: 'spool_action', action: 'unbind', id: 2, printer: 'auto-u', slot: 0, origin: 3}, 'unassign sent');
+`);
+test('assign spool while the printer prints asks first', LIVE_SLOTS + `
+  await three({state: 'RUNNING', name: 'plate', pct: 10});
+  const k = panelOf('Anycubic Kobra X');
+  await click(qa('[data-act="bind"]', k)[1]); await click(q('[data-pick="2"]', k));
+  await until(dialogOpen, 'printing asks'); assert(dialogText().includes('is printing'), dialogText()); await no();
+  eq(sentOf('spool_action').length, 0, 'nothing sent when going back');
+  await click(qa('[data-act="bind"]', k)[1]); await click(q('[data-pick="2"]', k)); await yes();
+  eq(lastOf('spool_action').action, 'bind', 'sent once confirmed');
+`);
+test('printer notes once at the top, one true chip per printer, no made-up printer percentage, one plus on Add printer', LIVE_SLOTS + `
+  await three();
+  const all = text(q('.pv'));  // the collapsed How booking works counts too
+  eq(all.split('Found in your OrcaSlicer printer presets').length - 1, 1, 'the presets note shows once');
+  assert(!qa('.pp').some(p => vis(p).includes('Found in your OrcaSlicer')), 'never inside a printer');
+  eq(qa('[data-test="printer-chip"]').map(text), ['Booked by Kobra Control', 'Booked by U1 Control'], 'chips true for each printer; none for the Sovol');
+  assert(!text(byTest('how-booking')).includes('Happy Hare'), 'no Happy Hare text without gates');
+  assert(!all.includes('on the printer'), 'no printer percentage when the printer reports none');
+  eq(text(byTest('add-printer')), 'Add printer', 'one plus: the icon');
+  const w = byTest('waiting');
+  assert(w && q('.oui-status[data-state="connecting"]', w) && text(w).includes('Waiting for the printer'), 'the Sovol waits with a turning mark');
+  assert(!q('[data-test="hh-note"]'), 'no Happy Hare note');
+`);
+for (const width of [380, 1280, 1900]) {
+  test('no slot card content overflows its card at ' + width + ' px', LIVE_SLOTS + `
+    await three();
+    const over = qa('.oui-slot').flatMap(c => { const cr = c.getBoundingClientRect();
+      return qa('*', c).filter(e => { const r = e.getBoundingClientRect(); return r.width && (r.right > cr.right + 1 || r.left < cr.left - 1); }).map(e => e.tagName + ' ' + text(e).slice(0, 40)); });
+    eq(over, [], 'elements wider than their card');
+    assert(document.documentElement.scrollWidth <= innerWidth, 'no page scroll sideways');
+    const line = qa('.tc-lines .oui-truncate').find(e => text(e).startsWith('Very Long'));
+    assert(line && line.title === text(line), 'a cut line keeps its full text in the title');
+    ${width >= 1280 ? "assert(new Set(qa('.pv-grid > .pp').map(p => Math.round(p.getBoundingClientRect().top))).size < 3, 'printers side by side, not one under another');" : ''}
+  `, { width });
+}
 test('Happy Hare gates are shown read-only with their note', `
   const hh = {id: 'auto-hh', name: 'Trident HH', auto: true, kind: 'moonraker', ip: 'http://10.0.0.11', units: [], managed: true};
   await spools(SPOOLS, {printers: [hh], live_ok: true});
@@ -683,7 +759,8 @@ test('Happy Hare gates are shown read-only with their note', `
   await post({type: 'live', live: {links: {'auto-hh': 'live'}, printers: [{id: 'auto-hh', link: 'auto-hh', name: 'Trident HH', heads: false, hh: true, unit_label: 'MMU', age: 0,
     spool_set: false, ext: null, units: [{id: 0, kind: 'ams', trays: [TRAY, {slot: 1, empty: true}]}]}]}});
   const hv = vis(q('.pp'));
-  assert(hv.includes('MMU') && hv.includes('Happy Hare reports these gates'), 'gates and note: ' + hv);
+  assert(hv.includes('MMU') && text(byTest('printer-chip')) === 'Booked by Happy Hare', 'gates and a one-line chip: ' + hv);
+  assert(!hv.includes('Happy Hare reports these gates') && text(byTest('how-booking')).includes('Happy Hare reports these gates'), 'the note once, under How booking works');
   assert(!q('[data-test="klipper-slots"]') && !q('[data-act="assign"]') && !btn('Change spool'), 'nothing to set by hand');
 `);
 test('slice pick: several matching spools ask which one, answer or leave it', `

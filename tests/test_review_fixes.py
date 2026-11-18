@@ -66,12 +66,10 @@ class WeightReadTest(unittest.TestCase):
             result = sp.bambu_fetch()
         self.assertEqual([s["id"] for s in result["spools"]], [1, 2])
 
-    def test_moonraker_percentage_of_an_empty_spool_is_zero(self):
-        self.assertEqual(sp._spool_remain({"remaining_weight": 0, "initial_weight": 1000}), 0.0)
-        self.assertEqual(sp._spool_remain({"remaining_weight": -5, "initial_weight": 1000}), 0.0)
-        self.assertEqual(sp._spool_remain({"remaining_weight": 0, "filament": {"weight": 500}}), 0.0)
-        self.assertIsNone(sp._spool_remain({"remaining_weight": float("nan"), "initial_weight": 1000}))
-        self.assertIsNone(sp._spool_remain({"remaining_weight": 100, "initial_weight": 0}))
+    def test_a_spoolman_spool_in_a_slot_has_no_printer_percentage(self):
+        # Only a printer's own report is a printer percentage; a Spoolman weight stays Spoolman's.
+        for spool in ({"id": 1, "remaining_weight": 0, "initial_weight": 1000}, {"id": 2, "remaining_weight": 798, "initial_weight": 1000}):
+            self.assertIsNone(sp._spool_tray(0, spool, "")["remain"])
 
     def test_card_actions_still_need_a_positive_finite_amount(self):
         with mock.patch.object(sp, "source", return_value="spoolman"), \

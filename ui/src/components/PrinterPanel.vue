@@ -54,7 +54,16 @@ const used = computed(() => p.value.units.reduce((a, u) => a + u.slots.filter(Bo
 const sub = computed(() => (total.value ? t('printer.assigned', { used: used.value, total: total.value }) : p.value.auto ? '' : t('printer.addUnit')));
 const hasExt = computed(() => p.value.units.some(u => u.kind === 'ext'));
 const full = computed(() => p.value.units.length >= MAX_UNITS);
-const noteText = computed(() => (p.value.auto ? t('printer.autoNote') + ' ' + t('printer.klipperNote') : net.value ? t('printer.netNote') : live.value ? '' : t('printer.manualNote')));
+// One line that is true for this printer: who books its prints, or that its slots are set by hand. The longer
+// explanations are said once, under "How booking works" at the top of the tab.
+const chip = computed(() => {
+  if (live.value && lv.value?.bind === 'T') return t('printer.chipU1');
+  if (live.value && lv.value?.bind === 'S') return t('printer.chipKobra');
+  if (live.value && lv.value?.hh && lv.value.units.length) return t('printer.chipHh');
+  if (net.value) return t('printer.chipNet');
+  if (!p.value.auto && !live.value) return t('printer.chipManual');
+  return '';
+});
 
 const nameInput = ref<{ $el: HTMLInputElement } | null>(null);
 const draftName = ref(p.value.name);
@@ -118,7 +127,8 @@ const toolOf = (u: ManualUnit) => { const n = u.kind === 'tool' ? p.value.units.
                  @keydown.enter.prevent="commitName(true)" @keydown.escape.prevent="commitName(false)" @blur="commitName(true)" />
       <span v-else :id="`pp-${p.id}`" class="pp-name">{{ p.name }}</span>
     </template>
-    <template #meta><OuiStatus v-if="status" :state="status.state" role="status" :title="status.text">{{ status.text }}</OuiStatus><span v-else role="status">{{ sub }}</span></template>
+    <template #meta><OuiStatus v-if="status" :state="status.state" role="status" :title="status.text">{{ status.text }}</OuiStatus><span v-else role="status">{{ sub }}</span>
+      <span v-if="chip" class="oui-chip pp-chip" data-test="printer-chip" :title="chip">{{ chip }}</span></template>
     <template v-if="!p.auto" #actions>
       <Button v-if="ui.renaming !== p.id" severity="secondary" text size="small" :aria-label="t('printer.rename', { name: p.name })" :title="t('printer.rename', { name: p.name })" data-act="rename" @click="ui.renaming = p.id">
         <template #icon><OuiIcon :icon="edit" :size="14" /></template></Button>
@@ -155,6 +165,9 @@ const toolOf = (u: ManualUnit) => { const n = u.kind === 'tool' ? p.value.units.
               <SpoolPicker v-if="isPicking(c.u, c.s)" exclude-taken :label="t('printer.assign')" @pick="id2 => pick(c.u, c.s, id2)" @close="closePicker(c.u, c.s)" />
               <template #actions>
                 <template v-if="c.id">
+                  <Button severity="secondary" size="small" :label="t('bind.change')" :aria-expanded="isPicking(c.u, c.s)" :data-focus-key="`assign:${p.id}:${c.u}:${c.s}`"
+                          :aria-label="t('bind.changeLabel', { slot: slotName(c), printer: p.name })" data-act="change"
+                          @click="ui.picking = isPicking(c.u, c.s) ? null : { p: p.id, u: c.u, s: c.s }" />
                   <Button v-if="byId.get(String(c.id))" severity="secondary" text size="small" :label="t('printer.openSpool')" @click="showSpool(Number(c.id))" />
                   <Button severity="secondary" text size="small" :aria-label="t('printer.clearSlot', { n: c.s + 1 })" :title="t('printer.clearSlot', { n: c.s + 1 })"
                           :data-focus-key="`clear:${p.id}:${c.u}:${c.s}`" @click="setSlot(p.id, c.u, c.s, null)"><template #icon><OuiIcon :icon="x" :size="14" /></template></Button>
@@ -181,7 +194,6 @@ const toolOf = (u: ManualUnit) => { const n = u.kind === 'tool' ? p.value.units.
                      :aria-label="t('printer.presetsLabel', { printer: p.name })" @update:model-value="v => setPresets(p.id, v)" />
         <p class="oui-meta">{{ t('printer.presetsHelp') }}</p>
       </div>
-      <p v-if="noteText" class="oui-meta pp-note">{{ noteText }}</p>
     </div>
 
     <template v-if="!p.auto" #footer>
@@ -203,7 +215,7 @@ const toolOf = (u: ManualUnit) => { const n = u.kind === 'tool' ? p.value.units.
 .pp-link { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--oui-s3); padding: var(--oui-s3); }
 .pp-lab { font-size: var(--oui-text-sm); font-weight: 600; color: var(--oui-muted); }
 .pp-full { grid-column: 1 / -1; }
-.pp-note { max-width: 96ch; }
+.pp-chip { margin-inline-start: var(--oui-s1); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pp-klipper { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--oui-s3); padding: var(--oui-s3); align-items: end; }
 .pp-presets { max-width: 60ch; }
 .pp-presets .p-multiselect { width: 100%; }

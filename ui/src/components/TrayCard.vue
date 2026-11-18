@@ -28,9 +28,12 @@ const weight = computed(() => {
   const full = originalWeight(s);
   return t('weight.left', { w: formatWeight(s.remaining_weight, ex.value, locale.value) + (typeof full === 'number' ? ' ' + t('weight.of', { total: formatWeight(full, ex.value, locale.value) }) : '') });
 });
+// Linked through a Spoolman location that U1 Control or Kobra Control reads (the page can change it on these slots).
+const by = computed(() => (tr.value.linked === 'u1control' ? ['tray.linkedU1', 'tray.linkedU1Tip'] as const
+  : tr.value.linked === 'kobracontrol' ? ['tray.linkedKobra', 'tray.linkedKobraTip'] as const : null));
 const where = computed(() => (shown(d.value, 'head_spool') && spool.value
-  ? [t('spool.numbered', { id: spool.value.id }), spool.value.location || '', tr.value.linked === 'u1control' ? t('tray.linkedU1') : ''].filter(Boolean).join(' · ') : ''));
-const tip = computed(() => [profile.value ? t('tray.preset', { p: profile.value }) : '', tr.value.linked === 'u1control' ? t('tray.linkedU1Tip') : ''].filter(Boolean).join(' · '));
+  ? [t('spool.numbered', { id: spool.value.id }), spool.value.location || '', by.value ? t(by.value[0]) : ''].filter(Boolean).join(' · ') : ''));
+const tip = computed(() => [profile.value ? t('tray.preset', { p: profile.value }) : '', by.value ? t(by.value[1]) : ''].filter(Boolean).join(' · '));
 const empty = computed(() => !!tr.value.empty);
 </script>
 <template>
@@ -54,9 +57,9 @@ const empty = computed(() => !!tr.value.empty);
     </template>
     <template v-else>
       <div v-if="where || (shown(d, 'head_preset') && profile) || (tr.rfid && shown(d, 'head_rfid'))" class="tc-lines">
-        <p v-if="where" class="oui-meta">{{ where }}</p>
+        <p v-if="where" class="oui-meta oui-truncate" :title="where">{{ where }}</p>
         <p v-if="shown(d, 'head_preset') && profile" class="oui-meta oui-truncate" :title="profile">{{ profile }}</p>
-        <span v-if="tr.rfid && shown(d, 'head_rfid')" class="oui-chip" :title="t('tray.rfid')"><OuiIcon :icon="rfid" :size="12" />RFID</span>
+        <span v-if="tr.rfid && shown(d, 'head_rfid')" class="oui-chip tc-chip" :title="t('tray.rfid')"><OuiIcon :icon="rfid" :size="12" />RFID</span>
       </div>
       <slot />
     </template>
@@ -64,5 +67,7 @@ const empty = computed(() => !!tr.value.empty);
   </OuiSlot>
 </template>
 <style>
-.tc-lines { display: grid; gap: 2px; justify-items: start; min-width: 0; }
+/* Each line is as wide as the card and cut with an ellipsis (its full text in the title), never past the edge. */
+.tc-lines { display: grid; gap: 2px; min-width: 0; }
+.tc-chip { justify-self: start; }
 </style>

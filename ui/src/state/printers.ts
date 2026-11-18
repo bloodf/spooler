@@ -6,7 +6,7 @@ import { ask } from '../core/dialog';
 import { addUnit, mapPresets, newPrinterId, withGates, type ManualPrinter, type PrinterType, type SlicePick, type UnitKind } from '../logic/printers';
 
 // Manual printers are edited as new arrays (never in place) and saved whole, as the previous page did.
-export const ui = reactive({ picking: null as null | { p: string; u?: number; s?: number; moon?: boolean }, renaming: '', linkOpen: '' });
+export const ui = reactive({ picking: null as null | { p: string; u?: number; s?: number; moon?: boolean; bind?: boolean }, renaming: '', linkOpen: '' });
 
 export function savePrinters(next: ManualPrinter[]): void {
   m.cfg = next;
@@ -58,6 +58,12 @@ export function saveLink(id: string, f: LinkForm, remove: boolean): void {
   m.liveOn = m.liveOn || !!(p?.ip && p.has_code);
   m.liveKey = '';
   window.setTimeout(pollLive, 300);
+}
+
+/** Link a spool to a U1 toolhead or an Anycubic ACE slot (on), or unlink it: the plugin writes the spool's Spoolman location. */
+export function bindSlot(link: string, slot: number, spool: number, on: boolean): void {
+  bridge.postMain({ type: 'spool_action', action: on ? 'bind' : 'unbind', id: spool, printer: link, slot, origin: m.origin });
+  note('pending', t('action.sending'), 'spool-action');
 }
 
 export function moonSet(link: string, spool: number | null, confirm = false): void {
