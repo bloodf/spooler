@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref } from 'vue';
 import InputText from 'primevue/inputtext';
-import { OuiSwatch } from '../../shared/src/components';
+import { OuiSpool } from '../../shared/src/components';
 import { m } from '../state/main';
 import { t, locale } from '../core/i18n';
-import { formatWeight, shown, spoolPaint } from '../logic/spools';
+import { formatWeight, shown, spoolDirection, spoolFraction, spoolPaint } from '../logic/spools';
 import { takenIds } from '../logic/printers';
 
 // Pick a spool for a slot: search, Enter takes the first, Down moves into the list, Escape closes (F11).
@@ -41,7 +41,7 @@ function key(e: KeyboardEvent) {
     <InputText ref="input" v-model="q" type="search" size="small" :placeholder="t('picker.search')" :aria-label="t('picker.search')" class="pk-q" data-test="picker-search" />
     <div ref="list" class="pk-list">
       <button v-for="s in items" :key="s.id" type="button" class="pk-item" :data-pick="s.id" @click="emit('pick', s.id)">
-        <OuiSwatch v-bind="spoolPaint(s.filament || {})" :size="14" />
+        <OuiSpool v-bind="spoolPaint(s.filament || {})" :direction="spoolDirection(s.filament || {})" :fraction="spoolFraction(s)" :size="32" />
         <span class="pk-t"><span class="oui-truncate">{{ s.filament?.name || t('spool.numbered', { id: s.id }) }}</span>
           <small class="oui-meta oui-truncate">{{ [s.filament?.vendor?.name, '#' + s.id, s.location].filter(Boolean).join(' · ') }}</small></span>
         <span class="oui-num">{{ formatWeight(s.remaining_weight, shown(m.disp, 'exact_weight'), locale) }}</span>

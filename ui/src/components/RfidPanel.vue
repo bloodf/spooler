@@ -1,14 +1,14 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import Button from 'primevue/button';
-import { OuiIcon, OuiPanel, OuiSwatch } from '../../shared/src/components';
+import { OuiIcon, OuiPanel, OuiSpool } from '../../shared/src/components';
 import { plus, rfid } from '../../shared/src/icons';
 import * as bridge from '../core/bridge';
 import { m, sourceOff, words } from '../state/main';
 import { openEditor } from '../state/menu';
 import { t, tn, locale } from '../core/i18n';
 import { slotName } from '../logic/printers';
-import { formatWeight } from '../logic/spools';
+import { formatWeight, spoolFraction } from '../logic/spools';
 import { BAMBU, leftGrams, type RfidOffer } from '../logic/rfid';
 
 // Bambu RFID spools in a printer slot that no Spoolman spool carries: Add opens Add Spool filled in from the printer (the
@@ -38,7 +38,7 @@ function skip(o: RfidOffer) {
   <OuiPanel v-if="offers.length" :title="tn('rfid.title', offers.length)" :icon="rfid" tone="magenta" data-test="rfid">
     <ul class="rf-rows">
       <li v-for="o in offers" :key="o.printer + ':' + o.tag" class="rf-row" data-test="rfid-offer">
-        <OuiSwatch v-bind="paint(o)" :size="18" />
+        <OuiSpool v-bind="paint(o)" :fraction="spoolFraction(null, o.remain)" :size="36" />
         <span class="rf-what"><strong>{{ t('rfid.offer', { where: where(o) }) }}</strong><span class="oui-meta">{{ line(o) }}</span></span>
         <span class="rf-act">
           <Button size="small" :label="t('rfid.add')" :disabled="!!sourceOff" data-test="rfid-add" :aria-label="`${t('rfid.add')}: ${where(o)}`" @click="openEditor(null, { offer: o, where: where(o) })">
@@ -52,7 +52,7 @@ function skip(o: RfidOffer) {
 </template>
 <style>
 .rf-rows { list-style: none; padding: 0; display: grid; gap: var(--oui-s3); }
-.rf-row { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; gap: var(--oui-s3); align-items: center; }
+.rf-row { display: grid; grid-template-columns: 36px minmax(0, 1fr) auto; gap: var(--oui-s3); align-items: center; }
 .rf-what { display: grid; gap: 1px; min-width: 0; overflow-wrap: anywhere; }
 .rf-act { display: flex; flex-wrap: wrap; gap: var(--oui-s1); justify-content: end; }
 @container oui-page (max-width: 520px) { .rf-act { grid-column: 2 / -1; justify-content: start; } }

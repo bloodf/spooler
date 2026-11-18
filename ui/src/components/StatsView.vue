@@ -4,10 +4,11 @@ import Button from 'primevue/button';
 import Column from 'primevue/column';
 import DataTable from 'primevue/datatable';
 import Select from 'primevue/select';
-import { OuiBanner, OuiEmpty, OuiIcon, OuiLevel, OuiPanel, OuiReadout, OuiStatus, OuiSwatch, materialTone, type OuiTone } from '../../shared/src/components';
+import { OuiBanner, OuiEmpty, OuiIcon, OuiLevel, OuiPanel, OuiReadout, OuiSpool, OuiStatus, OuiSwatch, materialTone, type OuiTone } from '../../shared/src/components';
 import { boxes, chart, chevronDown, chevronRight, coins, download, error as errorIcon, history, hourglass, layers, percent, printer, refresh, scale, target, trash, warehouse, warning } from '../../shared/src/icons';
 import * as bridge from '../core/bridge';
-import { note, on } from '../state/main';
+import { m, note, on } from '../state/main';
+import { spoolFraction } from '../logic/spools';
 import { t, tn, fmt, locale } from '../core/i18n';
 
 // Stats from the prints Spooler booked: tiles, weekly use, materials, most used, running low, shelf, waste and
@@ -45,6 +46,8 @@ const w = (g: number) => (g >= 1000 ? `${fmt.number(g / 1000, 2)} kg` : `${fmt.n
 const split = (text: string) => { const i = text.lastIndexOf(' '); return i < 0 ? { value: text, unit: '' } : { value: text.slice(0, i), unit: text.slice(i + 1) }; };
 const money = (v: unknown) => (typeof v === 'number' ? fmt.money(data.value?.sign ?? '', v) : '—');
 const col = (c?: string) => (c ? '#' + c : null);
+// A most-used spool's fill from the stock list; gone from it (or never identified) draws the bare reel.
+const topFill = (id: unknown) => spoolFraction(m.spools.find(s => s.id === id));
 const date = (unix: number) => {
   const d = new Date(unix * 1000), now = new Date(), day = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
   const hm = fmt.time(unix);
@@ -122,11 +125,11 @@ const soonLabel = (s: any) => {
           </template></OuiPanel>
         <OuiPanel :title="t('stats.top')" :icon="target" tone="accent">
           <p v-if="!data.top.length" class="oui-muted">{{ t('stats.nothing') }}</p>
-          <div v-for="(x, i) in data.top" :key="i" class="stv-row"><OuiSwatch :color="col(x.colour)" /><span class="stv-l">{{ x.label }}</span>
+          <div v-for="(x, i) in data.top" :key="i" class="stv-row stv-sp"><OuiSpool :color="col(x.colour)" :fraction="topFill(x.spool)" :size="32" /><span class="stv-l">{{ x.label }}</span>
             <span class="stv-t"><i data-tone="accent" :style="{ width: (x.g / data.top[0].g * 100) + '%' }" /></span><span class="oui-num">{{ w(x.g) }}</span></div></OuiPanel>
         <OuiPanel :title="t('stats.soon')" :icon="hourglass" tone="sky">
           <p v-if="!data.soon.length" class="oui-muted">{{ t('stats.noSoon') }}</p>
-          <div v-for="(x, i) in data.soon" :key="i" class="stv-row"><OuiSwatch :color="col(x.colour)" /><span class="stv-l">{{ x.label }}</span>
+          <div v-for="(x, i) in data.soon" :key="i" class="stv-row stv-sp"><OuiSpool :color="col(x.colour)" :fraction="x.pct === null ? null : x.pct / 100" :size="32" /><span class="stv-l">{{ x.label }}</span>
             <OuiLevel :fraction="x.pct === null ? null : x.pct / 100" :tone="x.low ? 'critical' : 'low'" /><span class="oui-num">{{ soonLabel(x) }}</span></div></OuiPanel>
         <OuiPanel :title="t('stats.shelfBy')" :icon="boxes" tone="lime">
           <p v-if="!data.shelf || !data.shelf.mats.length" class="oui-muted">{{ t('stats.shelfNone') }}</p>
@@ -199,6 +202,7 @@ const soonLabel = (s: any) => {
 .stv-k { flex: none; width: 10px; height: 10px; border-radius: 2px; background: var(--oui-tone); }
 .stv-row { display: grid; grid-template-columns: 12px minmax(0, 1.4fr) minmax(48px, 1fr) auto; gap: var(--oui-s2); align-items: center; padding: 4px 0; }
 .stv-l { overflow-wrap: anywhere; }
+.stv-row.stv-sp { grid-template-columns: 32px minmax(0, 1.4fr) minmax(48px, 1fr) auto; padding: 0; }
 .stv-t { height: 6px; border-radius: 3px; background: var(--oui-border); overflow: hidden; }
 .stv-t i { display: block; height: 100%; min-width: 3px; border-radius: 3px; background: var(--oui-tone); }
 .stv-wi { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: var(--oui-s4) var(--oui-s6); }

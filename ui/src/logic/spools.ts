@@ -35,6 +35,14 @@ export function percentLeft(s: Spool): number | null {
   return typeof o === 'number' && o > 0 && typeof r === 'number' ? Math.max(0, Math.min(100, Math.round((r / o) * 100))) : null;
 }
 
+/** How full the drawn spool is, 0..1: Spoolman's remaining of initial weight, else the printer's percentage, else null
+ *  (unknown, drawn as the bare reel). Never a made-up level. */
+export function spoolFraction(s?: Spool | null, printerPct?: number | null): number | null {
+  const o = s ? originalWeight(s) : null, r = s?.remaining_weight;
+  if (typeof o === 'number' && o > 0 && typeof r === 'number') return Math.max(0, Math.min(1, r / o));
+  return typeof printerPct === 'number' && Number.isFinite(printerPct) ? Math.max(0, Math.min(1, printerPct / 100)) : null;
+}
+
 /** Lot number, comment and the user's own extra fields; Spooler's own fields never show. */
 export function noteText(s: Spool, disp: Display, ownFields: string[], lot = (v: string) => `Lot ${v}`): string {
   const parts: string[] = [];
