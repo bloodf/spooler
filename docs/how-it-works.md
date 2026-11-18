@@ -135,7 +135,15 @@ Moonraker and Anycubic report every slot each time, so their reports replace the
 must arrive whole within `PACKET_SECS`.
 
 Each slot is matched to a spool in the same order: the spool id the printer reports, the location
-u1control binds (U1 only), the RFID tag, then vendor, material and colour (`slot_tray()`).
+u1control binds (U1 only), the RFID tag, then vendor, material and colour (`slot_tray()`). An
+Anycubic ACE slot is matched to the spool Kobra Control binds with the location `<printer> S<n>`
+(n = box × 4 + slot + 1, `spool_at_kx_slot()`), else by material and colour (`kx_tray()`). A slot's
+percentage is only ever the printer's own reading; a Spoolman spool's weight is shown as Spoolman's.
+
+**Assign spool** on a U1 toolhead or an ACE slot (`slot_bind()`, the `bind` and `unbind` card
+actions) writes the link the owning plugin reads: the spool's Spoolman location `<printer> T<n>`
+(U1 Control) or `<printer> S<n>` (Kobra Control), with the printer model as the name, and clears that
+location from any other spool. It writes nothing to the printer and is refused for other printers.
 
 Single-extruder Klipper printers can have their active spool changed from the Printer tab
 (`moon_set_spool()`, which posts to Moonraker's `/server/spoolman/spool_id`). It checks the printer
@@ -182,7 +190,8 @@ share files in `<OrcaSlicer data folder>/spooler/`:
 
 u1control binds a toolhead's spool as the Spoolman location `<printer name> T<n>`. Spooler reads
 locations and changes one only when you move a spool from its card (with a second click when
-that unlinks a toolhead), and books no filament use on the U1: u1control does that.
+that unlinks a toolhead) or use Assign spool on a toolhead, and books no filament use on the U1:
+u1control does that.
 
 ### Presence and the stock list
 

@@ -1,16 +1,18 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import Button from 'primevue/button';
+import { OuiStatus } from '../../shared/src/components';
 import TrayCard from './TrayCard.vue';
 import SpoolPicker from './SpoolPicker.vue';
 import { m } from '../state/main';
-import { ui, moonSet } from '../state/printers';
+import { ui, moonSet, bindSlot } from '../state/printers';
 import { ask } from '../core/dialog';
 import { t } from '../core/i18n';
-import { PROG_LIVE, type LivePrinter, type LiveUnit } from '../logic/printers';
+import { PROG_LIVE, WAIT_SLOTS_MS, type LivePrinter, type LiveUnit, type Tray } from '../logic/printers';
 
 // What a live printer reports: toolheads, AMS units, external spool — or, for a single-extruder Klipper printer
-// with Spoolman, the active spool Moonraker books usage to (Change Spool / Clear).
+// with Spoolman, the active spool Moonraker books usage to (Change Spool / Clear). A U1 toolhead or an Anycubic
+// ACE slot takes a spool from here too: the link is the Spoolman location U1 Control or Kobra Control reads.
 const props = defineProps<{ lv: LivePrinter; link: string }>();
 const act = computed(() => {
   const j = props.lv.job;
@@ -34,6 +36,30 @@ async function clear() {
   moonSet(props.link, null);
 }
 function pick(id: number) { ui.picking = null; moonSet(props.link, id); }
+
+// Linking a slot: the 0-based slot U1 Control (toolhead) or Kobra Control (box * 4 + slot) counts.
+const bindable = computed(() => (props.lv.bind === 'T' || props.lv.bind === 'S') && m.source === 'spoolman');
+const slotOf = (u: LiveUnit, i: number) => (props.lv.bind === 'S' ? Number(u.id) * 4 + i : i);
+const canBind = (tr: Tray) => bindable.value && !tr.empty && tr.linked !== 'printer';
+const bound = (tr: Tray) => tr.spool != null && (tr.linked === 'u1control' || tr.linked === 'kobracontrol');
+const isBinding = (slot: number) => !!ui.picking?.bind && ui.picking.p === props.link && ui.picking.s === slot;
+const printing = computed(() => !!props.lv.job && PROG_LIVE.includes(props.lv.job.state));
+async function busyOk(): Promise<boolean> {
+  return !printing.value || ask({ title: t('bind.busyTitle', { printer: props.lv.name }), text: t('bind.busyText', { printer: props.lv.name }),
+    yes: t('bind.busyYes'), no: t('common.goBack'), danger: true });
+}
+async function bindPick(slot: number, id: number) { ui.picking = null; if (await busyOk()) bindSlot(props.link, slot, id, true); }
+async function unbind(slot: number, tr: Tray) {
+  if (!await ask({ title: t('bind.clearTitle'), text: t('bind.clearText', { id: String(tr.spool) }), yes: t('bind.clear'), no: t('common.goBack') })) return;
+  if (await busyOk()) bindSlot(props.link, slot, Number(tr.spool), false);
+}
+
+// A printer that hasn't reported a slot yet: a turning mark while it may still come, then why it may not.
+const waiting = computed(() => !moon.value && !units.value.length && !props.lv.ext);
+const late = ref(false);
+let timer: ReturnType<typeof setTimeout> | undefined;
+watch(waiting, on => { clearTimeout(timer); late.value = false; if (on) timer = setTimeout(() => { late.value = true; }, WAIT_SLOTS_MS); }, { immediate: true });
+onBeforeUnmount(() => clearTimeout(timer));
 </script>
 <template>
   <div class="lu oui-stack">
@@ -54,15 +80,29 @@ function pick(id: number) { ui.picking = null; moonSet(props.link, id); }
       <template v-for="(x, k) in units" :key="String(x.u.id) + ':' + k">
         <h3 class="oui-label">{{ x.label }}</h3>
         <div class="oui-cards">
-          <TrayCard v-for="(tr, i) in x.u.trays" :key="i" :tray="tr" :label="lv.heads ? 'T' + (i + 1) : String(i + 1)" :tool="tool(i)" :active="!!act && act.unit === x.u.id && act.slot === i" />
+          <TrayCard v-for="(tr, i) in x.u.trays" :key="i" :tray="tr" :label="lv.heads ? 'T' + (i + 1) : String(i + 1)" :tool="tool(i)" :active="!!act && act.unit === x.u.id && act.slot === i">
+            <SpoolPicker v-if="canBind(tr) && isBinding(slotOf(x.u, i))" :label="t(bound(tr) ? 'bind.change' : 'bind.assign')" @pick="id => bindPick(slotOf(x.u, i), id)" @close="ui.picking = null" />
+            <template v-if="canBind(tr)" #actions>
+              <Button severity="secondary" size="small" :label="t(bound(tr) ? 'bind.change' : 'bind.assign')" :aria-expanded="isBinding(slotOf(x.u, i))"
+                      :aria-label="t(bound(tr) ? 'bind.changeLabel' : 'bind.assignLabel', { slot: lv.heads ? 'T' + (i + 1) : x.label + ' ' + (i + 1), printer: lv.name })"
+                      data-act="bind" @click="ui.picking = isBinding(slotOf(x.u, i)) ? null : { p: link, s: slotOf(x.u, i), bind: true }" />
+              <Button v-if="bound(tr)" severity="secondary" text size="small" :label="t('bind.clear')" data-act="unbind" @click="unbind(slotOf(x.u, i), tr)" />
+            </template>
+          </TrayCard>
         </div>
       </template>
       <template v-if="lv.ext && !lv.heads">
         <h3 class="oui-label">{{ t('printer.external') }}</h3>
         <div class="oui-cards"><TrayCard :tray="lv.ext" label="E" :active="!!act && act.unit === 'ext'" /></div>
       </template>
-      <p v-if="lv.hh" class="oui-meta" data-test="hh-note">{{ t('printer.hhNote') }}</p>
-      <p v-if="!units.length && !lv.ext" class="oui-meta" role="status">{{ lv.heads ? t('printer.waitingHeads') : t('printer.waitingSlots') }}</p>
+      <div v-if="waiting" class="lu-wait oui-well" role="status" data-test="waiting">
+        <OuiStatus :state="late ? 'warn' : 'connecting'">{{ late ? t('printer.waitLate') : lv.heads ? t('printer.waitingHeads') : t('printer.waitingSlots') }}</OuiStatus>
+        <p v-if="late" class="oui-meta">{{ t('printer.waitLateHelp') }}</p>
+      </div>
     </template>
   </div>
 </template>
+<style>
+.lu-wait { display: grid; gap: var(--oui-s2); justify-items: start; padding: var(--oui-s3); }
+.lu-wait .oui-status { white-space: normal; height: auto; min-height: 22px; padding-block: 3px; }
+</style>

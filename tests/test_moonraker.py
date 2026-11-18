@@ -62,8 +62,8 @@ class U1Test(unittest.TestCase):
         self.assertEqual(trays[0]["profile"], "_local/spooler/Snapmaker PLA SnapSpeed Yellow @Snapmaker U1")
         self.assertEqual(trays[0]["tray_color"], "F4C032FF")
         self.assertEqual(trays[0]["tag_uid"], "60827A6A")
-        spool = next(s for s in SPOOLS if s["id"] == 3)
-        self.assertAlmostEqual(trays[0]["remain"], spool["remaining_weight"] / spool["initial_weight"] * 100)
+        # The U1 reports no amount left: Spoolman's weight is never passed off as the printer's percentage.
+        self.assertIsNone(trays[0]["remain"])
 
     def test_rfid_tag_when_no_spool_id(self):
         trays = self.trays(u1_status(filament_spool_id=[0, 0, 0, 0]))
