@@ -4,7 +4,7 @@ import { OuiIcon, OuiLevel, OuiSlot, OuiStatus } from '../../shared/src/componen
 import { rfid } from '../../shared/src/icons';
 import { m } from '../state/main';
 import { t, locale } from '../core/i18n';
-import { formatWeight, lowLevel, originalWeight, shown } from '../logic/spools';
+import { formatWeight, lowLevel, originalWeight, shown, spoolFraction } from '../logic/spools';
 import type { Tray } from '../logic/printers';
 
 // One live slot (AMS tray, toolhead, external spool) as the printer reports it, with the spool it holds. Two sources,
@@ -15,6 +15,9 @@ const pct = computed(() => (tr.value.remain == null ? null : Math.round(tr.value
 const profile = computed(() => (tr.value.profile || '').split('/').pop() || '');
 const spool = computed(() => (tr.value.spool != null ? m.spools.find(s => String(s.id) === String(tr.value.spool) && !s.archived) ?? null : null));
 const d = computed(() => m.disp);
+// The drawn spool: Spoolman's weight, else the printer's percentage. OuiSlot draws an unknown amount as a 60 % spool;
+// 0 of 1 draws the bare reel instead, never a made-up level.
+const fill = computed(() => spoolFraction(spool.value, tr.value.remain) ?? 0);
 const ex = computed(() => shown(d.value, 'exact_weight'));
 const level = computed(() => lowLevel(spool.value?.remaining_weight, m.low));
 const sub = computed(() => [shown(d.value, 'head_vendor') ? spool.value?.filament?.vendor?.name || '' : '', shown(d.value, 'head_material') ? tr.value.type || '' : '',
@@ -33,7 +36,7 @@ const empty = computed(() => !!tr.value.empty);
 <template>
   <OuiSlot class="tc" :label="label" :tool="tool" :active="active && !empty" :empty-label="emptyLabel ?? t('tray.empty')" :title="(!empty && tip) || undefined"
            :name="empty ? null : tr.name || tr.type" :material="empty ? null : tr.type" :color="!empty && tr.colour ? '#' + tr.colour : null"
-           :remaining="pct ?? (spool ? null : 100)" :initial="pct === null && spool ? null : 100">
+           :remaining="fill" :initial="1">
     <template v-if="!empty && (active || level)" #state>
       <OuiStatus v-if="active" state="busy">{{ t('progress.inUseSlot') }}</OuiStatus>
       <OuiStatus v-else :state="level === 'out' ? 'error' : 'warn'">{{ t(level === 'out' ? 'spool.out' : 'spool.low') }}</OuiStatus>

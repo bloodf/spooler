@@ -42,7 +42,7 @@ if (SCN === 'printer' || SCN === 'stats') { document.querySelector('[data-tab="'
 if (SCN === 'printer') { const t = document.querySelector('.us-toggle'); if (t && t.getAttribute('aria-expanded') !== 'true') t.click(); }
 if (SCN === 'stats') { const s = [...__t.sent].reverse().find(m => m.type === 'stats');
   __t.handler({type: 'stats', stats: {period: s.period, since: now - 86400 * 60, sign: '€', grams: 2380, prints: 14, cost: 41.2, low: 2,
-    mats: [{name: 'PLA', g: 1500}, {name: 'PETG', g: 700}, {name: 'TPU', g: 180}], top: [{label: 'Acme PLA Matte - Black', colour: '1a1a1a', g: 900}, {label: 'Bambu PETG HF - Cobalt Blue', colour: '2850a8', g: 700}],
+    mats: [{name: 'PLA', g: 1500}, {name: 'PETG', g: 700}, {name: 'TPU', g: 180}], top: [{spool: 1, label: 'Acme PLA Matte - Black', colour: '1a1a1a', g: 900}, {spool: 3, label: 'Bambu PETG HF - Cobalt Blue', colour: '2850a8', g: 700}],
     weeks: Array.from({length: 8}, (_, i) => ({start: now - (7 - i) * 604800, now: i === 7, parts: [{g: 80 + i * 20, colour: '1a1a1a', label: 'PLA'}, {g: 40, colour: '2850a8', label: 'PETG'}]})),
     soon: [{label: 'PETG HF - Cobalt Blue', colour: '2850a8', weeks: 0.5, low: true, pct: 7, left: 70}], waste: {model: 2000, support: 230, purge: 150, mcost: 34, scost: 4, pcost: 3, cost: 7, prints: 12},
     worst: [{kind: 'purge', name: 'Multicolour_Logo', g: 60, cost: 1.1}], failed: {prints: 1, g: 35, cost: .6}, shelf: {g: 2235, value: 38.5, unpriced: 1, mats: [{name: 'PLA', g: 2150, value: 36}]},

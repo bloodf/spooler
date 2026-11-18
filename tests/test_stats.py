@@ -85,6 +85,7 @@ class StatsDataTest(StatsBase):
         self.assertEqual((everything["prints"], everything["grams"], everything["cost"]), (3, 85.0, 1.7))
         self.assertEqual([m["name"] for m in everything["mats"]], ["PLA", "PETG"])
         self.assertEqual(everything["top"][0]["g"], 60.0)
+        self.assertEqual(everything["top"][0]["spool"], 1)  # the page draws that spool's fill
         self.assertEqual([h["name"] for h in everything["history"]], ["print new", "print mid", "print old"])
 
     def test_this_week_bar(self):

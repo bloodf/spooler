@@ -2,12 +2,12 @@
 import { computed, watch } from 'vue';
 import Dialog from 'primevue/dialog';
 import Button from 'primevue/button';
-import { OuiSwatch } from '../../shared/src/components';
+import { OuiSpool } from '../../shared/src/components';
 import { m, words } from '../state/main';
 import { answerPick } from '../state/printers';
 import { dialog } from '../core/dialog';
 import { t, locale } from '../core/i18n';
-import { formatWeight, shown, spoolPaint, type Spool } from '../logic/spools';
+import { formatWeight, shown, spoolDirection, spoolFraction, spoolPaint, type Spool } from '../logic/spools';
 import { unitLabel } from '../logic/printers';
 
 // After a slice, a filament that matched several spools: the user says which one is loaded on the slot it goes on.
@@ -33,7 +33,7 @@ watch([pick, spools], () => { if (pick.value && m.spools.length && !spools.value
       <p>{{ t('pick.text', { n: pick.n, material: pick.material || '?', printer: pick.name, slot }) }}</p>
       <div class="pk-list" role="group" :aria-label="t('pick.label', { n: pick.n })">
         <button v-for="s in spools" :key="s.id" type="button" class="pk-item" :data-pick="s.id" @click="answer(s.id)">
-          <OuiSwatch v-bind="spoolPaint(s.filament || {})" :size="14" />
+          <OuiSpool v-bind="spoolPaint(s.filament || {})" :direction="spoolDirection(s.filament || {})" :fraction="spoolFraction(s)" :size="32" />
           <span class="pk-t"><span class="oui-truncate">{{ s.filament?.name || t('spool.numbered', { id: s.id }) }}</span>
             <small class="oui-meta oui-truncate">{{ [s.filament?.vendor?.name, '#' + s.id, s.location].filter(Boolean).join(' · ') }}</small></span>
           <span class="oui-num">{{ formatWeight(s.remaining_weight, shown(m.disp, 'exact_weight'), locale) }}</span>
