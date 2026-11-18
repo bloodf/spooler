@@ -505,6 +505,16 @@ test('slot card shows the spool details and says it was linked by U1 Control', `
   assert(c.getAttribute('title').includes('Spool linked by U1 Control'), 'tooltip names U1 Control (X05)');
   assert(text(q('[data-source="printer"]', c)) === '98% on the printer' && text(q('[data-source="spoolman"]', c)).endsWith('· Spoolman'), 'each amount names its source');
 `);
+test('slot spools: the real amount; loaded with no amount the full reel and the unknown badge; empty the bare reel', `
+  await spools(SPOOLS, {printers: [{id: 'auto-u1', name: 'U1', auto: true, ip: '10.0.0.5', units: []}], live_ok: true});
+  await tab('printer');
+  const trays = [{...TRAY, spool: 1, remain: null}, {...TRAY, slot: 1, colour: '2850a8', name: 'Blue', type: 'PETG', spool: null, remain: null, linked: null},
+    {slot: 2, empty: true}];
+  await post({type: 'live', live: {...LIVE, links: {'auto-u1': 'live'}, printers: [{...LIVE.printers[0], units: [{id: 0, kind: 'ams', trays}]}]}});
+  await until(() => qa('.tc').length === 3, 'three slot cards');
+  const drawn = qa('.tc .oui-spool').map(s => [s.dataset.level, s.hasAttribute('data-unknown'), s.querySelector('.oui-spool-unknown')?.textContent ?? null]);
+  eq(drawn, [['5', false, null], ['1', true, '?'], ['8', false, null]], 'Spoolman 400 of 1000 g; loaded, amount unknown; empty');
+`);
 test('F11: assign and picker are keyboard controls; focus returns to the slot', `
   await spools([{id: 7, remaining_weight: 100, filament: {id: 1, name: 'PLA Black'}}], {printers: [{id: 'p1', name: 'P', units: [{kind: 'ams', slots: [null, null, null, null]}]}]});
   await tab('printer');
