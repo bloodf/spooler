@@ -5,7 +5,7 @@
 import Button from "primevue/button";
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from "vue";
 import { OuiIcon, OuiSettings, type OuiSettingsSection } from "../../shared/src/components";
-import * as I from "../../shared/src/icons";
+import { chevronRight } from "../../shared/src/icons";
 
 const props = defineProps<{ sections: OuiSettingsSection[]; navLabel: string; backLabel: string; errorLabel: string }>();
 const inner = ref<{ select: (id: string) => void }>();
@@ -78,7 +78,7 @@ onBeforeUnmount(() => { watcher?.disconnect(); window.removeEventListener("hashc
     <OuiSettings ref="inner" :sections="flagged" :nav-label="navLabel">
       <div class="spg-bar">
         <Button type="button" text size="small" severity="secondary" class="spg-back" data-test="settings-back" @click.stop="back">
-          <OuiIcon :icon="I.chevronRight" :size="14" class="spg-back-icon" /><span>{{ backLabel }}</span>
+          <OuiIcon :icon="chevronRight" :size="14" class="spg-back-icon" /><span>{{ backLabel }}</span>
         </Button>
       </div>
       <slot />
