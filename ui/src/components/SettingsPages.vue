@@ -16,7 +16,6 @@ const invalid = ref<string[]>([]);
 const INVALID = '[aria-invalid="true"], .p-invalid, [role="alert"]';
 
 const flagged = computed(() => props.sections.map((s) => (invalid.value.includes(s.id) && !s.state ? { ...s, state: "error" as const } : s)));
-const title = computed(() => props.sections.find((s) => s.id === current.value)?.label ?? "");
 
 function read(): void {
   const el = wrap.value;
@@ -45,7 +44,7 @@ function select(id: string): void {
   open.value = true;
   afterRender(focusHeading);
 }
-defineExpose({ select, current, open });
+defineExpose({ select });
 
 function onClick(event: MouseEvent): void {
   if (!(event.target as HTMLElement).closest(".oui-settings-link")) return;
@@ -57,14 +56,21 @@ function back(): void {
   afterRender(() => wrap.value?.querySelector<HTMLElement>(`.oui-settings-link[data-section="${CSS.escape(current.value)}"]`)?.focus());
 }
 
+// #<page id> in the address (OuiSettings selects it): open that page, also when narrow.
+function onHash(): void {
+  const id = decodeURIComponent(location.hash.slice(1));
+  if (props.sections.some((s) => s.id === id)) select(id);
+}
 let watcher: MutationObserver | undefined;
 onMounted(() => {
   read();
+  if (props.sections.some((s) => s.id === decodeURIComponent(location.hash.slice(1)))) open.value = true;
+  window.addEventListener("hashchange", onHash);
   // ponytail: rescans on every DOM change under Settings; cheap at a few hundred nodes, debounce if a page grows large
   watcher = new MutationObserver(read);
   if (wrap.value) watcher.observe(wrap.value, { subtree: true, childList: true, attributes: true, attributeFilter: ["aria-selected", "aria-invalid", "class", "role"] });
 });
-onBeforeUnmount(() => watcher?.disconnect());
+onBeforeUnmount(() => { watcher?.disconnect(); window.removeEventListener("hashchange", onHash); });
 </script>
 
 <template>
@@ -74,7 +80,6 @@ onBeforeUnmount(() => watcher?.disconnect());
         <Button type="button" text size="small" severity="secondary" class="spg-back" data-test="settings-back" @click.stop="back">
           <OuiIcon :icon="I.chevronRight" :size="14" class="spg-back-icon" /><span>{{ backLabel }}</span>
         </Button>
-        <span class="oui-meta oui-truncate spg-where" aria-hidden="true">{{ title }}</span>
       </div>
       <slot />
       <template v-if="$slots.footer" #footer><slot name="footer" /></template>
@@ -100,7 +105,7 @@ onBeforeUnmount(() => watcher?.disconnect());
   .spg:not([data-open]) .oui-settings-body { display: none; }
   .spg[data-open] .oui-settings-grid { grid-template-rows: minmax(0, 1fr) auto; grid-template-areas: 'body' 'foot'; }
   .spg[data-open] .oui-settings-nav { display: none; }
-  .spg-bar { display: flex; align-items: center; gap: var(--oui-s2); min-width: 0; }
-  .spg-where { min-width: 0; }
+  .spg-bar { display: flex; }
+  .spg-back-icon { transform: scaleX(-1); }
 }
 </style>
