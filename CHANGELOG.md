@@ -5,6 +5,7 @@ Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); 
 
 ## [Unreleased]
 ### Changed
+- Settings is a set of pages: a list of pages beside the open one, or in a narrow window the list first and one page at a time with a Back button. Version, updates and the log file have their own About page. The last page opens again next time, a page with a problem (a failed source test) is marked in the list, and focus moves to the page heading when a page opens. Open Settings from an empty or failed spool list opens the source page, also in the separate Settings window.
 - Spools show as the drawn spool, filled to what is left, in more places: the spool pickers (assign a slot, pick after a slice), the RFID offers, and the Stats "Most used" and "Running low" lists. The weight and percentage text stay as they were.
 - A printer slot's drawn spool follows the real amount: Spoolman's weight, else the printer's percentage. When neither is known a loaded slot shows a full reel in its colour with a small "?" badge, the amount unknown, no longer a made-up level (a slot with no reading drew as full or 60 %); an empty slot shows the bare reel (shared UI foundation 4.2.2).
 

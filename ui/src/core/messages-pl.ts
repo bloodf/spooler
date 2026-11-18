@@ -334,6 +334,7 @@ export const pl: Record<MessageKey, string> = {
   'req.signedOut': 'Nie zalogowano', 'req.check': 'Sprawdź ponownie',
   'req.spoolmanInstall': 'Spoolman działa jako osobny serwer w twojej sieci. Uruchom go albo zainstaluj:',
 
+  'set.about': 'O wtyczce', 'set.hasError': 'zawiera wartość do poprawienia',
   'lang.title': 'Język', 'lang.label': 'Język strony', 'lang.auto': 'Automatycznie ({current})',
   'lang.en': 'English', 'lang.pt-BR': 'Português (Brasil)', 'lang.es': 'Español', 'lang.de': 'Deutsch', 'lang.zh-CN': '简体中文', 'lang.pl': 'Polski',
   'lang.help': 'Automatycznie oznacza język OrcaSlicer albo angielski, gdy Spooler go nie ma. Twój wybór jest zapisywany w ustawieniach Spoolera.',

@@ -25,6 +25,8 @@ export interface Boot {
   display_defaults: Record<string, boolean>;
   own_fields: string[];
   logo?: string;
+  /** Settings window only: the settings page to open (a "Settings" link elsewhere asked for it). */
+  page?: string;
   settings: SettingsBoot;
 }
 

@@ -1287,6 +1287,74 @@ test('settings: presets per spool and Advanced tuning, off by default, saved wit
     pressure_advance: 0.035, fan_max_speed: 80}}}, 'saved');
 `, { lang: 'de' });
 
+// ------------------------------------------------------------------ settings pages (one page per section)
+const PAGES = ['s-src', 's-req', 's-reorder', 's-weights', 's-layout', 's-check', 's-display', 's-dry', 's-presets', 's-printer', 's-stats', 's-lang', 's-about'];
+const PAGES_JS = `
+const PAGES = ${JSON.stringify(PAGES)};
+const link = id => q('.oui-settings-link[data-section="' + id + '"]');
+const shown = () => PAGES.filter(id => q('#' + id) && !q('#' + id).hidden);
+const onHeading = id => document.activeElement === q('#' + id + ' .oui-panel-title');
+const listShown = () => getComputedStyle(q('.oui-settings-nav')).display !== 'none';
+const pageShown = () => getComputedStyle(q('.oui-settings-body')).display !== 'none';
+`;
+test('settings pages: list beside one page; a page opens with focus on its heading and is remembered', PAGES_JS + `
+  await until(() => link('s-src'));
+  eq(qa('.oui-settings-link').map(e => e.dataset.section), PAGES, 'one page per section, About on its own');
+  eq(shown(), ['s-src'], 'only the first page');
+  assert(listShown() && pageShown() && !byTest('settings-back').getClientRects().length, 'wide: list and page side by side, no Back');
+  await click(link('s-dry'));
+  eq(shown(), ['s-dry'], 'only Drying');
+  assert(onHeading('s-dry'), 'focus on the page heading');
+  eq(link('s-dry').getAttribute('aria-selected'), 'true', 'selected in the list');
+  assert(Object.entries(localStorage).some(([k, v]) => k.startsWith('oui-settings:') && v === 's-dry'), 'last page stored');
+  link('s-dry').focus(); await press('ArrowDown'); await settle();
+  eq([shown(), document.activeElement.dataset.section], [['s-presets'], 's-presets'], 'arrow keys move along the list');
+  assert(q('#s-about') && text(q('#s-about')).includes('Plugin version'), 'version and updates on About');
+  assert(!text(q('#s-lang')).includes('Plugin version'), 'Language holds the language only');
+`, { mode: 'settings' });
+test('settings pages: narrow shows the list, then one page with Back', PAGES_JS + `
+  await until(() => link('s-src'));
+  assert(listShown() && !pageShown(), 'narrow: the list first');
+  await click(link('s-weights'));
+  assert(!listShown() && pageShown(), 'then the page alone');
+  eq(shown(), ['s-weights'], 'Weights only');
+  assert(onHeading('s-weights'), 'focus on its heading');
+  assert(byTest('settings-back').getClientRects().length, 'Back shown');
+  await click(byTest('settings-back'));
+  await settle();
+  assert(listShown() && !pageShown(), 'Back returns to the list');
+  eq(document.activeElement, link('s-weights'), 'focus back on the page it came from');
+  assert(byTest('save'), 'save bar stays');
+`, { mode: 'settings', width: 600 });
+test('settings pages: the last page opens again', PAGES_JS + `
+  await until(() => link('s-src'));
+  eq(shown(), ['s-stats'], 'remembered page');
+`, { mode: 'settings', lastPage: 's-stats' });
+test('settings pages: a page named by the window boot opens first', PAGES_JS + `
+  await until(() => link('s-src'));
+  await until(() => shown()[0] === 's-lang', 'Language opened');
+  assert(onHeading('s-lang'), 'heading focused');
+`, { mode: 'settings', page: 's-lang', lastPage: 's-stats' });
+test('settings pages: Open Settings from the list opens the source page', PAGES_JS + `
+  await post({type: 'spools', ok: false, error: 'No Spoolman URL', error_code: 'no_url'});
+  await click(btn('Open Settings', byTest('empty-no-url')));
+  eq(lastOf('settings'), {type: 'settings', page: 's-src'}, 'asked for the source page');
+  await post({type: 'show_view', view: 'settings', url: '', source: 'spoolman', low_stock: 100, display: DEFAULTS, drying: {}, progress: {}, stats: {}});
+  await until(() => shown()[0] === 's-src', 'source page shown');
+  assert(onHeading('s-src'), 'heading focused');
+  await post({type: 'show_view', view: 'main'});
+  await click(byTest('settings-btn'));
+  eq(lastOf('settings'), {type: 'settings'}, 'the Settings tab names no page');
+`, { lastPage: 's-dry' });
+test('settings pages: a failed test marks the source page in the list', PAGES_JS + `
+  await until(() => link('s-src'));
+  await click(link('s-stats'));
+  await post({type: 'test_result', source: 'spoolman', ok: false, url: 'http://spoolman:7912', error: 'connection refused', view: 'settings'});
+  eq(shown(), ['s-stats'], 'stays on the page shown');
+  eq(link('s-src').dataset.state, 'error', 'source flagged');
+  assert(link('s-src').querySelector('.oui-settings-flag'), 'with the flag icon');
+  assert((link('s-src').getAttribute('aria-label') || '').includes('has a value to fix'), 'and in its name');
+`, { mode: 'settings' });
 // ------------------------------------------------------------------ runner
 async function bounded(work, stage, ms = 30000) {
   let timer;
@@ -1314,14 +1382,16 @@ try {
       const mode = sc.mode || 'tab';
       const boot = { mode, view: mode === 'settings' ? 'settings' : 'main', version: 'test', lang: sc.lang ?? 'en', pref: sc.pref ?? 'auto',
         low_stock_default: 100, refresh_ms: 600000, display_defaults: DISPLAY_DEFAULTS, own_fields: ['tag', 'orca_settings', 'dried', 'orca_flow_ratio'],
-        settings: { ...SETTINGS, wizard: !!sc.wizard } };
+        settings: { ...SETTINGS, wizard: !!sc.wizard }, ...(sc.page ? { page: sc.page } : {}) };
+      // seed: the settings page remembered from an earlier visit (OuiSettings' own key: page path and its page ids)
+      const seed = sc.lastPage ? `localStorage.setItem('oui-settings:' + location.pathname + ':' + ${JSON.stringify(PAGES.join(','))}, ${JSON.stringify(sc.lastPage)});` : '';
       const file = join(dir, `p${k}.html`);
       await writeFile(file, preparePage(page, boot));
       const p = await bounded(browser.newPage(), 'open page / initialize DevTools');
       const started = Date.now();
       try {
         await bounded(p.size(sc.width ?? 1280, 900), 'set viewport');
-        await bounded(p.init(MOCK_HOST + 'try { localStorage.clear(); } catch {}'), 'install mock host');
+        await bounded(p.init(MOCK_HOST + `try { localStorage.clear(); ${seed} } catch {}`), 'install mock host');
         await bounded(p.goto(pathToFileURL(file).href), 'navigate / load event');
         const body = `(async () => { ${HELPERS} ${PRELUDE}
           await until(() => document.querySelector('#app > *'), 'app mounted');

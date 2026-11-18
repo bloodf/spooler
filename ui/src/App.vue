@@ -72,7 +72,7 @@ const state = computed<{ state: OuiState; label: string; text: string }>(() => {
             <template #icon><OuiIcon :icon="refreshIcon" :size="14" /></template></Button>
           <Button severity="secondary" size="small" class="sp-sync" :label="t('list.sync')" :aria-label="t('list.sync')" :disabled="!!sourceOff || pending('send')" :title="t('list.syncHelp')"
                   aria-describedby="sv-why" data-test="sync" @click="syncPresets"><template #icon><OuiIcon :icon="download" :size="14" /></template></Button>
-          <Button v-if="boot.mode === 'main'" severity="secondary" text size="small" :aria-label="t('nav.settings')" :title="t('nav.settings')" data-test="settings-btn" @click="openSettings">
+          <Button v-if="boot.mode === 'main'" severity="secondary" text size="small" :aria-label="t('nav.settings')" :title="t('nav.settings')" data-test="settings-btn" @click="openSettings()">
             <template #icon><OuiIcon :icon="settings" :size="14" /></template></Button>
         </template>
         <Button v-else severity="secondary" text size="small" :aria-label="t('set.feedback')" :title="t('set.feedback')" @click="bridge.postSettings({ type: 'feedback' })">

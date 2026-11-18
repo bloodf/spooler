@@ -288,6 +288,7 @@ export const zhCN: Record<MessageKey, string> = {
   'bambu.signedOut': '已退出登录', 'bambu.connected': '已连接到 Bambu Cloud', 'bambu.notConnected': '未连接：{why}', 'bambu.failed': '连接失败',
   'bambu.experimental': '实验性功能：使用 Bambu 的非官方云服务，Bambu 随时可能更改该服务。Spooler 绝不保存您的密码。',
   'req.connected': '已连接', 'req.unreachable': '无法连接', 'req.checking': '正在检查…', 'req.untested': '未测试', 'req.signedOut': '未登录', 'req.check': '重新检查', 'req.spoolmanInstall': 'Spoolman 作为独立服务器运行在您的网络中。请启动它，或安装它：',
+  'set.about': '关于', 'set.hasError': '有需要修正的值',
   'lang.title': '语言', 'lang.label': '页面语言', 'lang.auto': '自动（{current}）', 'lang.en': 'English', 'lang.pt-BR': 'Português (Brasil)',
   'lang.es': 'Español', 'lang.de': 'Deutsch', 'lang.zh-CN': '简体中文', 'lang.pl': 'Polski',
   'lang.help': '自动会跟随 OrcaSlicer 的语言；Spooler 不支持该语言时使用英语。您的选择会随 Spooler 的设置一起保存。',
