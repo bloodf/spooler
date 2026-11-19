@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { nextTick, ref, useId } from 'vue';
+import { computed, nextTick, ref, useId } from 'vue';
 import OuiIcon from './OuiIcon.vue';
 import { info } from '../icons';
 
@@ -15,9 +15,11 @@ import { info } from '../icons';
  * never cut off by the window, wherever the (i) is; no prop is needed for one near an edge.
  */
 const props = defineProps<{ /** Accessible name of the button: what the text is about ("About the camera"). */ label: string; text?: string;
+  /** The id of the text, so another control can point `aria-describedby` at it (it works while the bubble is closed). Default: a generated one. */ id?: string;
   /** Prefer opening towards the start edge (the bubble ends at the button). Only a preference since 5.0.2: the bubble stays inside the window either way. */ end?: boolean }>();
 const open = ref(false);
-const id = useId();
+const generated = useId();
+const id = computed(() => props.id ?? generated);
 const root = ref<HTMLElement>();
 const bubble = ref<HTMLElement>();
 const place = ref<{ left: string; top: string }>();
