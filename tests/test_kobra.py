@@ -80,6 +80,16 @@ class ReportTest(unittest.TestCase):
         self.assertEqual(doc["print"]["vt_tray"]["id"], "254")
         self.assertEqual(doc["print"]["vt_tray"]["spool_id"], 21)
 
+    def test_ace_100_percent_is_no_reading_and_spoolman_wins(self):
+        # The ACE answers 100 for every spool it can't measure; Kobra Control draws a linked slot from Spoolman.
+        box = [{"slots": [{"type": "PLA", "color": [254, 2, 1], "status": 5, "consumables_percent": 100},
+                          {"type": "ABS", "color": [9, 9, 9], "status": 5, "consumables_percent": 100},
+                          {"type": "ABS", "color": [9, 9, 9], "status": 5, "consumables_percent": 55},
+                          {"type": "PLA", "color": [254, 2, 1], "status": 5, "consumables_percent": 55}]}]
+        trays = sp.kx_report(box, None, SPOOLS, KOBRA)["print"]["ams"]["ams"][0]["tray"]
+        self.assertEqual([t["remain"] for t in trays], [None, None, 55, None])
+        self.assertEqual([t["spool_id"] for t in trays], [21, None, None, 21])
+
     def test_no_box(self):
         self.assertEqual(sp.kx_report([], None, SPOOLS), {"print": {"ams": {"ams": []}}})
 

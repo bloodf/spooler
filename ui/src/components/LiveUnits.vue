@@ -60,6 +60,8 @@ const late = ref(false);
 let timer: ReturnType<typeof setTimeout> | undefined;
 watch(waiting, on => { clearTimeout(timer); late.value = false; if (on) timer = setTimeout(() => { late.value = true; }, WAIT_SLOTS_MS); }, { immediate: true });
 onBeforeUnmount(() => clearTimeout(timer));
+// Only a printer that has slots to report (U1 toolheads, a Happy Hare MMU) is warned about; one without stays a wait.
+const warnLate = computed(() => late.value && (!!props.lv.heads || !!props.lv.hh));
 </script>
 <template>
   <div class="lu oui-stack">
@@ -96,8 +98,8 @@ onBeforeUnmount(() => clearTimeout(timer));
         <div class="oui-cards"><TrayCard :tray="lv.ext" label="E" :active="!!act && act.unit === 'ext'" /></div>
       </template>
       <div v-if="waiting" class="lu-wait oui-well" role="status" data-test="waiting">
-        <OuiStatus :state="late ? 'warn' : 'connecting'">{{ late ? t('printer.waitLate') : lv.heads ? t('printer.waitingHeads') : t('printer.waitingSlots') }}</OuiStatus>
-        <p v-if="late" class="oui-meta">{{ t('printer.waitLateHelp') }}</p>
+        <OuiStatus :state="warnLate ? 'warn' : 'connecting'">{{ warnLate ? t('printer.waitLate') : lv.heads ? t('printer.waitingHeads') : t('printer.waitingSlots') }}</OuiStatus>
+        <p v-if="warnLate" class="oui-meta">{{ t('printer.waitLateHelp') }}</p>
       </div>
     </template>
   </div>

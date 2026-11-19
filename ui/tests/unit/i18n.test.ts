@@ -44,7 +44,7 @@ const UNIT = ['set.refreshOption'];
 const SAME: Record<string, string[]> = {
   es: [...NAMES, ...GATE, ...UNIT, 'common.ok', 'status.errorPrefix', 'filters.material', 'disp.material', 'disp.head_material', 'spool.rfid', 'progress.hm', 'progress.m', 'stats.materialsN_one'],
   de: [...NAMES, ...GATE, ...UNIT, 'common.ok', 'filters.material', 'disp.material', 'disp.head_material', 'spool.rfid', 'progress.hm', 'progress.m',
-    'colour.orange', 'bambu.region', 'link.live', 'usage.slot'],
+    'colour.orange', 'bambu.region', 'link.live', 'usage.slot', 'printer.extruder'],
   'zh-CN': NAMES,
   // Pressure advance stays in English, as in OrcaSlicer's Polish translation; Z-hop, Region and Slot are Polish too.
   pl: [...NAMES, ...UNIT, 'common.ok', 'spool.rfid', 'progress.hm', 'progress.m', 'cal.key.filament_z_hop', 'cal.key.pressure_advance',

@@ -156,6 +156,7 @@ export const zhCN: Record<MessageKey, string> = {
   'printer.manualNote': '仅为示意视图：根据您分配的料盘生成。使用 Live Link 可读取打印机本身。',
   'printer.none': '还没有打印机。添加您的打印机，然后为每个槽位选择料盘。', 'printer.add': '添加打印机',
   'printer.waitingHeads': '正在等待打印机报告工具头…', 'printer.waitingSlots': '正在等待打印机报告槽位…',
+  'printer.extruder': '挤出机',
   'printer.howTitle': '登记方式说明',
   'printer.bindNote': '在 Snapmaker U1 的工具头或 Anycubic ACE 的槽位上，“分配料盘”会把料盘在 Spoolman 中的位置设为 U1 Control 和 Kobra Control 读取的关联，例如“Snapmaker U1 T1”或“Anycubic Kobra X S1”。不会向打印机发送任何内容。',
   'printer.chipU1': '由 U1 Control 登记',
