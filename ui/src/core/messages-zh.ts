@@ -106,6 +106,7 @@ export const zhCN: Record<MessageKey, string> = {
   'weight.of': '/ {total}', 'weight.left': '剩余 {w}',
   'spool.numbered': '料盘 #{id}', 'spool.lot': '批号 {lot}', 'spool.rfid': 'RFID：{tags}', 'spool.together': '×{n} · 共 {w}',
   'spool.low': '余量不足', 'spool.out': '即将用完', 'spool.reorder': '余量不足：在线搜索 {q}',
+  'spool.empty': '已用完', 'stack.empty_one': '1 卷已用完', 'stack.empty_other': '{n} 卷已用完', 'detail.backStack': '返回 {n} 卷料盘', 'detail.emptyHint': '此料盘已用完。',
   'spool.unknownLeft': '剩余量未知', 'spool.pctLeft': '剩余 {pct}%', 'spool.onPlate': '当前盘使用 · {slots}',
   'spool.loadedIn': '已装入 {where}', 'spool.inUse': '使用中 · {where}', 'spool.useFirst': '优先使用',
   'spool.useFirstHelp': '最先开封：请先用完这一卷，再用此耗材丝的其他料盘', 'spool.driedToday': '今天已烘干',

@@ -7,9 +7,9 @@ import { chevronDown, chevronRight, edit, mapPin } from '../../shared/src/icons'
 import SpoolChips from './SpoolChips.vue';
 import { boot } from '../core/boot';
 import { m, dupes } from '../state/main';
-import { pickSpool, openEditor } from '../state/menu';
+import { menu, pickSpool, pickStack, openEditor } from '../state/menu';
 import { t, tn, locale } from '../core/i18n';
-import { colorFamily, formatWeight, leftLabel, levelTone, lowLevel, noteText, originalWeight, percentLeft, shown, spoolDirection, spoolPaint, totals, type Spool, type Totals } from '../logic/spools';
+import { colorFamily, emptyCount, formatWeight, leftLabel, levelTone, lowLevel, noteText, originalWeight, percentLeft, shown, spoolDirection, spoolPaint, totals, type Spool, type Totals } from '../logic/spools';
 
 // The stock list. One row per spool; spools of one filament fold into a stack row (×n) that opens to its spools,
 // and a group (by location, material or manufacturer) is a header row that closes. Picking a row opens its detail.
@@ -33,20 +33,23 @@ const pctSide = (tt: Totals) => (m.wMode === 'both' && tt.remaining !== null && 
 const meta = (r: Row) => {
   const f = fil(r), s = first(r);
   const base = [f.vendor?.name && shown(m.disp, 'vendor') ? f.vendor.name : ''];
-  if (r.kind === 'stack') return [...base, tn('group.count', r.items.length), r.used ? tn('stack.inUse', r.used) : ''].filter(Boolean).join(' · ');
+  if (r.kind === 'stack') return [...base, tn('group.count', r.items.length), emptyCount(r.items) ? tn('stack.empty', emptyCount(r.items)) : '', r.used ? tn('stack.inUse', r.used) : ''].filter(Boolean).join(' · ');
   return [...base, f.color_hex && shown(m.disp, 'colour_code') ? '#' + f.color_hex.replace(/^#/, '').toUpperCase() : '',
     typeof f.diameter === 'number' && shown(m.disp, 'diameter') ? `${f.diameter} mm` : '', shown(m.disp, 'spool_id') ? `#${s.id}` : '', together(r)].filter(Boolean).join(' · ');
 };
 // With grouping off, a spool says how many of its filament there are and what they hold together.
 const together = (r: Row) => { const d = r.kind === 'spool' && !r.child ? dupes.value.get(fil(r).id as number) : null; return d && d.count > 1 ? t('spool.together', { n: d.count, w: formatWeight(d.total, ex.value, locale.value) }) : ''; };
 const note = (r: Row) => (r.kind === 'spool' ? noteText(r.spool, m.disp, boot.own_fields, v => t('spool.lot', { lot: v })) : '');
-const selectedRow = computed(() => props.rows.find(r => (r.kind === 'spool' ? r.spool.id === props.selected : !r.open && r.items.some(s => s.id === props.selected))) ?? null);
+// The row of the open detail: the spool's, or its closed stack's; a stack whose list is open is its own row.
+const stackOpen = (r: Row) => r.kind === 'stack' && !!menu.stack && menu.id == null && r.items.every(s => menu.stack!.includes(s.id));
+const selectedRow = computed(() => props.rows.find(r => stackOpen(r) || (r.kind === 'spool' ? r.spool.id === props.selected : !r.open && r.items.some(s => s.id === props.selected))) ?? null);
 const rowClass = (r: Row) => ({ 'sp-hidden': r.hidden, 'sp-child': r.kind === 'spool' && r.child, 'sp-archived': r.kind === 'spool' && r.spool.archived });
 const rowAttrs = (r?: Row) => (r?.kind === 'spool' ? { 'data-spool': r.spool.id, 'aria-controls': 'sp-detail' } : r ? { 'data-stack': r.key } : {});
 const colourOf = (r: Row) => { const f = fil(r), fam = colorFamily(f);
   return [fam ? t(`colour.${fam}` as any) : '', f.color_hex ? '#' + f.color_hex.replace(/^#/, '').toUpperCase() : ''].filter(Boolean).join(' · '); };
 const isSel = (r: Row) => r === selectedRow.value;
-function onRow(r: Row) { if (r.kind === 'stack') emit('stack', r.key); else pickSpool(r.spool.id); }
+// A stack opens its list in the detail; its ×n chevron opens it in place.
+function onRow(r: Row) { if (r.kind === 'stack') pickStack(r.items.map(s => s.id)); else pickSpool(r.spool.id); }
 </script>
 
 <template>
@@ -58,11 +61,11 @@ function onRow(r: Row) { if (r.kind === 'stack') emit('stack', r.key); else pick
         <span class="sv-gbar"><span class="oui-meta oui-num">{{ left(groups[r.group!].totals) }} {{ leftOf(groups[r.group!].totals) }}</span><OuiLevel :fraction="frac(groups[r.group!].totals)" /></span>
       </button>
       <button v-if="!r.hidden" type="button" class="sc-card" :class="[rowClass(r), { 'sc-sel': isSel(r) }]" v-bind="rowAttrs(r)"
-              :aria-expanded="r.kind === 'stack' ? r.open : undefined" :aria-current="isSel(r) || undefined" @click="onRow(r)">
+ :aria-current="isSel(r) || undefined" @click="onRow(r)">
         <OuiSpool v-bind="spoolPaint(fil(r))" :direction="spoolDirection(fil(r))" :fraction="frac(sum(r))" :size="r.kind === 'spool' && r.child ? 64 : 80" />
         <span class="sc-body">
           <span class="sp-name"><span class="oui-truncate oui-strong" :title="name(r)">{{ name(r) }}</span>
-            <span v-if="r.kind === 'stack'" class="oui-chip oui-num st-head"><span class="st-count">×{{ r.items.length }}</span><OuiIcon :icon="r.open ? chevronDown : chevronRight" :size="12" /></span></span>
+            <span v-if="r.kind === 'stack'" class="oui-chip oui-num st-head"><span class="st-count">×{{ r.items.length }}</span></span></span>
           <span v-if="fil(r).vendor?.name && shown(m.disp, 'vendor')" class="oui-meta sc-wrap" :title="fil(r).vendor!.name">{{ fil(r).vendor!.name }}</span>
           <span class="sc-line"><span v-if="fil(r).material && shown(m.disp, 'material')" class="oui-chip" :data-tone="materialTone(fil(r).material)">{{ fil(r).material }}</span>
             <span v-if="colourOf(r)" class="sc-colour oui-meta"><OuiSwatch :color="spoolPaint(fil(r)).color || '#9a9a9a'" /><span class="oui-truncate">{{ colourOf(r) }}</span></span></span>
@@ -70,7 +73,7 @@ function onRow(r: Row) { if (r.kind === 'stack') emit('stack', r.key); else pick
             <OuiLevel v-if="shown(m.disp, 'bar')" class="sc-track" :fraction="frac(sum(r))" :tone="levelTone(level(r))"
                       :label="sum(r).percent === null ? t('spool.unknownLeft') : t('spool.pctLeft', { pct: sum(r).percent })" /></span>
           <span v-if="r.kind === 'spool' && r.spool.location && shown(m.disp, 'location')" class="sp-loc oui-meta"><OuiIcon :icon="mapPin" :size="13" /><span class="oui-truncate">{{ r.spool.location }}</span></span>
-          <span v-if="r.kind === 'stack' && r.used" class="oui-meta">{{ tn('stack.inUse', r.used) }}</span>
+          <span v-if="r.kind === 'stack'" class="oui-meta">{{ [emptyCount(r.items) ? tn('stack.empty', emptyCount(r.items)) : '', r.used ? tn('stack.inUse', r.used) : ''].filter(Boolean).join(' · ') }}</span>
           <SpoolChips v-if="r.kind === 'spool'" :spool="r.spool" band />
         </span>
       </button>

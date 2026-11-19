@@ -10,7 +10,7 @@ import { archive as archiveIcon, edit, external, hourglass, scale, spool as spoo
 import SpoolChips from './SpoolChips.vue';
 import { boot } from '../core/boot';
 import { m, dupes, sourceOff, pending, sendEdits } from '../state/main';
-import { menu, closeDetail, setMode, sendAction, openEditor, type MenuMode } from '../state/menu';
+import { menu, closeDetail, pickStack, setMode, sendAction, openEditor, type MenuMode } from '../state/menu';
 import { ask, prompt } from '../core/dialog';
 import { note } from '../state/main';
 import { t, tn, fmt, locale } from '../core/i18n';
@@ -21,7 +21,7 @@ import { driedDays, gramsValid, formatWeight, levelTone, lowLevel, noteText, ori
 // (spool_detail) when the spool is picked.
 interface Detail { prints: { time: number; name?: string; grams: number; cost?: number | null }[]; grams: number; cost: number | null; sign: string; rate: number | null; weeks: number | null;
   presets?: { name: string; label: string; linked: boolean; own?: boolean }[] }
-const props = defineProps<{ spool: Spool }>();
+const props = defineProps<{ spool: Spool; /** Opened from a stack of this many spools: a link back to its list. */ back?: number }>();
 const s = computed(() => props.spool);
 const f = computed(() => s.value.filament || {});
 const detail = computed<Detail | null>(() => menu.detail);
@@ -137,6 +137,7 @@ async function save() {
       <Button severity="secondary" text size="small" :aria-label="t('detail.close')" :title="t('detail.close')" data-test="detail-close" @click="closeDetail"><template #icon><OuiIcon :icon="x" :size="14" /></template></Button>
     </template>
 
+    <Button v-if="back" text size="small" class="sd-back" :label="'← ' + t('detail.backStack', { n: back })" data-test="stack-back" @click="pickStack(menu.stack!)" />
     <div class="sd-hero oui-hero" :class="{ 'oui-on-band': !stale }" :data-tone="stale ? 'neutral' : undefined">
       <OuiSpool v-bind="spoolPaint(f)" :direction="spoolDirection(f)" :fraction="pct === null ? null : pct / 100" :size="112" />
       <div class="sd-id">
@@ -145,7 +146,7 @@ async function save() {
                   data-test="detail-edit" data-focus-key="edit" @click="openEditor(s.id)"><template #icon><OuiIcon :icon="edit" :size="14" /></template></Button></p>
         <p class="oui-meta sd-sub"><OuiSwatch v-bind="spoolPaint(f)" />{{ [f.vendor?.name, f.material, typeof f.diameter === 'number' ? `${f.diameter} mm` : '', f.color_hex ? '#' + f.color_hex.replace(/^#/, '').toUpperCase() : ''].filter(Boolean).join(' · ') }}</p>
         <div class="sd-amount">
-          <OuiReadout :icon="scale" :tone="level === 'out' ? 'danger' : level === 'low' ? 'warn' : 'accent'" :label="t('list.col.left')" :value="amount.value" :unit="amount.unit" :sub="amount.sub" size="lg"
+          <OuiReadout :icon="scale" :tone="level === 'low' ? 'warn' : level ? 'danger' : 'accent'" :label="t('list.col.left')" :value="amount.value" :unit="amount.unit" :sub="amount.sub" size="lg"
                       :stale="stale" :unknown-label="t('spool.unknownLeft')" data-test="weight" />
           <OuiReadout v-if="canAct" :icon="hourglass" tone="sky" :label="t('detail.lasts')" :value="lasts.value" :unit="lasts.unit" :sub="lasts.sub" size="lg" :stale="stale" :unknown-label="lasts.sub" />
         </div>
@@ -153,6 +154,8 @@ async function save() {
       </div>
     </div>
 
+    <p v-if="canAct && level === 'empty' && !s.archived" class="sd-empty oui-row" data-test="empty-hint">{{ t('detail.emptyHint') }}
+      <Button severity="danger" outlined size="small" :label="t('menu.archive')" :disabled="!!sourceOff" data-test="archive-empty" @click="archive"><template #icon><OuiIcon :icon="archiveIcon" :size="14" /></template></Button></p>
     <div v-if="canAct" :id="`sc-panel-${s.id}`" ref="panel" class="sd-act" role="group" :aria-label="t('menu.label', { id: s.id })" @keydown.escape.prevent="menu.mode && cancel()">
       <form v-if="menu.mode" class="sd-form oui-well" @submit.prevent="save">
         <div class="oui-field"><label :for="`sc-in-${s.id}`">{{ hint }}</label>
@@ -222,6 +225,8 @@ async function save() {
 </template>
 
 <style>
+.orca-ui .sd-back.p-button { margin: calc(-1 * var(--oui-s2)) 0 var(--oui-s2); padding-inline: 0; }
+.sd-empty { justify-content: space-between; flex-wrap: wrap; margin-top: var(--oui-s3); padding: var(--oui-s2) var(--oui-s3); border-radius: var(--oui-radius); background: var(--oui-raised); }
 .sd-hero { display: flex; flex-wrap: wrap; align-items: center; gap: var(--oui-s4) var(--oui-s5); }
 .sd-id { flex: 1 1 240px; display: grid; gap: var(--oui-s1); min-width: 0; }
 .sd-name { font-size: var(--oui-text-xl); font-weight: 700; line-height: 1.3; overflow-wrap: anywhere; }

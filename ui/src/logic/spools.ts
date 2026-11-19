@@ -226,14 +226,23 @@ export function groupSpools(spools: Spool[], mode: 'location' | 'material' | 've
 }
 
 /** Low stock level (B-22): the previous amber→red text tint measured 2.05:1; the page now uses the palette's
- * warning / danger tokens. "out" once the spool is in the last fifth of the low-stock grams. */
-export function lowLevel(grams: unknown, low: number): '' | 'low' | 'out' {
+ * warning / danger tokens. "out" once the spool is in the last fifth of the low-stock grams, "empty" at 0 g. */
+export type Level = '' | 'low' | 'out' | 'empty';
+export function lowLevel(grams: unknown, low: number): Level {
+  if (typeof grams === 'number' && grams <= 0) return 'empty';
   if (typeof grams !== 'number' || low <= 0 || grams >= low) return '';
   return grams <= low * 0.2 ? 'out' : 'low';
 }
 
 /** Tone of the level bar for a low-stock level: fine, low, or almost empty. */
-export const levelTone = (level: '' | 'low' | 'out'): 'normal' | 'low' | 'critical' => (level === 'out' ? 'critical' : level === 'low' ? 'low' : 'normal');
+export const levelTone = (level: Level): 'normal' | 'low' | 'critical' => (level === 'low' ? 'low' : level ? 'critical' : 'normal');
+/** The chip text of a level. */
+export const LEVEL_KEY: Record<Level, 'spool.low' | 'spool.out' | 'spool.empty'> = { '': 'spool.low', low: 'spool.low', out: 'spool.out', empty: 'spool.empty' };
+/** The spool a stack shows when one must be shown: the one in use, else the one with the most left (never an empty one first). */
+const leftRank = (s: Spool) => (typeof s.remaining_weight !== 'number' ? -1 : s.remaining_weight <= 0 ? -2 : s.remaining_weight);
+export const stackLead = (items: Spool[], loaded: (s: Spool) => boolean): Spool => items.find(loaded)
+  ?? [...items].sort((a, b) => leftRank(b) - leftRank(a))[0];
+export const emptyCount = (items: Spool[]) => items.filter(s => typeof s.remaining_weight === 'number' && s.remaining_weight <= 0).length;
 
 /** What the drawn spool and the swatch are painted with: one colour, or every colour of a multi-colour filament. */
 export function spoolPaint(f: Filament): { color: string | null; colors: string[] | null } {
