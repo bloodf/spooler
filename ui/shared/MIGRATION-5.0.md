@@ -1,6 +1,6 @@
 # Migrating a plugin to Orca UI foundation 5.0
 
-Current release: **5.0.3** (5.0.2 with what the Kobra and U1 migrations found: file browser fixes, a `#folder` slot, `sort` and read-only folders; opt-in `inputId`, `error`, `validate` and `offAlways` on `OuiSetpoint`; `frame`, `fit` and `#picture` on `OuiCamera`; `hintId` on `OuiPanel`; see README; 5.0.2 was 5.0.1 with `OuiHint` fixed: a closed bubble takes no room and an open one stays inside the window, see README; 5.0.1 was 5.0.0 plus the file backend adapter: `useFileBackend`, and `OuiFileBrowser` for storages with no folders or no move). Nothing 5.0.0 pages rely on changes.
+Current release: **5.0.4** (5.0.3 with `OuiPanel`'s header wrapping inside its panel in narrow places, see README; 5.0.3 was 5.0.2 with what the Kobra and U1 migrations found: file browser fixes, a `#folder` slot, `sort` and read-only folders; opt-in `inputId`, `error`, `validate` and `offAlways` on `OuiSetpoint`; `frame`, `fit` and `#picture` on `OuiCamera`; `hintId` on `OuiPanel`; see README; 5.0.2 was 5.0.1 with `OuiHint` fixed: a closed bubble takes no room and an open one stays inside the window, see README; 5.0.1 was 5.0.0 plus the file backend adapter: `useFileBackend`, and `OuiFileBrowser` for storages with no folders or no move). Nothing 5.0.0 pages rely on changes.
 
 For the agent rolling 5.0 out to one plugin. `DESIGN.md` is the specification (what a page should look like and why); this file is the procedure. The reference screen for each page is in `ui-foundation/gallery/screens/` and its screenshots in `ui-foundation/evidence-5.0.0/after/`: build the plugin's page until it matches its reference, with the plugin's real data.
 
@@ -47,6 +47,7 @@ The accent now colours two things only: the mark tile in `OuiAppBar` and the lin
 - `<Button>` is OrcaSlicer's teal; `severity="secondary"` is OrcaSlicer's grey button with the text colour (was tinted with the accent); `severity="secondary" text` is the text colour (was the accent).
 - Fields are the panel colour inside an outline that turns teal on hover and focus. The focus ring, checked boxes and switches, progress bars and selected rows are teal.
 - Radii: 3 chips, 4 controls and cards, 6 panels, 8 dialogs (were 4, 6, 8, 12).
+- `OuiPanel`'s header wraps inside its panel when it does not fit on one line (5.0.4): do not set `flex-wrap`, a `min-width` or a fixed height on `.oui-panel-head`, and keep header actions `size="small"`.
 - `OuiPanel`: a 40 px neutral header with a hairline under it (was a 44 px strip tinted in its tone); its icon is a plain 16 px icon in the tone (was a solid tile), and with no `tone` it is grey (was the accent). Body padding is 12 px (was 16).
 - `OuiIcon tile`: a grey square with the icon in its tone (was a solid square of the tone). With no `tone` it is grey. `soft` is accepted and ignored.
 - `OuiStatus`: a chip tinted in the state's colour with coloured text (was solid).
@@ -258,14 +259,14 @@ Built size of each shared component (`node scripts/sizes.mjs`): one minified bui
 | OuiFileBrowser | 36.6 | 10.1 | new | new |
 | useFileBackend | 1.7 | 0.8 | new | new |
 | OuiFormRow | 2.0 | 0.9 | 2.0 | 0.9 |
-| OuiFormSection | 8.3 | 2.9 | 5.8 | 1.9 |
+| OuiFormSection | 8.5 | 2.9 | 5.8 | 1.9 |
 | OuiHint | 4.5 | 1.9 | new | new |
 | OuiIcon | 1.9 | 0.8 | 2.0 | 0.8 |
 | OuiJob | 5.7 | 1.9 | 4.8 | 1.7 |
 | OuiKeyValue | 1.3 | 0.7 | 1.3 | 0.7 |
 | OuiLevel | 1.4 | 0.7 | 1.5 | 0.8 |
 | OuiPageHeader | 1.6 | 0.7 | new | new |
-| OuiPanel | 7.1 | 2.6 | 4.6 | 1.6 |
+| OuiPanel | 7.3 | 2.6 | 4.6 | 1.6 |
 | OuiReadout | 4.9 | 1.7 | 5.0 | 1.8 |
 | OuiRequirement | 8.4 | 2.9 | 8.7 | 3.0 |
 | OuiSetpoint | 11.5 | 3.8 | 10.2 | 3.3 |

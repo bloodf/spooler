@@ -99,8 +99,6 @@ const state = computed<{ state: OuiState; label: string; text: string }>(() => {
    Traditional Chinese one isn't picked first for the shared Han characters. */
 html:lang(zh-CN) { --oui-font: 'Manrope', 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', 'Noto Sans SC', 'Source Han Sans SC', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
 .oui-page > [role='tabpanel'] { min-width: 0; }
-/* Module headers wrap in the 380 px dock rather than push the page wider than the window. */
-.oui-page .oui-panel-head { flex-wrap: wrap; }
 /* A paragraph inside an (i) bubble. */
 .sp-hint-p { display: block; }
 .sp-hint-p + .sp-hint-p { margin-top: var(--oui-s2); }

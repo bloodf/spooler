@@ -1,4 +1,12 @@
-# Orca UI foundation 5.0.3 — Vue and PrimeVue
+# Orca UI foundation 5.0.4 — Vue and PrimeVue
+
+Version 5.0.4 fixes `OuiPanel`'s header in narrow places; nothing else changes:
+
+- A header that could not shrink (a title, a state chip and two buttons; or one holding a select) set the least width of its whole column: a page in the 380 px dock came out about 445 px wide and scrolled sideways. The header now wraps inside its panel: the meta gives way first, then the actions go to a second line, then they wrap among themselves, and a long title breaks beside its icon. Where there is room it is one 40 px line, as before.
+
+To update from 5.0.3, replace `ui/shared/` with the 5.0.4 snapshot and rebuild. Remove any `flex-wrap` a plugin put on `.oui-panel-head`.
+
+## 5.0.3
 
 Version 5.0.3 takes in what the Kobra Control and U1 Control migrations found. It is additive: no prop, slot or event is removed, and a component given none of the new props behaves as in 5.0.2, apart from the fixes.
 

@@ -29,11 +29,16 @@ defineProps<{ title?: string; icon?: OuiIconData; /** Colour of the header icon:
 .oui-panel { display: flex; flex-direction: column; min-width: 0; background: var(--oui-surface); border-radius: var(--oui-radius-lg);
   box-shadow: inset 0 0 0 1px var(--oui-border), var(--oui-shadow-panel); }
 .oui-panel[data-fill] { min-height: 0; height: 100%; }
-/* The header: 40 px, neutral, a hairline under it. Title, meta and actions start on the same 12 px as the body. */
-.oui-panel-head { display: flex; align-items: center; gap: var(--oui-s2); min-height: 40px; padding: 4px var(--oui-s2) 4px var(--oui-s3); border-bottom: 1px solid var(--oui-border); }
-.oui-panel-title { flex: none; max-width: 100%; font-weight: 700; }
+/* The header: 40 px, neutral, a hairline under it. Title, meta and actions start on the same 12 px as the body.
+   It is one line where there is room. Where there is not (a dock, a narrow column) it wraps inside the panel: first the
+   meta gives way, then the actions go to a second line, then they wrap among themselves, and a long title breaks. A
+   header never sets the least width of its column. */
+.oui-panel-head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--oui-s1) var(--oui-s2); min-height: 40px; padding: 4px var(--oui-s2) 4px var(--oui-s3); border-bottom: 1px solid var(--oui-border); }
+.oui-panel-title { flex: none; max-width: 100%; font-weight: 700; overflow-wrap: anywhere; }
+/* Beside its icon, never under it: the title's widest is the line less the icon. */
+.oui-panel-icon + .oui-panel-title { max-width: calc(100% - 16px - var(--oui-s2)); }
 .oui-panel-meta { flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.oui-panel-actions { display: flex; align-items: center; gap: var(--oui-s1); margin-inline-start: auto; }
+.oui-panel-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--oui-s1); min-width: 0; max-width: 100%; margin-inline-start: auto; }
 .oui-panel-head > :last-child:not(.oui-panel-actions) { margin-inline-end: var(--oui-s1); }
 .oui-panel-body { flex: 1 1 auto; min-width: 0; padding: var(--oui-s3); }
 .oui-panel[data-flush] > .oui-panel-body { padding: 0; }

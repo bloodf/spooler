@@ -179,7 +179,7 @@ Every main page, in every plugin, is the same four things in the same order:
    - `.oui-split` (a list with a rail and/or a detail): `data-rail` adds a 260 px column on the left, `data-detail` a 320 px one on the right; they stack under 900 px.
    - `OuiSettings` (settings).
 
-A module is always an `OuiPanel`: a 40 px header (toned icon, title, one line of meta, an (i) when it needs one, actions at the right in small controls), a 12 px body (or `flush` for tables and media), an optional footer. Modules never nest.
+A module is always an `OuiPanel`: a 40 px header (toned icon, title, one line of meta, an (i) when it needs one, actions at the right in small controls; in a narrow column it wraps to a second line inside the panel rather than widening the page), a 12 px body (or `flush` for tables and media), an optional footer. Modules never nest.
 
 ### The dashboard standard (Kobra Control, U1 Control)
 
