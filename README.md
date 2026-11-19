@@ -173,7 +173,7 @@ Yes. In Edit Spool, pick it under <b>OrcaSlicer preset</b>, for the spool or for
 <details>
 <summary>Why does the list not update live behind my reverse proxy?</summary>
 
-Live updates use Spoolman's WebSocket at <code>/api/v1/spool</code>. The proxy must pass the <code>Upgrade</code> and <code>Connection</code> headers; in nginx, <code>proxy_set_header Upgrade $http_upgrade; proxy_set_header Connection "upgrade";</code>. Without it the list still refreshes every 60 seconds.
+Live updates use Spoolman's WebSocket at <code>/api/v1/spool</code>. The proxy must pass the <code>Upgrade</code> and <code>Connection</code> headers; in nginx, <code>proxy_set_header Upgrade $http_upgrade; proxy_set_header Connection "upgrade";</code>. Without it the list still refreshes every 30 seconds (Settings: 10 to 300 seconds, or off).
 </details>
 
 <details>

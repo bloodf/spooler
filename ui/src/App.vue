@@ -68,6 +68,7 @@ const state = computed<{ state: OuiState; label: string; text: string }>(() => {
       </template>
       <template #actions>
         <template v-if="!settingsOnly && m.view === 'main'">
+          <span v-if="m.retrying" class="oui-meta" role="status" data-test="retrying">{{ t('list.retrying') }}</span>
           <Button severity="secondary" text size="small" :aria-label="t('list.refresh')" :title="t('list.refresh')" :loading="pending('refresh')" data-test="refresh" @click="refresh">
             <template #icon><OuiIcon :icon="refreshIcon" :size="14" /></template></Button>
           <Button severity="secondary" size="small" class="sp-sync" :label="t('list.sync')" :aria-label="t('list.sync')" :disabled="!!sourceOff || pending('send')" :title="t('list.syncHelp')"
