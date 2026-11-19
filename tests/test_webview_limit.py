@@ -14,10 +14,12 @@ def size(html: str) -> int:
 
 
 class WebViewLimit(unittest.TestCase):
-    def test_every_surface_fits(self):
+    def test_every_surface_fits_with_its_fonts(self):
+        # 10% headroom, as scripts/embed_ui.py demands at build time: the fallback above is for emergencies only.
         for html in (sp.tab_html("main", "http://spoolman.local:7912", 100.0), sp.main_html(),
                      sp.page_html("settings", "settings")):
-            self.assertLessEqual(size(html), sp.WEBVIEW_PAGE_LIMIT)
+            self.assertLessEqual(size(html), sp.WEBVIEW_PAGE_LIMIT * 0.9)
+            self.assertRegex(html, sp._FONT_DATA)
 
     def test_a_page_that_fits_is_left_alone(self):
         self.assertEqual(sp.fit_webview("<p>x</p>"), "<p>x</p>")
