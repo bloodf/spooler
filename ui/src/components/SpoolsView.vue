@@ -187,11 +187,11 @@ const setArchived = (on: boolean) => bridge.postMain({ type: 'spool_action', act
         <section class="sp-scroll" :class="{ 'sp-two': columns.length > 1 }" :aria-label="t('list.label')" aria-live="polite" :aria-busy="listState === 'loading'">
           <OuiEmpty v-if="listState === 'loading'" state="loading" :title="t('list.loading')" role="status" />
           <OuiEmpty v-else-if="listState === 'no_url'" :image="shelf" :title="t('list.noUrl.title')" :text="t('list.noUrl.body')" data-test="empty-no-url">
-            <template #actions><Button :label="t('nav.openSettings')" @click="openSettings"><template #icon><OuiIcon :icon="settings" :size="14" /></template></Button></template></OuiEmpty>
+            <template #actions><Button :label="t('nav.openSettings')" @click="openSettings('s-src')"><template #icon><OuiIcon :icon="settings" :size="14" /></template></Button></template></OuiEmpty>
           <OuiEmpty v-else-if="listState === 'error'" state="error" :title="t('list.readFailed.title')" data-test="empty-error">
             <span class="oui-error-detail">{{ m.loadError }}</span>
             <template #actions><Button :label="t('common.retry')" @click="refresh"><template #icon><OuiIcon :icon="refreshIcon" :size="14" /></template></Button>
-              <Button severity="secondary" :label="t('nav.openSettings')" @click="openSettings" /></template></OuiEmpty>
+              <Button severity="secondary" :label="t('nav.openSettings')" @click="openSettings('s-src')" /></template></OuiEmpty>
           <OuiEmpty v-else-if="listState === 'empty'" :image="shelf" :title="t('list.empty.title')" :text="m.source === 'bambu' ? t('list.empty.bambu') : t('list.empty.body')" data-test="empty-none">
             <template #actions><Button v-if="m.source === 'spoolman'" :label="t('editor.add')" @click="openEditor(null)"><template #icon><OuiIcon :icon="plus" :size="14" /></template></Button><Button :label="t('list.refresh')" @click="refresh"><template #icon><OuiIcon :icon="refreshIcon" :size="14" /></template></Button></template></OuiEmpty>
           <OuiEmpty v-else-if="listState === 'no_match'" :icon="search" tone="neutral" :title="t('list.noMatch.title')" :text="t('list.noMatch.body')" data-test="empty-filter">

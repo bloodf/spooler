@@ -1,23 +1,24 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, ref } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import Button from 'primevue/button';
 import InputText from 'primevue/inputtext';
 import InputNumber from 'primevue/inputnumber';
 import Select from 'primevue/select';
 import Checkbox from 'primevue/checkbox';
 import RadioButton from 'primevue/radiobutton';
-import { OuiFormRow, OuiFormSection, OuiIcon, OuiRequirement, OuiSettings, OuiStatus, OuiSwatch, type OuiSettingsSection } from '../../shared/src/components';
+import { OuiFormRow, OuiFormSection, OuiIcon, OuiRequirement, OuiStatus, OuiSwatch, type OuiSettingsSection } from '../../shared/src/components';
 import { chart, check, drop, eye, files, info, languages, layers, plug, plus, printer, save as saveIcon, scale, spoolman, store, x } from '../../shared/src/icons';
 import SourceBlock from './SourceBlock.vue';
 import PresetsBlock from './PresetsBlock.vue';
 import SetupWizard from './SetupWizard.vue';
+import SettingsPages from '../components/SettingsPages.vue';
 import * as bridge from '../core/bridge';
 import { boot } from '../core/boot';
-import { m } from '../state/main';
+import { m, settingsPage } from '../state/main';
 import { t, tn, langPref, setLangPref, autoLocale, onLangPref } from '../core/i18n';
 import { LOCALES } from '../core/i18n-core';
 import type { LangPref } from '../core/i18n-core';
-import { form, saving, dirty, ready, saveWhy, update, save, checkUpdate, startSettings, openWizard, wizard, leave, rfidSkipped, unskipRfid, req, checkRequirements, type Requirement } from './state';
+import { conn, bambu, form, saving, dirty, ready, saveWhy, update, save, checkUpdate, startSettings, openWizard, wizard, leave, rfidSkipped, unskipRfid, req, checkRequirements, type Requirement } from './state';
 
 const stop = startSettings();
 onBeforeUnmount(stop);
@@ -74,9 +75,10 @@ const reqRow = (r: Requirement) => {
 };
 const reqMissing = computed(() => req.list.some(r => r.status === 'missing' || r.status === 'unreachable'));
 
-// The index beside the sections; the source flags itself until it passed a test (Save waits for it).
+// One page per section; the source flags itself until it passed a test (Save waits for it), and in red when the test failed.
+const srcState = computed(() => ((form.source === 'bambu' ? bambu.kind : conn.kind) === 'error' ? 'error' as const : ready.value ? undefined : 'warn' as const));
 const sections = computed<OuiSettingsSection[]>(() => [
-  { id: 's-src', label: t('set.source'), icon: spoolman, ...(ready.value ? {} : { state: 'warn' as const }) },
+  { id: 's-src', label: t('set.source'), icon: spoolman, ...(srcState.value ? { state: srcState.value } : {}) },
   { id: 's-req', label: t('req.title'), icon: plug, ...(reqMissing.value ? { state: 'warn' as const } : {}) },
   { id: 's-reorder', label: t('set.reorder'), icon: store },
   { id: 's-weights', label: t('set.weights'), icon: scale },
@@ -88,13 +90,24 @@ const sections = computed<OuiSettingsSection[]>(() => [
   { id: 's-printer', label: t('set.printer'), icon: printer },
   { id: 's-stats', label: t('set.stats'), icon: chart },
   { id: 's-lang', label: t('lang.title'), icon: languages },
+  { id: 's-about', label: t('set.about'), icon: info },
 ]);
+// A "Settings" link that names a page (the window's boot, or openSettings(page) in the tab) opens it once Settings shows.
+const pages = ref<InstanceType<typeof SettingsPages>>();
+function follow() {
+  const id = settingsPage.value || (boot.mode === 'settings' ? boot.page ?? '' : '');
+  if (!id || (boot.mode === 'tab' && m.view !== 'settings')) return;
+  settingsPage.value = ''; boot.page = '';
+  void nextTick(() => pages.value?.select(id));
+}
+watch([settingsPage, () => m.view], follow);
+onMounted(follow);
 </script>
 
 <template>
   <!-- One root: the tab hides this view with v-show and names it as a tab panel. -->
   <div class="set">
-  <OuiSettings :sections="sections" :nav-label="t('set.title')">
+  <SettingsPages ref="pages" :sections="sections" :nav-label="t('set.title')" :back-label="t('wiz.back')" :error-label="t('set.hasError')">
     <div class="oui-stack">
       <OuiFormSection id="s-src" :icon="spoolman" tone="magenta" :title="t('set.source')" :description="t('set.guideText')">
         <template #actions><Button severity="secondary" size="small" :label="t('set.openGuide')" data-test="open-guide" data-focus-key="open-guide" @click="openWizard" /></template>
@@ -225,6 +238,9 @@ const sections = computed<OuiSettingsSection[]>(() => [
         <OuiFormRow :label="t('lang.label')" :hint="t('lang.help')">
           <Select :model-value="langPref" :options="langOptions" option-label="label" option-value="value" :aria-label="t('lang.label')" data-test="lang"
                   @update:model-value="setLangPref($event as LangPref)" /></OuiFormRow>
+      </OuiFormSection>
+
+      <OuiFormSection id="s-about" :icon="info" tone="neutral" :title="t('set.about')">
         <OuiFormRow :label="t('set.version', { v: boot.version })">
           <Button v-if="update.newer" size="small" :label="t('set.newer', { v: update.newer })" @click="bridge.postSettings({ type: 'release' })" />
           <Button severity="secondary" size="small" :label="t('set.checkUpdate')" :loading="update.busy" @click="checkUpdate"><template #icon><OuiIcon :icon="info" :size="14" /></template></Button>
@@ -240,7 +256,7 @@ const sections = computed<OuiSettingsSection[]>(() => [
       <Button severity="secondary" text :label="t('common.cancel')" data-test="cancel" @click="leave" />
       <Button :label="t('set.save')" :disabled="!ready" :loading="saving" aria-describedby="save-why" data-test="save" @click="save"><template #icon><OuiIcon :icon="saveIcon" :size="14" /></template></Button>
     </template>
-  </OuiSettings>
+  </SettingsPages>
   <SetupWizard />
   </div>
 </template>
