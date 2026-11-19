@@ -67,6 +67,8 @@ const stackText = () => [q('[data-stack]'), ...qa('tr.sp-child')].map(vis).join(
 `;
 
 const scenarios = [];
+// shared: the scenario reads or writes localStorage that parallel pages share (file:// is one origin), so all such
+// scenarios run one after another on the first worker.
 const test = (name, body, opts = {}) => scenarios.push({ name, body, ...opts });
 
 // ------------------------------------------------------------------ list (test_display.py PageScriptTest)
@@ -113,14 +115,15 @@ test('cards: the toolbar toggle switches views, says which is on and is remember
   assert(!q('tr') && byTest('cards'), 'no table rows');
   const stack = q('.sc-card[data-stack]');
   assert(text(stack).includes('×2') && text(stack).includes('1,380 g of 2,000 g'), 'stack card with its count and totals: ' + text(stack));
-  eq(stack.getAttribute('aria-expanded'), 'false', 'stack closed');
-  await click(stack);
-  eq(qa('.sc-card.sp-child').map(c => c.dataset.spool), ['1', '2'], 'it opens to its spools');
+  await click(byTest('view-table'));
+  await click(q('[data-stack] .st-head'));
+  await click(byTest('view-cards'));
+  eq(qa('.sc-card.sp-child').map(c => c.dataset.spool), ['1', '2'], 'a stack opened in the table shows its spools as cards');
   assert(text(card(1)).includes('400 g of 1,000 g') && card(1).querySelector('.oui-level') && text(card(1)).includes('Shelf A'), 'weight, bar, location: ' + text(card(1)));
   await click(byTest('view-table'));
   assert(q('tr[data-spool="1"]'), 'back to the table, the stack still open');
   eq(localStorage.getItem('spooler.view'), 'table', 'table remembered');
-`);
+`, { shared: true });
 test('cards: a remembered pick wins until Settings changes the default', `
   await spools(SPOOLS, {spool_view: 'table'});
   assert(byTest('cards'), 'the viewer picked cards earlier');
@@ -130,11 +133,11 @@ test('cards: a remembered pick wins until Settings changes the default', `
   await spools(SPOOLS, {spool_view: 'table'});
   assert(q('tr[data-stack]') && !byTest('cards'), 'a new default replaces the pick');
   eq(localStorage.getItem('spooler.view'), null, 'pick forgotten');
-`, { storage: { 'spooler.view': 'cards' } });
+`, { shared: true, storage: { 'spooler.view': 'cards' } });
 test('cards: the Settings default applies with no pick', `
   await spools(SPOOLS, {spool_view: 'cards'});
   assert(byTest('cards') && byTest('view-cards').getAttribute('aria-pressed') === 'true', 'cards from Settings');
-`);
+`, { shared: true });
 test('cards: search, filters, sort and groups match the table', `
   ${CARD_SPOOLS}
   await spools(MIX);
@@ -162,7 +165,7 @@ test('cards: search, filters, sort and groups match the table', `
   await click(dry);
   eq(dry.getAttribute('aria-expanded'), 'false', 'group closed');
   assert(!ids().includes('12') && ids().length === 3, 'its card hidden: ' + ids());
-`);
+`, { shared: true });
 test('cards: each shows its spool, colour, weight and state; the unknown amount has the ? mark', `
   ${CARD_SPOOLS}
   await spools(MIX, {spool_view: 'cards'});
@@ -170,7 +173,14 @@ test('cards: each shows its spool, colour, weight and state; the unknown amount 
   for (const s of ['Signal', 'Polymaker', 'PETG', 'Red · #D22020', '80 g of 1,000 g', 'Dry box', 'Low', 'RFID']) assert(c.includes(s), s + ' in ' + c);
   assert(card(12).querySelector('.oui-spool .oui-spool-unknown') === null && card(14).querySelector('.oui-spool[data-unknown] .oui-spool-unknown'), '? only for the unknown amount');
   assert(!card(12).querySelector('button'), 'nothing interactive inside a card');
-`);
+  const cards = qa('.sc-card'), top = cards[0].getBoundingClientRect().top, first = cards.filter(c => c.getBoundingClientRect().top === top);
+  eq(first.length, 2, 'two cards a row beside the open detail at 1280 px');
+  eq(new Set(first.map(c => c.getBoundingClientRect().height)).size, 1, 'a row shares one height');
+  const cut = qa('.sc-card .oui-chip, .sc-card .oui-status, .sc-card .oui-chip .oui-truncate').filter(e => e.scrollWidth > e.clientWidth + 1).map(text);
+  eq(cut, [], 'no chip cut off');
+  const chips = card(12).querySelector('.sp-chips').getBoundingClientRect(), box = card(12).getBoundingClientRect();
+  assert(box.bottom - chips.bottom < 20, 'state chips at the bottom of the card');
+`, { shared: true });
 test('cards: a card is a button; click, Enter and Space open its detail', `
   ${CARD_SPOOLS}
   await spools(MIX, {spool_view: 'cards'});
@@ -182,13 +192,74 @@ test('cards: a card is a button; click, Enter and Space open its detail', `
   await until(() => panel(13), 'detail by Enter');
   card(12).focus(); await press('Space');
   await until(() => panel(12), 'detail by Space');
-`);
+`, { shared: true });
 test('cards: empty and error states are the table\'s', `
   await spools([], {spool_view: 'cards'});
   assert(byTest('empty-none') && !byTest('cards'), 'empty');
   await post({type: 'spools', ok: false, error: 'HTTP 500', spools: []});
   assert(byTest('empty-error'), 'error');
-`, { storage: { 'spooler.view': 'cards' } });
+`, { shared: true, storage: { 'spooler.view': 'cards' } });
+// ------------------------------------------------------------------ stacks in the detail (×n)
+const HALF = `const PAIR = [
+  {id: 31, remaining_weight: 0, initial_weight: 1000, location: 'SV06', filament: {id: 41, name: 'PETG Black', material: 'PETG', color_hex: '000000', vendor: {name: 'Acme'}}},
+  {id: 32, remaining_weight: 958, initial_weight: 1000, location: 'Shelf C', filament: {id: 41, name: 'PETG Black', material: 'PETG', color_hex: '000000', vendor: {name: 'Acme'}}}];`;
+test('stack: the list preselects the spool with the most left, never the empty one', `
+  ${HALF}
+  await spools(PAIR);
+  await until(() => panel(32), 'detail of the half-full spool');
+  assert(!panel(31), 'not the empty spool');
+  await spools([...PAIR].reverse());
+  assert(panel(32) && !panel(31), 'whatever the order');
+`);
+test('stack: opening a stack shows its total and its spools; a spool opens with a way back', `
+  ${HALF}
+  await spools(PAIR);
+  const head = q('tr[data-stack]');
+  assert(vis(head).includes('958 g of 2,000 g') && vis(head).includes('48%'), 'stack total: ' + vis(head));
+  assert(vis(head).includes('2 spools · 1 empty'), 'empty counted apart: ' + vis(head));
+  eq(q('.oui-spool', head).dataset.level, '4', 'the reel drawn at 958 of 2,000 g');
+  await click(head);
+  const box = byTest('stack-detail');
+  assert(box && vis(byTest('stack-total')).includes('958 g of 2,000 g · 48%'), 'total in the detail');
+  eq(qa('[data-pick]', box).map(b => b.dataset.pick), ['31', '32'], 'both spools listed');
+  assert(vis(q('[data-pick="31"]')).includes('#31') && vis(q('[data-pick="31"]')).includes('0 g of 1,000 g') && vis(q('[data-pick="31"]')).includes('Empty'), 'the empty spool: ' + vis(q('[data-pick="31"]')));
+  assert(vis(q('[data-pick="32"]')).includes('SV06') === false && vis(q('[data-pick="32"]')).includes('Shelf C'), 'its location');
+  assert(!q('tr.sp-child'), 'the row stays closed');
+  await click(q('[data-pick="31"]'));
+  await until(() => panel(31), 'spool 31 detail');
+  assert(byTest('stack-back') && text(byTest('stack-back')).includes('Back to the 2 spools'), 'a way back');
+  await click(byTest('stack-back'));
+  assert(byTest('stack-detail') && !panel(31), 'back on the list');
+  await click(q('tr[data-stack] .st-head'));
+  eq(qa('tr.sp-child').map(r => r.dataset.spool), ['31', '32'], 'the ×n chevron still opens it in place');
+`);
+test('stack: cards open the same list; the reel uses the stack total', `
+  ${HALF}
+  await spools(PAIR, {spool_view: 'cards'});
+  const c = q('.sc-card[data-stack]');
+  eq(q('.oui-spool', c).dataset.level, '4', 'the reel drawn at 958 of 2,000 g');
+  assert(vis(c).includes('1 empty'), 'empty counted: ' + vis(c));
+  await click(c);
+  assert(byTest('stack-detail') && qa('[data-pick]').length === 2, 'the stack list');
+`, { shared: true });
+test('stack: a spool at 0 g says Empty and offers Archive', `
+  ${HALF}
+  await spools([PAIR[0]]);
+  await until(() => panel(31), 'detail');
+  const chip = q('tr[data-spool="31"] .oui-status');
+  eq(text(chip), 'Empty', 'Empty, not Almost empty');
+  assert(byTest('empty-hint') && text(byTest('empty-hint')).includes('This spool is empty.'), 'a hint in the detail');
+  await click(byTest('archive-empty'));
+  await yes();
+  eq(lastOf('spool_action').action, 'archive', 'archive sent');
+  await spools([{...PAIR[0], remaining_weight: 10}]);
+  eq(text(q('tr[data-spool="31"] .oui-status')), 'Almost empty', '10 g is still almost empty');
+  await spools([{...PAIR[0], use_first: true}]);
+  assert(!q('tr[data-spool="31"] [data-chip="use-first"]'), 'no Use first on an empty spool');
+  await spools([{...PAIR[0], remaining_weight: 10, use_first: true}]);
+  assert(q('tr[data-spool="31"] [data-chip="use-first"]'), 'Use first while there is filament left');
+  assert(!byTest('empty-hint'), 'no hint above 0 g');
+`);
 test('every Display switch hides its part', `
   const off = Object.fromEntries(Object.keys(DEFAULTS).map(k => [k, false]));
   await spools(SPOOLS, {display: off});
@@ -1474,6 +1545,8 @@ test('editor: OrcaSlicer preset links the spool or its filament to one of your p
   await click(q('[data-edit="1"]'));
   await post({...editorData(RAW1), editor: {...editorData(RAW1).editor, preset_link: {presets: ['My PLA', 'My PETG'], spool: '', filament: 'My PETG'}}});
   await until(() => byTest('editor-link') && byTest('editor-link-fil'), 'both rows shown');
+  // As loaded(): typing before the dialog took the focus would lose keys to the list behind it.
+  await until(() => dialogEl() && !/enter|leave/.test(dialogEl().className) && dialogEl().contains(document.activeElement), 'editor open and focused');
   eq(q('#se-link-fil').value, 'My PETG', 'the filament link as Spoolman has it');
   await type(q('#se-link'), 'My PLA');
   await until(() => q('#se-link').value === 'My PLA', 'typed'); await settle();
@@ -1596,7 +1669,7 @@ let failed = 0;
 const results = [];
 try {
   await Promise.all(Array.from({ length: Math.min(workers, chosen.length) }, async (_, worker) => {
-    for (let k = worker; k < chosen.length; k += workers) {
+    for (const k of chosen.map((_, i) => i).filter(i => (chosen[i].shared ? worker === 0 : i % workers === worker))) {
       const sc = chosen[k];
       console.log(`START ${sc.name}`);
       const mode = sc.mode || 'tab';

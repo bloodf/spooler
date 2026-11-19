@@ -39,13 +39,15 @@ test('no English text is empty', () => {
 const NAMES = ['lang.en', 'lang.pt-BR', 'lang.es', 'lang.de', 'lang.zh-CN', 'lang.pl', 'printer.ams', 'printer.ht', 'printer.addAms', 'printer.addHt', 'link.button'];
 // "Gate" is the MMU's own word (Happy Hare, ERCF): Spanish and German keep it.
 const GATE = ['printer.gateN'];
+// "{n} s": seconds are written the same way.
+const UNIT = ['set.refreshOption'];
 const SAME: Record<string, string[]> = {
-  es: [...NAMES, ...GATE, 'common.ok', 'status.errorPrefix', 'filters.material', 'disp.material', 'disp.head_material', 'spool.rfid', 'progress.hm', 'progress.m', 'stats.materialsN_one'],
-  de: [...NAMES, ...GATE, 'common.ok', 'filters.material', 'disp.material', 'disp.head_material', 'spool.rfid', 'progress.hm', 'progress.m',
+  es: [...NAMES, ...GATE, ...UNIT, 'common.ok', 'status.errorPrefix', 'filters.material', 'disp.material', 'disp.head_material', 'spool.rfid', 'progress.hm', 'progress.m', 'stats.materialsN_one'],
+  de: [...NAMES, ...GATE, ...UNIT, 'common.ok', 'filters.material', 'disp.material', 'disp.head_material', 'spool.rfid', 'progress.hm', 'progress.m',
     'colour.orange', 'bambu.region', 'link.live', 'usage.slot', 'printer.extruder'],
   'zh-CN': NAMES,
   // Pressure advance stays in English, as in OrcaSlicer's Polish translation; Z-hop, Region and Slot are Polish too.
-  pl: [...NAMES, 'common.ok', 'spool.rfid', 'progress.hm', 'progress.m', 'cal.key.filament_z_hop', 'cal.key.pressure_advance',
+  pl: [...NAMES, ...UNIT, 'common.ok', 'spool.rfid', 'progress.hm', 'progress.m', 'cal.key.filament_z_hop', 'cal.key.pressure_advance',
     'presets.key.pressure_advance', 'bambu.region', 'usage.slot', 'printer.slotN', 'stats.waste.model'],
 };
 for (const [lang, allowed] of Object.entries(SAME)) {

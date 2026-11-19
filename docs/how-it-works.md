@@ -8,7 +8,9 @@ there (`# --- ... ---`) follow the same order as this page.
 
 The tab, the spool window and the Settings window show one Vue 3 + PrimeVue 5 page (the shared Orca UI
 foundation 4.2.2, vendored in `ui/shared/` with its licences, Lucide icons and the Manrope font included). `ui/` builds it into a single offline HTML file; `scripts/embed_ui.py`
-stores it zlib-compressed at the end of `spooler_any.py`, so the plugin is still one file. `page_html()` fills
+stores it zlib-compressed at the end of `spooler_any.py`, so the plugin is still one file. The page's script is
+served deflated and base64-encoded and unpacked in the page by `scripts/page_loader.js`, which keeps the page well
+under the 1.5 MB OrcaSlicer's WebView2 shows on Windows; `embed_ui.py` fails the build over 90% of that. `page_html()` fills
 the boot JSON: which surface (`tab`, `main`, `settings`), the saved settings, the host language and the
 user's language choice (`ui_language` in the settings file). The message contract with the plugin is the
 same as before: the Settings view tags its messages `view: "settings"` inside the tab.
@@ -149,8 +151,17 @@ giving a gate count (`mmu_present()`).
 
 **Assign spool** on a U1 toolhead or an ACE slot (`slot_bind()`, the `bind` and `unbind` card
 actions) writes the link the owning plugin reads: the spool's Spoolman location `<printer> T<n>`
-(U1 Control) or `<printer> S<n>` (Kobra Control), with the printer model as the name, and clears that
-location from any other spool. It writes nothing to the printer and is refused for other printers.
+(U1 Control) or `<printer> S<n>` (Kobra Control), and clears that location from any other spool. The
+name is the printer model, except for an ACE slot of the printer Kobra Control shows: there Kobra
+Control's presence names the printer (`"printer": {"host", "name"}`), and Spooler writes and reads that
+name, so a printer renamed in Kobra Control still links both ways (`location_names()`). It writes
+nothing to the printer and is refused for other printers.
+
+**One rule for both sides:** the spool's Spoolman location is the only record of which spool is on a
+slot. No plugin keeps links of its own, so a slot linked from two sides holds whichever location was
+written last, and every tab shows that after its next read. Each plugin re-reads Spoolman every 30 s
+while its tab is visible (10 to 300 s, or off, in its Spoolman settings), and right away when another
+plugin says it changed a link (below).
 
 Single-extruder Klipper printers can have their active spool changed from the Printer tab
 (`moon_set_spool()`, which posts to Moonraker's `/server/spoolman/spool_id`). It checks the printer
@@ -208,6 +219,12 @@ data folder is shared by all plugins. So from load to unload Spooler rewrites
 `session` per load, the process id and the Spoolman address without user name or password), and
 says `"stopped"` when it unloads. OrcaSlicer calls `on_load` even when the Spooler page is turned
 off in its Plugins dialog, so presence keeps running then.
+
+Each presence also carries `"links"`: the time (unix ms) that plugin last linked or unlinked a spool,
+0 when it hasn't. Spooler moves its own on Assign / Unassign and on a typed Move; on every beat it reads
+U1 Control's and Kobra Control's, and when one moved since the last beat, it tells the open page to
+re-read Spoolman (`watch_peer_links()`). U1 Control and Kobra Control do the same with Spooler's.
+Older plugins without `"links"` still sync on the timed refresh.
 
 Spooler does not book the filament of Anycubic Kobra prints; Kobra Control does. If Spooler ever
 books them, it must publish `"books": ["anycubic"]` under `provides` in `presence.json` in the same
