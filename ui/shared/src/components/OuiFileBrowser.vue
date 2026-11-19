@@ -11,8 +11,14 @@ import { chevronDown, chevronRight, file as fileIcon, files as filesIcon, folder
 
 /*
  * The Files tab of a printer plugin: folders in a tree on the left, the open folder's files as a table in the middle,
- * and what is selected on the right. The page owns the data: it gives the folders, the files of the open folder, and
- * does the work when the component emits `move`, `delete` or `open`.
+ * and what is selected on the right. One component for every printer plugin: the storage is behind an adapter
+ * (`OuiFileBackend`, ./fileBackend.ts) and `useFileBackend(adapter)` gives this component its props and handlers, so
+ * loading, failure, reloading after a change and what is offered are the same everywhere. The component itself only
+ * shows what it is given and emits `move`, `delete`, `open` and `retry`.
+ *
+ * A storage with no folders (no `folders`, or an empty list) has no tree, no path and no "Move to": the table takes the
+ * rail's place, and selecting and deleting work as they do with folders. A storage that has folders but cannot move
+ * files (`movable` false) keeps the tree for browsing and has no "Move to" and no dragging.
  *
  * Selecting: a click selects one file; Cmd/Ctrl-click and the checkbox add or remove one; Shift-click (and Shift with
  * the arrows) selects the range from the last one; the header checkbox and Cmd/Ctrl+A select all; Escape clears.
@@ -27,11 +33,18 @@ export interface OuiFile { id: string; name: string; /** Bytes and time for sort
 export interface OuiFileBrowserLabels { folders: string; files: string; name: string; size: string; modified: string; selectAll: string; select: (name: string) => string;
   items: (count: number) => string; selected: (count: number) => string; clear: string; moveTo: string; remove: string;
   removeTitle: (count: number) => string; removeText: string; andMore: (count: number) => string; cancel: string;
-  empty: string; emptyText?: string; loading: string; nothingSelected: string; nothingSelectedText?: string }
+  empty: string; emptyText?: string; loading: string; nothingSelected: string; nothingSelectedText?: string;
+  /** For `error`: what failed, in one sentence (the error itself is shown under it), and the button that tries again. */ loadFailed?: string; retry?: string }
 
-const props = defineProps<{ folders: OuiFolder[]; files: OuiFile[]; /** The open folder (v-model:folder). */ folder: string; /** Selected file ids (v-model:selected). */ selected: string[];
-  labels: OuiFileBrowserLabels; loading?: boolean; /** Moving and deleting are off (the printer is busy); the page says why, once. */ readonly?: boolean; describedby?: string }>();
-const emit = defineEmits<{ 'update:folder': [id: string]; 'update:selected': [ids: string[]]; move: [payload: { ids: string[]; to: string }]; delete: [ids: string[]]; open: [id: string] }>();
+const props = withDefaults(defineProps<{ /** The storage's folders, flat. None: the storage has no folders, and the tree and "Move to" are not shown. */ folders?: OuiFolder[];
+  files: OuiFile[]; /** The open folder (v-model:folder); '' when there are no folders. */ folder?: string; /** Selected file ids (v-model:selected). */ selected: string[];
+  labels: OuiFileBrowserLabels; loading?: boolean; /** Moving and deleting are off (the printer is busy); the page says why, once. */ readonly?: boolean; describedby?: string;
+  /** The storage can move files between folders (default true). False: the tree stays, "Move to" and dragging go. */ movable?: boolean;
+  /** The files could not be read: shown in place of the table, with `labels.loadFailed` and a `retry` button. */ error?: string | null;
+  /** A move or delete is under way: the bulk actions wait for it. */ busy?: boolean }>(), { folders: () => [], folder: '', movable: true });
+const emit = defineEmits<{ 'update:folder': [id: string]; 'update:selected': [ids: string[]]; move: [payload: { ids: string[]; to: string }]; delete: [ids: string[]]; open: [id: string]; retry: [] }>();
+const hasTree = computed(() => props.folders.length > 0);
+const locked = computed(() => props.readonly || props.busy);
 
 // ---- folders -------------------------------------------------------------------------------------------------------
 const byId = computed(() => new Map(props.folders.map(f => [f.id, f])));
@@ -133,10 +146,11 @@ function onTableKey(event: KeyboardEvent) {
 // ---- move and delete -----------------------------------------------------------------------------------------------
 const targets = computed(() => props.folders.filter(f => !f.locked && f.id !== props.folder).map(f => ({ id: f.id, label: trail(f.id).map(x => x.name).join(' / ') })));
 const moveChoice = ref<string | null>(null);
-function move(to: string, ids = props.selected) { if (props.readonly || !ids.length || to === props.folder || byId.value.get(to)?.locked) return; emit('move', { ids: [...ids], to }); setSelected([]); }
+const canMove = computed(() => hasTree.value && props.movable && targets.value.length > 0);
+function move(to: string, ids = props.selected) { if (!canMove.value || locked.value || !ids.length || to === props.folder || byId.value.get(to)?.locked) return; emit('move', { ids: [...ids], to }); setSelected([]); }
 function onMoveChoice(to: string | null) { if (to) move(to); nextTick(() => { moveChoice.value = null; }); }
 const confirming = ref<string[]>([]);
-function askDelete() { if (!props.readonly && props.selected.length) confirming.value = [...props.selected]; }
+function askDelete() { if (!locked.value && props.selected.length) confirming.value = [...props.selected]; }
 function confirmDelete() { emit('delete', confirming.value); confirming.value = []; }
 const confirmNames = computed(() => confirming.value.slice(0, 4).map(id => props.files.find(f => f.id === id)?.name ?? id));
 
@@ -145,7 +159,7 @@ const dragging = ref<string[]>([]);
 const dropOn = ref<string | null>(null);
 const ghost = ref<HTMLElement>();
 function onDragStart(event: DragEvent, id: string) {
-  if (props.readonly || !event.dataTransfer) { event.preventDefault(); return; }
+  if (!canMove.value || locked.value || !event.dataTransfer) { event.preventDefault(); return; }
   const ids = picked.value.has(id) ? [...props.selected] : [id];
   if (!picked.value.has(id)) { setSelected(ids); anchor.value = id; }
   dragging.value = ids;
@@ -162,8 +176,8 @@ function onDragEnd() { dragging.value = []; dropOn.value = null; }
 const one = computed(() => (pickedRows.value.length === 1 ? pickedRows.value[0] : null));
 </script>
 <template>
-  <div class="oui-files"><div class="oui-files-grid" :data-dragging="dragging.length ? true : undefined">
-    <nav class="oui-files-rail" :aria-label="labels.folders">
+  <div class="oui-files"><div class="oui-files-grid" :data-flat="!hasTree || undefined" :data-dragging="dragging.length ? true : undefined">
+    <nav v-if="hasTree" class="oui-files-rail" :aria-label="labels.folders">
       <p class="oui-label oui-files-railhead">{{ labels.folders }}</p>
       <div ref="tree" class="oui-files-tree" role="tree" :aria-label="labels.folders" @keydown="onTreeKey">
         <div v-for="node in nodes" :key="node.folder.id" role="treeitem" class="oui-files-folder" :data-folder="node.folder.id" :aria-level="node.depth" :aria-expanded="node.branch ? node.open : undefined"
@@ -179,8 +193,8 @@ const one = computed(() => (pickedRows.value.length === 1 ? pickedRows.value[0] 
     </nav>
 
     <section class="oui-files-list" :aria-label="labels.files">
-      <div class="oui-files-toolbar">
-        <ol class="oui-files-path" :aria-label="labels.folders">
+      <div v-if="hasTree || $slots.toolbar" class="oui-files-toolbar">
+        <ol v-if="hasTree" class="oui-files-path" :aria-label="labels.folders">
           <li v-for="(f, i) in path" :key="f.id"><OuiIcon v-if="i" :icon="chevronRight" :size="12" class="oui-muted" />
             <button v-if="i < path.length - 1" type="button" class="oui-files-crumb" @click="openFolder(f.id)">{{ f.name }}</button><strong v-else aria-current="page">{{ f.name }}</strong></li>
         </ol>
@@ -193,13 +207,16 @@ const one = computed(() => (pickedRows.value.length === 1 ? pickedRows.value[0] 
           <Button :label="labels.clear" severity="secondary" text size="small" @click="setSelected([])"><template #icon><OuiIcon :icon="closeIcon" :size="13" /></template></Button>
           <span class="oui-spacer" />
           <slot name="bulk" :ids="selected" />
-          <Select v-model="moveChoice" :options="targets" option-label="label" option-value="id" :placeholder="labels.moveTo" :aria-label="labels.moveTo" size="small" class="oui-files-move"
-            :disabled="readonly || !targets.length" :aria-describedby="describedby" @update:model-value="onMoveChoice" />
-          <Button :label="labels.remove" severity="danger" outlined size="small" :disabled="readonly" :aria-describedby="describedby" @click="askDelete"><template #icon><OuiIcon :icon="trash" :size="13" /></template></Button>
+          <Select v-if="canMove" v-model="moveChoice" :options="targets" option-label="label" option-value="id" :placeholder="labels.moveTo" :aria-label="labels.moveTo" size="small" class="oui-files-move"
+            :disabled="locked" :aria-describedby="describedby" @update:model-value="onMoveChoice" />
+          <Button :label="labels.remove" severity="danger" outlined size="small" :disabled="locked" :aria-describedby="describedby" @click="askDelete"><template #icon><OuiIcon :icon="trash" :size="13" /></template></Button>
         </template>
       </div>
       <div class="oui-files-scroll">
-        <table ref="table" class="oui-files-table" role="grid" aria-multiselectable="true" :aria-busy="loading || undefined" @keydown="onTableKey">
+        <OuiEmpty v-if="error" state="error" :title="labels.loadFailed ?? error" :text="labels.loadFailed ? error : undefined">
+          <template v-if="labels.retry" #actions><Button :label="labels.retry" severity="secondary" size="small" data-files-retry @click="emit('retry')" /></template>
+        </OuiEmpty>
+        <table v-else ref="table" class="oui-files-table" role="grid" aria-multiselectable="true" :aria-busy="loading || busy || undefined" @keydown="onTableKey">
           <thead><tr>
             <th class="oui-files-check"><input type="checkbox" :checked="all" :indeterminate="selected.length > 0 && !all" :aria-label="labels.selectAll" :disabled="!rows.length" @change="setSelected(all ? [] : rows.map(f => f.id))"></th>
             <th v-for="col in (['name', 'size', 'modified'] as const)" :key="col" :class="{ 'oui-num': col !== 'name' }" :aria-sort="sortKey === col ? (sortDown ? 'descending' : 'ascending') : 'none'">
@@ -207,7 +224,7 @@ const one = computed(() => (pickedRows.value.length === 1 ? pickedRows.value[0] 
           </tr></thead>
           <tbody v-if="loading"><tr v-for="n in 6" :key="n" class="oui-files-skeleton"><td /><td><span class="oui-skeleton" :style="{ width: 40 + (n * 37) % 45 + '%' }" /></td><td><span class="oui-skeleton" /></td><td><span class="oui-skeleton" /></td></tr></tbody>
           <tbody v-else>
-            <tr v-for="f in rows" :key="f.id" class="oui-files-row" :data-file="f.id" :aria-selected="picked.has(f.id)" :tabindex="(rowFocus ?? rows[0].id) === f.id ? 0 : -1" :draggable="!readonly"
+            <tr v-for="f in rows" :key="f.id" class="oui-files-row" :data-file="f.id" :aria-selected="picked.has(f.id)" :tabindex="(rowFocus ?? rows[0].id) === f.id ? 0 : -1" :draggable="canMove && !locked"
               :data-dragged="dragging.includes(f.id) || undefined" @click="onRowClick($event, f.id)" @dblclick="emit('open', f.id)" @focus="rowFocus = f.id" @dragstart="onDragStart($event, f.id)" @dragend="onDragEnd">
               <td class="oui-files-check" @click.stop><input type="checkbox" tabindex="-1" :checked="picked.has(f.id)" :aria-label="labels.select(f.name)" @click="onCheck($event, f.id)"></td>
               <td><div class="oui-files-name"><OuiThumb :src="f.thumb" :size="32" :icon="fileIcon" /><span class="oui-truncate" :title="f.name">{{ f.name }}</span><span v-if="f.kind" class="oui-chip">{{ f.kind }}</span></div></td>
@@ -215,8 +232,9 @@ const one = computed(() => (pickedRows.value.length === 1 ? pickedRows.value[0] 
             </tr>
           </tbody>
         </table>
-        <OuiEmpty v-if="!loading && !rows.length" compact :icon="folderIcon" :title="labels.empty" :text="labels.emptyText"><template v-if="$slots.empty" #actions><slot name="empty" /></template></OuiEmpty>
+        <OuiEmpty v-if="!error && !loading && !rows.length" compact :icon="folderIcon" :title="labels.empty" :text="labels.emptyText"><template v-if="$slots.empty" #actions><slot name="empty" /></template></OuiEmpty>
       </div>
+      <div v-if="!hasTree && $slots.rail" class="oui-files-listfoot"><slot name="rail" /></div>
     </section>
 
     <aside class="oui-files-detail" aria-live="polite">
@@ -247,6 +265,9 @@ const one = computed(() => (pickedRows.value.length === 1 ? pickedRows.value[0] 
 .oui-files { container: oui-files / inline-size; min-width: 0; height: var(--oui-files-height, auto); min-height: 360px; }
 .oui-files-grid { position: relative; display: grid; grid-template-columns: 232px minmax(0, 1fr) 300px; height: 100%; min-height: inherit; overflow: hidden; background: var(--oui-surface);
   border-radius: var(--oui-radius-lg); box-shadow: inset 0 0 0 1px var(--oui-border), var(--oui-shadow-panel); }
+/* No folders: the table takes the rail's place. */
+.oui-files-grid[data-flat] { grid-template-columns: minmax(0, 1fr) 300px; }
+.oui-files-listfoot { padding: var(--oui-s2) var(--oui-s3); border-top: 1px solid var(--oui-border); }
 .oui-files-rail { display: flex; flex-direction: column; min-width: 0; min-height: 0; border-inline-end: 1px solid var(--oui-border); background: var(--oui-raised); }
 .oui-files-railhead { padding: var(--oui-s3) var(--oui-s3) var(--oui-s1); }
 .oui-files-tree { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 0 var(--oui-s1) var(--oui-s2); }
@@ -300,12 +321,14 @@ const one = computed(() => (pickedRows.value.length === 1 ? pickedRows.value[0] 
 /* Narrower: the detail goes under the list; narrower still, the folders go above it. */
 @container oui-files (max-width: 980px) {
   .oui-files-grid { grid-template-columns: 208px minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; }
+  .oui-files-grid[data-flat] { grid-template-columns: minmax(0, 1fr); }
   .oui-files-detail { grid-column: 1 / -1; grid-template-columns: 160px minmax(0, 1fr); border-inline-start: 0; border-top: 1px solid var(--oui-border); }
   .oui-files-detail > .oui-files-preview { grid-row: span 3; }
   .oui-files-detail > .oui-empty { grid-column: 1 / -1; padding-block: var(--oui-s3); }
 }
 @container oui-files (max-width: 620px) {
   .oui-files-grid { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto; }
+  .oui-files-grid[data-flat] { grid-template-rows: minmax(0, 1fr) auto; }
   .oui-files-rail { border-inline-end: 0; border-bottom: 1px solid var(--oui-border); max-height: 168px; }
   .oui-files-table th:nth-child(4), .oui-files-table td:nth-child(4) { display: none; }
 }

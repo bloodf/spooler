@@ -1,4 +1,22 @@
-# Orca UI foundation 5.0.0 — Vue and PrimeVue
+# Orca UI foundation 5.0.2 — Vue and PrimeVue
+
+Version 5.0.2 fixes `OuiHint` (and so every `OuiPanel` with a `hint`); nothing else changes:
+
+- A closed bubble was only invisible, and still counted toward the page's width: an (i) near the right edge gave the page a horizontal scrollbar, and its open bubble was cut off by the window. Closed, the bubble is now `display: none` (it is still the button's `aria-describedby` text).
+- Each time it opens, the bubble is placed against the window: under the button and starting at it when that fits, moved left as far as it must, and above the button when there is no room below. No prop is needed for an (i) near an edge. `end` still exists and is now only a preference.
+
+To update from 5.0.1, replace `ui/shared/` with the 5.0.2 snapshot and rebuild. Remove any CSS a plugin added to move or hide `.oui-hint-bubble`, and any `end` added only to avoid the overflow.
+
+## 5.0.1
+
+Version 5.0.1 makes the Files tab one component for both printer plugins; nothing that 5.0.0 pages rely on changes:
+
+- `useFileBackend(backend, options)` (new, `src/components/fileBackend.ts`) turns a storage adapter (`OuiFileBackend`: `folders()`, `list()`, `remove()`, `move()`) into the props and handlers of `OuiFileBrowser`: reading, the failure state with its retry, running a move or delete and reading again afterwards.
+- `OuiFileBrowser` works over a storage with no folders (`folders` omitted or empty): no tree, no path, no "Move to", no dragging; the table takes the rail's place and multi-select, delete and the detail panel are unchanged. `movable` false keeps the tree and drops moving. New props `error`, `busy`, `movable`; new event `retry`; new optional labels `loadFailed`, `retry`. `folders` and `folder` are now optional.
+
+To update from 5.0.0, replace `ui/shared/` with the 5.0.1 snapshot (one more file) and rebuild. `MIGRATION-5.0.md` has the adapter's contract.
+
+## 5.0.0
 
 Version 5.0.0 is a redesign and a breaking release: the pages take OrcaSlicer's own colours. `DESIGN.md` is the specification, `MIGRATION-5.0.md` the procedure for a plugin. In short:
 
