@@ -71,6 +71,11 @@ class UseFirstTest(unittest.TestCase):
         self.assertEqual(sp.use_first_id([spool(1, 500, first_used="2026-01-01"),
                                           spool(2, 500, archived=True)]), {})
 
+    def test_an_empty_spool_is_never_used_first(self):
+        empty = spool(1, 0, first_used="2026-01-01T00:00:00")
+        self.assertEqual(sp.use_first_id([empty, spool(2, 900, first_used="2026-02-01T00:00:00"), spool(3, 500)]), {5: 2})
+        self.assertEqual(sp.use_first_id([empty, spool(2, 900)]), {})
+
 
 class PlateNoticeTest(unittest.TestCase):
     SLOT = {"preset": "", "vendor": "Acme", "material": "PLA", "colour": "111111", "sub_type": "", "n": 1,

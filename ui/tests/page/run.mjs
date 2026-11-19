@@ -254,6 +254,10 @@ test('stack: a spool at 0 g says Empty and offers Archive', `
   eq(lastOf('spool_action').action, 'archive', 'archive sent');
   await spools([{...PAIR[0], remaining_weight: 10}]);
   eq(text(q('tr[data-spool="31"] .oui-status')), 'Almost empty', '10 g is still almost empty');
+  await spools([{...PAIR[0], use_first: true}]);
+  assert(!q('tr[data-spool="31"] [data-chip="use-first"]'), 'no Use first on an empty spool');
+  await spools([{...PAIR[0], remaining_weight: 10, use_first: true}]);
+  assert(q('tr[data-spool="31"] [data-chip="use-first"]'), 'Use first while there is filament left');
   assert(!byTest('empty-hint'), 'no hint above 0 g');
 `);
 test('every Display switch hides its part', `
