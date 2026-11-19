@@ -7,8 +7,8 @@ import { m } from '../state/main';
 import { t, tn, fmt } from '../core/i18n';
 import { LIVE_STALE, PROG_LIVE, PROG_STATES, type LivePrinter } from '../logic/printers';
 
-// Print progress from Live Link printers; idle printers stay as one line unless Settings hides them. The first print
-// is the page's accent block; a printer that stopped reporting keeps its last values, in grey.
+// Print progress from Live Link printers; idle printers stay as one line unless Settings hides them. Each running print
+// is the shared status block; a printer that stopped reporting keeps its last values, in grey.
 const list = computed(() => (m.liveOn && m.progress.on ? m.live.printers.filter(lv => m.live.links?.[lv.link as string] === 'live' && lv.job) : []));
 const hide = computed(() => m.progress.idle === 'hide');
 const busy = computed(() => list.value.filter(lv => (hide.value ? PROG_LIVE.includes(lv.job!.state) : !!PROG_STATES[lv.job!.state])));
@@ -50,8 +50,8 @@ function facts(lv: LivePrinter) {
 <template>
   <OuiPanel v-if="running.length || done.length || idle.length" flush class="pg" data-test="progress">
     <h2 class="oui-sr">{{ t('progress.title') }}</h2>
-    <div v-for="(lv, i) in running" :key="lv.link" class="pg-job" :class="{ 'pg-more': i > 0 }">
-      <OuiJob :hero="i === 0" :compact="i > 0" :stale="stale(lv)" :name="lv.job!.name || t('stats.print')" :progress="pct(lv)" :progress-label="t('progress.bar', { name: lv.job!.name || '' })" :detail="line(lv)">
+    <div v-for="lv in running" :key="lv.link" class="pg-job">
+      <OuiJob :stale="stale(lv)" :name="lv.job!.name || t('stats.print')" :progress="pct(lv)" :progress-label="t('progress.bar', { name: lv.job!.name || '' })" :detail="line(lv)">
         <template #status><OuiStatus v-if="stale(lv)" state="stale">{{ t('link.stale') }}</OuiStatus><OuiStatus v-else :state="STATE[lv.job!.state]">{{ t(`progress.state.${lv.job!.state}` as any) }}</OuiStatus></template>
         <OuiReadout v-for="x in facts(lv)" :key="x.label" :icon="x.icon" :label="x.label" :value="x.value" size="sm" :stale="stale(lv)" />
       </OuiJob>
@@ -68,8 +68,9 @@ function facts(lv: LivePrinter) {
   </OuiPanel>
 </template>
 <style>
-.pg-more { padding: var(--oui-s3) var(--oui-s4); border-top: 1px solid var(--oui-border); }
-.pg-idle { padding: var(--oui-s2) var(--oui-s4); border-top: 1px solid var(--oui-border); }
+.pg-job { padding: var(--oui-s3); }
+.pg-job + .pg-job { border-top: 1px solid var(--oui-border); }
+.pg-idle { padding: var(--oui-s2) var(--oui-s3); border-top: 1px solid var(--oui-border); }
 .pg > .oui-panel-body > :first-child:not(.pg-job) { border-top: 0; }
 .pg { overflow: hidden; }
 .pg-done { flex-wrap: nowrap; }

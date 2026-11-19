@@ -6,7 +6,7 @@ import Password from 'primevue/password';
 import Select from 'primevue/select';
 import Checkbox from 'primevue/checkbox';
 import MultiSelect from 'primevue/multiselect';
-import { OuiIcon, OuiPanel, OuiStatus, type OuiState } from '../../shared/src/components';
+import { OuiHint, OuiIcon, OuiPanel, OuiStatus, type OuiState } from '../../shared/src/components';
 import { edit, link as linkIcon, plus, printer as printerIcon, trash, x } from '../../shared/src/icons';
 import LiveUnits from './LiveUnits.vue';
 import SpoolSlot from './SpoolSlot.vue';
@@ -121,7 +121,7 @@ const toolOf = (u: ManualUnit) => { const n = u.kind === 'tool' ? p.value.units.
 </script>
 
 <template>
-  <OuiPanel class="pp" :icon="printerIcon" tone="magenta" :aria-labelledby="`pp-${p.id}`">
+  <OuiPanel class="pp" :icon="printerIcon" :aria-labelledby="`pp-${p.id}`">
     <template #title>
       <InputText v-if="ui.renaming === p.id" ref="nameInput" v-model="draftName" size="small" maxlength="40" :aria-label="t('printer.nameLabel')"
                  @keydown.enter.prevent="commitName(true)" @keydown.escape.prevent="commitName(false)" @blur="commitName(true)" />
@@ -149,10 +149,9 @@ const toolOf = (u: ManualUnit) => { const n = u.kind === 'tool' ? p.value.units.
           <label :for="`fill-${p.id}`">{{ t('link.sliceFill') }}</label></span>
         <div class="oui-row pp-full"><Button type="submit" :label="t('common.save')" />
           <Button severity="secondary" text :label="t('common.cancel')" @click="ui.linkOpen = ''" />
+          <OuiHint :label="t('link.button')"><span class="sp-hint-p">{{ linkHelp }}</span><span v-if="form.type !== 'bambu'" class="sp-hint-p">{{ t('printer.netNote') }}</span></OuiHint>
           <span class="oui-spacer" />
-          <Button v-if="p.ip" severity="danger" text :label="t('link.remove')" @click="linkSave(true)" /></div>
-        <p class="oui-meta pp-full">{{ linkHelp }}</p>
-        <p v-if="form.type !== 'bambu'" class="oui-meta pp-full">{{ t('printer.netNote') }}</p>
+          <Button v-if="p.ip" severity="danger" outlined :label="t('link.remove')" @click="linkSave(true)" /></div>
       </form>
 
       <LiveUnits v-if="live && lv && !net && !handSet" :lv="lv" :link="p.id" />
@@ -186,13 +185,12 @@ const toolOf = (u: ManualUnit) => { const n = u.kind === 'tool' ? p.value.units.
                   @update:model-value="n => setGates(p.id, n)" /></div>
         <span v-if="handSet" class="oui-row"><Checkbox :model-value="p.slice_fill !== false" binary :input-id="`kfill-${p.id}`" data-test="klipper-fill" @update:model-value="v => setSliceFill(p.id, v)" />
           <label :for="`kfill-${p.id}`">{{ t('printer.sliceFillSlots') }}</label></span>
-        <p class="oui-meta pp-full">{{ tools >= 2 ? t('printer.klipperToolsNote') : t('printer.gatesNote') }}</p>
+        <OuiHint class="pp-khint" :label="t('printer.gateCount')" :text="tools >= 2 ? t('printer.klipperToolsNote') : t('printer.gatesNote')" />
       </div>
       <div v-if="askPresets" class="oui-field pp-presets" data-test="presets">
-        <label :for="`presets-${p.id}`">{{ t('printer.presets') }}</label>
+        <span class="oui-row"><label :for="`presets-${p.id}`">{{ t('printer.presets') }}</label><OuiHint :label="t('printer.presets')" :text="t('printer.presetsHelp')" /></span>
         <MultiSelect :model-value="myPresets" :input-id="`presets-${p.id}`" :options="presetOptions" :placeholder="t('printer.presetsAuto')" filter display="chip" :max-selected-labels="3"
                      :aria-label="t('printer.presetsLabel', { printer: p.name })" @update:model-value="v => setPresets(p.id, v)" />
-        <p class="oui-meta">{{ t('printer.presetsHelp') }}</p>
       </div>
     </div>
 
@@ -216,7 +214,9 @@ const toolOf = (u: ManualUnit) => { const n = u.kind === 'tool' ? p.value.units.
 .pp-lab { font-size: var(--oui-text-sm); font-weight: 600; color: var(--oui-muted); }
 .pp-full { grid-column: 1 / -1; }
 .pp-chip { margin-inline-start: var(--oui-s1); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.pp-klipper { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--oui-s3); padding: var(--oui-s3); align-items: end; }
+.pp-klipper { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--oui-s3); padding: var(--oui-s3); }
+.pp-klipper > .oui-field { flex: 0 1 220px; }
+.pp-klipper > .oui-row, .pp-khint { align-self: center; }
 .pp-presets { max-width: 60ch; }
 .pp-presets .p-multiselect { width: 100%; }
 </style>

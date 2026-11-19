@@ -2,7 +2,7 @@
 import { computed } from 'vue';
 import Column from 'primevue/column';
 import DataTable from 'primevue/datatable';
-import { OuiIcon, OuiLevel, OuiSpool, OuiSwatch, materialTone } from '../../shared/src/components';
+import { OuiIcon, OuiLevel, OuiSpool, OuiSwatch } from '../../shared/src/components';
 import { chevronDown, chevronRight, edit, mapPin } from '../../shared/src/icons';
 import SpoolChips from './SpoolChips.vue';
 import { boot } from '../core/boot';
@@ -62,12 +62,12 @@ function onRow(r: Row) { if (r.kind === 'stack') pickStack(r.items.map(s => s.id
       </button>
       <button v-if="!r.hidden" type="button" class="sc-card" :class="[rowClass(r), { 'sc-sel': isSel(r) }]" v-bind="rowAttrs(r)"
  :aria-current="isSel(r) || undefined" @click="onRow(r)">
-        <OuiSpool v-bind="spoolPaint(fil(r))" :direction="spoolDirection(fil(r))" :fraction="frac(sum(r))" :size="r.kind === 'spool' && r.child ? 64 : 80" />
+        <OuiSpool v-bind="spoolPaint(fil(r))" :direction="spoolDirection(fil(r))" :fraction="frac(sum(r))" :size="r.kind === 'spool' && r.child ? 48 : 64" />
         <span class="sc-body">
           <span class="sp-name"><span class="oui-truncate oui-strong" :title="name(r)">{{ name(r) }}</span>
             <span v-if="r.kind === 'stack'" class="oui-chip oui-num st-head"><span class="st-count">×{{ r.items.length }}</span></span></span>
           <span v-if="fil(r).vendor?.name && shown(m.disp, 'vendor')" class="oui-meta sc-wrap" :title="fil(r).vendor!.name">{{ fil(r).vendor!.name }}</span>
-          <span class="sc-line"><span v-if="fil(r).material && shown(m.disp, 'material')" class="oui-chip" :data-tone="materialTone(fil(r).material)">{{ fil(r).material }}</span>
+          <span class="sc-line"><span v-if="fil(r).material && shown(m.disp, 'material')" class="oui-chip">{{ fil(r).material }}</span>
             <span v-if="colourOf(r)" class="sc-colour oui-meta"><OuiSwatch :color="spoolPaint(fil(r)).color || '#9a9a9a'" /><span class="oui-truncate">{{ colourOf(r) }}</span></span></span>
           <span class="sp-left oui-num" data-test="weight"><span><strong>{{ left(sum(r)) }}</strong><span v-if="leftOf(sum(r))" class="oui-muted">{{ ' ' + leftOf(sum(r)) }}</span><span v-if="pctSide(sum(r))" class="oui-muted"> · {{ pctSide(sum(r)) }}</span></span>
             <OuiLevel v-if="shown(m.disp, 'bar')" class="sc-track" :fraction="frac(sum(r))" :tone="levelTone(level(r))"
@@ -101,13 +101,13 @@ function onRow(r: Row) { if (r.kind === 'stack') pickStack(r.items.map(s => s.id
               <button v-else-if="m.source === 'spoolman'" type="button" class="sp-edit" :aria-label="t('editor.editTitle', { id: r.spool.id })" :title="t('editor.editTitle', { id: r.spool.id })"
                       :data-edit="r.spool.id" @click.stop="openEditor(r.spool.id)"><OuiIcon :icon="edit" :size="13" /></button></p>
             <p v-if="meta(r) || note(r)" class="oui-meta oui-truncate"><span class="sc-subtext">{{ meta(r) }}</span><span v-if="note(r)" class="sc-note" :title="note(r)">{{ meta(r) ? ' · ' : '' }}{{ note(r) }}</span></p>
-            <span v-if="r.kind === 'spool'" class="sp-narrow"><span v-if="fil(r).material && shown(m.disp, 'material')" class="oui-chip" :data-tone="materialTone(fil(r).material)">{{ fil(r).material }}</span><SpoolChips :spool="r.spool" /></span>
+            <span v-if="r.kind === 'spool'" class="sp-narrow"><span v-if="fil(r).material && shown(m.disp, 'material')" class="oui-chip">{{ fil(r).material }}</span><SpoolChips :spool="r.spool" /></span>
           </div>
         </div>
       </template>
     </Column>
     <Column v-if="shown(m.disp, 'material')" :header="t('filters.material')" class="sp-wide sp-c-mat">
-      <template #body="{ data: r }"><span v-if="fil(r).material" class="oui-chip" :data-tone="materialTone(fil(r).material)">{{ fil(r).material }}</span></template>
+      <template #body="{ data: r }"><span v-if="fil(r).material" class="oui-chip">{{ fil(r).material }}</span></template>
     </Column>
     <Column v-if="shown(m.disp, 'location')" :header="t('menu.location')" class="sp-wider sp-c-loc">
       <template #body="{ data: r }"><span v-if="r.kind === 'spool'" class="sp-loc" :class="{ 'oui-muted': !r.spool.location }" :title="r.spool.location || undefined">
@@ -129,15 +129,16 @@ function onRow(r: Row) { if (r.kind === 'stack') pickStack(r.items.map(s => s.id
 </template>
 
 <style>
-/* Cards: as many 260 px columns as fit (two beside the open detail at 1280 px), one in a narrow window. The cards of a
-   row share its height, with the state chips at the bottom; chips and names wrap rather than cut. */
-.sc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr)); gap: var(--oui-s3); padding: var(--oui-s3); }
+/* Cards: neutral, as many 248 px columns as fit (three beside the open detail at 1280 px), one in a narrow window. The
+   drawn spool is the colour on the card. The cards of a row share its height, with the state chips at the bottom; chips
+   and names wrap rather than cut. The open one has the teal frame. */
+.sc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(248px, 100%), 1fr)); gap: var(--oui-s2); padding: var(--oui-s3); }
 .orca-ui .sc-ghead { grid-column: 1 / -1; padding: var(--oui-s1) 0; border-bottom: 1px solid var(--oui-border); }
-.orca-ui .sc-card { display: flex; gap: var(--oui-s3); align-items: flex-start; min-width: 0; padding: var(--oui-s3); border: 1px solid var(--oui-border); border-radius: var(--oui-radius);
-  background: var(--oui-surface); color: var(--oui-text); font: inherit; text-align: start; cursor: pointer; }
-.orca-ui .sc-card:hover { border-color: var(--oui-control-border); }
-.orca-ui .sc-card:focus-visible { outline: 2px solid var(--oui-primary); outline-offset: 1px; }
-.orca-ui .sc-card.sc-sel { border-color: var(--oui-primary); box-shadow: inset 0 0 0 1px var(--oui-primary); }
+.orca-ui .sc-card { display: flex; gap: var(--oui-s3); align-items: flex-start; min-width: 0; padding: var(--oui-s3); border: 0; border-radius: var(--oui-radius-lg);
+  background: var(--oui-raised); box-shadow: inset 0 0 0 1px var(--oui-border); color: var(--oui-text); font: inherit; text-align: start; cursor: pointer; }
+.orca-ui .sc-card:hover { box-shadow: inset 0 0 0 1px var(--oui-control-border); }
+.orca-ui .sc-card:focus-visible { outline: 2px solid var(--oui-primary-mark); outline-offset: 1px; }
+.orca-ui .sc-card.sc-sel { box-shadow: inset 0 0 0 2px var(--oui-primary-mark); }
 .sc-card.sp-child { margin-inline-start: var(--oui-s4); }
 .sc-card.sp-archived > * { opacity: .72; }
 .sc-body { display: flex; flex-direction: column; gap: 4px; flex: 1; align-self: stretch; min-width: 0; }
@@ -162,7 +163,7 @@ function onRow(r: Row) { if (r.kind === 'stack') pickStack(r.items.map(s => s.id
 .sp-spool-id { display: grid; gap: 1px; min-width: 0; }
 .sp-name { display: flex; align-items: center; gap: var(--oui-s2); min-width: 0; }
 .sp-edit { flex: none; display: inline-grid; place-items: center; width: 24px; height: 24px; padding: 0; border: 0; border-radius: var(--oui-radius); color: var(--oui-muted); background: none; cursor: pointer; }
-.sp-edit:hover { color: var(--oui-text); background: var(--oui-primary-soft); }
+.sp-edit:hover { color: var(--oui-text); background: var(--oui-control); }
 .orca-ui .st-head { flex: none; border: 0; cursor: pointer; font: inherit; font-size: var(--oui-text-xs); font-weight: 600; }
 .sp-left { display: grid; gap: 4px; }
 .sp-loc { display: flex; align-items: center; gap: 5px; min-width: 0; }

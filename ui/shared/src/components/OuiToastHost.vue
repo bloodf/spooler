@@ -65,7 +65,7 @@ watch(() => toastList.list.map(t => t.id), (ids) => {
 .oui-toast-text { flex: 1 1 auto; min-width: 0; padding-top: 2px; overflow-wrap: anywhere; }
 .oui-toast-text > strong { font-weight: 700; }
 .oui-toast-action, .oui-toast-close { flex: none; display: inline-grid; place-items: center; min-height: 28px; border: 0; border-radius: var(--oui-radius); background: none; cursor: pointer; }
-.oui-toast-action { padding: 0 8px; font-weight: 650; color: var(--oui-primary); }
+.oui-toast-action { padding: 0 8px; font-weight: 650; color: var(--oui-primary-text); }
 .oui-toast-close { width: 28px; color: var(--oui-muted); }
 .oui-toast-action:hover, .oui-toast-close:hover { color: var(--oui-text); background: var(--oui-raised); }
 .oui-toast-enter-active, .oui-toast-leave-active { transition: opacity var(--oui-base) var(--oui-ease), transform var(--oui-base) var(--oui-ease); }

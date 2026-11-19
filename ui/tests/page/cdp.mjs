@@ -167,7 +167,13 @@ let __n = 0;
 async function cdp(req) { const id = 'r' + (++__n); __cdp(JSON.stringify({ ...req, id })); await until(() => __t.acks.has(id), 'cdp ' + req.op); await settle(); }
 async function type(el, value) { assert(el, 'element to type into'); await reveal(el); el.focus(); if (el.select) el.select(); await cdp({ op: 'key', key: 'Backspace' }); if (value !== '') await cdp({ op: 'type', text: value }); }
 const press = (key, shift) => cdp({ op: 'key', key, shift: !!shift });
-async function mouse(el) { assert(el, 'element for a real click'); await reveal(el); el.scrollIntoView({ block: 'center' }); await settle(); const r = el.getBoundingClientRect(); await cdp({ op: 'clickAt', x: r.left + r.width / 2, y: r.top + r.height / 2 }); }
+// A real click at the element's centre. It is scrolled into view only when its centre can't be clicked where it is:
+// scrolling the page under an open overlay moves the overlay between the press and the release.
+async function mouse(el) { assert(el, 'element for a real click'); await reveal(el);
+  const centre = () => { const r = el.getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; };
+  const hit = () => { const e = document.elementFromPoint(...centre()); return !!e && el.contains(e); };
+  if (!hit()) { el.scrollIntoView({ block: 'center' }); await settle(); }
+  const [x, y] = centre(); await cdp({ op: 'clickAt', x, y }); }
 async function answer(which) { await until(dialogOpen, 'dialog'); const el = dialogEl(); await click(q('[data-dlg="' + which + '"]', el)); await until(() => dialogEl() !== el, 'dialog closed'); }
 const yes = () => answer('confirm');
 const no = () => answer('cancel');

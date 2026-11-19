@@ -1,4 +1,17 @@
-# Orca UI foundation 4.2.2 — Vue and PrimeVue
+# Orca UI foundation 5.0.0 — Vue and PrimeVue
+
+Version 5.0.0 is a redesign and a breaking release: the pages take OrcaSlicer's own colours. `DESIGN.md` is the specification, `MIGRATION-5.0.md` the procedure for a plugin. In short:
+
+- Every surface is one of OrcaSlicer's neutral greys, the same in all six plugins. Nothing is tinted by the plugin any more.
+- The primary action, focus, selection and progress are OrcaSlicer's teal. The everyday button is its grey regular button.
+- The plugin's hue (`installOrcaUI(app, locale, accent)`, unchanged) is only its mark tile and the line under the open app-bar tab.
+- One page grammar: `OuiAppBar`, `OuiPageHeader`, at most one `OuiBanner`, then `.oui-dash`, `.oui-split` or `OuiSettings`. Modules are `OuiPanel` with a 40 px neutral header; what a module needs explained is its `hint`, not a paragraph under it.
+- New components: `OuiPageHeader`, `OuiHint`, `OuiControlRow`, `OuiCamera`, `OuiFileBrowser`. `OuiJob` is now a compact status block with a 72 px picture.
+- Removed: the per-accent surface roles, `--oui-band`, `--oui-on-band`, `.oui-on-band`, the filled `.oui-hero`, the solid icon tile and the solid state chip. `--oui-primary` is now the teal button fill: text and marks in the primary colour use `--oui-primary-text` and `--oui-primary-mark`.
+
+To update from 4.2.2, follow `MIGRATION-5.0.md`. Dependencies do not change.
+
+## 4.2.2
 
 Version 4.2.2 draws a loaded spool whose amount is unknown as loaded, not as empty:
 
@@ -92,7 +105,7 @@ The workspace root is not a Git repository. Keep a versioned identical snapshot 
 
 `node ui/shared/scripts/check.mjs` checks shared file hashes and exact palette contrast without npm dependencies. All six consumers must use the same manifest version and hashes. Changes to the preset go through one shared release, not individual patches in a consumer. Local domain layout is allowed; separate palettes/component styles are not. Shared components live in `src/components/` and are imported per component.
 
-This source project's `npm ci --ignore-scripts && npm run build && npm run check` builds the offline reference gallery (`?screen=kit|kobra-dash|kobra-settings|u1-dash|spooler-stock|calc-quote|organizer-dock|embedder-main`, `&state=`, `&theme=dark|light`, `&lang=en|pt-BR`) and the manifest. `node scripts/shots.mjs` screenshots every reference screen and fails on overflow, clipped labels, console errors or a licence banner; `node scripts/verify-gallery.mjs` checks focus rings, reduced motion and the dialog flow; `node scripts/contact-sheet.mjs` rebuilds `evidence-4.0.0/index.html`. Applications compile the shared TypeScript with their own Vue components using Vite and `vite-plugin-singlefile`, or an equivalent self-contained build already used by the plugin. No CDN, runtime npm, remote font, iframe or sibling-plugin dependency. Include licenses in the plugin distribution.
+This source project's `npm ci --ignore-scripts && npm run build && npm run check` builds the offline reference gallery (`?screen=tokens|kit|kobra-dash|u1-dash|kobra-stock|u1-stock|kobra-files|u1-files|kobra-settings|spooler-spools|calc-quote|organizer-dock|embedder-main|notices`, `&state=`, `&theme=dark|light`, `&lang=en|pt-BR`) and the manifest. `node scripts/shots.mjs` screenshots every reference screen into `evidence-5.0.0/after/`, fails on overflow, clipped labels, console errors or a licence banner, and drives `OuiFileBrowser` through its selection, keyboard, drag and delete paths; `node scripts/sizes.mjs` prints the built size of each shared component. `scripts/verify-gallery.mjs` and `scripts/contact-sheet.mjs` are the 4.0.0 evidence tools, kept for the record and not updated for 5.0. Applications compile the shared TypeScript with their own Vue components using Vite and `vite-plugin-singlefile`, or an equivalent self-contained build already used by the plugin. No CDN, runtime npm, remote font, iframe or sibling-plugin dependency. Include licenses in the plugin distribution.
 
 ## Application integration
 
@@ -105,7 +118,7 @@ import { installOrcaUI, applyOrcaTheme } from '../shared/src';
 document.body.classList.add('orca-ui');
 applyOrcaTheme('light'); // use the resolved host theme; keep it synchronized
 const app = createApp(App);
-installOrcaUI(app, 'pt-BR');
+installOrcaUI(app, 'pt-BR', 'violet'); // the plugin's identity hue: its mark tile and the open tab's line
 app.mount('#app');
 ```
 

@@ -5,8 +5,8 @@ import Column from 'primevue/column';
 import DataTable from 'primevue/datatable';
 import InputText from 'primevue/inputtext';
 import Select from 'primevue/select';
-import { OuiIcon, OuiKeyValue, OuiLevel, OuiPanel, OuiReadout, OuiSpark, OuiSpool, OuiSwatch, type OuiFact } from '../../shared/src/components';
-import { archive as archiveIcon, edit, external, hourglass, scale, spool as spoolIcon, upload, x } from '../../shared/src/icons';
+import { OuiHint, OuiIcon, OuiKeyValue, OuiLevel, OuiPanel, OuiSpark, OuiSpool, OuiSwatch, type OuiFact } from '../../shared/src/components';
+import { archive as archiveIcon, edit, external, scale, spool as spoolIcon, upload, x } from '../../shared/src/icons';
 import SpoolChips from './SpoolChips.vue';
 import { boot } from '../core/boot';
 import { m, dupes, sourceOff, pending, sendEdits } from '../state/main';
@@ -16,8 +16,8 @@ import { note } from '../state/main';
 import { t, tn, fmt, locale } from '../core/i18n';
 import { driedDays, gramsValid, formatWeight, levelTone, lowLevel, noteText, originalWeight, percentLeft, shown, spoolDirection, spoolPaint, tagUids, type Spool } from '../logic/spools';
 
-// The selected spool, beside the list: what it is and how much is left (the page's one accent block), what you can do
-// to it (Spoolman only), its facts, its weekly use and the prints that used it. The plugin sends the print history
+// The selected spool, beside the list: its picture, what it is and how much is left (the big figure with its level),
+// what you can do to it (Spoolman only), its facts, its weekly use and the prints that used it. The plugin sends the print history
 // (spool_detail) when the spool is picked.
 interface Detail { prints: { time: number; name?: string; grams: number; cost?: number | null }[]; grams: number; cost: number | null; sign: string; rate: number | null; weeks: number | null;
   presets?: { name: string; label: string; linked: boolean; own?: boolean }[] }
@@ -41,19 +41,18 @@ const amount = computed(() => {
   if (!known) return { value: pct.value === null ? null : pct.value, unit: '%', sub: '' };
   const [value, unit] = w(s.value.remaining_weight).split(' ');
   const of = typeof original.value === 'number' ? t('weight.of', { total: w(original.value) }) : '';
-  if (m.wMode === 'percent' && pct.value !== null) return { value: pct.value, unit: '%', sub: `${value} ${unit} ${of}`.trim() };
+  if (m.wMode === 'percent' && pct.value !== null) return { value: pct.value, unit: '%', sub: `· ${value} ${unit} ${of}`.trim() };
   return { value, unit, sub: [of, m.wMode === 'both' && pct.value !== null ? `${pct.value}%` : ''].filter(Boolean).join(' · ') };
 });
+// How long the spool lasts, and at what rate ("5 weeks at 20 g per week"); null (a dash) while unknown.
 const lasts = computed(() => {
   const d = detail.value;
-  if (!d) return { value: null, unit: '', sub: t('common.loading') };
-  if (d.rate === null) return { value: null, unit: '', sub: t('detail.noRate') };
-  const sub = t('detail.atRate', { g: Math.round(d.rate) });
-  if (d.weeks === null) return { value: null, unit: '', sub };
-  if (d.weeks < 1) return { value: '< 1', unit: tn('detail.weeks', 1), sub };
+  if (!d || d.rate === null || d.weeks === null) return null;
+  const rate = t('detail.atRate', { g: Math.round(d.rate) });
+  if (d.weeks < 1) return `< 1 ${tn('detail.weeks', 1)} ${rate}`;
   const digits = d.weeks < 10 && Math.round(d.weeks * 10) % 10 ? 1 : 0;
   // A number shown with a decimal takes the plural (pt-BR's rules would make 1,6 singular).
-  return { value: fmt.number(d.weeks, digits), unit: digits ? t('detail.weeks_other') : tn('detail.weeks', Math.round(d.weeks)), sub };
+  return `${fmt.number(d.weeks, digits)} ${digits ? t('detail.weeks_other') : tn('detail.weeks', Math.round(d.weeks))} ${rate}`;
 });
 // Grams booked to this spool in each of the last 8 weeks (oldest first), from the prints the plugin sent.
 const weeks = computed(() => {
@@ -70,6 +69,7 @@ const dupe = computed(() => { const d = dupes.value.get(f.value.id as number); r
 const facts = computed<OuiFact[]>(() => [
   // Location, Dried and RFID follow their Display switches; price and use have none.
   ...(shown(m.disp, 'location') ? [{ label: t('menu.location'), value: s.value.location }] : []),
+  ...(canAct.value ? [{ label: t('detail.lasts'), value: lasts.value }] : []),
   ...(shown(m.disp, 'dried') ? [{ label: t('detail.dried'), value: dried.value === null ? null : dried.value === 0 ? t('detail.today') : tn('detail.daysAgo', dried.value) }] : []),
   { label: t('detail.price'), value: price.value === null ? null : `${money(price.value)} / kg` },
   { label: t('detail.used'), value: typeof s.value.used_weight === 'number' ? [w(s.value.used_weight), detail.value && detail.value.cost !== null ? money(detail.value.cost) : ''].filter(Boolean).join(' · ') : null },
@@ -84,7 +84,9 @@ const presetPick = ref('');
 // A link of this spool alone: Spoolman keeps settings on the filament every spool of it shares, so the plugin won't send it.
 const ownLink = computed(() => !!detail.value?.presets?.find(p => p.name === presetPick.value)?.own);
 watch(presets, list => { if (!list.some(o => o.value === presetPick.value)) presetPick.value = list[0]?.value ?? ''; }, { immediate: true });
-const date = (unix: number) => new Intl.DateTimeFormat(locale.value, { dateStyle: 'medium' }).format(new Date(unix * 1000));
+// Day and month; the year only when it isn't this one (the column is narrow).
+const date = (unix: number) => { const d = new Date(unix * 1000);
+  return new Intl.DateTimeFormat(locale.value, { day: 'numeric', month: 'short', ...(d.getFullYear() !== new Date(m.now).getFullYear() ? { year: '2-digit' } : {}) }).format(d); };
 
 // ------------------------------------------------------------------ actions
 const HINTS = { move: 'menu.location', weigh: 'menu.scale', use: 'menu.used', remain: 'menu.remainLabel', note: 'menu.noteLabel' } as const;
@@ -131,27 +133,25 @@ async function save() {
 </script>
 
 <template>
-  <OuiPanel :title="t('spool.numbered', { id: s.id })" :icon="spoolIcon" tone="accent" :data-detail="s.id">
+  <OuiPanel :title="t('spool.numbered', { id: s.id })" :icon="spoolIcon" tone="magenta" :data-detail="s.id">
     <template #actions>
-      <Button v-if="canAct" severity="secondary" text size="small" :label="t('menu.open')" @click="sendAction('open')"><template #icon><OuiIcon :icon="external" :size="14" /></template></Button>
+      <Button v-if="canAct" severity="secondary" text size="small" :aria-label="t('menu.open')" :title="t('menu.open')" @click="sendAction('open')"><template #icon><OuiIcon :icon="external" :size="14" /></template></Button>
       <Button severity="secondary" text size="small" :aria-label="t('detail.close')" :title="t('detail.close')" data-test="detail-close" @click="closeDetail"><template #icon><OuiIcon :icon="x" :size="14" /></template></Button>
     </template>
 
     <Button v-if="back" text size="small" class="sd-back" :label="'← ' + t('detail.backStack', { n: back })" data-test="stack-back" @click="pickStack(menu.stack!)" />
-    <div class="sd-hero oui-hero" :class="{ 'oui-on-band': !stale }" :data-tone="stale ? 'neutral' : undefined">
-      <OuiSpool v-bind="spoolPaint(f)" :direction="spoolDirection(f)" :fraction="pct === null ? null : pct / 100" :size="112" />
-      <div class="sd-id">
-        <SpoolChips :spool="s" band />
-        <p class="sd-name">{{ name }}<Button v-if="canAct" severity="secondary" text rounded size="small" class="sd-edit" :aria-label="t('editor.editTitle', { id: s.id })" :title="t('editor.editTitle', { id: s.id })"
-                  data-test="detail-edit" data-focus-key="edit" @click="openEditor(s.id)"><template #icon><OuiIcon :icon="edit" :size="14" /></template></Button></p>
-        <p class="oui-meta sd-sub"><OuiSwatch v-bind="spoolPaint(f)" />{{ [f.vendor?.name, f.material, typeof f.diameter === 'number' ? `${f.diameter} mm` : '', f.color_hex ? '#' + f.color_hex.replace(/^#/, '').toUpperCase() : ''].filter(Boolean).join(' · ') }}</p>
-        <div class="sd-amount">
-          <OuiReadout :icon="scale" :tone="level === 'low' ? 'warn' : level ? 'danger' : 'accent'" :label="t('list.col.left')" :value="amount.value" :unit="amount.unit" :sub="amount.sub" size="lg"
-                      :stale="stale" :unknown-label="t('spool.unknownLeft')" data-test="weight" />
-          <OuiReadout v-if="canAct" :icon="hourglass" tone="sky" :label="t('detail.lasts')" :value="lasts.value" :unit="lasts.unit" :sub="lasts.sub" size="lg" :stale="stale" :unknown-label="lasts.sub" />
-        </div>
-        <OuiLevel :fraction="pct === null ? null : pct / 100" :tone="levelTone(level)" :label="pct === null ? t('spool.unknownLeft') : t('spool.pctLeft', { pct })" />
-      </div>
+    <div class="sd-well oui-well"><OuiSpool v-bind="spoolPaint(f)" :direction="spoolDirection(f)" :fraction="pct === null ? null : pct / 100" :size="128" /></div>
+    <div class="sd-id">
+      <SpoolChips :spool="s" band />
+      <p class="sd-name">{{ name }}<Button v-if="canAct" severity="secondary" text rounded size="small" class="sd-edit" :aria-label="t('editor.editTitle', { id: s.id })" :title="t('editor.editTitle', { id: s.id })"
+                data-test="detail-edit" data-focus-key="edit" @click="openEditor(s.id)"><template #icon><OuiIcon :icon="edit" :size="14" /></template></Button></p>
+      <p class="oui-meta sd-sub"><OuiSwatch v-bind="spoolPaint(f)" />{{ [f.vendor?.name, f.material, typeof f.diameter === 'number' ? `${f.diameter} mm` : '', f.color_hex ? '#' + f.color_hex.replace(/^#/, '').toUpperCase() : ''].filter(Boolean).join(' · ') }}</p>
+    </div>
+    <!-- The amount: the one big figure of the panel, with its level. Kept from an earlier read (stale), it is grey. -->
+    <div class="sd-amount" :data-stale="stale || undefined">
+      <p class="oui-num" data-test="weight"><span class="oui-sr">{{ t('list.col.left') }}: </span><template v-if="amount.value === null"><strong class="sd-figure" aria-hidden="true">—</strong> <span class="oui-muted">{{ t('spool.unknownLeft') }}</span></template>
+        <template v-else><strong class="sd-figure">{{ amount.value }}</strong>{{ amount.unit === '%' ? '%' : ' ' + amount.unit }}<span v-if="amount.sub" class="oui-muted">{{ ' ' + amount.sub }}</span></template></p>
+      <OuiLevel :fraction="pct === null ? null : pct / 100" :tone="levelTone(level)" :label="pct === null ? t('spool.unknownLeft') : t('spool.pctLeft', { pct })" />
     </div>
 
     <p v-if="canAct && level === 'empty' && !s.archived" class="sd-empty oui-row" data-test="empty-hint">{{ t('detail.emptyHint') }}
@@ -168,7 +168,7 @@ async function save() {
         <p id="sc-help" class="oui-meta sd-help" :class="{ 'sd-bad': menu.val !== '' && !gramsOk }">{{ help }}</p>
       </form>
       <fieldset v-else class="sd-actions" :disabled="!!sourceOff" :aria-describedby="sourceOff ? 'sd-off' : undefined" data-test="spool-actions">
-        <Button :label="t('menu.weigh')" data-focus-key="act:weigh" @click="setMode('weigh')"><template #icon><OuiIcon :icon="scale" :size="14" /></template></Button>
+        <Button severity="secondary" :label="t('menu.weigh')" data-focus-key="act:weigh" @click="setMode('weigh')"><template #icon><OuiIcon :icon="scale" :size="14" /></template></Button>
         <Button severity="secondary" :label="t('menu.use')" data-focus-key="act:use" @click="setMode('use')" />
         <Button severity="secondary" :label="t('menu.remain')" data-focus-key="act:remain" @click="setMode('remain')" />
         <Button severity="secondary" :label="t('menu.move')" data-focus-key="act:move" @click="setMode('move', s.location || '')" />
@@ -180,7 +180,7 @@ async function save() {
         <Button v-if="s.archived" severity="secondary" :label="t('menu.unarchive')" @click="sendAction('unarchive')"><template #icon><OuiIcon :icon="archiveIcon" :size="14" /></template></Button>
         <Button v-else severity="danger" outlined :label="t('menu.archive')" @click="archive"><template #icon><OuiIcon :icon="archiveIcon" :size="14" /></template></Button>
       </fieldset>
-      <p v-if="sourceOff && !menu.mode" id="sd-off" class="oui-meta" data-test="actions-off">{{ t('detail.actionsOff', { reason: sourceOff }) }}</p>
+      <p v-if="sourceOff && !menu.mode" id="sd-off" class="oui-sr" data-test="actions-off">{{ t('detail.actionsOff', { reason: sourceOff }) }}</p>
     </div>
     <div v-if="canAct && detail" class="sd-preset" data-test="detail-preset">
       <template v-if="presets.length">
@@ -188,13 +188,15 @@ async function save() {
           <Select v-model="presetPick" :input-id="`sd-preset-${s.id}`" :options="presets" option-label="label" option-value="value" size="small" aria-describedby="sd-send-h" data-test="preset-pick" /></div>
         <Button severity="secondary" size="small" :label="t('list.send')" :disabled="!!sourceOff || pending('send') || !presetPick || ownLink" aria-describedby="sd-send-h" data-test="send"
                 @click="sendEdits(s.id, presetPick)"><template #icon><OuiIcon :icon="upload" :size="14" /></template></Button>
-        <p id="sd-send-h" class="oui-meta sd-help" data-test="send-help">{{ ownLink ? t('detail.ownLink') : t('list.sendHelp') }}</p>
+        <OuiHint end :label="t('list.send')" :text="ownLink ? t('detail.ownLink') : t('list.sendHelp')" data-test="send-help" />
+        <!-- What the picker and Send are described by: the (i)'s own bubble is hidden while closed, and so not read from here. -->
+        <span id="sd-send-h" class="oui-sr">{{ ownLink ? t('detail.ownLink') : t('list.sendHelp') }}</span>
       </template>
       <p v-else class="oui-meta" data-test="no-presets">{{ t('detail.noPresets') }}</p>
     </div>
     <hr class="oui-divider sd-rule">
 
-    <OuiKeyValue inline :items="facts" />
+    <OuiKeyValue :items="facts" />
     <p v-if="noteLine" class="sd-note"><span class="oui-label">{{ t('menu.noteLabel') }}</span>{{ noteLine }}</p>
 
     <template v-if="canAct">
@@ -212,10 +214,10 @@ async function save() {
         <template v-else>
           <p class="oui-meta">{{ tn('detail.prints', detail.prints.length) }} · {{ fmt.number(detail.grams, 1) }} g · {{ money(detail.cost) }}</p>
           <DataTable :value="detail.prints.slice(0, 20)" size="small" class="sd-history">
-            <Column :header="t('stats.col.date')" style="width: 30%"><template #body="{ data }">{{ date(data.time) }}</template></Column>
+            <Column :header="t('stats.col.date')" style="width: 68px"><template #body="{ data }">{{ date(data.time) }}</template></Column>
             <Column :header="t('stats.col.print')"><template #body="{ data }"><span class="oui-truncate sd-print" :title="data.name || undefined">{{ data.name || t('stats.print') }}</span></template></Column>
-            <Column :header="t('stats.col.weight')" class="oui-num" style="width: 78px"><template #body="{ data }">{{ fmt.number(data.grams, 1) }} g</template></Column>
-            <Column :header="t('stats.col.cost')" class="oui-num" style="width: 72px"><template #body="{ data }">{{ money(data.cost) }}</template></Column>
+            <Column :header="t('stats.col.weight')" class="oui-num" style="width: 70px"><template #body="{ data }">{{ fmt.number(data.grams, 1) }} g</template></Column>
+            <Column :header="t('stats.col.cost')" class="oui-num sd-c-cost" style="width: 68px"><template #body="{ data }">{{ money(data.cost) }}</template></Column>
           </DataTable>
           <p v-if="detail.prints.length > 20" class="oui-meta">{{ t('detail.latest', { n: detail.prints.length }) }}</p>
         </template>
@@ -227,12 +229,15 @@ async function save() {
 <style>
 .orca-ui .sd-back.p-button { margin: calc(-1 * var(--oui-s2)) 0 var(--oui-s2); padding-inline: 0; }
 .sd-empty { justify-content: space-between; flex-wrap: wrap; margin-top: var(--oui-s3); padding: var(--oui-s2) var(--oui-s3); border-radius: var(--oui-radius); background: var(--oui-raised); }
-.sd-hero { display: flex; flex-wrap: wrap; align-items: center; gap: var(--oui-s4) var(--oui-s5); }
-.sd-id { flex: 1 1 240px; display: grid; gap: var(--oui-s1); min-width: 0; }
-.sd-name { font-size: var(--oui-text-xl); font-weight: 700; line-height: 1.3; overflow-wrap: anywhere; }
+/* The picture is the spool itself, on a neutral well; nothing in the panel is filled with a hue. */
+.sd-well { display: grid; place-items: center; padding: var(--oui-s4); }
+.sd-id { display: grid; gap: var(--oui-s1); min-width: 0; margin-top: var(--oui-s3); }
+.sd-name { font-size: var(--oui-text-lg); font-weight: 700; line-height: 1.3; overflow-wrap: anywhere; }
 .sd-edit { vertical-align: middle; margin-inline-start: var(--oui-s1); }
 .sd-sub { display: flex; align-items: center; gap: 6px; }
-.sd-amount { display: flex; flex-wrap: wrap; gap: var(--oui-s3) var(--oui-s8); margin-block: var(--oui-s2) var(--oui-s1); }
+.sd-amount { display: grid; gap: 6px; margin-top: var(--oui-s3); }
+.sd-figure { font-size: var(--oui-text-2xl); font-weight: 700; letter-spacing: -.015em; line-height: 1.1; }
+.sd-amount[data-stale] { color: var(--oui-muted); }
 .sd-act { margin-top: var(--oui-s4); }
 .sd-actions { display: flex; flex-wrap: wrap; gap: var(--oui-s2); margin: 0; padding: 0; border: 0; min-width: 0; }
 .sd-form { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--oui-s2); padding: var(--oui-s3); }
@@ -242,13 +247,16 @@ async function save() {
 .sd-bad { color: var(--oui-danger); }
 .sd-rule { margin-block: var(--oui-s4); }
 .sd-preset { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--oui-s2); margin-top: var(--oui-s4); }
-.sd-preset > .oui-field { flex: 1 1 220px; min-width: 0; }
+.sd-preset > .oui-field { flex: 1 1 160px; min-width: 0; }
+.sd-preset > .oui-hint { align-self: center; }
 .sd-note { display: grid; gap: 2px; margin-top: var(--oui-s3); overflow-wrap: anywhere; }
-.sd-usage { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: var(--oui-s3); margin-top: var(--oui-s5); padding: var(--oui-s3) var(--oui-s4);
-  border-radius: var(--oui-radius); background: var(--oui-primary-soft); }
-.sd-usage strong { font-size: var(--oui-text-xl); font-weight: 600; }
-.sd-h { margin-block: var(--oui-s5) var(--oui-s1); }
-.sd { display: grid; gap: var(--oui-s2); }
+.sd-usage { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: var(--oui-s3); margin-top: var(--oui-s4); padding: var(--oui-s3);
+  border-radius: var(--oui-radius); background: var(--oui-raised); }
+.sd-usage strong { font-size: var(--oui-text-xl); font-weight: 700; }
+.sd-h { margin-block: var(--oui-s4) var(--oui-s1); }
+.sd { container: sd / inline-size; display: grid; gap: var(--oui-s2); }
+/* The 320 px detail: the cost column goes; the total above the table still has it. */
+@container sd (max-width: 340px) { .orca-ui .sd-c-cost { display: none; } }
 .sd-history { margin-inline: calc(-1 * var(--oui-s3)); }
 .sd-history table { table-layout: fixed; width: 100%; }
 .sd-print { display: block; }

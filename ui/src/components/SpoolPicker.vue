@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref } from 'vue';
 import InputText from 'primevue/inputtext';
-import { OuiSpool } from '../../shared/src/components';
+import { OuiHint, OuiSpool } from '../../shared/src/components';
 import { m } from '../state/main';
 import { t, locale } from '../core/i18n';
 import { formatWeight, shown, spoolDirection, spoolFraction, spoolPaint } from '../logic/spools';
@@ -38,7 +38,8 @@ function key(e: KeyboardEvent) {
 </script>
 <template>
   <div class="pk oui-well" role="group" :aria-label="label" @keydown="key">
-    <InputText ref="input" v-model="q" type="search" size="small" :placeholder="t('picker.search')" :aria-label="t('picker.search')" class="pk-q" data-test="picker-search" />
+    <div class="pk-top"><InputText ref="input" v-model="q" type="search" size="small" :placeholder="t('picker.search')" :aria-label="t('picker.search')" class="pk-q" data-test="picker-search" />
+      <OuiHint v-if="excludeTaken" end :label="label" :text="t('picker.takenHint')" /></div>
     <div ref="list" class="pk-list">
       <button v-for="s in items" :key="s.id" type="button" class="pk-item" :data-pick="s.id" @click="emit('pick', s.id)">
         <OuiSpool v-bind="spoolPaint(s.filament || {})" :direction="spoolDirection(s.filament || {})" :fraction="spoolFraction(s)" :size="32" />
@@ -48,16 +49,16 @@ function key(e: KeyboardEvent) {
       </button>
       <p v-if="!items.length" class="oui-meta pk-none">{{ q.trim() ? t('picker.noMatch') : t('picker.none') }}</p>
     </div>
-    <p v-if="excludeTaken" class="oui-meta">{{ t('picker.takenHint') }}</p>
   </div>
 </template>
 <style>
-.pk { display: grid; gap: var(--oui-s2); padding: var(--oui-s2); box-shadow: inset 0 0 0 1px var(--oui-primary); min-width: 0; }
-.pk-q { width: 100%; }
+.pk { display: grid; gap: var(--oui-s2); padding: var(--oui-s2); box-shadow: inset 0 0 0 1px var(--oui-primary-mark); min-width: 0; }
+.pk-top { display: flex; align-items: center; gap: var(--oui-s1); min-width: 0; }
+.pk-q { flex: 1; min-width: 0; }
 .pk-list { max-height: 240px; overflow: auto; display: grid; }
 .orca-ui .pk-item { display: flex; align-items: center; gap: var(--oui-s2); padding: 6px var(--oui-s2); border: 0; border-radius: var(--oui-radius-sm); background: none; color: var(--oui-text);
   font: inherit; text-align: start; cursor: pointer; min-width: 0; }
-.orca-ui .pk-item:hover, .orca-ui .pk-item:focus-visible { background: var(--oui-raised); }
+.orca-ui .pk-item:hover, .orca-ui .pk-item:focus-visible { background: var(--oui-control); }
 .pk-t { display: grid; flex: 1; min-width: 0; }
 .pk-none { padding: var(--oui-s2); }
 </style>

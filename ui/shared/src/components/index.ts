@@ -1,13 +1,18 @@
 export { default as OuiAppBar, type OuiTab } from './OuiAppBar.vue';
 export { default as OuiBanner } from './OuiBanner.vue';
+export { default as OuiCamera } from './OuiCamera.vue';
 export { default as OuiConfirm } from './OuiConfirm.vue';
+export { default as OuiControlRow } from './OuiControlRow.vue';
 export { default as OuiEmpty } from './OuiEmpty.vue';
+export { default as OuiFileBrowser, type OuiFile, type OuiFolder, type OuiFileBrowserLabels } from './OuiFileBrowser.vue';
 export { default as OuiFormRow } from './OuiFormRow.vue';
 export { default as OuiFormSection } from './OuiFormSection.vue';
+export { default as OuiHint } from './OuiHint.vue';
 export { default as OuiIcon } from './OuiIcon.vue';
 export { default as OuiJob } from './OuiJob.vue';
 export { default as OuiKeyValue, type OuiFact } from './OuiKeyValue.vue';
 export { default as OuiLevel } from './OuiLevel.vue';
+export { default as OuiPageHeader } from './OuiPageHeader.vue';
 export { default as OuiPanel } from './OuiPanel.vue';
 export { default as OuiReadout } from './OuiReadout.vue';
 export { default as OuiRequirement } from './OuiRequirement.vue';

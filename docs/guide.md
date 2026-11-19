@@ -56,7 +56,7 @@ else the mean price per kg of its spools in stock).
 
 The presets follow Spoolman: new filaments appear, filaments whose spools are all archived
 disappear, and changes are picked up on each refresh (every 30 seconds while the Spooler tab is
-visible; Settings > Spool source > **Refresh Spoolman every** sets 10 to 300 seconds, or off). **Sync Presets** in the bar at the top does it at once and rebuilds every preset, even when
+visible; Settings > Spool source > **Refresh Spoolman every** sets 10 to 300 seconds, or off). **Sync Presets** at the top of the Spools tab does it at once and rebuilds every preset, even when
 nothing changed.
 
 ### Calibrated settings

@@ -162,7 +162,7 @@ onMounted(follow);
         <OuiFormRow :label="t('set.preview')"><span class="set-sample"><OuiSwatch color="#1a1a1a" /><span>PLA Matte - Black</span><strong class="oui-num">{{ sample }}</strong></span></OuiFormRow>
       </OuiFormSection>
 
-      <OuiFormSection id="s-layout" :icon="layers" tone="sky" :title="t('set.layout')" :description="t('set.layoutHelp')">
+      <OuiFormSection id="s-layout" :icon="layers" :title="t('set.layout')" :description="t('set.layoutHelp')">
         <OuiFormRow :label="t('set.layoutLabel')">
           <div class="oui-row" role="radiogroup" :aria-label="t('set.layoutLabel')"><span v-for="c in [1, 2]" :key="c" class="oui-row set-opt">
             <RadioButton v-model="form.spool_columns" :input-id="`cols-${c}`" name="spool-cols" :value="c" /><label :for="`cols-${c}`">{{ c === 1 ? t('set.one') : t('set.two') }}</label></span></div>
@@ -172,7 +172,7 @@ onMounted(follow);
             <RadioButton v-model="form.spool_view" :input-id="`view-${v}`" name="spool-view" :value="v" /><label :for="`view-${v}`">{{ t(`list.${v}`) }}</label></span></div>
         </OuiFormRow>
         <OuiFormRow :label="t('set.preview')"><div class="set-cols" :class="{ two: form.spool_columns === 2 }" aria-hidden="true">
-          <span v-for="c in ['accent', 'teal', 'sky', 'lime']" :key="c" :data-tone="c" /></div></OuiFormRow>
+          <span v-for="c in 4" :key="c" /></div></OuiFormRow>
       </OuiFormSection>
 
       <OuiFormSection id="s-check" :icon="check" tone="teal" :title="t('set.check')" :description="t('set.checkHint')">
@@ -183,7 +183,7 @@ onMounted(follow);
     </div>
 
     <div class="oui-stack">
-      <OuiFormSection id="s-display" :icon="eye" tone="violet" :title="t('set.display')" :description="t('set.displayHelp')">
+      <OuiFormSection id="s-display" :icon="eye" :title="t('set.display')" :description="`${t('set.displayHelp')} ${t('set.displayNote')}`">
         <div class="set-pad">
           <h3 class="oui-label">{{ t('set.displaySpools') }}</h3>
           <div class="set-checks"><span v-for="k in SPOOL_KEYS" :key="k" class="oui-row set-opt"><Checkbox :input-id="`d-${k}`" binary :model-value="form.display[k] !== false" :data-disp="k"
@@ -191,11 +191,10 @@ onMounted(follow);
           <h3 class="oui-label">{{ t('set.displayHeads') }}</h3>
           <div class="set-checks"><span v-for="k in HEAD_KEYS" :key="k" class="oui-row set-opt"><Checkbox :input-id="`d-${k}`" binary :model-value="form.display[k] !== false" :data-disp="k"
             @update:model-value="v => setDisp(k, v)" /><label :for="`d-${k}`">{{ t(`disp.${k}` as any) }}</label></span></div>
-          <p class="oui-meta">{{ t('set.displayNote') }}</p>
         </div>
       </OuiFormSection>
 
-      <OuiFormSection id="s-dry" :icon="drop" tone="sky" :title="t('set.drying')" :description="t('set.dryingHelp')">
+      <OuiFormSection id="s-dry" :icon="drop" tone="sky" :title="t('set.drying')" :description="`${t('set.dryingHelp')} ${t('set.dryNote')}`">
         <OuiFormRow v-for="[name, days] in dryRows" :key="name" :label="name" :for="`dry-${name}`">
           <InputNumber :model-value="days > 0 ? days : null" :input-id="`dry-${name}`" :min="0" :max="3650" :use-grouping="false" :suffix="' ' + t('set.days')"
             :aria-label="t('set.daysFor', { m: name })" :placeholder="t('set.noReminder')" @update:model-value="v => setDays(name, v)" @input="e => setDays(name, typeof e.value === 'number' ? e.value : null)" />
@@ -205,7 +204,6 @@ onMounted(follow);
         <p v-if="!dryRows.length" class="oui-meta set-pad">{{ t('set.dryNone') }}</p>
         <form class="oui-row set-pad" @submit.prevent="addMat"><InputText v-model="newMat" maxlength="24" class="set-grow" :placeholder="t('set.matPh')" :aria-label="t('set.matLabel')" />
           <Button type="submit" severity="secondary" :label="t('set.addMat')" :disabled="!newMat.trim()"><template #icon><OuiIcon :icon="plus" :size="14" /></template></Button></form>
-        <template #footer><p class="oui-meta">{{ t('set.dryNote') }}</p></template>
       </OuiFormSection>
 
       <PresetsBlock />
@@ -231,7 +229,7 @@ onMounted(follow);
         </div></div>
       </OuiFormSection>
 
-      <OuiFormSection id="s-stats" :icon="chart" tone="orange" :title="t('set.stats')" :description="t('set.statsKeep')">
+      <OuiFormSection id="s-stats" :icon="chart" tone="lime" :title="t('set.stats')" :description="t('set.statsKeep')">
         <OuiFormRow :label="t('set.statsOn')" for="show-stats"><Checkbox v-model="form.stats.on" input-id="show-stats" binary /></OuiFormRow>
         <OuiFormRow :label="t('set.currency')" :hint="t('set.currencyHelp')">
           <div class="oui-row" role="radiogroup" :aria-label="t('set.currency')"><span v-for="c in currencies" :key="c.v" class="oui-row set-opt">
@@ -280,7 +278,7 @@ onMounted(follow);
 .set-sample { display: inline-flex; align-items: center; gap: var(--oui-s2); }
 .set-cols { display: grid; gap: 4px; width: min(220px, 100%); }
 .set-cols.two { grid-template-columns: 1fr 1fr; }
-.set-cols span { height: 14px; border-radius: var(--oui-radius-sm); background: var(--oui-tone-soft); box-shadow: inset 4px 0 0 var(--oui-tone); }
+.set-cols span { height: 14px; border-radius: var(--oui-radius-sm); background: var(--oui-raised); box-shadow: inset 0 0 0 1px var(--oui-border); }
 .set-checks { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 6px var(--oui-s4); }
 .set-checks > .set-opt { flex-wrap: nowrap; align-items: flex-start; }
 .set-checks label { min-width: 0; padding-top: 1px; }

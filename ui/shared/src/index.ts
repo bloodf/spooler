@@ -6,7 +6,7 @@ import './base.css';
 
 export type OrcaLocale = 'en' | 'pt-BR';
 export type OrcaTheme = 'light' | 'dark';
-export const UI_VERSION = '4.2.2';
+export const UI_VERSION = '5.0.0';
 export { PRIMEUI_LICENSE_EXPIRES } from './license';
 // Shared components are a separate entry (./components) so a page only pays for the ones it imports.
 export { OrcaPreset, palette };
@@ -52,11 +52,11 @@ export function installOrcaUI(app: App, locale: OrcaLocale, pluginAccent?: OrcaA
   app.mixin(tabListRefsAlias);
 }
 
-/** The family's hues. Each plugin takes one as its accent; all seven are available as data and section colours. */
+/** The family's hues. Each plugin takes one as its identity accent (its mark, the active tab); all seven are available as icon and chip colours. */
 export type OrcaAccent = 'teal' | 'sky' | 'cobalt' | 'violet' | 'magenta' | 'lime' | 'orange';
 let accent: OrcaAccent = 'teal';
 
-/** Sets the plugin's accent hue (once, at start-up) and re-applies the current theme if there is one. */
+/** Sets the plugin's identity accent (once, at start-up) and re-applies the current theme if there is one. */
 export function setOrcaAccent(next: OrcaAccent, root: HTMLElement = document.documentElement): void {
   accent = next;
   const theme = root.dataset.orcaUiTheme;
@@ -64,19 +64,16 @@ export function setOrcaAccent(next: OrcaAccent, root: HTMLElement = document.doc
 }
 
 // The host adapter owns detecting theme changes; this function applies its resolved mode.
-// Every palette role becomes --oui-<role>. The plugin's accent supplies --oui-primary* and the six surface roles
-// (background, surface, raised, inset, border, control-border), which are tinted by it. The preset reads these variables.
-const SURFACES = ['Background', 'Surface', 'Raised', 'Inset', 'Border', 'ControlBorder'];
+// Every palette role becomes --oui-<role>. Surfaces are OrcaSlicer's neutral greys and the primary action is OrcaSlicer's
+// teal, the same in every plugin. The plugin's accent only supplies --oui-accent (lines and text), --oui-accent-soft,
+// --oui-on-accent and --oui-accent-solid (the mark tile, with --oui-on-solid on it). The preset reads these variables.
 export function applyOrcaTheme(theme: OrcaTheme, root: HTMLElement = document.documentElement): void {
   root.classList.toggle('orca-dark', theme === 'dark');
   root.dataset.orcaUiTheme = theme;
   root.dataset.orcaUiAccent = accent;
   root.style.colorScheme = theme;
   const roles: Record<string, string> = palette[theme];
-  const all: Record<string, string> = { primary: roles[accent], primaryHover: roles[accent + 'Hover'], primarySoft: roles[accent + 'Soft'],
-    onPrimary: roles['on' + accent[0].toUpperCase() + accent.slice(1)], band: roles[accent + 'Band'] };
-  for (const level of SURFACES) all[level[0].toLowerCase() + level.slice(1)] = roles[accent + level];
-  // Other accents' surfaces and bands are not needed on the page.
-  for (const [name, color] of Object.entries(roles)) if (!/^[a-z]+(Background|Surface|Raised|Inset|Border|ControlBorder|Band)$/.test(name) || name === 'onBand') all[name] = color;
+  const all: Record<string, string> = { ...roles, accent: roles[accent], accentSoft: roles[accent + 'Soft'], accentSolid: roles[accent + 'Solid'],
+    onAccent: roles['on' + accent[0].toUpperCase() + accent.slice(1)] };
   for (const [name, color] of Object.entries(all)) root.style.setProperty(`--oui-${name.replace(/[A-Z]/g, c => '-' + c.toLowerCase())}`, color);
 }

@@ -15,7 +15,7 @@ const STATE: Record<string, OuiState> = { ok: 'ok', barely: 'warn', mixed: 'warn
 function dismiss() { m.plate = null; bridge.postMain({ type: 'plate_dismiss' }); }
 </script>
 <template>
-  <OuiPanel v-if="m.plate" :title="t('plate.title')" :icon="plate" tone="cobalt" data-test="plate">
+  <OuiPanel v-if="m.plate" :title="t('plate.title')" :icon="plate" tone="cobalt" :hint="t('plate.sub', { time: m.plate.time || '' })" data-test="plate">
     <template #meta><OuiStatus v-if="plateAttention" state="warn">{{ tn('plate.attention', plateAttention) }}</OuiStatus><OuiStatus v-else-if="fine" state="ok">{{ t('plate.ok') }}</OuiStatus></template>
     <template #actions>
       <Button severity="secondary" size="small" :label="t('plate.recheck')" :title="t('plate.recheckHelp')" @click="bridge.postMain({ type: 'plate_recheck' })"><template #icon><OuiIcon :icon="refresh" :size="14" /></template></Button>
@@ -30,12 +30,9 @@ function dismiss() { m.plate = null; bridge.postMain({ type: 'plate_dismiss' });
         <span class="pl-res"><OuiStatus :state="STATE[r.status] ?? 'idle'" variant="plain">{{ r.headline }}</OuiStatus><span class="oui-meta">{{ r.detail }}</span></span>
       </li>
     </ul>
-    <template #footer><p class="oui-meta">{{ t('plate.sub', { time: m.plate.time || '' }) }}</p></template>
   </OuiPanel>
 </template>
 <style>
-/* Longer labels (German) wrap the actions under the title instead of pushing past a narrow dock. */
-[data-test='plate'] > .oui-panel-head { flex-wrap: wrap; }
 .pl-rows { list-style: none; padding: 0; display: grid; gap: var(--oui-s3); }
 .pl-row { display: grid; grid-template-columns: 14px minmax(0, 1.4fr) minmax(64px, 1fr) minmax(0, 1.4fr); gap: var(--oui-s3); align-items: center; }
 .pl-who, .pl-res { display: grid; gap: 1px; min-width: 0; overflow-wrap: anywhere; }

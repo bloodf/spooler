@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import Button from 'primevue/button';
-import { OuiStatus } from '../../shared/src/components';
+import { OuiHint, OuiStatus } from '../../shared/src/components';
 import TrayCard from './TrayCard.vue';
 import SpoolPicker from './SpoolPicker.vue';
 import { m } from '../state/main';
@@ -99,12 +99,12 @@ const warnLate = computed(() => late.value && (!!props.lv.heads || !!props.lv.hh
       </template>
       <div v-if="waiting" class="lu-wait oui-well" role="status" data-test="waiting">
         <OuiStatus :state="warnLate ? 'warn' : 'connecting'">{{ warnLate ? t('printer.waitLate') : lv.heads ? t('printer.waitingHeads') : t('printer.waitingSlots') }}</OuiStatus>
-        <p v-if="warnLate" class="oui-meta">{{ t('printer.waitLateHelp') }}</p>
+        <OuiHint v-if="warnLate" :label="t('printer.waitLate')" :text="t('printer.waitLateHelp')" />
       </div>
     </template>
   </div>
 </template>
 <style>
-.lu-wait { display: grid; gap: var(--oui-s2); justify-items: start; padding: var(--oui-s3); }
+.lu-wait { display: flex; flex-wrap: wrap; align-items: center; gap: var(--oui-s2); padding: var(--oui-s3); }
 .lu-wait .oui-status { white-space: normal; height: auto; min-height: 22px; padding-block: 3px; }
 </style>
