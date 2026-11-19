@@ -63,7 +63,7 @@ function onRow(r: Row) { if (r.kind === 'stack') emit('stack', r.key); else pick
         <span class="sc-body">
           <span class="sp-name"><span class="oui-truncate oui-strong" :title="name(r)">{{ name(r) }}</span>
             <span v-if="r.kind === 'stack'" class="oui-chip oui-num st-head"><span class="st-count">×{{ r.items.length }}</span><OuiIcon :icon="r.open ? chevronDown : chevronRight" :size="12" /></span></span>
-          <span v-if="fil(r).vendor?.name && shown(m.disp, 'vendor')" class="oui-meta oui-truncate">{{ fil(r).vendor!.name }}</span>
+          <span v-if="fil(r).vendor?.name && shown(m.disp, 'vendor')" class="oui-meta sc-wrap" :title="fil(r).vendor!.name">{{ fil(r).vendor!.name }}</span>
           <span class="sc-line"><span v-if="fil(r).material && shown(m.disp, 'material')" class="oui-chip" :data-tone="materialTone(fil(r).material)">{{ fil(r).material }}</span>
             <span v-if="colourOf(r)" class="sc-colour oui-meta"><OuiSwatch :color="spoolPaint(fil(r)).color || '#9a9a9a'" /><span class="oui-truncate">{{ colourOf(r) }}</span></span></span>
           <span class="sp-left oui-num" data-test="weight"><span><strong>{{ left(sum(r)) }}</strong><span v-if="leftOf(sum(r))" class="oui-muted">{{ ' ' + leftOf(sum(r)) }}</span><span v-if="pctSide(sum(r))" class="oui-muted"> · {{ pctSide(sum(r)) }}</span></span>
@@ -126,8 +126,9 @@ function onRow(r: Row) { if (r.kind === 'stack') emit('stack', r.key); else pick
 </template>
 
 <style>
-/* Cards: as many 220 px columns as fit, one column in a narrow window. */
-.sc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: var(--oui-s3); padding: var(--oui-s3); align-items: start; }
+/* Cards: as many 260 px columns as fit (two beside the open detail at 1280 px), one in a narrow window. The cards of a
+   row share its height, with the state chips at the bottom; chips and names wrap rather than cut. */
+.sc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr)); gap: var(--oui-s3); padding: var(--oui-s3); }
 .orca-ui .sc-ghead { grid-column: 1 / -1; padding: var(--oui-s1) 0; border-bottom: 1px solid var(--oui-border); }
 .orca-ui .sc-card { display: flex; gap: var(--oui-s3); align-items: flex-start; min-width: 0; padding: var(--oui-s3); border: 1px solid var(--oui-border); border-radius: var(--oui-radius);
   background: var(--oui-surface); color: var(--oui-text); font: inherit; text-align: start; cursor: pointer; }
@@ -136,7 +137,10 @@ function onRow(r: Row) { if (r.kind === 'stack') emit('stack', r.key); else pick
 .orca-ui .sc-card.sc-sel { border-color: var(--oui-primary); box-shadow: inset 0 0 0 1px var(--oui-primary); }
 .sc-card.sp-child { margin-inline-start: var(--oui-s4); }
 .sc-card.sp-archived > * { opacity: .72; }
-.sc-body { display: grid; gap: 4px; flex: 1; min-width: 0; }
+.sc-body { display: flex; flex-direction: column; gap: 4px; flex: 1; align-self: stretch; min-width: 0; }
+.sc-body > .sp-chips { margin-top: auto; padding-top: 2px; }
+.orca-ui .sc-body .oui-chip, .orca-ui .sc-body .oui-status { height: auto; min-height: 20px; padding-block: 2px; line-height: 1.25; white-space: normal; overflow-wrap: anywhere; }
+.sc-body .oui-chip .oui-truncate, .sc-wrap { overflow: visible; white-space: normal; overflow-wrap: anywhere; }
 .sc-body .sp-name > .oui-truncate { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; white-space: normal; overflow-wrap: anywhere; }
 .sc-line { display: flex; flex-wrap: wrap; align-items: center; gap: var(--oui-s2); min-width: 0; }
 .sc-colour { display: inline-flex; align-items: center; gap: 5px; min-width: 0; }

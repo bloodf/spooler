@@ -67,6 +67,8 @@ const stackText = () => [q('[data-stack]'), ...qa('tr.sp-child')].map(vis).join(
 `;
 
 const scenarios = [];
+// shared: the scenario reads or writes localStorage that parallel pages share (file:// is one origin), so all such
+// scenarios run one after another on the first worker.
 const test = (name, body, opts = {}) => scenarios.push({ name, body, ...opts });
 
 // ------------------------------------------------------------------ list (test_display.py PageScriptTest)
@@ -120,7 +122,7 @@ test('cards: the toolbar toggle switches views, says which is on and is remember
   await click(byTest('view-table'));
   assert(q('tr[data-spool="1"]'), 'back to the table, the stack still open');
   eq(localStorage.getItem('spooler.view'), 'table', 'table remembered');
-`);
+`, { shared: true });
 test('cards: a remembered pick wins until Settings changes the default', `
   await spools(SPOOLS, {spool_view: 'table'});
   assert(byTest('cards'), 'the viewer picked cards earlier');
@@ -130,11 +132,11 @@ test('cards: a remembered pick wins until Settings changes the default', `
   await spools(SPOOLS, {spool_view: 'table'});
   assert(q('tr[data-stack]') && !byTest('cards'), 'a new default replaces the pick');
   eq(localStorage.getItem('spooler.view'), null, 'pick forgotten');
-`, { storage: { 'spooler.view': 'cards' } });
+`, { shared: true, storage: { 'spooler.view': 'cards' } });
 test('cards: the Settings default applies with no pick', `
   await spools(SPOOLS, {spool_view: 'cards'});
   assert(byTest('cards') && byTest('view-cards').getAttribute('aria-pressed') === 'true', 'cards from Settings');
-`);
+`, { shared: true });
 test('cards: search, filters, sort and groups match the table', `
   ${CARD_SPOOLS}
   await spools(MIX);
@@ -162,7 +164,7 @@ test('cards: search, filters, sort and groups match the table', `
   await click(dry);
   eq(dry.getAttribute('aria-expanded'), 'false', 'group closed');
   assert(!ids().includes('12') && ids().length === 3, 'its card hidden: ' + ids());
-`);
+`, { shared: true });
 test('cards: each shows its spool, colour, weight and state; the unknown amount has the ? mark', `
   ${CARD_SPOOLS}
   await spools(MIX, {spool_view: 'cards'});
@@ -170,7 +172,14 @@ test('cards: each shows its spool, colour, weight and state; the unknown amount 
   for (const s of ['Signal', 'Polymaker', 'PETG', 'Red · #D22020', '80 g of 1,000 g', 'Dry box', 'Low', 'RFID']) assert(c.includes(s), s + ' in ' + c);
   assert(card(12).querySelector('.oui-spool .oui-spool-unknown') === null && card(14).querySelector('.oui-spool[data-unknown] .oui-spool-unknown'), '? only for the unknown amount');
   assert(!card(12).querySelector('button'), 'nothing interactive inside a card');
-`);
+  const cards = qa('.sc-card'), top = cards[0].getBoundingClientRect().top, first = cards.filter(c => c.getBoundingClientRect().top === top);
+  eq(first.length, 2, 'two cards a row beside the open detail at 1280 px');
+  eq(new Set(first.map(c => c.getBoundingClientRect().height)).size, 1, 'a row shares one height');
+  const cut = qa('.sc-card .oui-chip, .sc-card .oui-status, .sc-card .oui-chip .oui-truncate').filter(e => e.scrollWidth > e.clientWidth + 1).map(text);
+  eq(cut, [], 'no chip cut off');
+  const chips = card(12).querySelector('.sp-chips').getBoundingClientRect(), box = card(12).getBoundingClientRect();
+  assert(box.bottom - chips.bottom < 20, 'state chips at the bottom of the card');
+`, { shared: true });
 test('cards: a card is a button; click, Enter and Space open its detail', `
   ${CARD_SPOOLS}
   await spools(MIX, {spool_view: 'cards'});
@@ -182,13 +191,13 @@ test('cards: a card is a button; click, Enter and Space open its detail', `
   await until(() => panel(13), 'detail by Enter');
   card(12).focus(); await press('Space');
   await until(() => panel(12), 'detail by Space');
-`);
+`, { shared: true });
 test('cards: empty and error states are the table\'s', `
   await spools([], {spool_view: 'cards'});
   assert(byTest('empty-none') && !byTest('cards'), 'empty');
   await post({type: 'spools', ok: false, error: 'HTTP 500', spools: []});
   assert(byTest('empty-error'), 'error');
-`, { storage: { 'spooler.view': 'cards' } });
+`, { shared: true, storage: { 'spooler.view': 'cards' } });
 test('every Display switch hides its part', `
   const off = Object.fromEntries(Object.keys(DEFAULTS).map(k => [k, false]));
   await spools(SPOOLS, {display: off});
@@ -1550,7 +1559,7 @@ let failed = 0;
 const results = [];
 try {
   await Promise.all(Array.from({ length: Math.min(workers, chosen.length) }, async (_, worker) => {
-    for (let k = worker; k < chosen.length; k += workers) {
+    for (const k of chosen.map((_, i) => i).filter(i => (chosen[i].shared ? worker === 0 : i % workers === worker))) {
       const sc = chosen[k];
       console.log(`START ${sc.name}`);
       const mode = sc.mode || 'tab';
