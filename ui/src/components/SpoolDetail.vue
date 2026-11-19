@@ -41,7 +41,7 @@ const amount = computed(() => {
   if (!known) return { value: pct.value === null ? null : pct.value, unit: '%', sub: '' };
   const [value, unit] = w(s.value.remaining_weight).split(' ');
   const of = typeof original.value === 'number' ? t('weight.of', { total: w(original.value) }) : '';
-  if (m.wMode === 'percent' && pct.value !== null) return { value: pct.value, unit: '%', sub: `${value} ${unit} ${of}`.trim() };
+  if (m.wMode === 'percent' && pct.value !== null) return { value: pct.value, unit: '%', sub: `· ${value} ${unit} ${of}`.trim() };
   return { value, unit, sub: [of, m.wMode === 'both' && pct.value !== null ? `${pct.value}%` : ''].filter(Boolean).join(' · ') };
 });
 // How long the spool lasts, and at what rate ("5 weeks at 20 g per week"); null (a dash) while unknown.
@@ -150,7 +150,7 @@ async function save() {
     <!-- The amount: the one big figure of the panel, with its level. Kept from an earlier read (stale), it is grey. -->
     <div class="sd-amount" :data-stale="stale || undefined">
       <p class="oui-num" data-test="weight"><span class="oui-sr">{{ t('list.col.left') }}: </span><template v-if="amount.value === null"><strong class="sd-figure" aria-hidden="true">—</strong> <span class="oui-muted">{{ t('spool.unknownLeft') }}</span></template>
-        <template v-else><strong class="sd-figure">{{ amount.value }}</strong> {{ amount.unit }}<span v-if="amount.sub" class="oui-muted">{{ ' ' + amount.sub }}</span></template></p>
+        <template v-else><strong class="sd-figure">{{ amount.value }}</strong>{{ amount.unit === '%' ? '%' : ' ' + amount.unit }}<span v-if="amount.sub" class="oui-muted">{{ ' ' + amount.sub }}</span></template></p>
       <OuiLevel :fraction="pct === null ? null : pct / 100" :tone="levelTone(level)" :label="pct === null ? t('spool.unknownLeft') : t('spool.pctLeft', { pct })" />
     </div>
 
@@ -188,7 +188,9 @@ async function save() {
           <Select v-model="presetPick" :input-id="`sd-preset-${s.id}`" :options="presets" option-label="label" option-value="value" size="small" aria-describedby="sd-send-h" data-test="preset-pick" /></div>
         <Button severity="secondary" size="small" :label="t('list.send')" :disabled="!!sourceOff || pending('send') || !presetPick || ownLink" aria-describedby="sd-send-h" data-test="send"
                 @click="sendEdits(s.id, presetPick)"><template #icon><OuiIcon :icon="upload" :size="14" /></template></Button>
-        <OuiHint id="sd-send-h" end :label="t('list.send')" :text="ownLink ? t('detail.ownLink') : t('list.sendHelp')" data-test="send-help" />
+        <OuiHint end :label="t('list.send')" :text="ownLink ? t('detail.ownLink') : t('list.sendHelp')" data-test="send-help" />
+        <!-- What the picker and Send are described by: the (i)'s own bubble is hidden while closed, and so not read from here. -->
+        <span id="sd-send-h" class="oui-sr">{{ ownLink ? t('detail.ownLink') : t('list.sendHelp') }}</span>
       </template>
       <p v-else class="oui-meta" data-test="no-presets">{{ t('detail.noPresets') }}</p>
     </div>
@@ -246,7 +248,7 @@ async function save() {
 .sd-rule { margin-block: var(--oui-s4); }
 .sd-preset { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--oui-s2); margin-top: var(--oui-s4); }
 .sd-preset > .oui-field { flex: 1 1 160px; min-width: 0; }
-.sd-preset > #sd-send-h { align-self: center; }
+.sd-preset > .oui-hint { align-self: center; }
 .sd-note { display: grid; gap: 2px; margin-top: var(--oui-s3); overflow-wrap: anywhere; }
 .sd-usage { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: var(--oui-s3); margin-top: var(--oui-s4); padding: var(--oui-s3);
   border-radius: var(--oui-radius); background: var(--oui-raised); }

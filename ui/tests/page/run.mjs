@@ -560,7 +560,9 @@ test('page grammar: each tab opens with a page header and one primary action; th
   assert(d.closest('.oui-split[data-detail]'), 'the detail sits beside the list in the shared split');
   assert(!q('.oui-hero, .oui-on-band', d) && q('.oui-well .oui-spool', d), 'the spool on a neutral well, no filled block');
   eq(text(q('.sd-figure', d)), '400', 'the amount is the one large figure');
-  assert(vis(d).includes('400 g of 1,000 g · 40%'), 'with what it is out of: ' + vis(byTest('weight')));
+  assert(vis(d).includes('400 g of 1,000 g · 40%'), 'with what it is out of: ' + vis(q('.sd-amount', d)));
+  await spools([...SPOOLS, {...SPOOLS[0], id: 9, remaining_weight: 40}], {display: {...DEFAULTS, group_same: false}, usage: {enabled: true, mode: 'ask', prints: []}, stats: {on: true, cur: 'spoolman'}, weight_display: 'percent'});
+  assert(vis(panel(1)).includes('40% · 400 g of 1,000 g'), 'the percentage first when Settings asks for it: ' + vis(q('.sd-amount', panel(1))));
   await tab('printer');
   eq(text(q('.pv > .oui-pagehead .oui-pagehead-title')), 'Printer', 'printer tab header');
   eq(primary(), ['Add printer'], 'no printers yet: Add printer is the way out');
@@ -676,6 +678,7 @@ test('S03: Send acts on the preset picked in the spool detail, and explains itse
     presets: [{name: 'My PLA', label: 'Snapmaker U1', linked: true, own: true}, {name: '_local/spooler/PLA #1 @Sovol SV06', label: 'Sovol SV06', linked: false}]}});
   await until(() => byTest('send').disabled, 'a link of this spool alone is not sent');
   assert(text(byTest('send-help')).includes('Linked to this spool only'), 'and says why');
+  assert(text(q('#' + byTest('send').getAttribute('aria-describedby'))).includes('Linked to this spool only'), 'Send is described by the reason itself, not by the (i) button');
   await post({type: 'spool_detail', detail: {id: 1, sign: '£', grams: 0, cost: null, rate: null, weeks: null, prints: [], presets: []}});
   await until(() => byTest('no-presets'), 'no preset yet: says how to get one');
   assert(!byTest('send'), 'nothing to send');

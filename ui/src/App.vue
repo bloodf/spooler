@@ -107,6 +107,8 @@ html:lang(zh-CN) { --oui-font: 'Manrope', 'PingFang SC', 'Microsoft YaHei', 'Not
 .orca-ui .oui-hint.oui-hint { position: static; }
 .orca-ui .oui-hint.oui-hint > .oui-hint-bubble { top: auto; left: var(--oui-s3); right: auto; margin-top: 26px; max-width: min(340px, calc(100% - 2 * var(--oui-s3))); }
 .orca-ui .oui-pagehead .oui-hint.oui-hint > .oui-hint-bubble { left: auto; right: 0; max-width: min(340px, 100%); }
+/* A closed bubble takes no room: hidden but laid out, it added blank scroll under the last module. */
+.orca-ui .oui-hint-bubble:not([data-open]) { display: none; }
 /* A paragraph inside an (i) bubble. */
 .sp-hint-p { display: block; }
 .sp-hint-p + .sp-hint-p { margin-top: var(--oui-s2); }
