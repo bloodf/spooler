@@ -14,8 +14,10 @@ import os
 import shutil
 import subprocess
 import tempfile
+import types
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from plugin_loader import load
 
@@ -85,6 +87,22 @@ class Embedded(unittest.TestCase):
         self.assertEqual(boot(sp.main_html())["mode"], "main")
         self.assertIn("orca_settings", tab["own_fields"])
         self.assertNotIn("</script", sp.tab_html("main", "http://x</script><b>", 100.0).split("spooler-boot")[1].split("</script>")[0])
+        # The Settings window opens at the page a link asked for; anything but a page id is dropped.
+        self.assertEqual(boot(sp.settings_html("", {"ok": False}, 100, page="s-src"))["page"], "s-src")
+        self.assertEqual(boot(sp.settings_html("", {"ok": False}, 100))["page"], "")
+        for bad in ("s-src</script>", "../x", 7, None):
+            self.assertEqual(boot(sp.settings_html("", {"ok": False}, 100, page=bad))["page"], "")
+
+    def test_spool_window_link_opens_its_settings_page(self):
+        """Open Settings from the spool window names a page; the Settings window boots at it."""
+        made = []
+        with mock.patch.object(sp.orca.host, "ui", types.SimpleNamespace(create_window=lambda **k: made.append(k) or mock.Mock()), create=True):
+            window = sp.SpoolerWindow()
+            window._check_connection = lambda *a, **k: None
+            window.on_message({"type": "settings", "page": "s-src"})
+        page = made[-1]["html"]
+        start = page.index('id="spooler-boot">') + len('id="spooler-boot">')
+        self.assertEqual(json.loads(page[start:page.index("</script>", start)])["page"], "s-src")
 
     def test_settings_lists_one_switch_per_display_option(self):
         source = (UI / "src" / "settings" / "SettingsView.vue").read_text(encoding="utf-8")

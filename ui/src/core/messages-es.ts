@@ -309,6 +309,7 @@ export const es: Record<MessageKey, string> = {
   'bambu.signedOut': 'Sesión cerrada', 'bambu.connected': 'Conectado a Bambu Cloud', 'bambu.notConnected': 'Sin conexión: {why}', 'bambu.failed': 'error de conexión',
   'bambu.experimental': 'Experimental: usa el servicio en la nube no oficial de Bambu, que Bambu puede cambiar en cualquier momento. Spooler nunca guarda tu contraseña.',
   'req.connected': 'Conectado', 'req.unreachable': 'Sin respuesta', 'req.checking': 'Comprobando…', 'req.untested': 'Sin probar', 'req.signedOut': 'Sin sesión', 'req.check': 'Comprobar de nuevo', 'req.spoolmanInstall': 'Spoolman funciona como un servidor propio en tu red. Inícialo o instálalo:',
+  'set.about': 'Acerca de', 'set.hasError': 'tiene un valor que corregir',
   'lang.title': 'Idioma', 'lang.label': 'Idioma de la página', 'lang.auto': 'Automático ({current})', 'lang.en': 'English', 'lang.pt-BR': 'Português (Brasil)',
   'lang.es': 'Español', 'lang.de': 'Deutsch', 'lang.zh-CN': '简体中文', 'lang.pl': 'Polski',
   'lang.help': 'Automático sigue el idioma de OrcaSlicer o, si Spooler no lo tiene, el inglés. Tu elección se guarda con los ajustes de Spooler.',

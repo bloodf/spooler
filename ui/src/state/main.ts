@@ -1,4 +1,4 @@
-import { computed, reactive, watch } from 'vue';
+import { computed, reactive, ref, watch } from 'vue';
 import * as bridge from '../core/bridge';
 import { boot } from '../core/boot';
 import { t } from '../core/i18n';
@@ -233,7 +233,9 @@ export function answerCalibration(name: string, save: boolean): void {
   else m.calibration = m.calibration.filter(a => a.name !== name);
   bridge.postMain({ type: save ? 'calibration_save' : 'calibration_skip', name });
 }
-export const openSettings = (): void => bridge.postMain({ type: 'settings' });
+/** The settings page a link asked for (s-src, ...), opened once Settings shows; '' = the remembered page. */
+export const settingsPage = ref('');
+export const openSettings = (page = ''): void => { settingsPage.value = page; bridge.postMain({ type: 'settings', ...(page ? { page } : {}) }); };
 
 export function pollLive(): void {
   if (m.liveOn && m.showPrinterTab && m.tab === 'printer' && m.view === 'main') bridge.postMain({ type: 'live' });
