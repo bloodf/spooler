@@ -268,6 +268,7 @@ export const zhCN: Record<MessageKey, string> = {
   'set.previewMore': '另有 {n} 卷', 'set.weights': '料盘重量', 'set.weightsLabel': '料盘卡片上的剩余重量显示为：',
   'set.weight.grams': '克', 'set.weight.percent': '百分比', 'set.weight.both': '两者', 'set.layout': '料盘列表',
   'set.layoutLabel': '料盘标签页中的料盘显示为：', 'set.one': '单列', 'set.two': '双列',
+  'list.view': '视图', 'list.table': '表格', 'list.cards': '卡片', 'set.viewLabel': '列表显示为：',
   'set.layoutHelp': '窗口较窄时，双列会变为单列，以保证名称清晰可读。',
   'set.display': '显示', 'set.displayHelp': '选择料盘和打印机标签页显示的内容。', 'set.displaySpools': '料盘标签页',
   'set.displayHeads': '打印机标签页：每个槽位', 'set.displayNote': '更改在保存后生效，并只保存在这台电脑上。',

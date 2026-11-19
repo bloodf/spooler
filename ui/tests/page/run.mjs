@@ -94,6 +94,101 @@ test('an open stack stays in its column', `
   const col = q('[data-stack]').closest('.sp-col');
   eq(qa('tr.sp-child').map(r => r.closest('.sp-col') === col), [true, true], 'its spools open under it, in its column');
 `);
+// ------------------------------------------------------------------ cards (Spools toolbar > Table | Cards)
+const CARD_SPOOLS = `const MIX = [
+  {id: 11, remaining_weight: 640, initial_weight: 1000, location: 'Shelf A', filament: {id: 21, name: 'Galaxy', material: 'PLA', color_hex: '1c2f8a', vendor: {name: 'Acme'}}},
+  {id: 12, remaining_weight: 80, initial_weight: 1000, location: 'Dry box', rfid_tags: ['04a1b2c3'], filament: {id: 22, name: 'Signal', material: 'PETG', color_hex: 'd22020', vendor: {name: 'Polymaker'}}},
+  {id: 13, remaining_weight: 900, initial_weight: 1000, location: 'Shelf B', filament: {id: 23, name: 'Snow', material: 'PLA', color_hex: 'f4f4f4', vendor: {name: 'Acme'}}},
+  {id: 14, remaining_weight: null, initial_weight: 1000, location: 'Shelf A', filament: {id: 24, name: 'Ruby', material: 'ASA', color_hex: 'b01030', vendor: {name: 'Polymaker'}}}];
+  const ids = () => qa('[data-spool]').map(e => e.dataset.spool);
+  async function both(what) { await click(byTest('view-table')); const a = ids(); await click(byTest('view-cards')); const b = ids();
+    assert((q('.sc-card') || byTest('empty-filter')) && !q('tr[data-spool]'), 'cards drawn: ' + what); eq(b, a, what + ': cards show what the table shows'); return b; }`;
+test('cards: the toolbar toggle switches views, says which is on and is remembered per viewer', `
+  await spools(SPOOLS);
+  eq([byTest('view-table').getAttribute('aria-pressed'), byTest('view-cards').getAttribute('aria-pressed')], ['true', 'false'], 'table by default');
+  assert(q('tr[data-stack]') && !byTest('cards'), 'table');
+  await click(byTest('view-cards'));
+  eq([byTest('view-table').getAttribute('aria-pressed'), byTest('view-cards').getAttribute('aria-pressed')], ['false', 'true'], 'cards on');
+  eq(localStorage.getItem('spooler.view'), 'cards', 'remembered for this viewer');
+  assert(!q('tr') && byTest('cards'), 'no table rows');
+  const stack = q('.sc-card[data-stack]');
+  assert(text(stack).includes('×2') && text(stack).includes('1,380 g of 2,000 g'), 'stack card with its count and totals: ' + text(stack));
+  eq(stack.getAttribute('aria-expanded'), 'false', 'stack closed');
+  await click(stack);
+  eq(qa('.sc-card.sp-child').map(c => c.dataset.spool), ['1', '2'], 'it opens to its spools');
+  assert(text(card(1)).includes('400 g of 1,000 g') && card(1).querySelector('.oui-level') && text(card(1)).includes('Shelf A'), 'weight, bar, location: ' + text(card(1)));
+  await click(byTest('view-table'));
+  assert(q('tr[data-spool="1"]'), 'back to the table, the stack still open');
+  eq(localStorage.getItem('spooler.view'), 'table', 'table remembered');
+`);
+test('cards: a remembered pick wins until Settings changes the default', `
+  await spools(SPOOLS, {spool_view: 'table'});
+  assert(byTest('cards'), 'the viewer picked cards earlier');
+  await spools(SPOOLS, {spool_view: 'table'});
+  assert(byTest('cards'), 'same default: the pick stays');
+  await spools(SPOOLS, {spool_view: 'cards'});
+  await spools(SPOOLS, {spool_view: 'table'});
+  assert(q('tr[data-stack]') && !byTest('cards'), 'a new default replaces the pick');
+  eq(localStorage.getItem('spooler.view'), null, 'pick forgotten');
+`, { storage: { 'spooler.view': 'cards' } });
+test('cards: the Settings default applies with no pick', `
+  await spools(SPOOLS, {spool_view: 'cards'});
+  assert(byTest('cards') && byTest('view-cards').getAttribute('aria-pressed') === 'true', 'cards from Settings');
+`);
+test('cards: search, filters, sort and groups match the table', `
+  ${CARD_SPOOLS}
+  await spools(MIX);
+  eq(await both('all'), ['12', '11', '13', '14'], 'sorted by what is left, the unknown amount last');
+  await type(byTest('search'), 'shelf a');
+  eq(await both('location search'), ['11', '14'], 'location');
+  await type(byTest('search'), '');
+  await pick(byTest('material'), 'PLA');
+  eq(await both('material'), ['11', '13'], 'material');
+  await pick(byTest('colour'), 'Red2');  // the option shows its count
+  eq(await both('material and colour'), [], 'nothing red in PLA');
+  assert(byTest('empty-filter'), 'the same no-match state');
+  await click(btn('Clear filters'));
+  await pick(byTest('colour'), 'Red2');  // the option shows its count
+  eq(await both('colour'), ['12', '14'], 'colour');
+  await pick(byTest('colour'), 'All colours4');
+  await click(byTest('filters-toggle'));
+  await pick(byTest('sort'), 'Sort: name');
+  eq(await both('sort by name'), ['11', '14', '12', '13'], 'name order');
+  await pick(byTest('group'), 'Group: location');
+  await both('grouped');
+  const heads = qa('.sc-ghead');
+  eq(heads.map(h => text(q('strong', h))).sort(), ['Dry box', 'Shelf A', 'Shelf B'], 'one header per location');
+  const dry = heads.find(h => text(h).includes('Dry box'));
+  await click(dry);
+  eq(dry.getAttribute('aria-expanded'), 'false', 'group closed');
+  assert(!ids().includes('12') && ids().length === 3, 'its card hidden: ' + ids());
+`);
+test('cards: each shows its spool, colour, weight and state; the unknown amount has the ? mark', `
+  ${CARD_SPOOLS}
+  await spools(MIX, {spool_view: 'cards'});
+  const c = vis(card(12));
+  for (const s of ['Signal', 'Polymaker', 'PETG', 'Red · #D22020', '80 g of 1,000 g', 'Dry box', 'Low', 'RFID']) assert(c.includes(s), s + ' in ' + c);
+  assert(card(12).querySelector('.oui-spool .oui-spool-unknown') === null && card(14).querySelector('.oui-spool[data-unknown] .oui-spool-unknown'), '? only for the unknown amount');
+  assert(!card(12).querySelector('button'), 'nothing interactive inside a card');
+`);
+test('cards: a card is a button; click, Enter and Space open its detail', `
+  ${CARD_SPOOLS}
+  await spools(MIX, {spool_view: 'cards'});
+  eq(card(11).tagName, 'BUTTON', 'a button');
+  await click(card(11));
+  await until(() => panel(11), 'detail by click');
+  assert(card(11).getAttribute('aria-current') === 'true', 'marked as the open one');
+  card(13).focus(); await press('Enter');
+  await until(() => panel(13), 'detail by Enter');
+  card(12).focus(); await press('Space');
+  await until(() => panel(12), 'detail by Space');
+`);
+test('cards: empty and error states are the table\'s', `
+  await spools([], {spool_view: 'cards'});
+  assert(byTest('empty-none') && !byTest('cards'), 'empty');
+  await post({type: 'spools', ok: false, error: 'HTTP 500', spools: []});
+  assert(byTest('empty-error'), 'error');
+`, { storage: { 'spooler.view': 'cards' } });
 test('every Display switch hides its part', `
   const off = Object.fromEntries(Object.keys(DEFAULTS).map(k => [k, false]));
   await spools(SPOOLS, {display: off});
@@ -945,10 +1040,12 @@ test('settings: one switch per Display option, drying table, save waits for a pa
   await click(q('#auto-keep'));
   assert(q('#cal-ask').checked, 'calibrated values: ask first by default');
   await click(q('#cal-auto'));
+  assert(q('#view-table').checked, 'spool list: table by default');
+  await click(q('#view-cards'));
   await click(byTest('save'));
   const s = lastOf('save');
-  eq([s.view, s.display.diameter, s.drying['NYLON CF'], s.drying.HIPS, s.url, s.auto_keep_slots, s.save_calibration],
-    ['settings', true, 0, 9, 'http://spoolman:7912', true, 'auto'], 'saved');
+  eq([s.view, s.display.diameter, s.drying['NYLON CF'], s.drying.HIPS, s.url, s.auto_keep_slots, s.save_calibration, s.spool_view],
+    ['settings', true, 0, 9, 'http://spoolman:7912', true, 'auto', 'cards'], 'saved');
 `);
 test('settings: leaving with unsaved edits asks; going back keeps them', `
   await post({type: 'show_view', view: 'settings', url: 'http://s:7912', source: 'spoolman', low_stock: 100, display: DEFAULTS, drying: {}, progress: {}, stats: {}});
@@ -1461,7 +1558,8 @@ try {
         low_stock_default: 100, refresh_ms: 600000, display_defaults: DISPLAY_DEFAULTS, own_fields: ['tag', 'orca_settings', 'dried', 'orca_flow_ratio'],
         settings: { ...SETTINGS, wizard: !!sc.wizard }, ...(sc.page ? { page: sc.page } : {}) };
       // seed: the settings page remembered from an earlier visit (OuiSettings' own key: page path and its page ids)
-      const seed = sc.lastPage ? `localStorage.setItem('oui-settings:' + location.pathname + ':' + ${JSON.stringify(PAGES.join(','))}, ${JSON.stringify(sc.lastPage)});` : '';
+      const seed = (sc.lastPage ? `localStorage.setItem('oui-settings:' + location.pathname + ':' + ${JSON.stringify(PAGES.join(','))}, ${JSON.stringify(sc.lastPage)});` : '')
+        + Object.entries(sc.storage || {}).map(([k, v]) => `localStorage.setItem(${JSON.stringify(k)}, ${JSON.stringify(v)});`).join('');
       const file = join(dir, `p${k}.html`);
       await writeFile(file, preparePage(page, boot));
       const p = await bounded(browser.newPage(), 'open page / initialize DevTools');

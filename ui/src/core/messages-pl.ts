@@ -300,6 +300,7 @@ export const pl: Record<MessageKey, string> = {
   'set.previewMore': '+ {n} więcej', 'set.weights': 'Waga szpul', 'set.weightsLabel': 'Pokazuj pozostałą wagę na kartach szpul jako:',
   'set.weight.grams': 'Gramy', 'set.weight.percent': 'Procent', 'set.weight.both': 'Oba', 'set.layout': 'Lista szpul',
   'set.layoutLabel': 'Pokazuj szpule na karcie Szpule jako:', 'set.one': 'Jedna kolumna', 'set.two': 'Dwie kolumny',
+  'list.view': 'Widok', 'list.table': 'Tabela', 'list.cards': 'Karty', 'set.viewLabel': 'Pokazuj listę jako:',
   'set.layoutHelp': 'W wąskim oknie dwie kolumny zmieniają się w jedną, aby nazwy pozostały czytelne.',
   'set.display': 'Wyświetlanie', 'set.displayHelp': 'Wybierz, co pokazują karty Szpule i Drukarka.', 'set.displaySpools': 'Karta Szpule',
   'set.displayHeads': 'Karta Drukarka: każdy slot', 'set.displayNote': 'Zmiany obowiązują po zapisaniu i zostają na tym komputerze.',

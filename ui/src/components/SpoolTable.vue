@@ -2,20 +2,21 @@
 import { computed } from 'vue';
 import Column from 'primevue/column';
 import DataTable from 'primevue/datatable';
-import { OuiIcon, OuiLevel, OuiSpool, materialTone } from '../../shared/src/components';
+import { OuiIcon, OuiLevel, OuiSpool, OuiSwatch, materialTone } from '../../shared/src/components';
 import { chevronDown, chevronRight, edit, mapPin } from '../../shared/src/icons';
 import SpoolChips from './SpoolChips.vue';
 import { boot } from '../core/boot';
 import { m, dupes } from '../state/main';
 import { pickSpool, openEditor } from '../state/menu';
 import { t, tn, locale } from '../core/i18n';
-import { formatWeight, leftLabel, levelTone, lowLevel, noteText, originalWeight, percentLeft, shown, spoolDirection, spoolPaint, totals, type Spool, type Totals } from '../logic/spools';
+import { colorFamily, formatWeight, leftLabel, levelTone, lowLevel, noteText, originalWeight, percentLeft, shown, spoolDirection, spoolPaint, totals, type Spool, type Totals } from '../logic/spools';
 
 // The stock list. One row per spool; spools of one filament fold into a stack row (×n) that opens to its spools,
 // and a group (by location, material or manufacturer) is a header row that closes. Picking a row opens its detail.
+// With `cards` the same rows draw as a grid of cards (Spools toolbar > Cards): a stack card opens to its spools' cards.
 export type Row = { key: string; group?: string; hidden?: boolean } & ({ kind: 'spool'; spool: Spool; child?: boolean } | { kind: 'stack'; items: Spool[]; used: number; open: boolean });
 export interface GroupInfo { label: string; count: number; totals: Totals; open: boolean }
-const props = defineProps<{ rows: Row[]; groups?: Record<string, GroupInfo> | null; selected: number | null }>();
+const props = defineProps<{ rows: Row[]; groups?: Record<string, GroupInfo> | null; selected: number | null; cards?: boolean }>();
 const emit = defineEmits<{ stack: [key: string]; group: [key: string] }>();
 
 const ex = computed(() => shown(m.disp, 'exact_weight'));
@@ -42,11 +43,40 @@ const note = (r: Row) => (r.kind === 'spool' ? noteText(r.spool, m.disp, boot.ow
 const selectedRow = computed(() => props.rows.find(r => (r.kind === 'spool' ? r.spool.id === props.selected : !r.open && r.items.some(s => s.id === props.selected))) ?? null);
 const rowClass = (r: Row) => ({ 'sp-hidden': r.hidden, 'sp-child': r.kind === 'spool' && r.child, 'sp-archived': r.kind === 'spool' && r.spool.archived });
 const rowAttrs = (r?: Row) => (r?.kind === 'spool' ? { 'data-spool': r.spool.id, 'aria-controls': 'sp-detail' } : r ? { 'data-stack': r.key } : {});
+const colourOf = (r: Row) => { const f = fil(r), fam = colorFamily(f);
+  return [fam ? t(`colour.${fam}` as any) : '', f.color_hex ? '#' + f.color_hex.replace(/^#/, '').toUpperCase() : ''].filter(Boolean).join(' · '); };
+const isSel = (r: Row) => r === selectedRow.value;
 function onRow(r: Row) { if (r.kind === 'stack') emit('stack', r.key); else pickSpool(r.spool.id); }
 </script>
 
 <template>
-  <DataTable :value="rows" data-key="key" size="small" selection-mode="single" :selection="selectedRow" :row-class="rowClass" class="sp-table"
+  <div v-if="cards" class="sc-grid" data-test="cards">
+    <template v-for="(r, i) in rows" :key="r.key">
+      <button v-if="groups && r.group !== rows[i - 1]?.group" type="button" class="sv-ghead sc-ghead" :aria-expanded="groups[r.group!].open" @click="emit('group', r.group!)">
+        <OuiIcon :icon="groups[r.group!].open ? chevronDown : chevronRight" :size="14" />
+        <span class="sv-gname"><strong>{{ groups[r.group!].label }}</strong> <span class="oui-meta">{{ tn('group.count', groups[r.group!].count) }}</span></span>
+        <span class="sv-gbar"><span class="oui-meta oui-num">{{ left(groups[r.group!].totals) }} {{ leftOf(groups[r.group!].totals) }}</span><OuiLevel :fraction="frac(groups[r.group!].totals)" /></span>
+      </button>
+      <button v-if="!r.hidden" type="button" class="sc-card" :class="[rowClass(r), { 'sc-sel': isSel(r) }]" v-bind="rowAttrs(r)"
+              :aria-expanded="r.kind === 'stack' ? r.open : undefined" :aria-current="isSel(r) || undefined" @click="onRow(r)">
+        <OuiSpool v-bind="spoolPaint(fil(r))" :direction="spoolDirection(fil(r))" :fraction="frac(sum(r))" :size="r.kind === 'spool' && r.child ? 64 : 80" />
+        <span class="sc-body">
+          <span class="sp-name"><span class="oui-truncate oui-strong" :title="name(r)">{{ name(r) }}</span>
+            <span v-if="r.kind === 'stack'" class="oui-chip oui-num st-head"><span class="st-count">×{{ r.items.length }}</span><OuiIcon :icon="r.open ? chevronDown : chevronRight" :size="12" /></span></span>
+          <span v-if="fil(r).vendor?.name && shown(m.disp, 'vendor')" class="oui-meta oui-truncate">{{ fil(r).vendor!.name }}</span>
+          <span class="sc-line"><span v-if="fil(r).material && shown(m.disp, 'material')" class="oui-chip" :data-tone="materialTone(fil(r).material)">{{ fil(r).material }}</span>
+            <span v-if="colourOf(r)" class="sc-colour oui-meta"><OuiSwatch :color="spoolPaint(fil(r)).color || '#9a9a9a'" /><span class="oui-truncate">{{ colourOf(r) }}</span></span></span>
+          <span class="sp-left oui-num" data-test="weight"><span><strong>{{ left(sum(r)) }}</strong><span v-if="leftOf(sum(r))" class="oui-muted">{{ ' ' + leftOf(sum(r)) }}</span><span v-if="pctSide(sum(r))" class="oui-muted"> · {{ pctSide(sum(r)) }}</span></span>
+            <OuiLevel v-if="shown(m.disp, 'bar')" class="sc-track" :fraction="frac(sum(r))" :tone="levelTone(level(r))"
+                      :label="sum(r).percent === null ? t('spool.unknownLeft') : t('spool.pctLeft', { pct: sum(r).percent })" /></span>
+          <span v-if="r.kind === 'spool' && r.spool.location && shown(m.disp, 'location')" class="sp-loc oui-meta"><OuiIcon :icon="mapPin" :size="13" /><span class="oui-truncate">{{ r.spool.location }}</span></span>
+          <span v-if="r.kind === 'stack' && r.used" class="oui-meta">{{ tn('stack.inUse', r.used) }}</span>
+          <SpoolChips v-if="r.kind === 'spool'" :spool="r.spool" band />
+        </span>
+      </button>
+    </template>
+  </div>
+  <DataTable v-else :value="rows" data-key="key" size="small" selection-mode="single" :selection="selectedRow" :row-class="rowClass" class="sp-table"
              :row-group-mode="groups ? 'subheader' : undefined" group-rows-by="group"
              :pt="{ bodyRow: ({ context }: { context: { index: number } }) => rowAttrs(rows[context.index]) }" @row-click="e => onRow(e.data)">
     <template v-if="groups" #groupheader="{ data }">
@@ -96,6 +126,20 @@ function onRow(r: Row) { if (r.kind === 'stack') emit('stack', r.key); else pick
 </template>
 
 <style>
+/* Cards: as many 220 px columns as fit, one column in a narrow window. */
+.sc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: var(--oui-s3); padding: var(--oui-s3); align-items: start; }
+.orca-ui .sc-ghead { grid-column: 1 / -1; padding: var(--oui-s1) 0; border-bottom: 1px solid var(--oui-border); }
+.orca-ui .sc-card { display: flex; gap: var(--oui-s3); align-items: flex-start; min-width: 0; padding: var(--oui-s3); border: 1px solid var(--oui-border); border-radius: var(--oui-radius);
+  background: var(--oui-surface); color: var(--oui-text); font: inherit; text-align: start; cursor: pointer; }
+.orca-ui .sc-card:hover { border-color: var(--oui-control-border); }
+.orca-ui .sc-card:focus-visible { outline: 2px solid var(--oui-primary); outline-offset: 1px; }
+.orca-ui .sc-card.sc-sel { border-color: var(--oui-primary); box-shadow: inset 0 0 0 1px var(--oui-primary); }
+.sc-card.sp-child { margin-inline-start: var(--oui-s4); }
+.sc-card.sp-archived > * { opacity: .72; }
+.sc-body { display: grid; gap: 4px; flex: 1; min-width: 0; }
+.sc-body .sp-name > .oui-truncate { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; white-space: normal; overflow-wrap: anywhere; }
+.sc-line { display: flex; flex-wrap: wrap; align-items: center; gap: var(--oui-s2); min-width: 0; }
+.sc-colour { display: inline-flex; align-items: center; gap: 5px; min-width: 0; }
 .sp-table table { table-layout: fixed; width: 100%; }
 /* The name column has a share of the width; the state column takes the rest, so its chips sit side by side and wrap
    only when they must instead of stacking one per line. */

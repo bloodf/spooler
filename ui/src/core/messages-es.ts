@@ -268,6 +268,7 @@ export const es: Record<MessageKey, string> = {
   'set.previewMore': '+ {n} más', 'set.weights': 'Pesos de los carretes', 'set.weightsLabel': 'Mostrar el peso restante en las tarjetas de carrete como:',
   'set.weight.grams': 'Gramos', 'set.weight.percent': 'Porcentaje', 'set.weight.both': 'Ambos', 'set.layout': 'Lista de carretes',
   'set.layoutLabel': 'Mostrar los carretes en la pestaña Carretes en:', 'set.one': 'Una columna', 'set.two': 'Dos columnas',
+  'list.view': 'Vista', 'list.table': 'Tabla', 'list.cards': 'Tarjetas', 'set.viewLabel': 'Mostrar la lista como:',
   'set.layoutHelp': 'En una ventana estrecha, las dos columnas pasan a una sola para que los nombres sigan siendo legibles.',
   'set.display': 'Visualización', 'set.displayHelp': 'Elige qué muestran las pestañas Carretes e Impresora.', 'set.displaySpools': 'Pestaña Carretes',
   'set.displayHeads': 'Pestaña Impresora: cada ranura', 'set.displayNote': 'Los cambios se aplican al guardar y se quedan en este equipo.',
