@@ -21,5 +21,4 @@ const pct = computed(() => (known.value ? Math.max(0, Math.min(1, props.fraction
 .oui-level[data-tone='critical'] > span { background: var(--oui-danger); }
 .oui-level[data-unknown] { background: repeating-linear-gradient(135deg, var(--oui-border) 0 3px, transparent 3px 6px); }
 .oui-level[data-unknown] > span { display: none; }
-.oui-on-band .oui-level > span { background: var(--oui-on-band); }
 </style>

@@ -21,23 +21,25 @@ function luminance(hex) {
 }
 // Every foreground/background pair the preset, base.css and the shared components put together.
 // 4.5 = text (WCAG AA), 3 = control boundaries, focus ring and other non-text marks.
-// Surfaces are tinted by the plugin's accent, so every accent has its own four surfaces and everything is checked on each.
+// Since 5.0 the surfaces are neutral (OrcaSlicer's own greys) and the same for every plugin, so each pair is checked once.
 const HUES = ['teal', 'sky', 'cobalt', 'violet', 'magenta', 'lime', 'orange'];
 const STATES = ['danger', 'warning', 'success', 'info'];
+const SURFACES = ['background', 'surface', 'raised', 'inset'];
 const cap = name => name[0].toUpperCase() + name.slice(1);
 const pairs = [
-  ...HUES.flatMap(accent => ['Background', 'Surface', 'Raised', 'Inset'].flatMap(level => { const bg = accent + level;
-    return [['text', bg, 4.5], ['muted', bg, 4.5], [accent + 'ControlBorder', bg, 3], ...STATES.map(state => [state, bg, 4.5]), ...HUES.map(hue => [hue, bg, 4.5]),
-      // The solid red button always has a label; its fill is held to 3:1 on the page and on panels.
-      ...(level === 'Background' || level === 'Surface' ? [['dangerSolid', bg, 3]] : [])]; })),
-  // Each hue as a solid fill with its on-colour, as a tint behind text or its own colour, and as the app-bar band.
-  ...HUES.flatMap(hue => [['on' + cap(hue), hue, 4.5], ['on' + cap(hue), hue + 'Hover', 4.5], [hue, hue + 'Soft', 4.5], ['text', hue + 'Soft', 4.5],
-    ['muted', hue + 'Soft', 4.5], ['onBand', hue + 'Band', 4.5]]),
+  ...SURFACES.flatMap(bg => [['text', bg, 4.5], ['muted', bg, 4.5], ['primaryText', bg, 4.5], ['controlBorder', bg, 3], ['primaryMark', bg, 3],
+    ...STATES.map(state => [state, bg, 4.5]), ...HUES.map(hue => [hue, bg, 4.5]),
+    // The solid red button always has a label; its fill is held to 3:1 on the page and on panels.
+    ...(bg === 'background' || bg === 'surface' ? [['dangerSolid', bg, 3]] : [])]),
+  // The neutral button (OrcaSlicer's regular button) and its label; the teal primary and its label; the tick on a checked mark.
+  ['text', 'control', 4.5], ['text', 'controlHover', 4.5], ['onPrimary', 'primary', 4.5], ['onPrimary', 'primaryHover', 4.5], ['onPrimary', 'primaryMark', 3],
+  // Selection: text on the teal tint.
+  ['text', 'primarySoft', 4.5], ['muted', 'primarySoft', 4.5], ['primaryText', 'primarySoft', 4.5],
+  // Each hue as a solid chip with its on-colour, as a tint behind text or its own colour, and as the plugin's mark tile.
+  ...HUES.flatMap(hue => [['on' + cap(hue), hue, 4.5], [hue, hue + 'Soft', 4.5], ['text', hue + 'Soft', 4.5], ['muted', hue + 'Soft', 4.5], ['onSolid', hue + 'Solid', 4.5]]),
   ['onDangerSolid', 'dangerSolid', 4.5], ['onDangerSolid', 'dangerSolidHover', 4.5],
-  // States: text on its tint, body text on its tint, and the solid chip.
+  // States: text on its tint (the state chip, banners), body text on its tint, and the solid chip.
   ...STATES.flatMap(state => [[state, state + 'Bg', 4.5], ['text', state + 'Bg', 4.5], ['muted', state + 'Bg', 4.5], ['onState', state, 4.5]]),
-  // State chips on the band are white pills with the state's colour.
-  ...['bandSuccess', 'bandWarning', 'bandDanger', 'bandInfo', 'bandMuted'].map(role => [role, 'onBand', 4.5]),
   ...[1, 2, 3, 4].map(n => ['onTool', 'tool' + n, 4.5]),
 ];
 let lowest = Infinity;

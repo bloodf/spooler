@@ -13,12 +13,12 @@ import type { OuiTone } from './tones';
  */
 const props = defineProps<{ label: string; icon?: OuiIconData; /** Recent readings, oldest first: drawn as a small line. */ history?: (number | null)[]; historyLabel?: string; current?: number | null; target?: number | null; unit: string;
   min?: number; max?: number; digits?: number; disabled?: boolean; describedby?: string;
-  /** What the heater is doing: heating is orange, at target green, cooling or off blue. Always said in words too (`phaseLabel`). */ phase?: 'heating' | 'target' | 'cooling' | 'off'; phaseLabel?: string;
+  /** What the heater is doing: heating is orange, at target green, cooling blue, off grey. Always said in words too (`phaseLabel`). */ phase?: 'heating' | 'target' | 'cooling' | 'off'; phaseLabel?: string;
   /** Last known values of a printer the page can no longer see: drawn grey, with no phase. */ stale?: boolean;
   setLabel: string; offLabel: string; targetLabel: string; offText: string; inputLabel: string; name?: string }>();
 const emit = defineEmits<{ set: [value: number]; off: [] }>();
 const draft = ref<number | null>(null);
-const hue = computed<OuiTone>(() => (props.stale ? 'neutral' : ({ heating: 'orange', target: 'success', cooling: 'sky', off: 'sky' } as const)[props.phase ?? (props.target ? 'heating' : 'off')]));
+const hue = computed<OuiTone>(() => (props.stale ? 'neutral' : ({ heating: 'orange', target: 'success', cooling: 'sky', off: 'neutral' } as const)[props.phase ?? (props.target ? 'heating' : 'off')]));
 // Enter in the field sets the value, like the Set button.
 function onEnter(event: KeyboardEvent) { if (event.target instanceof HTMLInputElement && draft.value != null && !props.disabled) emit('set', draft.value); }
 const show = (n: number | null | undefined) => (n == null || !Number.isFinite(n) ? '—' : n.toFixed(props.digits ?? 0));
@@ -47,6 +47,7 @@ const show = (n: number | null | undefined) => (n == null || !Number.isFinite(n)
 .oui-setpoint-spark { justify-self: start; }
 .oui-setpoint-phase { font-weight: 600; color: var(--oui-tone); }
 .oui-setpoint-read { display: grid; }
+.oui-setpoint-now[data-tone='neutral'] { color: var(--oui-text); }
 .oui-setpoint-now { color: var(--oui-tone); font-size: var(--oui-text-xl); font-weight: 700; line-height: 1.15; letter-spacing: -.01em; }
 .oui-setpoint-unit { margin-inline-start: .2em; font-size: .6em; font-weight: 600; }
 .oui-setpoint-control { display: flex; align-items: center; gap: var(--oui-s1); grid-column: -2 / -1; }

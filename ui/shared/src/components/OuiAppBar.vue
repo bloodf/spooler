@@ -3,8 +3,8 @@ import OuiIcon from './OuiIcon.vue';
 import type { OuiIconData } from '../icons';
 
 /*
- * The top bar of every plugin page: identity (the plugin's own mark and name), the page's one connection or
- * source state, the task tabs, then page-wide actions. The view for the selected tab is rendered by the app: give it
+ * The top bar of every plugin page: identity (the plugin's own mark and name), the task tabs, then on the right the
+ * page's one connection or source state and the page-wide actions. The view for the selected tab is rendered by the app: give it
  * role="tabpanel" and aria-labelledby="oui-tab-<value>".
  */
 export interface OuiTab { value: string; label: string; icon?: OuiIconData; count?: number | string;
@@ -26,12 +26,11 @@ function onKey(event: KeyboardEvent) {
 }
 </script>
 <template>
-  <header class="oui-appbar oui-on-band"><div class="oui-appbar-row">
+  <header class="oui-appbar"><div class="oui-appbar-row">
     <div class="oui-appbar-id">
       <span v-if="$slots.mark" class="oui-appbar-mark" aria-hidden="true"><slot name="mark" /></span>
       <h1 class="oui-appbar-name">{{ name }}</h1>
     </div>
-    <div v-if="$slots.status" class="oui-appbar-status"><slot name="status" /></div>
     <nav v-if="tabs?.length" class="oui-appbar-tabs" role="tablist" :aria-label="tabsLabel ?? name" @keydown="onKey">
       <button v-for="tab in tabs" :key="tab.value" v-bind="tab.attrs" type="button" role="tab" class="oui-appbar-tab" :data-tab="tab.value" :id="'oui-tab-' + tab.value"
         :aria-selected="tab.value === modelValue" :tabindex="tab.value === modelValue ? 0 : -1" @click="emit('update:modelValue', tab.value)">
@@ -41,36 +40,37 @@ function onKey(event: KeyboardEvent) {
         <span v-if="tab.attention" class="oui-appbar-attention" :title="tab.attention"><span class="oui-sr">, {{ tab.attention }}</span></span>
       </button>
     </nav>
+    <span class="oui-spacer" />
+    <div v-if="$slots.status" class="oui-appbar-status"><slot name="status" /></div>
     <div v-if="$slots.actions" class="oui-appbar-actions"><slot name="actions" /></div>
   </div></header>
 </template>
 <style>
-/* A band in the plugin's accent, the same in both themes: the mark, the name, the page's state and the tabs sit on it. */
-.oui-appbar { container: oui-appbar / inline-size; position: sticky; top: 0; z-index: 10; box-shadow: 0 1px 0 rgb(0 0 0 / .18), 0 4px 14px rgb(0 0 0 / .14); }
-/* The row is a child of the container, so the narrow layout below can restyle it. Wide: one line, and the state text is
-   what gives way. */
-.oui-appbar-row { display: flex; align-items: center; gap: 0 var(--oui-s4); min-height: 52px; padding: 0 var(--oui-s4); }
-.oui-appbar-id { display: flex; align-items: center; gap: 10px; min-height: 52px; }
-.oui-appbar-mark { display: grid; place-items: center; width: 30px; height: 30px; border-radius: var(--oui-radius-lg); color: var(--oui-band); background: var(--oui-on-band); }
-.oui-appbar-mark :is(svg, img) { display: block; width: 20px; height: 20px; }
-.oui-appbar-name { font-size: 16px; font-weight: 700; letter-spacing: -.01em; white-space: nowrap; }
-.oui-appbar-status { flex: 0 1 auto; display: flex; align-items: center; gap: var(--oui-s2); min-width: 0; overflow: hidden; font-size: var(--oui-text-sm); font-weight: 500; }
+/* A neutral bar, the colour of a panel, under OrcaSlicer's own tab bar. The plugin's hue is in two places only: its mark
+   tile and the line under the open tab. Identity and tabs on the left; the page's one state and its actions on the right. */
+.oui-appbar { container: oui-appbar / inline-size; position: sticky; top: 0; z-index: 10; background: var(--oui-surface); box-shadow: 0 1px 0 var(--oui-border); }
+.oui-appbar-row { display: flex; align-items: stretch; gap: 0 var(--oui-s4); min-height: 44px; padding: 0 var(--oui-s4); }
+.oui-appbar-id { flex: none; display: flex; align-items: center; gap: var(--oui-s2); }
+.oui-appbar-mark { display: grid; place-items: center; width: 26px; height: 26px; border-radius: var(--oui-radius-lg); color: var(--oui-on-solid); background: var(--oui-accent-solid); }
+.oui-appbar-mark :is(svg, img) { display: block; width: 17px; height: 17px; }
+.oui-appbar-name { font-size: 14px; font-weight: 700; letter-spacing: -.005em; white-space: nowrap; }
+.oui-appbar-tabs { flex: 0 1 auto; display: flex; align-items: stretch; min-width: 0; overflow-x: auto; scrollbar-width: none; }
+.oui-appbar-tab { position: relative; display: inline-flex; align-items: center; gap: 6px; padding: 0 10px; border: 0; background: none; cursor: pointer;
+  font-weight: 600; color: var(--oui-muted); white-space: nowrap; transition: color var(--oui-fast); }
+.oui-appbar-tab:hover { color: var(--oui-text); }
+.orca-ui .oui-appbar-tab:focus-visible { outline-offset: -3px; border-radius: var(--oui-radius); }
+.oui-appbar-tab[aria-selected='true'] { color: var(--oui-text); }
+.oui-appbar-tab[aria-selected='true']::after { content: ''; position: absolute; inset: auto 8px 0; height: 2px; border-radius: 2px 2px 0 0; background: var(--oui-accent); }
+.oui-appbar-count { min-width: 18px; padding: 0 5px; border-radius: 9px; font-size: var(--oui-text-xs); line-height: 18px; text-align: center; color: var(--oui-muted); background: var(--oui-raised);
+  box-shadow: inset 0 0 0 1px var(--oui-border); }
+.oui-appbar-attention { flex: none; width: 7px; height: 7px; border-radius: 50%; background: var(--oui-warning); }
+.oui-appbar-status { flex: 0 1 auto; display: flex; align-items: center; gap: var(--oui-s2); min-width: 0; overflow: hidden; font-size: var(--oui-text-sm); color: var(--oui-muted); }
 .oui-appbar-status > .oui-status { flex: none; }
-.oui-appbar-id, .oui-appbar-actions { flex: none; }
-.oui-appbar-tabs { flex: none; display: flex; align-items: center; gap: 2px; margin-inline-start: var(--oui-s2); overflow-x: auto; scrollbar-width: none; }
-.oui-appbar-tab { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border: 0; border-radius: 16px; background: none; cursor: pointer;
-  font-weight: 650; color: var(--oui-on-band); white-space: nowrap; transition: background var(--oui-fast), color var(--oui-fast); }
-.oui-appbar-tab:hover { background: rgb(255 255 255 / .16); }
-.oui-appbar-tab[aria-selected='true'] { color: var(--oui-band); background: var(--oui-on-band); }
-.oui-appbar-count { min-width: 18px; padding: 0 5px; border-radius: 9px; font-size: var(--oui-text-xs); line-height: 18px; text-align: center; background: rgb(255 255 255 / .22); }
-.oui-appbar-attention { flex: none; width: 8px; height: 8px; border-radius: 50%; background: currentColor; box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 30%, transparent); }
-.oui-appbar-tab[aria-selected='true'] .oui-appbar-count { color: var(--oui-on-band); background: var(--oui-band); }
-.oui-appbar-actions { display: flex; align-items: center; gap: var(--oui-s2); margin-inline-start: auto; min-height: 52px; }
-/* Narrow: identity and state on the first line, tabs on their own scrolling line. */
+.oui-appbar-actions { flex: none; display: flex; align-items: center; gap: var(--oui-s2); }
+/* Narrow: identity, state and actions on the first line, tabs on their own scrolling line. */
 @container oui-appbar (max-width: 760px) {
   .oui-appbar-row { flex-wrap: wrap; }
-  .oui-appbar-status { flex: 1 1 0; }
-  .oui-appbar-tabs { order: 5; flex: 1 0 100%; margin-inline: -6px; padding-bottom: var(--oui-s2); }
-  .oui-appbar-id, .oui-appbar-actions { min-height: 46px; }
+  .oui-appbar-id, .oui-appbar-status, .oui-appbar-actions { min-height: 40px; }
+  .oui-appbar-tabs { order: 5; flex: 1 0 100%; min-height: 36px; margin-inline: -10px; box-shadow: inset 0 1px 0 var(--oui-border); }
 }
 </style>

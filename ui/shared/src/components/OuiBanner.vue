@@ -42,7 +42,7 @@ function dismiss() {
 </script>
 <template>
   <div v-if="show && !hidden" :id="id" class="oui-banner" :data-dismissible="dismissible || undefined" :data-tone="TONE[props.tone ?? 'info']" :role="props.tone === 'error' ? 'alert' : 'status'">
-    <OuiIcon class="oui-banner-icon" :icon="icon ?? ICON[props.tone ?? 'info']" :size="16" tile :tone="TONE[props.tone ?? 'info']" />
+    <OuiIcon class="oui-banner-icon" :icon="icon ?? ICON[props.tone ?? 'info']" :size="16" :tone="TONE[props.tone ?? 'info']" />
     <p class="oui-banner-text"><strong>{{ title }}</strong> <span v-if="$slots.default"><slot /></span></p>
     <div v-if="$slots.actions" class="oui-banner-actions"><slot name="actions" /></div>
     <button v-if="dismissible" type="button" class="oui-banner-close" :aria-label="closeLabel ?? 'Close'" :title="closeLabel ?? 'Close'" @click="dismiss">
@@ -51,14 +51,16 @@ function dismiss() {
   </div>
 </template>
 <style>
-.oui-banner { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; min-height: 44px; padding: 6px 8px; border-radius: var(--oui-radius-lg);
+.oui-banner { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; min-height: 36px; padding: 4px 8px 4px 12px; border-radius: var(--oui-radius-lg);
   background: var(--oui-tone-soft); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--oui-tone) 40%, transparent); }
+/* Information is not an alarm: an info banner is grey with a blue mark. Warnings, errors and successes are tinted. */
+.oui-banner[data-tone='info'] { background: var(--oui-raised); box-shadow: inset 0 0 0 1px var(--oui-border); }
 .oui-banner-text { flex: 1 1 150px; min-width: 0; padding-block: 3px; }
 .oui-banner-text > strong { font-weight: 700; margin-inline-end: 4px; }
 .oui-banner-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-inline-start: auto; }
 /* The close button keeps the top-right corner however the text and actions wrap. */
 .oui-banner[data-dismissible] { position: relative; padding-inline-end: 40px; }
-.oui-banner-close { position: absolute; top: 8px; right: 8px; display: inline-grid; place-items: center; width: 28px; height: 28px; border: 0; border-radius: var(--oui-radius);
+.oui-banner-close { position: absolute; top: 4px; right: 6px; display: inline-grid; place-items: center; width: 28px; height: 28px; border: 0; border-radius: var(--oui-radius);
   color: var(--oui-muted); background: none; cursor: pointer; }
 .oui-banner-close:hover { color: var(--oui-text); background: color-mix(in srgb, var(--oui-tone) 14%, transparent); }
 </style>

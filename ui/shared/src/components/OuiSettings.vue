@@ -178,7 +178,7 @@ onBeforeUnmount(() => {
 /* The container is the outer element and the grid an inner one: a container query cannot restyle its own container.
    Its height is the viewport's (dvh where the web view has it) less what the page puts above and below it; the section
    scrolls inside, so the footer stays on screen whatever the window height. */
-.oui-settings { container: oui-settings / inline-size; --oui-settings-offset: 52px;
+.oui-settings { container: oui-settings / inline-size; --oui-settings-offset: 44px;
   height: max(240px, calc(100vh - var(--oui-settings-offset))); height: max(240px, calc(100dvh - var(--oui-settings-offset))); }
 .oui-settings-grid { display: grid; height: 100%; grid-template-columns: 208px minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto;
   grid-template-areas: 'nav body' 'foot foot'; gap: 0 var(--oui-s4); padding: var(--oui-s3) var(--oui-s4) 0; }
@@ -188,8 +188,8 @@ onBeforeUnmount(() => {
   font-weight: 600; text-align: start; background: none; cursor: pointer; transition: background var(--oui-fast), color var(--oui-fast); }
 .orca-ui .oui-settings-link { color: var(--oui-muted); }
 .orca-ui .oui-settings-link:hover { color: var(--oui-text); background: var(--oui-raised); }
-.orca-ui .oui-settings-link[aria-selected='true'] { color: var(--oui-on-primary); background: var(--oui-primary); }
-.oui-settings-link[aria-selected='true'] .oui-settings-flag { color: inherit; }
+/* The open section: a neutral fill and OrcaSlicer's teal mark. No coloured block. */
+.orca-ui .oui-settings-link[aria-selected='true'] { color: var(--oui-text); background: var(--oui-control); box-shadow: inset 2px 0 0 var(--oui-primary-mark); }
 .oui-settings-flag { margin-inline-start: auto; color: var(--oui-warning); }
 .oui-settings-link[data-state='error'] .oui-settings-flag { color: var(--oui-danger); }
 /* One column, one section: wrappers are flattened so no empty column or uneven second column is left behind. */

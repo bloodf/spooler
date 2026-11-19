@@ -23,7 +23,7 @@ const bars = computed(() => { const slot = W.value / Math.max(1, props.values.le
   return props.values.map((v, i) => (typeof v === 'number' ? { x: i * slot + (slot - w) / 2, y: Math.min(y(v), H.value - 3), w, h: Math.max(1, H.value - 2 - Math.min(y(v), H.value - 3)) } : null)); });
 </script>
 <template>
-  <svg class="oui-spark" :data-tone="tone ?? 'accent'" :width="W" :height="H" :viewBox="`0 0 ${W} ${H}`" role="img" :aria-label="label" focusable="false">
+  <svg class="oui-spark" :data-tone="tone ?? 'primary'" :width="W" :height="H" :viewBox="`0 0 ${W} ${H}`" role="img" :aria-label="label" focusable="false">
     <template v-if="!known.length"><path class="oui-spark-none" :d="`M1 ${H / 2}H${W - 1}`" /></template>
     <template v-else-if="type === 'bars'">
       <template v-for="(b, i) in bars" :key="i"><rect v-if="b" :x="b.x" :y="b.y" :width="b.w" :height="b.h" rx="1.5" :class="{ 'oui-spark-last': i === values.length - 1 }" /></template>
