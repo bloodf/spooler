@@ -4,6 +4,8 @@ Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); 
 0.9.0 are Spoolio's.
 
 ## [Unreleased]
+
+## [0.31.0] - 2026-11-19
 ### Added
 - The Spools list can show cards as well as the table: **Table** and **Cards** in the list's toolbar. Each card shows the spool filled to what is left, its name, manufacturer, material, colour, weight left with a bar, location and state (low stock, RFID, dried, in a printer, archived). Search, filters, sort, groups and stacks work the same in both, and a card opens the same detail as a row. Your pick is remembered; Settings > Spool list sets the default.
 ### Fixed
@@ -12,7 +14,7 @@ Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); 
 - A spool at 0 g says **Empty** instead of "Almost empty", and its detail offers **Archive**. Stacks count their empty spools ("2 spools · 1 empty").
 - A spool linked to a slot in U1 Control or Kobra Control shows in Spooler at once, and one assigned in Spooler shows in their open tabs at once. Spooler re-reads Spoolman every 30 s while it is visible (was 60 s; Settings > Spool source > **Refresh Spoolman every**: 10 to 300 s, or off), pauses while hidden, waits longer after failed reads (up to 5 minutes, "Spoolman unreachable, retrying") and never while a dialog or picker is open. An ACE slot of a printer renamed in Kobra Control is linked and read under that name.
 - Spool cards are at least 260 px wide (two beside the open detail at 1280 px), the cards of a row share one height with the state chips at the bottom, and chips and manufacturer names wrap instead of being cut off.
-- On Windows the Spooler tab stayed blank since 0.30.0: the page had grown past what OrcaSlicer can show there (1.5 MB). A page that would be too big now leaves out its embedded font and draws in the system font instead.
+- On Windows the Spooler tab stayed blank since 0.30.0: the page had grown past what OrcaSlicer can show there (1.5 MB). A page that would be too big now leaves out its embedded font and draws in the system font instead. Thanks to @xtronets (#75).
 - The Spooler page is less than half its old size (about 690 KB instead of 1.58 MB) and keeps its own font on Windows: its script now ships compressed and unpacks when the page opens. The build fails if a page ever gets close to the 1.5 MB OrcaSlicer can show on Windows.
 
 ## [0.30.0] - 2026-11-18
