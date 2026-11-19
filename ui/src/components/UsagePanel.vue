@@ -158,5 +158,5 @@ const left = (id?: number | null) => m.spools.find(s => s.id === id)?.remaining_
 .us-note > .oui-status { white-space: normal; }
 .us-undo { list-style: none; display: grid; gap: var(--oui-s2); padding: var(--oui-s3); }
 .us-undo li { display: grid; grid-template-columns: 14px minmax(0, 1fr) auto; gap: var(--oui-s2); align-items: center; }
-@container oui-page (max-width: 560px) { .us-row { grid-template-columns: 14px minmax(0, 1fr); } .us-spool, .us-g { grid-column: 2; } .us-mode-l { display: none; } }
+@container oui-page (max-width: 560px) { .us-row { grid-template-columns: 14px minmax(0, 1fr); } .us-spool, .us-g, .us-row > .oui-num { grid-column: 2; } .us-mode-l { display: none; } }
 </style>

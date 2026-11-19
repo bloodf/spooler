@@ -5,7 +5,7 @@ Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); 
 
 ## [Unreleased]
 ### Changed
-- New look, on the shared Orca UI foundation 5.0.4: every page uses OrcaSlicer's own greys and its teal, so Spooler reads as a part of OrcaSlicer. Spooler's magenta stays on its mark and under the open tab. Colour elsewhere says something: a state, a level (green, amber when low, red when almost empty) or a filament's own colour.
+- New look, on the shared Orca UI foundation 5.0.5: every page uses OrcaSlicer's own greys and its teal, so Spooler reads as a part of OrcaSlicer. Spooler's magenta stays on its mark and under the open tab. Colour elsewhere says something: a state, a level (green, amber when low, red when almost empty) or a filament's own colour.
 - Each tab starts with one header line. **Spools** shows how many spools there are, the filament left, how many are low and the preset count, with **Sync Presets** (moved here from the top bar) and **Add Spool** on the right; **Printer** has **Add printer**; **Stats** has the period.
 - Spool detail: the spool's picture on a neutral panel, the amount left as one large figure with its level bar, then its facts as a list ("Lasts about" is one of them). The detail column is narrower (320 px, 400 px from 1160 px wide), so three cards fit beside it at 1280 px.
 - Spool cards are neutral, with the open one framed in teal; a slot card on the Printer tab has a thin strip of its filament's colour. **Table** and **Cards** are two icon buttons.
@@ -14,6 +14,7 @@ Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); 
 - Printer tab: the panels pack into columns, each one directly under the one above it, so a short panel such as an empty Filament usage no longer leaves a tall empty block beside a tall printer.
 - A finished or failed print is one line on the Printer tab (name, printer, when it finished) with a button to dismiss it, instead of the big progress block.
 ### Fixed
+- In the narrow dock, a printer whose link failed no longer makes the Printer tab wider than the window (its long "Can't reach…" state is cut with an ellipsis, with the full text in its tooltip), and a booked print's grams stay on one line.
 - An Anycubic ACE slot no longer shows "100 % on the printer". The ACE reports 100 for every spool it can't measure, so 100 is now treated as no reading. A slot linked to a Spoolman spool shows Spoolman's amount only, as Kobra Control does.
 - A single-extruder Klipper printer with no MMU and no Spoolman in Moonraker (a Sovol SV06, for example) gets one **Extruder** slot to assign by hand. It no longer shows "The printer hasn't reported its slots". A Happy Hare `mmu` object that reports 0 gates no longer counts as an MMU. The "hasn't reported" warning is now only for printers that have slots to report: U1 toolheads or a Happy Hare MMU.
 

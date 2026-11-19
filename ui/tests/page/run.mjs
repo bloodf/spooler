@@ -532,7 +532,10 @@ test('380 px dock: every tab is reachable, icons only, named', `
   }
 `, { width: 380, mode: 'main' });
 test('380 px dock: no tab runs wider than the window, and an open (i) stays inside it', `
-  await spools(SPOOLS, {usage: {enabled: true, mode: 'ask', prints: []}, stats: {on: true, cur: 'spoolman'}, peers: {u1control: true}});
+  await spools(SPOOLS, {usage: {enabled: true, mode: 'ask', prints: []}, stats: {on: true, cur: 'spoolman'}, peers: {u1control: true},
+    printers: [{id: 'p1', name: 'X1C', ip: '192.168.1.50', has_code: true, units: []}]});
+  // A printer header with a long state (the link failed) and two actions must not set the page's width either.
+  await post({type: 'live', live: {links: {p1: 'unreachable'}, printers: []}});
   // A module header with two buttons (the plate check) must wrap, not set the page's width.
   await post({type: 'plate', time: '10:42', rows: [{status: 'ok', colour: '111111', slots: 'Slot 1', name: 'Black', meta: 'Acme · Shelf A', fill: .4, spool_colour: '111111', need_pct: .1, headline: 'Enough', detail: 'Needs 96 g, 400 g left', ids: [1], first: 0}]});
   let bubbles = 0;
@@ -547,6 +550,9 @@ test('380 px dock: no tab runs wider than the window, and an open (i) stays insi
     b.blur(); bubbles++;
   }
   assert(byTest('plate'), 'the plate check is on the Printer tab');
+  const state = q('.oui-panel-meta .oui-status', byTest('plate'));
+  assert(state.scrollWidth <= state.clientWidth + 1 && text(state) === 'Quantity OK', 'its state chip is whole: ' + text(state));
+  assert(text(q('.pp .oui-status')).includes('Can’t reach 192.168.1.50'), 'the failed link says so in the printer header');
   assert(bubbles >= 2, 'the Spools and Printer headers have their (i)');
 `, { width: 380, mode: 'main' });
 test('page grammar: each tab opens with a page header and one primary action; the detail is neutral with one large figure', `

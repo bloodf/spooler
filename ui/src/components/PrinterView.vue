@@ -53,7 +53,8 @@ const how = computed(() => {
   </div>
 </template>
 <style>
-.pv-grid { columns: 1; column-gap: var(--oui-s3); }
+/* min-width: a grid item is otherwise as wide as its widest header's unwrapped text (a long link error in the dock). */
+.pv-grid { columns: 1; column-gap: var(--oui-s3); min-width: 0; }
 .pv-grid > * { break-inside: avoid; margin-block-end: var(--oui-s3); }
 .pv-grid:empty { display: none; }
 @container oui-page (min-width: 1160px) { .pv-grid { columns: 2; } }
