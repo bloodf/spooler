@@ -4,13 +4,14 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const SRC = new URL('../../src/', import.meta.url).pathname;
+const SRC = fileURLToPath(new URL('../../src/', import.meta.url));
 const files = (dir: string): string[] => readdirSync(dir).flatMap(n => (statSync(join(dir, n)).isDirectory() ? files(join(dir, n)) : [join(dir, n)]));
 const view = readFileSync(join(SRC, 'settings/SettingsView.vue'), 'utf8');
 const pages = [...view.matchAll(/\{ id: '([a-z-]+)', label: t\('([^']+)'\)/g)].map(m => ({ id: m[1], label: m[2] }));
 const sectionIds = new Set([...files(SRC).filter(f => f.endsWith('.vue')).flatMap(f => [...readFileSync(f, 'utf8').matchAll(/<Oui(?:FormSection|Panel)[^>]*\sid="([a-z-]+)"/g)].map(m => m[1]))]);
-const locales = files(SRC).filter(f => /core\/messages(-[a-z]+)?\.ts$/.test(f));
+const locales = files(SRC).filter(f => /core[\/\\]messages(-[a-z]+)?\.ts$/.test(f));
 
 test('each settings page is listed once and drawn by one section', () => {
   assert.ok(pages.length >= 8, 'pages found: ' + pages.length);
@@ -31,7 +32,7 @@ test('page names, Back and the error label are translated in every language', ()
     const text = readFileSync(f, 'utf8');
     for (const k of keys) {
       const n = text.split("'" + k + "':").length - 1;
-      assert.ok(n >= (f.endsWith('/messages.ts') ? 2 : 1), f + ' lacks ' + k);
+      assert.ok(n >= (/[\/\\]messages\.ts$/.test(f) ? 2 : 1), f + ' lacks ' + k);
     }
   }
 });
