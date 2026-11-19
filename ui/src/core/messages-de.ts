@@ -101,6 +101,7 @@ export const de: Record<MessageKey, string> = {
   'weight.of': 'von {total}', 'weight.left': '{w} übrig',
   'spool.numbered': 'Spule #{id}', 'spool.lot': 'Charge {lot}', 'spool.rfid': 'RFID: {tags}', 'spool.together': '×{n} · {w} zusammen',
   'spool.low': 'Geringer Bestand', 'spool.out': 'Fast leer', 'spool.reorder': 'Geringer Bestand: online nach {q} suchen',
+  'spool.empty': 'Leer', 'stack.empty_one': '1 leer', 'stack.empty_other': '{n} leer', 'detail.backStack': 'Zurück zu den {n} Spulen', 'detail.emptyHint': 'Diese Spule ist leer.',
   'spool.unknownLeft': 'Rest unbekannt', 'spool.pctLeft': '{pct}% übrig', 'spool.onPlate': 'Auf dieser Druckplatte · {slots}',
   'spool.loadedIn': 'Geladen in {where}', 'spool.inUse': 'In Gebrauch · {where}', 'spool.useFirst': 'Zuerst verwenden',
   'spool.useFirstHelp': 'Zuerst geöffnet: Verbrauchen Sie diese Spule vor den anderen Spulen dieses Filaments', 'spool.driedToday': 'Heute getrocknet',

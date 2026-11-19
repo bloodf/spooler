@@ -9,6 +9,7 @@ import { filter, plus, refresh as refreshIcon, search, settings, type OuiIconDat
 import shelf from '../assets/spooler-shelf.webp';
 import SpoolTable, { type GroupInfo, type Row } from './SpoolTable.vue';
 import SpoolDetail from './SpoolDetail.vue';
+import StackDetail from './StackDetail.vue';
 import SpoolEditor from './SpoolEditor.vue';
 import PlatePanel from './PlatePanel.vue';
 import PeerNote from './PeerNote.vue';
@@ -16,7 +17,7 @@ import * as bridge from '../core/bridge';
 import { m, inUse, sourceOff, refresh, openSettings, setListView } from '../state/main';
 import { menu, shownSpool, openEditor } from '../state/menu';
 import { t, tn, fmt } from '../core/i18n';
-import { COLOR_FAMILIES, colorFamily, closestSpools, compareSpools, groupSpools, spoolMatches, stackEntries, shown, totals, type SortKey, type Spool } from '../logic/spools';
+import { COLOR_FAMILIES, colorFamily, closestSpools, compareSpools, groupSpools, spoolMatches, stackEntries, stackLead, shown, totals, type SortKey, type Spool } from '../logic/spools';
 
 const query = ref('');
 const material = ref<string | null>(null);
@@ -114,8 +115,15 @@ const selected = computed<Spool | null>(() => {
   const picked = menu.id == null ? null : m.spools.find(s => s.id === menu.id) ?? null;
   if (picked || !menu.auto || !rows.value.length) return picked;
   const top = rows.value[0];
-  return top.kind === 'stack' ? top.items[0] : top.spool;
+  return top.kind === 'stack' ? stackLead(top.items, loaded) : top.spool;
 });
+// A stack's list in the detail (its row or card was opened), until one of its spools is picked.
+const stackSpools = computed<Spool[] | null>(() => {
+  if (!menu.stack || menu.id != null) return null;
+  const list = menu.stack.map(id => m.spools.find(s => s.id === id)).filter(Boolean) as Spool[];
+  return list.length ? list : null;
+});
+const backN = computed(() => (menu.stack && selected.value && menu.stack.includes(selected.value.id) ? menu.stack.length : 0));
 // Keyed on the source too: the same id from another source is another spool, shown afresh.
 watch(() => [selected.value?.id ?? null, m.source] as const, ([id]) => shownSpool(id), { immediate: true });
 // Where the detail sits under the list (narrow), an explicit pick takes the keyboard and the eye to its heading.
@@ -157,7 +165,7 @@ const setArchived = (on: boolean) => bridge.postMain({ type: 'spool_action', act
     </OuiBanner>
     <PlatePanel v-if="!m.showPrinterTab" />
 
-    <div class="sp-grid" :class="{ 'sp-with-detail': !!selected }">
+    <div class="sp-grid" :class="{ 'sp-with-detail': !!selected || !!stackSpools }">
       <OuiPanel flush class="sp-list">
         <h2 class="oui-sr">{{ t('nav.spools') }}</h2>
         <OuiToolbar :label="t('filters.searchLabel')">
@@ -213,7 +221,8 @@ const setArchived = (on: boolean) => bridge.postMain({ type: 'spool_action', act
         </section>
         <template v-if="sourceOff" #footer><p id="sv-why" class="oui-meta">{{ t('list.actionsOff', { reason: sourceOff }) }}</p></template>
       </OuiPanel>
-      <SpoolDetail v-if="selected" id="sp-detail" :spool="selected" class="sp-detail" />
+      <StackDetail v-if="stackSpools" id="sp-detail" :spools="stackSpools" class="sp-detail" />
+      <SpoolDetail v-else-if="selected" id="sp-detail" :spool="selected" :back="backN" class="sp-detail" />
     </div>
     <SpoolEditor v-if="m.source === 'spoolman'" />
   </div>

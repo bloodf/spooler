@@ -6,7 +6,7 @@ import { rfid, store } from '../../shared/src/icons';
 import * as bridge from '../core/bridge';
 import { m, inUse, plateSlots } from '../state/main';
 import { t } from '../core/i18n';
-import { driedDays, driedOld, lowLevel, shown, tagUids, type Spool } from '../logic/spools';
+import { LEVEL_KEY, driedDays, driedOld, lowLevel, shown, tagUids, type Spool } from '../logic/spools';
 
 // What state a spool is in, as chips: its stock level, then the facts that follow the Display switches.
 const props = defineProps<{ spool: Spool; /** In the detail's accent block: facts only, no button. */ band?: boolean }>();
@@ -21,7 +21,7 @@ const cart = computed(() => !props.band && m.cart && typeof s.value.remaining_we
 </script>
 <template>
   <span class="sp-chips">
-    <OuiStatus v-if="level" :state="level === 'out' ? 'error' : 'warn'" :title="t(level === 'out' ? 'spool.out' : 'spool.low')">{{ t(level === 'out' ? 'spool.out' : 'spool.low') }}</OuiStatus>
+    <OuiStatus v-if="level" :state="level === 'low' ? 'warn' : 'error'" :title="t(LEVEL_KEY[level])" :data-level="level">{{ t(LEVEL_KEY[level]) }}</OuiStatus>
     <Button v-if="cart" severity="secondary" text size="small" class="sp-cart" :aria-label="t('spool.reorder', { q: cartQuery })" :title="t('spool.reorder', { q: cartQuery })"
             data-test="cart" @click.stop="bridge.postMain({ type: 'order', query: cartQuery })"><template #icon><OuiIcon :icon="store" :size="14" /></template></Button>
     <span v-if="s.use_first && shown(m.disp, 'use_first') && !s.archived" class="oui-chip" data-tone="accent" data-solid data-chip="use-first" :title="t('spool.useFirstHelp')">{{ t('spool.useFirst') }}</span>

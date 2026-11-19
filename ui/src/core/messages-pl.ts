@@ -89,6 +89,7 @@ export const pl: Record<MessageKey, string> = {
 
   'spool.numbered': 'Szpula #{id}', 'spool.lot': 'Partia {lot}', 'spool.rfid': 'RFID: {tags}', 'spool.together': '×{n} · łącznie {w}',
   'spool.low': 'Niski stan', 'spool.out': 'Prawie pusta', 'spool.reorder': 'Niski stan: szukaj w sieci {q}',
+  'spool.empty': 'Pusta', 'stack.empty_one': '1 pusta', 'stack.empty_other': '{n} pustych', 'detail.backStack': 'Wróć do {n} szpul', 'detail.emptyHint': 'Ta szpula jest pusta.',
   'spool.unknownLeft': 'Pozostała ilość nieznana', 'spool.pctLeft': 'Zostało {pct}%', 'spool.onPlate': 'Na tej płycie · {slots}',
   'spool.loadedIn': 'Załadowana w {where}', 'spool.inUse': 'W użyciu · {where}', 'spool.useFirst': 'Zużyj najpierw',
   'spool.useFirstHelp': 'Otwarta najwcześniej: dokończ ją przed innymi szpulami tego filamentu',
@@ -412,6 +413,7 @@ export const plPlurals: Record<string, string> = {
   'list.count_few': '{shown} z {n} szpul', 'list.count_many': '{shown} z {n} szpul',
   'list.presets_few': '{n} profile filamentu OrcaSlicer', 'list.presets_many': '{n} profili filamentu OrcaSlicer',
   'group.count_few': '{n} szpule', 'group.count_many': '{n} szpul',
+  'stack.empty_few': '{n} puste', 'stack.empty_many': '{n} pustych',
   'stack.inUse_few': '{n} w użyciu', 'stack.inUse_many': '{n} w użyciu',
   'editor.shared_few': 'Ten filament jest też na {n} innych szpulach. Zmiany zapisują się w filamencie w Spoolmanie i dotyczą też tamtych szpul.',
   'editor.shared_many': 'Ten filament jest też na {n} innych szpulach. Zmiany zapisują się w filamencie w Spoolmanie i dotyczą też tamtych szpul.',

@@ -1,7 +1,7 @@
 // Card input rules shared by the spool menu, checked against the limits the plugin enforces (MAX_GRAMS).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { gramsValid, spoolFraction } from '../../src/logic/spools.ts';
+import { emptyCount, gramsValid, levelTone, lowLevel, spoolFraction, stackLead } from '../../src/logic/spools.ts';
 
 test('drawn spool fill: Spoolman weight, else printer percent, else unknown', () => {
   assert.equal(spoolFraction({ id: 1, remaining_weight: 250, initial_weight: 1000 }, 90), 0.25);
@@ -27,4 +27,21 @@ test('remaining weight may be 0 (an empty spool)', () => {
   assert.ok(gramsValid('0', true));
   assert.ok(!gramsValid('-0.5', true));
   assert.ok(!gramsValid('', true));
+});
+
+test('0 g is empty, not almost empty', () => {
+  assert.equal(lowLevel(0, 100), 'empty');
+  assert.equal(lowLevel(-3, 100), 'empty');
+  assert.equal(lowLevel(10, 100), 'out');
+  assert.equal(lowLevel(0, 0), 'empty');
+  assert.equal(levelTone('empty'), 'critical');
+});
+
+test('a stack shows the spool in use, else the one with the most left, never an empty one first', () => {
+  const empty = { id: 1, remaining_weight: 0 }, half = { id: 2, remaining_weight: 480 }, full = { id: 3, remaining_weight: 990 }, unknown = { id: 4 };
+  assert.equal(stackLead([empty, half], () => false).id, 2);
+  assert.equal(stackLead([empty, half, full], () => false).id, 3);
+  assert.equal(stackLead([empty, half, full], s => s.id === 2).id, 2);
+  assert.equal(stackLead([empty, unknown], () => false).id, 4);
+  assert.equal(emptyCount([empty, half, unknown]), 1);
 });

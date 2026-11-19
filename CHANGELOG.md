@@ -7,6 +7,8 @@ Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); 
 ### Added
 - The Spools list can show cards as well as the table: **Table** and **Cards** in the list's toolbar. Each card shows the spool filled to what is left, its name, manufacturer, material, colour, weight left with a bar, location and state (low stock, RFID, dried, in a printer, archived). Search, filters, sort, groups and stacks work the same in both, and a card opens the same detail as a row. Your pick is remembered; Settings > Spool list sets the default.
 ### Fixed
+- Opening a stack of spools of one filament (×n) no longer shows just its first spool, which could be an empty one: the detail lists the stack's spools with their total, and each opens with **Back to the n spools**. The ×n chevron still opens the stack in the list. When the list shows a stack's spool by itself, it shows the one in use, else the one with the most left.
+- A spool at 0 g says **Empty** instead of "Almost empty", and its detail offers **Archive**. Stacks count their empty spools ("2 spools · 1 empty").
 - Spool cards are at least 260 px wide (two beside the open detail at 1280 px), the cards of a row share one height with the state chips at the bottom, and chips and manufacturer names wrap instead of being cut off.
 - On Windows the Spooler tab stayed blank since 0.30.0: the page had grown past what OrcaSlicer can show there (1.5 MB). A page that would be too big now leaves out its embedded font and draws in the system font instead.
 
