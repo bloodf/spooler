@@ -127,7 +127,7 @@ const toolOf = (u: ManualUnit) => { const n = u.kind === 'tool' ? p.value.units.
                  @keydown.enter.prevent="commitName(true)" @keydown.escape.prevent="commitName(false)" @blur="commitName(true)" />
       <span v-else :id="`pp-${p.id}`" class="pp-name">{{ p.name }}</span>
     </template>
-    <template #meta><OuiStatus v-if="status" :state="status.state" role="status" :title="status.text">{{ status.text }}</OuiStatus><span v-else role="status">{{ sub }}</span>
+    <template #meta><OuiStatus v-if="status" :state="status.state" role="status" :title="status.text">{{ status.text }}</OuiStatus><span v-else class="pp-sub" role="status">{{ sub }}</span>
       <span v-if="chip" class="oui-chip pp-chip" data-test="printer-chip" :title="chip">{{ chip }}</span></template>
     <template v-if="!p.auto" #actions>
       <Button v-if="ui.renaming !== p.id" severity="secondary" text size="small" :aria-label="t('printer.rename', { name: p.name })" :title="t('printer.rename', { name: p.name })" data-act="rename" @click="ui.renaming = p.id">
@@ -213,7 +213,12 @@ const toolOf = (u: ManualUnit) => { const n = u.kind === 'tool' ? p.value.units.
 .pp-link { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--oui-s3); padding: var(--oui-s3); }
 .pp-lab { font-size: var(--oui-text-sm); font-weight: 600; color: var(--oui-muted); }
 .pp-full { grid-column: 1 / -1; }
-.pp-chip { margin-inline-start: var(--oui-s1); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* The header's facts (the link's state or the slot count, then the chip) are as wide as they are, and wrap: where they
+   don't fit on one line, the chip goes under the state instead of out of sight, and a long state is cut with an ellipsis. */
+.pp > .oui-panel-head > .oui-panel-meta { flex: 0 1 auto; display: flex; flex-wrap: wrap; align-items: center; gap: var(--oui-s1) var(--oui-s2); }
+.pp-sub { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.pp-sub:empty { display: none; }
+.pp-chip { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pp-klipper { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--oui-s3); padding: var(--oui-s3); }
 .pp-klipper > .oui-field { flex: 0 1 220px; }
 .pp-klipper > .oui-row, .pp-khint { align-self: center; }

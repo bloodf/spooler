@@ -553,6 +553,12 @@ test('380 px dock: no tab runs wider than the window, and an open (i) stays insi
   const state = q('.oui-panel-meta .oui-status', byTest('plate'));
   assert(state.scrollWidth <= state.clientWidth + 1 && text(state) === 'Quantity OK', 'its state chip is whole: ' + text(state));
   assert(text(q('.pp .oui-status')).includes('Can’t reach 192.168.1.50'), 'the failed link says so in the printer header');
+  // Under a state too long for the line, the printer's chip goes to its own line: never clipped out of sight.
+  await tab('printer'); await settle();
+  const chip = byTest('printer-chip'), cr = chip.getBoundingClientRect(), mr = chip.closest('.oui-panel-meta').getBoundingClientRect(), sr = q('.pp .oui-status').getBoundingClientRect();
+  eq(text(chip), 'Set by hand', 'the chip of a printer set by hand');
+  assert(cr.width > 0 && cr.left >= mr.left - 1 && cr.right <= mr.right + 1 && cr.bottom <= mr.bottom + 1 && chip.scrollWidth <= chip.clientWidth + 1, 'the chip is whole and inside the header: ' + [cr.left, cr.right, mr.left, mr.right]);
+  assert(cr.top >= sr.bottom - 1 && sr.right <= innerWidth, 'on its own line under the state, which stays inside the window');
   assert(bubbles >= 2, 'the Spools and Printer headers have their (i)');
 `, { width: 380, mode: 'main' });
 test('page grammar: each tab opens with a page header and one primary action; the detail is neutral with one large figure', `

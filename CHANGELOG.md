@@ -14,7 +14,7 @@ Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); 
 - Printer tab: the panels pack into columns, each one directly under the one above it, so a short panel such as an empty Filament usage no longer leaves a tall empty block beside a tall printer.
 - A finished or failed print is one line on the Printer tab (name, printer, when it finished) with a button to dismiss it, instead of the big progress block.
 ### Fixed
-- In the narrow dock, a printer whose link failed no longer makes the Printer tab wider than the window (its long "Can't reach…" state is cut with an ellipsis, with the full text in its tooltip), and a booked print's grams stay on one line.
+- In the narrow dock, a printer whose link failed no longer makes the Printer tab wider than the window (its long "Can't reach…" state is cut with an ellipsis, with the full text in its tooltip), its chip ("Set by hand", "Booked by U1 Control") goes under the state instead of out of sight, and a booked print's grams stay on one line.
 - An Anycubic ACE slot no longer shows "100 % on the printer". The ACE reports 100 for every spool it can't measure, so 100 is now treated as no reading. A slot linked to a Spoolman spool shows Spoolman's amount only, as Kobra Control does.
 - A single-extruder Klipper printer with no MMU and no Spoolman in Moonraker (a Sovol SV06, for example) gets one **Extruder** slot to assign by hand. It no longer shows "The printer hasn't reported its slots". A Happy Hare `mmu` object that reports 0 gates no longer counts as an MMU. The "hasn't reported" warning is now only for printers that have slots to report: U1 toolheads or a Happy Hare MMU.
 
