@@ -55,8 +55,8 @@ temperature on every plate type), density, diameter and cost from Spoolman (the 
 else the mean price per kg of its spools in stock).
 
 The presets follow Spoolman: new filaments appear, filaments whose spools are all archived
-disappear, and changes are picked up on each refresh (every 60 seconds while the Spooler tab is
-open). **Sync Presets** in the bar at the top does it at once and rebuilds every preset, even when
+disappear, and changes are picked up on each refresh (every 30 seconds while the Spooler tab is
+visible; Settings > Spool source > **Refresh Spoolman every** sets 10 to 300 seconds, or off). **Sync Presets** in the bar at the top does it at once and rebuilds every preset, even when
 nothing changed.
 
 ### Calibrated settings
@@ -152,7 +152,10 @@ printer slots on or off; printer slots can show the loaded spool in full (manufa
 spool number, location, preset).
 
 A spool added, changed, used or deleted in Spoolman shows on the Spools tab within a second or two,
-over Spoolman's WebSocket; the 60 second refresh stays as the fallback.
+over Spoolman's WebSocket; the timed refresh (30 seconds by default) stays as the fallback. It pauses
+while Spooler is hidden and reads at once when it shows again; after a failed read it waits longer each
+time, up to 5 minutes, and the bar says "Spoolman unreachable, retrying". It waits while a dialog or
+picker is open.
 
 ### Spool detail and actions
 
@@ -337,7 +340,7 @@ defaults.
 - Live list updates need Spoolman's WebSocket (`/api/v1/spool`) to be reachable from OrcaSlicer.
   Behind a reverse proxy, the proxy must pass the `Upgrade` and `Connection` headers (nginx:
   `proxy_set_header Upgrade $http_upgrade; proxy_set_header Connection "upgrade";`). Without it the
-  list still refreshes every 60 seconds.
+  list still refreshes every 30 seconds (or as set in Settings).
 - Filament used by Anycubic prints is not booked to Spoolman yet: the printer's print-status
   messages must first be captured from a real print. See [kobra-booking.md](kobra-booking.md) if you
   have a Kobra and want to help.

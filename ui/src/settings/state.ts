@@ -70,7 +70,7 @@ export function save(): void {
   bridge.postSettings({
     type: 'save', source: form.source, url: form.url.trim(), low_stock: form.low_stock, plate_check: form.plate_check, plate_margin: form.plate_margin,
     weight_display: form.weight_display, show_cart: form.show_cart, spool_columns: form.spool_columns, spool_view: form.spool_view, progress: { ...form.progress },
-    stats: { ...form.stats }, display: { ...form.display }, drying: { ...form.drying }, auto_keep_slots: form.auto_keep_slots,
+    stats: { ...form.stats }, display: { ...form.display }, drying: { ...form.drying }, auto_keep_slots: form.auto_keep_slots, refresh_s: form.refresh_s,
     presets: JSON.parse(JSON.stringify(form.presets)),
     save_calibration: form.save_calibration,
   });

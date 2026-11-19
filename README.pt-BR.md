@@ -173,7 +173,7 @@ Pode. Em Editar bobina, escolha-o em <b>Perfil do OrcaSlicer</b>, para a bobina 
 <details>
 <summary>Por que a lista não atualiza ao vivo atrás do meu proxy reverso?</summary>
 
-As atualizações ao vivo usam o WebSocket do Spoolman em <code>/api/v1/spool</code>. O proxy precisa repassar os cabeçalhos <code>Upgrade</code> e <code>Connection</code>; no nginx, <code>proxy_set_header Upgrade $http_upgrade; proxy_set_header Connection "upgrade";</code>. Sem isso a lista ainda é relida a cada 60 segundos.
+As atualizações ao vivo usam o WebSocket do Spoolman em <code>/api/v1/spool</code>. O proxy precisa repassar os cabeçalhos <code>Upgrade</code> e <code>Connection</code>; no nginx, <code>proxy_set_header Upgrade $http_upgrade; proxy_set_header Connection "upgrade";</code>. Sem isso a lista ainda é relida a cada 30 segundos (Configurações: de 10 a 300 segundos, ou desligado).
 </details>
 
 <details>
