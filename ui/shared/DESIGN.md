@@ -229,7 +229,15 @@ One surface, three panes: the folder tree, the open folder as a table, and what 
 - **Detail**: one file selected shows its picture, name, facts and the page's actions for it (Print is the page's primary); several show the count and their names; none says so in one line.
 - Under 980 px the detail goes under the table; under 620 px the tree goes above it.
 
-The page owns the data: it passes the folders, the open folder's files and the labels (both languages), and does the work on `move`, `delete` and `open`. `readonly` turns moving and deleting off while the printer is busy.
+One component, the same in U1 Control and Kobra Control. The storage is behind an adapter (`OuiFileBackend`: `folders()`, `list(folder)`, `remove(ids)`, `move(ids, to)`), and `useFileBackend(adapter)` gives the component its state and handlers, so reading, failing, retrying and re-reading after a change behave the same in both. What the storage cannot do is left out of the adapter and the page stops offering it, with no hole where it was:
+
+| Storage | Tree and path | Move and drag | Multi-select, delete, detail |
+|---|---|---|---|
+| folders, can move | yes | yes | yes |
+| folders, cannot move | yes, for browsing | no | yes |
+| no folders | no: the table takes the rail's place | no | yes |
+
+A read that fails is said in place of the table, with "Try again". A move or delete that fails is a toast, and the list is read again either way. `readonly` turns moving and deleting off while the printer is busy.
 
 ### Lists elsewhere
 
@@ -249,14 +257,14 @@ Import each from `shared/src/components` (or its own `.vue` file).
 | `OuiPageHeader` | **new.** Title, one line of meta, page actions |
 | `OuiBanner` | a page-level state with its action: `info` (grey), `warn`, `error`, `success`, `neutral`; `dismissible` with a `dismissKey` |
 | `OuiPanel` | a module: 40 px neutral header with a toned icon, title, meta, `hint`, actions; body; optional footer. `flush`, `fill` |
-| `OuiHint` | **new.** The (i): opens on hover and focus, closes on Escape, and is the button's description for a screen reader |
+| `OuiHint` | **new.** The (i): opens on hover and focus, closes on Escape, and is the button's description for a screen reader. Closed it takes no room; open it places itself inside the window, whichever edge its button is near |
 | `OuiStatus` | a state, as a tinted chip (default) or `plain` coloured text |
 | `OuiJob` | the compact status block: picture, state, name, percentage or count, bar, stats, actions. `compact` for the dock; `stale` is grey. `hero` is accepted and ignored |
 | `OuiSetpoint` | a controlled value: reading in its phase colour, target, chart, input, Set, Off |
 | `OuiControlRow` | **new.** A line of a controls module: icon, label, current value, control. With `.oui-controls` and `.oui-controls-group` |
 | `OuiCamera` | **new.** The 16:9 picture box with its live, off, loading and error states |
 | `OuiSlot` | a toolhead or slot as a neutral card: a 4 px strip of the filament's colour, badge and state, drawn spool, filament, amount with its level, extra rows, actions; `active` |
-| `OuiFileBrowser` | **new.** The Files tab (above) |
+| `OuiFileBrowser`, `useFileBackend` | **new.** The Files tab (above) and the adapter that feeds it |
 | `OuiSpool`, `OuiSwatch`, `OuiLevel` | unchanged |
 | `OuiReadout`, `OuiSpark`, `OuiThumb`, `OuiKeyValue`, `OuiToolbar`, `OuiEmpty`, `OuiToastHost`, `OuiRequirement`, `OuiSettings`, `OuiFormSection`, `OuiFormRow`, `OuiConfirm`, `OuiIcon` | as in 4.x, neutral |
 
@@ -279,4 +287,4 @@ Use PrimeVue directly for controls (Button, InputText, InputNumber, Select, Chec
 
 ## Acceptance
 
-Compare real built pages across all six plugins, dark and light, at 1900×1000, 1280×720 and narrow (720; 280×360 for the Organizer dock), at 200 % zoom, in English and pt-BR, in every state the page has: connecting, offline, busy, empty, loading, error, stale, pending, incomplete. Check computed fonts, radii and colours, not only imports. `scripts/shots.mjs` does this for the reference screens (MOCK data), and drives `OuiFileBrowser` through its selection, keyboard, drag and delete paths. OrcaSlicer's own web views (WKWebView, WebView2) and real devices remain to be checked by the owner; drag and drop inside OrcaSlicer's web view in particular has only been run in headless Chrome.
+Compare real built pages across all six plugins, dark and light, at 1900×1000, 1280×720 and narrow (720; 280×360 for the Organizer dock), at 200 % zoom, in English and pt-BR, in every state the page has: connecting, offline, busy, empty, loading, error, stale, pending, incomplete. Check computed fonts, radii and colours, not only imports. `scripts/shots.mjs` does this for the reference screens (MOCK data), and drives `OuiFileBrowser` through its selection, keyboard, drag and delete paths over a storage with folders, and through selection and delete over one without. OrcaSlicer's own web views (WKWebView, WebView2) and real devices remain to be checked by the owner; drag and drop inside OrcaSlicer's web view in particular has only been run in headless Chrome.

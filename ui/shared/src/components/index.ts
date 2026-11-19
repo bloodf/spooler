@@ -5,6 +5,7 @@ export { default as OuiConfirm } from './OuiConfirm.vue';
 export { default as OuiControlRow } from './OuiControlRow.vue';
 export { default as OuiEmpty } from './OuiEmpty.vue';
 export { default as OuiFileBrowser, type OuiFile, type OuiFolder, type OuiFileBrowserLabels } from './OuiFileBrowser.vue';
+export { useFileBackend, type OuiFileBackend, type OuiFileBackendOptions } from './fileBackend';
 export { default as OuiFormRow } from './OuiFormRow.vue';
 export { default as OuiFormSection } from './OuiFormSection.vue';
 export { default as OuiHint } from './OuiHint.vue';

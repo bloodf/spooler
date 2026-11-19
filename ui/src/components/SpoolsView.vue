@@ -248,7 +248,7 @@ const setArchived = (on: boolean) => bridge.postMain({ type: 'spool_action', act
 .sp-grid[data-detail] .sp-scroll { max-height: 380px; }
 @container oui-page (min-width: 900px) {
   .sp-grid[data-detail] .sp-scroll { max-height: calc(100vh - 180px); }
-  .sp-grid > .sp-detail { position: sticky; top: 56px; }
+  .sp-detail { position: sticky; top: 56px; }
 }
 @container oui-page (min-width: 1160px) { .sp-grid[data-detail] { grid-template-columns: minmax(0, 1fr) 400px; } }
 .sp-col { container: sp-col / inline-size; min-width: 0; }

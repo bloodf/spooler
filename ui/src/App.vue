@@ -101,14 +101,6 @@ html:lang(zh-CN) { --oui-font: 'Manrope', 'PingFang SC', 'Microsoft YaHei', 'Not
 .oui-page > [role='tabpanel'] { min-width: 0; }
 /* Module headers wrap in the 380 px dock rather than push the page wider than the window. */
 .oui-page .oui-panel-head { flex-wrap: wrap; }
-/* The (i) bubbles (OuiHint) open inside their module, at the height of their (i): the shared bubble hangs from the (i)
-   itself, 300 px to one side, and ran past the window in the 380 px dock and in a right-hand column. */
-:where(.oui-page) :is(.oui-panel, .oui-pagehead) { position: relative; }
-.orca-ui .oui-hint.oui-hint { position: static; }
-.orca-ui .oui-hint.oui-hint > .oui-hint-bubble { top: auto; left: var(--oui-s3); right: auto; margin-top: 26px; max-width: min(340px, calc(100% - 2 * var(--oui-s3))); }
-.orca-ui .oui-pagehead .oui-hint.oui-hint > .oui-hint-bubble { left: auto; right: 0; max-width: min(340px, 100%); }
-/* A closed bubble takes no room: hidden but laid out, it added blank scroll under the last module. */
-.orca-ui .oui-hint-bubble:not([data-open]) { display: none; }
 /* A paragraph inside an (i) bubble. */
 .sp-hint-p { display: block; }
 .sp-hint-p + .sp-hint-p { margin-top: var(--oui-s2); }

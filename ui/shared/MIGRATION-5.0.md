@@ -1,10 +1,12 @@
-# Migrating a plugin to Orca UI foundation 5.0.0
+# Migrating a plugin to Orca UI foundation 5.0
 
-For the agent rolling 5.0.0 out to one plugin. `DESIGN.md` is the specification (what a page should look like and why); this file is the procedure. The reference screen for each page is in `ui-foundation/gallery/screens/` and its screenshots in `ui-foundation/evidence-5.0.0/after/`: build the plugin's page until it matches its reference, with the plugin's real data.
+Current release: **5.0.2** (5.0.1 with `OuiHint` fixed: a closed bubble takes no room and an open one stays inside the window, see README; 5.0.1 was 5.0.0 plus the file backend adapter: `useFileBackend`, and `OuiFileBrowser` for storages with no folders or no move). Nothing 5.0.0 pages rely on changes.
+
+For the agent rolling 5.0 out to one plugin. `DESIGN.md` is the specification (what a page should look like and why); this file is the procedure. The reference screen for each page is in `ui-foundation/gallery/screens/` and its screenshots in `ui-foundation/evidence-5.0.0/after/`: build the plugin's page until it matches its reference, with the plugin's real data.
 
 5.0.0 is a breaking release. A 4.2.2 page compiles against it (no export or prop was removed), but it will look wrong until the steps in section 4 are done, because classes and variables it styles itself with are gone.
 
-One rule above the others: **do not patch the vendored copy.** `ui/shared/` must stay byte-identical to the release (its check fails otherwise). If the foundation is wrong or lacks something, report it to the session lead; a fix ships as 5.0.1 for all six plugins.
+One rule above the others: **do not patch the vendored copy.** `ui/shared/` must stay byte-identical to the release (its check fails otherwise). If the foundation is wrong or lacks something, report it to the session lead; a fix ships as the next 5.0.x for all six plugins.
 
 ## 1. Vendor the snapshot
 
@@ -19,7 +21,7 @@ cp manifest.json ../<plugin>/ui/shared/manifest.json
 cd ../<plugin>/ui && node shared/scripts/check.mjs
 ```
 
-The check must print `Shared sources verified (65 files); 131 palette pairs per theme…`. New files since 4.2.2: `src/components/OuiCamera.vue`, `OuiControlRow.vue`, `OuiFileBrowser.vue`, `OuiHint.vue`, `OuiPageHeader.vue` and this file; `MIGRATION-4.0.md` is no longer in the snapshot. Do not copy `gallery/`, `assets/`, `evidence-*`, `dist/` or `node_modules/`.
+The check must print `Shared sources verified (66 files); 131 palette pairs per theme…`. New files since 4.2.2: `src/components/OuiCamera.vue`, `OuiControlRow.vue`, `OuiFileBrowser.vue`, `fileBackend.ts`, `OuiHint.vue`, `OuiPageHeader.vue` and this file; `MIGRATION-4.0.md` is no longer in the snapshot. Do not copy `gallery/`, `assets/`, `evidence-*`, `dist/` or `node_modules/`.
 
 Dependencies do not change (Vue 3.5.45, PrimeVue 5.0.5, @primeuix/themes 3.1.1): no install, no lockfile change. Update any text that names the foundation version.
 
@@ -151,13 +153,27 @@ The sentences that sat under the 4.x stock module (how Spoolman is reached, who 
 
 ### Kobra Control and U1 Control: Files tab
 
-Reference: `gallery/screens/PrinterFiles.vue` (`?screen=kobra-files`, `u1-files`; `&state=multi|loading|empty`).
+Reference: `gallery/screens/PrinterFiles.vue`. `?screen=u1-files` is a storage with folders; `?screen=kobra-files` is one with none; `&state=multi|loading|empty|error`.
 
-Replace the plugin's own file list with `OuiFileBrowser`. The page owns the data and the work:
+Both plugins use the same component, `OuiFileBrowser`, with the same behaviour. What differs is the storage, and that is behind an adapter each plugin writes once:
+
+```ts
+import { useFileBackend, type OuiFileBackend } from '../shared/src/components';
+
+const backend: OuiFileBackend = {
+  folders: () => bridge.folders(),                 // omit when the storage has no folders
+  list: folder => bridge.files(folder),            // folder is '' when there are no folders
+  remove: (ids, folder) => bridge.remove(ids),     // the user has already confirmed
+  move: (ids, to, from) => bridge.move(ids, to),   // omit when the storage cannot move files
+};
+const files = useFileBackend(backend, {
+  onError: (action, error, ids) => toast.show({ tone: 'error', title: …, body: … }),   // required: a failed move or delete is always said
+  onDone: (action, ids, to) => toast.show({ tone: 'success', title: … }),
+});
+```
 
 ```vue
-<OuiFileBrowser v-model:folder="folder" v-model:selected="selected" :folders="folders" :files="files" :labels="labels"
-  :loading="loading" :readonly="printerBusy" :describedby="busyBannerId" @move="onMove" @delete="onDelete" @open="onOpen">
+<OuiFileBrowser v-bind="files.props" :labels="labels" :readonly="printerBusy" :describedby="busyBannerId" v-on="files.on" @open="onOpen">
   <template #toolbar><!-- search --></template>
   <template #rail><!-- free space --></template>
   <template #actions="{ file }"><!-- Print, Download, Rename for one file --></template>
@@ -167,15 +183,35 @@ Replace the plugin's own file list with `OuiFileBrowser`. The page owns the data
 </OuiFileBrowser>
 ```
 
-- `folders`: `{ id, name, parent?, count?, locked? }[]`, flat; a missing `parent` is a root. `locked` folders cannot receive files.
-- `files`: the open folder's files, `{ id, name, size?, sizeText?, modified?, modifiedText?, kind?, thumb?, facts? }[]`. `size` and `modified` are numbers for sorting; the texts are what is shown; `facts` fill the detail panel.
-- `labels`: every string, in the page's language (`OuiFileBrowserLabels`; several are functions of a count).
-- `@move` gives `{ ids, to }`, from a drop on a folder or from "Move to…". `@delete` gives the ids after the user confirmed in the component's own `OuiConfirm`: do not confirm again. `@open` is Enter or a double click.
-- When the folder changes, load its files and pass them; the component clears the selection.
-- Set its height: `--oui-files-height` on a parent (the reference uses the window less the bars above). Without it the component is as tall as its content, at least 360 px.
-- Test hooks: `[data-folder="<id>"]` on tree items, `[data-file="<id>"]` on rows, `aria-selected` on both, `[data-dlg="confirm"]` and `[data-dlg="cancel"]` in the confirmation.
+`useFileBackend` reads the folders and the open folder's files, shows skeleton rows while it waits, shows the failure with a "Try again" button when a read fails, runs `move` and `delete`, holds the bulk actions while one is under way, and reads the storage again afterwards whether it succeeded or not. A slow answer for a folder the user has left is dropped. Do not reimplement any of that in the page. `files.selected`, `files.folder`, `files.files`, `files.loading`, `files.busy` and `files.error` can be read, `files.selected` can be set, and `files.reload()` reads again (call it after an upload, a rename, a new folder).
 
-If the printer has no folders, pass its storage roots as the folders; a single root is fine. If the printer cannot move files, pass `readonly` and say why once, or leave `@move` unhandled and lock every folder.
+The adapter's four methods:
+
+| Method | Returns | Notes |
+|---|---|---|
+| `folders()` optional | `OuiFolder[]`: `{ id, name, parent?, count?, locked? }`, flat | A missing `parent` is a root. `locked` folders cannot receive files. Omit the method, or return `[]`, when the storage has no folders |
+| `list(folder)` | `OuiFile[]`: `{ id, name, size?, sizeText?, modified?, modifiedText?, kind?, thumb?, facts? }` | `size` and `modified` are numbers for sorting; the texts are what is shown, in the page's language; `facts` fill the detail panel |
+| `remove(ids, folder)` | nothing | Called after the component's own `OuiConfirm`: do not confirm again |
+| `move(ids, to, from)` optional | nothing | From a drop on a folder or from "Move to…". Omit when the storage cannot move files |
+
+Every method must reject (throw) when it fails, with a message a person can read; never resolve with an empty list for a failure. If only some of the files were moved or deleted, reject and say how many: the list is read again, so the page shows what is left.
+
+What the component offers follows from the adapter, with nothing to configure:
+
+| Storage | Tree and path | "Move to…" and dragging | Multi-select, delete, detail |
+|---|---|---|---|
+| `folders` and `move` | yes | yes | yes |
+| `folders`, no `move` | yes, for browsing | no | yes |
+| no `folders` | no: the table takes the rail's place, and `#rail` content goes under the table | no | yes |
+
+- **U1 Control**: Moonraker has real folders. Map the adapter onto the plugin's bridge to Moonraker's file endpoints: the directory listing of a root for `folders()` and `list()` (`GET /server/files/directory`, with `extended` for metadata), `POST /server/files/move` per file for `move()`, `DELETE /server/files/{root}/{path}` per file for `remove()`. Use the path under the root as the id of a folder and of a file. Check the endpoint names and fields against the Moonraker version the plugin targets; they are named here from its documentation, not from a test.
+- **Kobra Control**: start with `list` and `remove` only. If the Kobra's storage turns out to have folders, add `folders()`; if the printer can also move files, add `move()`. The page does not change in either case.
+- `labels`: every string, in the page's language (`OuiFileBrowserLabels`; several are functions of a count). Give `loadFailed` and `retry` too: they are shown when a read fails.
+- `readonly` while the printer cannot take file changes (printing): the bulk actions are disabled and point at the page's banner with `describedby`.
+- Set its height: `--oui-files-height` on a parent (the reference uses the window less the bars above). Without it the component is as tall as its content, at least 360 px.
+- Test hooks: `[data-folder="<id>"]` on tree items, `[data-file="<id>"]` on rows, `aria-selected` on both, `.oui-files-move` (absent when moving is not offered), `[data-files-retry]`, `[data-dlg="confirm"]` and `[data-dlg="cancel"]` in the confirmation.
+
+The component can still be driven by hand (`folders`, `files`, `folder`, `selected`, `loading`, `error`, `busy`, `movable` and the `move`, `delete`, `retry` events), which is what `useFileBackend` does. Use the adapter in the plugins, so both behave the same.
 
 ### Spooler
 
@@ -206,16 +242,17 @@ Built size of each shared component (`node scripts/sizes.mjs`): one minified bui
 | OuiConfirm | 1.7 | 0.8 | 1.7 | 0.8 |
 | OuiControlRow | 3.6 | 1.4 | new | new |
 | OuiEmpty | 5.1 | 1.9 | 5.2 | 1.9 |
-| OuiFileBrowser | 33.9 | 9.4 | new | new |
+| OuiFileBrowser | 35.4 | 9.7 | new | new |
+| useFileBackend | 1.7 | 0.8 | new | new |
 | OuiFormRow | 2.0 | 0.9 | 2.0 | 0.9 |
-| OuiFormSection | 8.0 | 2.7 | 5.8 | 1.9 |
-| OuiHint | 4.3 | 1.7 | new | new |
+| OuiFormSection | 8.2 | 2.9 | 5.8 | 1.9 |
+| OuiHint | 4.4 | 1.9 | new | new |
 | OuiIcon | 1.9 | 0.8 | 2.0 | 0.8 |
 | OuiJob | 5.7 | 1.9 | 4.8 | 1.7 |
 | OuiKeyValue | 1.3 | 0.7 | 1.3 | 0.7 |
 | OuiLevel | 1.4 | 0.7 | 1.5 | 0.8 |
 | OuiPageHeader | 1.6 | 0.7 | new | new |
-| OuiPanel | 6.9 | 2.4 | 4.6 | 1.6 |
+| OuiPanel | 7.1 | 2.5 | 4.6 | 1.6 |
 | OuiReadout | 4.9 | 1.7 | 5.0 | 1.8 |
 | OuiRequirement | 8.4 | 2.9 | 8.7 | 3.0 |
 | OuiSetpoint | 10.2 | 3.3 | 10.2 | 3.3 |
@@ -229,12 +266,14 @@ Built size of each shared component (`node scripts/sizes.mjs`): one minified bui
 | OuiToastHost | 8.1 | 3.0 | 8.1 | 3.1 |
 | OuiToolbar | 1.2 | 0.6 | 1.2 | 0.6 |
 
-What a 4.2.2 page gains by updating: `OuiPanel` now carries `OuiHint` (about 2.3 kB raw, once per page). A printer plugin that adopts the Files tab adds `OuiFileBrowser`, 33.9 kB raw including `OuiConfirm`, `OuiEmpty`, `OuiKeyValue`, `OuiThumb` and `OuiIcon`, which those pages already have; it uses PrimeVue's Button, Select and Dialog, which they also already import. `OuiSpool` and `OuiSlot` are the eight spool renders (about 72 kB), unchanged. Measure the plugin's real page against its limit (90 % of 1,572,864 bytes) after migrating; these figures are not a substitute.
+What a 4.2.2 page gains by updating: `OuiPanel` now carries `OuiHint` (about 2.5 kB raw, once per page). A printer plugin that adopts the Files tab adds `OuiFileBrowser` and `useFileBackend`, 37.1 kB raw together, including `OuiConfirm`, `OuiEmpty`, `OuiKeyValue`, `OuiThumb` and `OuiIcon`, which those pages already have; it uses PrimeVue's Button, Select and Dialog, which they also already import. `OuiSpool` and `OuiSlot` are the eight spool renders (about 72 kB), unchanged. Measure the plugin's real page against its limit (90 % of 1,572,864 bytes) after migrating; these figures are not a substitute.
 
 ## 8. Known limits
 
 - The reference screens were rendered in headless Chrome with mock data. Nothing here was run inside OrcaSlicer's web views (WKWebView, WebView2).
+- `OuiFileBrowser` was exercised over fake storages only (one with folders and move, one with neither). No adapter has been run against Moonraker or a Kobra.
+- `useFileBackend` reads the whole folder tree in one call and again after every change. A storage with a very large tree needs a lazy tree, which is not built.
 - `OuiFileBrowser`'s drag and drop was exercised with synthetic drag events in headless Chrome. HTML drag and drop inside OrcaSlicer's web view is not verified; "Move to…" does the same without dragging and must stay available.
-- `OuiHint`'s bubble is positioned inside its parent: a scrolling ancestor can clip it. Use `end` for an (i) near the right edge.
+- `OuiHint`'s bubble is kept inside the window by itself (5.0.2), but it is still positioned inside its parent: an ancestor that scrolls or clips (`overflow` other than visible) can cut it off. Do not style `.oui-hint-bubble` from a plugin. It is placed when it opens, not again if the page scrolls or resizes under an open bubble.
 - `scripts/verify-gallery.mjs` and `scripts/contact-sheet.mjs` are the 4.0.0 evidence tools and were not updated.
 - Light theme: the teal button is `#008172`, not OrcaSlicer's `#009688`, and teal text is `#00675B`, to keep 4.5:1. `DESIGN.md` lists every value that differs from OrcaSlicer and why.

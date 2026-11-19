@@ -533,6 +533,8 @@ test('380 px dock: every tab is reachable, icons only, named', `
 `, { width: 380, mode: 'main' });
 test('380 px dock: no tab runs wider than the window, and an open (i) stays inside it', `
   await spools(SPOOLS, {usage: {enabled: true, mode: 'ask', prints: []}, stats: {on: true, cur: 'spoolman'}, peers: {u1control: true}});
+  // A module header with two buttons (the plate check) must wrap, not set the page's width.
+  await post({type: 'plate', time: '10:42', rows: [{status: 'ok', colour: '111111', slots: 'Slot 1', name: 'Black', meta: 'Acme · Shelf A', fill: .4, spool_colour: '111111', need_pct: .1, headline: 'Enough', detail: 'Needs 96 g, 400 g left', ids: [1], first: 0}]});
   let bubbles = 0;
   for (const name of ['spools', 'printer', 'stats']) {
     await tab(name); await settle();
@@ -544,6 +546,7 @@ test('380 px dock: no tab runs wider than the window, and an open (i) stays insi
     assert(r.left >= 0 && r.right <= innerWidth && r.width >= 200, name + ': the bubble is inside the window: ' + r.left + '..' + r.right);
     b.blur(); bubbles++;
   }
+  assert(byTest('plate'), 'the plate check is on the Printer tab');
   assert(bubbles >= 2, 'the Spools and Printer headers have their (i)');
 `, { width: 380, mode: 'main' });
 test('page grammar: each tab opens with a page header and one primary action; the detail is neutral with one large figure', `
@@ -692,9 +695,9 @@ test('X01/X05: with U1 Control running, each tab says where the U1 lives and why
   assert(hint.closest('.oui-pagehead'), 'behind the page header (i)');
   eq([q('button', hint).getAttribute('aria-label'), q('button', hint).getAttribute('aria-describedby')], ['Why two tabs?', bubble.id], 'the (i) is named and described by the note');
   q('button', hint).focus(); await settle();
-  assert(bubble.hasAttribute('data-open') && getComputedStyle(bubble).visibility === 'visible', 'opens on keyboard focus');
+  assert(getComputedStyle(bubble).display !== 'none', 'opens on keyboard focus');
   await press('Escape');
-  assert(!bubble.hasAttribute('data-open'), 'Escape closes it');
+  assert(getComputedStyle(bubble).display === 'none', 'Escape closes it');
   await tab('printer');
   const there = qa('[data-test="peer-u1"]').find(e => e.closest('.pv'));
   assert(text(there).includes('This tab shows what Spooler reads') && there.closest('.oui-pagehead'), 'the printer tab has its own line, in its header (i)');
