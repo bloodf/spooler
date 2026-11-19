@@ -22,13 +22,14 @@ const SPOOLS = [
   {id: 3, remaining_weight: 70, initial_weight: 1000, location: 'Dry box', extra: {dried: '"2026-09-01"'}, dry_days: 30, filament: f(3, 'PETG HF - Cobalt Blue', 'PETG', '2850a8', 'Bambu Lab', 6)},
   {id: 4, remaining_weight: 15, initial_weight: 750, location: 'Dry box', filament: f(4, 'TPU 95A - Red with an unusually long colour name', 'TPU', 'c12e1f', 'Very Long Manufacturer Name Ltda.', 7)},
   {id: 5, remaining_weight: 530, initial_weight: 1000, location: 'Shelf B', rfid_tags: ['04AB'], filament: f(5, 'PLA Basic - Bambu Green', 'PLA', '3f8e43', 'Bambu Lab', 8)}];
+if (SCN.startsWith('stack')) SPOOLS[0].remaining_weight = 0;   // a stack holding an empty spool and a full one
 const TRAY = (slot, sp, name, col, type) => ({slot, empty: !sp, type, name, colour: col, remain: sp ? 64 : null, rfid: slot === 1, spool: sp, profile: '_local/spooler/' + name + ' @X1'});
 const usage = {enabled: true, mode: 'ask', prints: [
   {id: 'a', name: 'Desk_Organiser_Plate_1', printer: 'X1C', result: 'finished', time: now - 600, state: 'pending', rows: [{slot: 1, grams: 42.3, label: '', spool: null, material: 'PLA', colour: '1a1a1a'}]},
   {id: 'b', name: 'Headphone_Stand', printer: 'X1C', result: 'finished', time: now - 90000, state: 'unknown', rows: [{slot: 2, grams: 94.3, label: 'Acme PLA Black', state: 'unknown', op: 'book', error: 'Spoolman timed out', colour: '1a1a1a'}]}]};
 const payload = SCN === 'nourl' ? {type: 'spools', ok: false, error: 'No Spoolman URL configured yet - click Settings to set one.', error_code: 'no_url', peers: {u1control: false}}
   : {type: 'spools', ok: true, origin: 1, source: 'spoolman', spools: SCN === 'empty' ? [] : SPOOLS, low_stock_grams: 100, weight_display: 'both', display: ${JSON.stringify(DISPLAY)},
-    show_cart: true, spool_columns: 1, spool_view: SCN.startsWith('cards') ? 'cards' : 'table', show_printer_tab: true, live_ok: true, profiles: {count: 12}, peers: {u1control: SCN !== 'empty'}, usage, stats: {on: true, cur: 'spoolman'},
+    show_cart: true, spool_columns: 1, spool_view: /^(cards|stackcards)/.test(SCN) ? 'cards' : 'table', show_printer_tab: true, live_ok: true, profiles: {count: 12}, peers: {u1control: SCN !== 'empty'}, usage, stats: {on: true, cur: 'spoolman'},
     printers: [{id: 'p1', name: 'X1C', ip: '192.168.1.50', has_code: true, units: []}, {id: 'p2', name: 'Workshop Prusa', units: [{kind: 'ams', slots: ['5', null, null, null]}, {kind: 'ext', slots: [null]}]}]};
 await until(() => __t.handler);
 __t.handler(payload);
@@ -60,6 +61,8 @@ await until(() => SCN === 'nourl' || SCN === 'empty' || __t.sent.some(m => m.typ
 const ask = [...__t.sent].reverse().find(m => m.type === 'spool_detail');
 if (ask) __t.handler({type: 'spool_detail', detail: {id: ask.id, sign: '€', grams: 360, cost: 7.2, rate: 45, weeks: 1.6,
   prints: [96, 94.3, 31.5, 12.5, 125.7].map((g, i) => ({time: now - i * 4 * 86400 - 3600, name: ['Desk_Organiser_Plate_1', 'Headphone_Stand', 'Cable_Clip_x12', 'Benchy', 'Drawer_Divider_Set'][i], grams: g, cost: g * .02}))}});
+if (SCN.startsWith('stack')) { document.querySelector(SCN === 'stackcards' ? '.sc-card[data-stack]' : 'tr[data-stack]').click(); await settle(); }
+if (SCN === 'stackspool') { document.querySelector('[data-pick="1"]').click(); await settle(); }
 if (SCN === 'cardsclosed') { document.querySelector('[data-test="detail-close"]').click(); await settle(); }
 await sleep(500);
 `;
@@ -70,6 +73,8 @@ const SCENES = [
   ['spools', 'main', 'light', 'pt_BR', 380, 900, 1], ['spools', 'main', 'dark', 'en', 380, 900, 1],
   ['cards', 'tab', 'light', 'en', 1900, 1000, 1], ['cards', 'tab', 'dark', 'en', 1900, 1000, 1], ['cards', 'tab', 'light', 'en', 1280, 720, 1], ['cards', 'tab', 'dark', 'en', 1280, 720, 1],
   ['cardsclosed', 'tab', 'light', 'en', 1280, 720, 1], ['cardsclosed', 'tab', 'dark', 'en', 1280, 720, 1],
+  ['stack', 'tab', 'light', 'en', 1280, 720, 1], ['stack', 'tab', 'dark', 'en', 1900, 1000, 1], ['stackcards', 'tab', 'dark', 'en', 1280, 720, 1],
+  ['stackspool', 'tab', 'light', 'en', 1280, 720, 1], ['stack', 'main', 'light', 'en', 380, 900, 1],
   ['cards', 'main', 'light', 'en', 380, 900, 1], ['cards', 'main', 'dark', 'en', 380, 900, 1],
   ['menu', 'tab', 'dark', 'en', 1280, 720, 1], ['menu', 'tab', 'light', 'pt_BR', 720, 1000, 1],
   ['empty', 'tab', 'light', 'pt_BR', 1280, 720, 1], ['nourl', 'tab', 'dark', 'en', 1280, 720, 1], ['nourl', 'main', 'light', 'en', 380, 900, 1], ['error', 'tab', 'light', 'en', 1280, 720, 1],

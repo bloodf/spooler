@@ -7,15 +7,17 @@ import type { RfidOffer } from '../logic/rfid';
 // The spool whose detail is open beside the list, and the action form open in it (Spoolman only). `id` is the
 // spool the user picked; with none picked the list shows its first spool until the user closes the detail.
 // Every action is sent with the list origin it was chosen from, so the plugin refuses it if the source changed.
+// `stack`: the spools of a stack (×n) whose list is open in the detail; a spool picked from it keeps it for "Back".
 export type MenuMode = '' | 'weigh' | 'use' | 'remain' | 'note' | 'move';
-export const menu = reactive({ id: null as number | null, picks: 0, auto: true, shown: null as number | null, from: '', mode: '' as MenuMode, val: '', detail: null as any });
+export const menu = reactive({ stack: null as number[] | null, id: null as number | null, picks: 0, auto: true, shown: null as number | null, from: '', mode: '' as MenuMode, val: '', detail: null as any });
 on('detail', d => { if (d && menu.shown === d.id) menu.detail = d; });
 
-export function pickSpool(id: number): void {
-  Object.assign(menu, { id, auto: true, picks: menu.picks + 1 });
+export function pickSpool(id: number, fromStack = false): void {
+  Object.assign(menu, { id, auto: true, picks: menu.picks + 1, ...(fromStack ? {} : { stack: null }) });
   if (waiting === id) askDetail(id);   // already shown as the first row, its request still waiting: send it now
 }
-export function closeDetail(): void { Object.assign(menu, { id: null, auto: false, mode: '', val: '' }); }
+export function pickStack(ids: number[]): void { Object.assign(menu, { stack: ids, id: null, auto: false, picks: menu.picks + 1, mode: '', val: '' }); }
+export function closeDetail(): void { Object.assign(menu, { stack: null, id: null, auto: false, mode: '', val: '' }); }
 /** From another tab: open the Spools tab on this spool. */
 export function showSpool(id: number): void { pickSpool(id); setTab('spools'); }
 /**

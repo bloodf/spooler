@@ -106,6 +106,7 @@ export const es: Record<MessageKey, string> = {
   'weight.of': 'de {total}', 'weight.left': '{w} restantes',
   'spool.numbered': 'Carrete #{id}', 'spool.lot': 'Lote {lot}', 'spool.rfid': 'RFID: {tags}', 'spool.together': '×{n} · {w} en total',
   'spool.low': 'Stock bajo', 'spool.out': 'Casi vacío', 'spool.reorder': 'Stock bajo: buscar {q} en internet',
+  'spool.empty': 'Vacío', 'stack.empty_one': '1 vacío', 'stack.empty_other': '{n} vacíos', 'detail.backStack': 'Volver a los {n} carretes', 'detail.emptyHint': 'Este carrete está vacío.',
   'spool.unknownLeft': 'Restante desconocido', 'spool.pctLeft': '{pct}% restante', 'spool.onPlate': 'En esta cama · {slots}',
   'spool.loadedIn': 'Cargado en {where}', 'spool.inUse': 'En uso · {where}', 'spool.useFirst': 'Usar primero',
   'spool.useFirstHelp': 'Abierto primero: termina este antes que los demás carretes de este filamento', 'spool.driedToday': 'Secado hoy',

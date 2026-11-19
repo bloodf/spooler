@@ -4,7 +4,7 @@ import { OuiIcon, OuiLevel, OuiSlot, OuiStatus } from '../../shared/src/componen
 import { rfid } from '../../shared/src/icons';
 import { m } from '../state/main';
 import { t, locale } from '../core/i18n';
-import { formatWeight, lowLevel, originalWeight, shown, spoolFraction } from '../logic/spools';
+import { LEVEL_KEY, formatWeight, lowLevel, originalWeight, shown, spoolFraction } from '../logic/spools';
 import type { Tray } from '../logic/printers';
 
 // One live slot (AMS tray, toolhead, external spool) as the printer reports it, with the spool it holds. Two sources,
@@ -42,7 +42,7 @@ const empty = computed(() => !!tr.value.empty);
            :remaining="fill" :initial="1">
     <template v-if="!empty && (active || level)" #state>
       <OuiStatus v-if="active" state="busy">{{ t('progress.inUseSlot') }}</OuiStatus>
-      <OuiStatus v-else :state="level === 'out' ? 'error' : 'warn'">{{ t(level === 'out' ? 'spool.out' : 'spool.low') }}</OuiStatus>
+      <OuiStatus v-else :state="level === 'low' ? 'warn' : 'error'">{{ t(LEVEL_KEY[level]) }}</OuiStatus>
     </template>
     <template #meta>{{ sub }}</template>
     <template #amount>
