@@ -4,6 +4,8 @@ Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); 
 0.9.0 are Spoolio's.
 
 ## [Unreleased]
+### Fixed
+- On Windows the Spooler tab stayed blank since 0.30.0: the page had grown past what OrcaSlicer can show there (1.5 MB). A page that would be too big now leaves out its embedded font and draws in the system font instead.
 
 ## [0.30.0] - 2026-11-18
 ### Added

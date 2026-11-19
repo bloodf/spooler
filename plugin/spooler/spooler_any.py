@@ -9860,7 +9860,25 @@ def page_html(mode: str, view: str = "main", settings: dict | None = None, page:
         "page": page if isinstance(page, str) and re.fullmatch(r"s-[a-z]{1,16}", page) else "",
         "settings": settings or settings_boot(get_settings().get("spoolman_url", ""), parse_low(get_settings().get("low_stock_grams"))),
     }
-    return ui_page().replace("__BOOT__", _json_for_html(boot), 1)
+    return fit_webview(ui_page().replace("__BOOT__", _json_for_html(boot), 1))
+
+
+# OrcaSlicer on Windows shows a page through WebView2, which takes at most 2 MiB once the page is base64-encoded:
+# 1.5 MiB of UTF-8. A bigger page stays blank (0.30.0's tab was 1,573,958 bytes, 1,094 over, and never loaded).
+WEBVIEW_PAGE_LIMIT = 1_572_864
+_FONT_DATA = re.compile(r"url\(data:font/[\w.+-]+;base64,[A-Za-z0-9+/=]+\)")
+
+
+def fit_webview(html: str) -> str:
+    """The page, without its embedded web fonts when they would push it over WEBVIEW_PAGE_LIMIT: it then draws
+    in the system font instead of staying blank."""
+    if len(html.encode("utf-8")) <= WEBVIEW_PAGE_LIMIT:
+        return html
+    lighter = _FONT_DATA.sub('local("Manrope")', html)
+    size = len(lighter.encode("utf-8"))
+    if size > WEBVIEW_PAGE_LIMIT:
+        log.warning("The page is %d bytes, over OrcaSlicer's %d on Windows; it may stay blank", size, WEBVIEW_PAGE_LIMIT)
+    return lighter
 
 
 def main_html() -> str:
