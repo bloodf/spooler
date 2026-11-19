@@ -89,8 +89,43 @@ class PollTest(KlipperCase):
         doc, heads = sp.moon_poll(BASE)
         self.assertFalse(heads)
         self.assertEqual(doc["print"]["vt_tray"]["spool_id"], 4)
-        self.assertEqual(sp._moon_found[PID], {"tools": 1, "managed": False, "u1": False, "hh": False})
+        self.assertEqual(sp._moon_found[PID], {"tools": 1, "managed": False, "u1": False, "hh": False, "solo": False})
         self.assertEqual(self.entry()["units"], [])
+
+    def moonraker_without_spoolman(self, status):
+        """Moonraker with no [spoolman] section: its active-spool endpoint answers 404."""
+        def get(base, path):
+            if "lane_data" in path or path == "/server/spoolman/spool_id":
+                raise sp.urllib.error.HTTPError(base + path, 404, "Not Found", {}, None)
+            return {"status": status}
+        patch = mock.patch.object(sp, "_moon_get", get)
+        patch.start()
+        self.addCleanup(patch.stop)
+
+    def test_single_extruder_without_moonraker_spoolman_gets_one_extruder_slot_set_by_hand(self):
+        # A Sovol SV06: one extruder, no MMU, no Spoolman in Moonraker. One slot to assign, never a wait for slots.
+        self.moonraker_without_spoolman(extruders(1))
+        sp.moon_poll(BASE)
+        self.assertEqual(self.entry()["units"], [{"kind": "tool", "slots": [None]}])
+        self.assign(tools=[4])
+        doc, heads = sp.moon_poll(BASE)
+        self.assertTrue(heads)
+        self.assertNotIn("vt_tray", doc["print"])
+        self.assertEqual([t.get("spool_id") for t in doc["print"]["ams"]["ams"][0]["tray"]], [4])
+        self.assertFalse(doc["hh"])
+        # Gates set by hand replace the extruder slot.
+        self.assign(gates=[None, None])
+        self.assertEqual(self.entry()["units"], [{"kind": "gate", "slots": [None, None]}])
+
+    def test_happy_hare_installed_with_no_gates_is_no_mmu(self):
+        self.moonraker_without_spoolman({**extruders(1), "mmu": {"enabled": False, "num_gates": 0}})
+        doc, _ = sp.moon_poll(BASE)
+        self.assertFalse(doc["hh"])
+        self.assertFalse(self.entry()["managed"])
+        self.assertEqual(self.entry()["units"], [{"kind": "tool", "slots": [None]}])
+        self.assertFalse(sp.mmu_present({}))
+        self.assertTrue(sp.mmu_present({"num_gates": 4}))
+        self.assertTrue(sp.mmu_present({"enabled": True}))
 
     def test_four_extruders_show_toolheads_set_by_hand(self):
         self.assign(tools=["1", None, "4"])

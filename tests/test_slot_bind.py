@@ -87,7 +87,7 @@ class ReadTest(Base):
     def test_kobra_reads_kobra_controls_binding_before_the_colour(self):
         trays = sp.kx_report(self.BOX, None, self.spools, KOBRA)["print"]["ams"]["ams"][0]["tray"]
         self.assertIsNone(trays[0]["spool_id"])  # blue: no spool of that colour, no binding
-        self.assertEqual((trays[1]["spool_id"], trays[1]["linked"], trays[1]["remain"]), (2, "kobracontrol", 70))
+        self.assertEqual((trays[1]["spool_id"], trays[1]["linked"], trays[1]["remain"]), (2, "kobracontrol", None))  # Spoolman wins over the ACE's reading
 
     def test_live_snapshot_says_which_slots_take_a_link(self):
         binds = {p["id"]: p["bind"] for p in sp.live_snapshot()["printers"]}

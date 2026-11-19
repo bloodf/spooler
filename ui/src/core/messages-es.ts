@@ -150,6 +150,7 @@ export const es: Record<MessageKey, string> = {
   'printer.manualNote': 'Solo una vista orientativa: se compone con los carretes que has asignado. Usa Live Link para leer la propia impresora.',
   'printer.none': 'Aún no hay impresoras. Añade tu impresora y elige el carrete de cada ranura.', 'printer.add': 'Añadir impresora',
   'printer.waitingHeads': 'Esperando a que la impresora informe de sus cabezales…', 'printer.waitingSlots': 'Esperando a que la impresora informe de sus ranuras…',
+  'printer.extruder': 'Extrusor',
   'printer.howTitle': 'Cómo se registra el consumo',
   'printer.bindNote': 'En un cabezal de la Snapmaker U1 o una ranura del ACE de Anycubic, Asignar carrete cambia la ubicación del carrete en Spoolman al vínculo que leen U1 Control y Kobra Control, por ejemplo «Snapmaker U1 T1» o «Anycubic Kobra X S1». No se envía nada a la impresora.',
   'printer.chipU1': 'Lo registra U1 Control',

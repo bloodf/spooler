@@ -172,6 +172,7 @@ export const pl: Record<MessageKey, string> = {
   'printer.manualNote': 'To tylko widok poglądowy, zbudowany z przypisanych przez ciebie szpul. Użyj Live Link, aby odczytać samą drukarkę.',
   'printer.none': 'Brak drukarek. Dodaj swoją drukarkę, a potem wybierz szpulę w każdym slocie.', 'printer.add': 'Dodaj drukarkę',
   'printer.waitingHeads': 'Czekanie, aż drukarka zgłosi swoje głowice…', 'printer.waitingSlots': 'Czekanie, aż drukarka zgłosi swoje sloty…',
+  'printer.extruder': 'Ekstruder',
   'printer.howTitle': 'Jak działa księgowanie',
   'printer.bindNote': 'Na głowicy Snapmaker U1 albo w slocie ACE Anycubic „Przypisz szpulę” ustawia lokalizację szpuli w Spoolmanie na powiązanie, które czytają U1 Control i Kobra Control, na przykład „Snapmaker U1 T1” lub „Anycubic Kobra X S1”. Do drukarki nic nie jest wysyłane.',
   'printer.chipU1': 'Księguje U1 Control',

@@ -847,6 +847,52 @@ for (const width of [380, 1280, 1900]) {
     ${width >= 1280 ? "assert(new Set(qa('.pv-grid > .pp').map(p => Math.round(p.getBoundingClientRect().top))).size < 3, 'printers side by side, not one under another');" : ''}
   `, { width });
 }
+// ------------------------------------------------------------------ Printer tab as the owner's 0.30.0: ACE, U1, a single-extruder Sovol
+const OWNER = `
+const ace = (slot, spool) => ({slot, empty: false, type: 'PLA', name: 'Black', colour: '111111', remain: null, rfid: false, spool, linked: 'kobracontrol', profile: ''});
+const sovol = {id: 'auto-s', name: 'Sovol SV06', auto: true, kind: 'moonraker', managed: false, ip: 'http://s.example', units: [{kind: 'tool', slots: [null]}]};
+async function owner(extra) {
+  await spools(SPOOLS, {printers: [{id: 'auto-k', name: 'Anycubic Kobra X', auto: true, kind: 'moonraker', managed: true, ip: 'http://k.example', units: []},
+    {id: 'auto-u', name: 'Snapmaker U1', auto: true, kind: 'moonraker', managed: true, ip: 'http://u.example', units: []}, sovol],
+    live_ok: true, usage: {enabled: true, mode: 'auto', prints: []}});
+  await tab('printer');
+  await post({type: 'live', live: {links: {'auto-k': 'live', 'auto-u': 'live', 'auto-s': 'live'}, printers: [
+    {id: 'auto-k', link: 'auto-k', name: 'Anycubic Kobra X', age: 0, heads: false, unit_label: 'ACE', bind: 'S', ext: null, units: [{id: 0, kind: 'ams', trays: [ace(0, 1), ace(1, 2), ace(2, 1), ace(3, 2)]}]},
+    {id: 'auto-u', link: 'auto-u', name: 'Snapmaker U1', age: 0, heads: true, bind: 'T', ext: null, units: [{id: 0, kind: 'ams', trays: [ace(0, 1), ace(1, 2), ace(2, 1), ace(3, 2)]}], job: {state: 'IDLE'}},
+    {id: 'auto-s', link: 'auto-s', name: 'Sovol SV06', age: 0, heads: true, ext: null, units: [{id: 0, kind: 'ams', trays: [{slot: 0, empty: true}]}],
+      job: {state: 'FINISH', name: 'plate1', pct: 100, end: Date.now() / 1000 - 600, took: 95}, ...(extra || {})}]}});
+}
+`;
+test('a single-extruder Klipper printer with no MMU: one Extruder slot to assign by hand, no waiting warning; no printer percentage', OWNER + `
+  await owner();
+  const s = qa('.pp').find(p => text(p.querySelector('.pp-name')) === 'Sovol SV06');
+  assert(text(s).includes('Extruder') && qa('[data-act="assign"]', s).length === 1, 'one Extruder slot to assign: ' + vis(s));
+  assert(!q('[data-test="waiting"]') && !vis(q('.pv')).includes('hasn’t reported'), 'no waiting and no warning');
+  assert(!vis(q('.pv')).includes('on the printer'), 'the ACE and the U1 show no printer percentage, only Spoolman');
+  assert(vis(q('.pv')).includes('400 g of 1,000 g left · Spoolman'), 'the Spoolman amount is the main amount');
+`);
+test('a finished print is one line with its printer and time, and can be dismissed', OWNER + `
+  await owner();
+  const d = byTest('job-done');
+  assert(d && !q('.pg .oui-job'), 'no big block for a finished print');
+  assert(text(d).includes('plate1') && text(d).includes('Sovol SV06') && text(d).includes('Finished'), 'name, printer and finished time: ' + text(d));
+  assert(d.getBoundingClientRect().height < 60, 'one line: ' + d.getBoundingClientRect().height);
+  await click(q('[data-act="dismiss-job"]', d));
+  assert(!byTest('job-done'), 'dismissed');
+`);
+for (const width of [1280, 1900]) {
+  test('printer panels pack with no gap over 40 px at ' + width + ' px', OWNER + `
+    await owner();
+    const items = qa('.pv-grid > *').map(e => e.getBoundingClientRect()).filter(r => r.height);
+    assert(new Set(items.map(r => Math.round(r.left))).size >= 2, 'two or more columns');
+    const gaps = [];
+    for (const r of items) {
+      const above = items.filter(o => o !== r && Math.abs(o.left - r.left) < 2 && o.bottom <= r.top + 1);
+      if (above.length) gaps.push(Math.round(r.top - Math.max(...above.map(o => o.bottom))));
+    }
+    assert(gaps.length && gaps.every(g => g <= 40), 'gaps: ' + gaps.join(', '));
+  `, { width });
+}
 test('Happy Hare gates are shown read-only with their note', `
   const hh = {id: 'auto-hh', name: 'Trident HH', auto: true, kind: 'moonraker', ip: 'http://10.0.0.11', units: [], managed: true};
   await spools(SPOOLS, {printers: [hh], live_ok: true});

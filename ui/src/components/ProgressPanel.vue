@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { computed } from 'vue';
-import { OuiJob, OuiPanel, OuiReadout, OuiStatus, type OuiState } from '../../shared/src/components';
-import { calendar, clock, hourglass, layers, printer } from '../../shared/src/icons';
+import { computed, reactive } from 'vue';
+import Button from 'primevue/button';
+import { OuiIcon, OuiJob, OuiPanel, OuiReadout, OuiStatus, type OuiState } from '../../shared/src/components';
+import { calendar, clock, hourglass, layers, x } from '../../shared/src/icons';
 import { m } from '../state/main';
 import { t, tn, fmt } from '../core/i18n';
 import { LIVE_STALE, PROG_LIVE, PROG_STATES, type LivePrinter } from '../logic/printers';
@@ -12,6 +13,15 @@ const list = computed(() => (m.liveOn && m.progress.on ? m.live.printers.filter(
 const hide = computed(() => m.progress.idle === 'hide');
 const busy = computed(() => list.value.filter(lv => (hide.value ? PROG_LIVE.includes(lv.job!.state) : !!PROG_STATES[lv.job!.state])));
 const idle = computed(() => (hide.value ? [] : list.value.filter(lv => !PROG_STATES[lv.job!.state])));
+// A print that is running gets the big block; one that finished or failed is one line, until dismissed (this session).
+const running = computed(() => busy.value.filter(lv => PROG_LIVE.includes(lv.job!.state)));
+const dismissed = reactive(new Set<string>());
+const doneKey = (lv: LivePrinter) => `${lv.link}:${lv.job!.name || ''}:${lv.job!.end || ''}`;
+const done = computed(() => busy.value.filter(lv => !PROG_LIVE.includes(lv.job!.state) && !dismissed.has(doneKey(lv))));
+function doneLine(lv: LivePrinter) {
+  const j = lv.job!;
+  return [lv.name, j.end ? `${t('progress.l.finished')} ${clockAt(j.end * 1000)}` : '', j.state === 'FAILED' && j.layer ? t('progress.stoppedAt', { n: j.layer }) : ''].filter(Boolean).join(' · ');
+}
 const stale = (lv: LivePrinter) => (lv.age ?? 0) > LIVE_STALE;
 const dur = (min: number) => { const h = Math.floor(min / 60); return h ? t('progress.hm', { h, m: String(min % 60).padStart(2, '0') }) : t('progress.m', { m: min }); };
 const clockAt = (ms: number) => fmt.time(ms / 1000);
@@ -38,13 +48,20 @@ function facts(lv: LivePrinter) {
 }
 </script>
 <template>
-  <OuiPanel v-if="busy.length || idle.length" flush class="pg" data-test="progress">
+  <OuiPanel v-if="running.length || done.length || idle.length" flush class="pg" data-test="progress">
     <h2 class="oui-sr">{{ t('progress.title') }}</h2>
-    <div v-for="(lv, i) in busy" :key="lv.link" class="pg-job" :class="{ 'pg-more': i > 0 }">
+    <div v-for="(lv, i) in running" :key="lv.link" class="pg-job" :class="{ 'pg-more': i > 0 }">
       <OuiJob :hero="i === 0" :compact="i > 0" :stale="stale(lv)" :name="lv.job!.name || t('stats.print')" :progress="pct(lv)" :progress-label="t('progress.bar', { name: lv.job!.name || '' })" :detail="line(lv)">
         <template #status><OuiStatus v-if="stale(lv)" state="stale">{{ t('link.stale') }}</OuiStatus><OuiStatus v-else :state="STATE[lv.job!.state]">{{ t(`progress.state.${lv.job!.state}` as any) }}</OuiStatus></template>
         <OuiReadout v-for="x in facts(lv)" :key="x.label" :icon="x.icon" :label="x.label" :value="x.value" size="sm" :stale="stale(lv)" />
       </OuiJob>
+    </div>
+    <div v-for="lv in done" :key="'d' + lv.link" class="oui-row pg-idle pg-done" data-test="job-done">
+      <OuiStatus :state="stale(lv) ? 'stale' : STATE[lv.job!.state]">{{ stale(lv) ? t('link.stale') : t(`progress.state.${lv.job!.state}` as any) }}</OuiStatus>
+      <span class="oui-truncate pg-done-t" :title="(lv.job!.name || t('stats.print')) + ' · ' + doneLine(lv)"><strong>{{ lv.job!.name || t('stats.print') }}</strong>
+        <span class="oui-meta"> · {{ doneLine(lv) }}</span></span>
+      <Button severity="secondary" text size="small" :aria-label="t('common.dismiss')" :title="t('common.dismiss')" data-act="dismiss-job" @click="dismissed.add(doneKey(lv))">
+        <template #icon><OuiIcon :icon="x" :size="14" /></template></Button>
     </div>
     <div v-for="lv in idle" :key="'i' + lv.link" class="oui-row pg-idle"><OuiStatus state="idle">{{ t('progress.idle') }}</OuiStatus>
       <span class="oui-meta">{{ t('progress.noPrint') }} · {{ lv.name }}</span></div>
@@ -55,4 +72,6 @@ function facts(lv: LivePrinter) {
 .pg-idle { padding: var(--oui-s2) var(--oui-s4); border-top: 1px solid var(--oui-border); }
 .pg > .oui-panel-body > :first-child:not(.pg-job) { border-top: 0; }
 .pg { overflow: hidden; }
+.pg-done { flex-wrap: nowrap; }
+.pg-done-t { flex: 1; }
 </style>

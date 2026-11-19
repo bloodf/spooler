@@ -36,7 +36,8 @@ const how = computed(() => {
     </details>
     <RfidPanel />
     <ProgressPanel />
-    <!-- Printers and the plate check and bookings share one grid: two columns from 1160 px, three from 1800 px. -->
+    <!-- The plate check, the bookings and the printers pack into columns (two from 1160 px, three from 1800 px), each
+         panel under the one before it in its column, so a short panel never leaves a gap beside a tall one. -->
     <div class="pv-grid" data-test="printer-grid">
       <PlatePanel />
       <UsagePanel />
@@ -49,10 +50,11 @@ const how = computed(() => {
   </div>
 </template>
 <style>
-.pv-grid { display: grid; gap: var(--oui-s3); grid-template-columns: minmax(0, 1fr); align-items: start; }
+.pv-grid { columns: 1; column-gap: var(--oui-s3); }
+.pv-grid > * { break-inside: avoid; margin-block-end: var(--oui-s3); }
 .pv-grid:empty { display: none; }
-@container oui-page (min-width: 1160px) { .pv-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@container oui-page (min-width: 1800px) { .pv-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@container oui-page (min-width: 1160px) { .pv-grid { columns: 2; } }
+@container oui-page (min-width: 1800px) { .pv-grid { columns: 3; } }
 .pv-how { padding: var(--oui-s2) var(--oui-s3); }
 .pv-how summary { cursor: pointer; color: var(--oui-primary); font-weight: 600; }
 .pv-how p { max-width: 96ch; margin-top: var(--oui-s2); }

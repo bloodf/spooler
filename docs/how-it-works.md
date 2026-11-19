@@ -139,6 +139,13 @@ u1control binds (U1 only), the RFID tag, then vendor, material and colour (`slot
 Anycubic ACE slot is matched to the spool Kobra Control binds with the location `<printer> S<n>`
 (n = box × 4 + slot + 1, `spool_at_kx_slot()`), else by material and colour (`kx_tray()`). A slot's
 percentage is only ever the printer's own reading; a Spoolman spool's weight is shown as Spoolman's.
+The ACE's `consumables_percent` counts only for a slot with no Spoolman spool, and only below 100:
+the ACE answers 100 for every spool it can't measure.
+
+A single-extruder Klipper printer whose Moonraker has no Spoolman integration (its active-spool
+endpoint answers 404) and no MMU gets one extruder slot set by hand (`moon_entry()`, `found["solo"]`).
+Happy Hare counts as an MMU only when its `mmu` object reports gates, or says it is enabled without
+giving a gate count (`mmu_present()`).
 
 **Assign spool** on a U1 toolhead or an ACE slot (`slot_bind()`, the `bind` and `unbind` card
 actions) writes the link the owning plugin reads: the spool's Spoolman location `<printer> T<n>`

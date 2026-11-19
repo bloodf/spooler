@@ -110,13 +110,13 @@ const rows = computed(() => {
     const cells = unit.slots.map((id, s) => ({ u, s, unit, id }));
     const last = out[out.length - 1];
     if (p.value.auto && unit.kind === 'tool' && last?.key === 'tools') last.cells.push(...cells);
-    else out.push({ key: p.value.auto && unit.kind === 'tool' ? 'tools' : String(u), label: p.value.auto && unit.kind === 'tool' ? t('printer.toolheads') : unitLabel(p.value, unit, words.value),
+    else out.push({ key: p.value.auto && unit.kind === 'tool' ? 'tools' : String(u), label: p.value.auto && unit.kind === 'tool' ? t(tools.value === 1 ? 'printer.extruder' : 'printer.toolheads') : unitLabel(p.value, unit, words.value),
       remove: p.value.auto ? -1 : u, cells });
   });
   return out;
 });
 const slotName = (c: Cell) => (c.unit.kind === 'ext' ? t('printer.theExternal') : c.unit.kind === 'gate' ? t('printer.gateN', { n: c.s + 1 }) : c.unit.kind === 'tool' ? slotLabel(c.unit, c.s) : t('printer.slotN', { n: c.s + 1 }));
-const slotLabel = (u: ManualUnit, si: number) => (u.kind === 'gate' ? String(si + 1) : u.kind === 'ext' ? 'E' : u.kind === 'tool' ? unitLabel(p.value, u, words.value) : String(si + 1));
+const slotLabel = (u: ManualUnit, si: number) => (u.kind === 'gate' ? String(si + 1) : u.kind === 'ext' ? 'E' : u.kind === 'tool' ? (p.value.auto && tools.value === 1 ? 'E' : unitLabel(p.value, u, words.value)) : String(si + 1));
 const toolOf = (u: ManualUnit) => { const n = u.kind === 'tool' ? p.value.units.filter(x => x.kind === 'tool').indexOf(u) + 1 : 0; return n >= 1 && n <= 4 ? n as 1 | 2 | 3 | 4 : undefined; };
 </script>
 
