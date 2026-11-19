@@ -39,7 +39,7 @@ function key(e: KeyboardEvent) {
 <template>
   <div class="pk oui-well" role="group" :aria-label="label" @keydown="key">
     <div class="pk-top"><InputText ref="input" v-model="q" type="search" size="small" :placeholder="t('picker.search')" :aria-label="t('picker.search')" class="pk-q" data-test="picker-search" />
-      <OuiHint v-if="excludeTaken" end :label="label" :text="t('picker.takenHint')" /></div>
+      <OuiHint v-if="excludeTaken" :label="label" :text="t('picker.takenHint')" /></div>
     <div ref="list" class="pk-list">
       <button v-for="s in items" :key="s.id" type="button" class="pk-item" :data-pick="s.id" @click="emit('pick', s.id)">
         <OuiSpool v-bind="spoolPaint(s.filament || {})" :direction="spoolDirection(s.filament || {})" :fraction="spoolFraction(s)" :size="32" />

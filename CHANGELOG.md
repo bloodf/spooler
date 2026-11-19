@@ -5,7 +5,7 @@ Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); 
 
 ## [Unreleased]
 ### Changed
-- New look, on the shared Orca UI foundation 5.0.0: every page uses OrcaSlicer's own greys and its teal, so Spooler reads as a part of OrcaSlicer. Spooler's magenta stays on its mark and under the open tab. Colour elsewhere says something: a state, a level (green, amber when low, red when almost empty) or a filament's own colour.
+- New look, on the shared Orca UI foundation 5.0.2: every page uses OrcaSlicer's own greys and its teal, so Spooler reads as a part of OrcaSlicer. Spooler's magenta stays on its mark and under the open tab. Colour elsewhere says something: a state, a level (green, amber when low, red when almost empty) or a filament's own colour.
 - Each tab starts with one header line. **Spools** shows how many spools there are, the filament left, how many are low and the preset count, with **Sync Presets** (moved here from the top bar) and **Add Spool** on the right; **Printer** has **Add printer**; **Stats** has the period.
 - Spool detail: the spool's picture on a neutral panel, the amount left as one large figure with its level bar, then its facts as a list ("Lasts about" is one of them). The detail column is narrower (320 px, 400 px from 1160 px wide), so three cards fit beside it at 1280 px.
 - Spool cards are neutral, with the open one framed in teal; a slot card on the Printer tab has a thin strip of its filament's colour. **Table** and **Cards** are two icon buttons.

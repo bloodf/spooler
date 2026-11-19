@@ -188,7 +188,7 @@ async function save() {
           <Select v-model="presetPick" :input-id="`sd-preset-${s.id}`" :options="presets" option-label="label" option-value="value" size="small" aria-describedby="sd-send-h" data-test="preset-pick" /></div>
         <Button severity="secondary" size="small" :label="t('list.send')" :disabled="!!sourceOff || pending('send') || !presetPick || ownLink" aria-describedby="sd-send-h" data-test="send"
                 @click="sendEdits(s.id, presetPick)"><template #icon><OuiIcon :icon="upload" :size="14" /></template></Button>
-        <OuiHint end :label="t('list.send')" :text="ownLink ? t('detail.ownLink') : t('list.sendHelp')" data-test="send-help" />
+        <OuiHint :label="t('list.send')" :text="ownLink ? t('detail.ownLink') : t('list.sendHelp')" data-test="send-help" />
         <!-- What the picker and Send are described by: the (i)'s own bubble is hidden while closed, and so not read from here. -->
         <span id="sd-send-h" class="oui-sr">{{ ownLink ? t('detail.ownLink') : t('list.sendHelp') }}</span>
       </template>
