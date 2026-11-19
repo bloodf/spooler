@@ -13,6 +13,7 @@ Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); 
 - A printer that hasn't reported its slots shows a turning mark, and after 45 seconds says it may not and what to check.
 - Spools show as the drawn spool, filled to what is left, in more places: the spool pickers (assign a slot, pick after a slice), the RFID offers, and the Stats "Most used" and "Running low" lists. The weight and percentage text stay as they were.
 - A printer slot's drawn spool follows the real amount: Spoolman's weight, else the printer's percentage. When neither is known a loaded slot shows a full reel in its colour with a small "?" badge, the amount unknown, no longer a made-up level (a slot with no reading drew as full or 60 %); an empty slot shows the bare reel (shared UI foundation 4.2.2).
+- NOTICE.md credits Pablo Saura Sánchez (@saurasanchezpablo, #2: Klipper lanes from Moonraker's lane_data, plate slots kept on lanes, preset edits sent to Spoolman's orca_settings, other Spoolman fields kept) and Jefferson J. Raimon (@jeffersonraimon, #20: preset cost from spool prices), whose contributions were made under MIT.
 ### Fixed
 - The Printer tab no longer shows "100 % on the printer" for a U1 toolhead or an ACE slot holding a Spoolman spool: that number was Spoolman's weight. A printer percentage shows only when the printer reports one (Bambu AMS, an Anycubic slot's own reading).
 - Long preset and location lines on a slot card are cut with an ellipsis (the full text on hover) instead of running past the card.
