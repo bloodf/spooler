@@ -9,6 +9,7 @@ Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); 
 ### Fixed
 - Spool cards are at least 260 px wide (two beside the open detail at 1280 px), the cards of a row share one height with the state chips at the bottom, and chips and manufacturer names wrap instead of being cut off.
 - On Windows the Spooler tab stayed blank since 0.30.0: the page had grown past what OrcaSlicer can show there (1.5 MB). A page that would be too big now leaves out its embedded font and draws in the system font instead.
+- The Spooler page is less than half its old size (about 690 KB instead of 1.58 MB) and keeps its own font on Windows: its script now ships compressed and unpacks when the page opens. The build fails if a page ever gets close to the 1.5 MB OrcaSlicer can show on Windows.
 
 ## [0.30.0] - 2026-11-18
 ### Added
