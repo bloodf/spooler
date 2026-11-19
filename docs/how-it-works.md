@@ -8,7 +8,9 @@ there (`# --- ... ---`) follow the same order as this page.
 
 The tab, the spool window and the Settings window show one Vue 3 + PrimeVue 5 page (the shared Orca UI
 foundation 4.2.2, vendored in `ui/shared/` with its licences, Lucide icons and the Manrope font included). `ui/` builds it into a single offline HTML file; `scripts/embed_ui.py`
-stores it zlib-compressed at the end of `spooler_any.py`, so the plugin is still one file. `page_html()` fills
+stores it zlib-compressed at the end of `spooler_any.py`, so the plugin is still one file. The page's script is
+served deflated and base64-encoded and unpacked in the page by `scripts/page_loader.js`, which keeps the page well
+under the 1.5 MB OrcaSlicer's WebView2 shows on Windows; `embed_ui.py` fails the build over 90% of that. `page_html()` fills
 the boot JSON: which surface (`tab`, `main`, `settings`), the saved settings, the host language and the
 user's language choice (`ui_language` in the settings file). The message contract with the plugin is the
 same as before: the Settings view tags its messages `view: "settings"` inside the tab.
