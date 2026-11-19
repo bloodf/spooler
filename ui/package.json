@@ -4,7 +4,7 @@
   "private": true,
   "license": "GPL-3.0-only",
   "type": "module",
-  "description": "Spooler pages (Vue 3 + PrimeVue 5, shared Orca UI foundation 5.0.3), built into one offline HTML file embedded in plugin/spooler/spooler_any.py",
+  "description": "Spooler pages (Vue 3 + PrimeVue 5, shared Orca UI foundation 5.0.4), built into one offline HTML file embedded in plugin/spooler/spooler_any.py",
   "scripts": {
     "check:shared": "node shared/scripts/check.mjs",
     "typecheck": "node shared/scripts/vue-tsc.mjs --noEmit",
