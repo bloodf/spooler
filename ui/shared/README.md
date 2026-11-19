@@ -1,4 +1,13 @@
-# Orca UI foundation 5.0.4 — Vue and PrimeVue
+# Orca UI foundation 5.0.5 — Vue and PrimeVue
+
+Version 5.0.5 keeps a state chip whole in a narrow `OuiPanel` header; nothing else changes:
+
+- In 5.0.4 the meta gave way first, so an `OuiStatus` in the header's meta could shrink to just its mark when the title and the actions still fitted on the line ("1 needs attention" became a lone warning triangle at 380 px). A meta that holds a state chip is now as wide as the chip, and it is the actions that go to the second line. Text meta still shortens with an ellipsis.
+- This uses `:has()`. In a web view without it (WebKit before 15.4) the chip shrinks as it did in 5.0.4; nothing else is affected.
+
+To update from 5.0.4, replace `ui/shared/` with the 5.0.5 snapshot and rebuild. A header with a state chip, a title and actions can be one line taller in a narrow dock than it was.
+
+## 5.0.4
 
 Version 5.0.4 fixes `OuiPanel`'s header in narrow places; nothing else changes:
 
