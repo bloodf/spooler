@@ -38,6 +38,10 @@ defineProps<{ title?: string; icon?: OuiIconData; /** Colour of the header icon:
 /* Beside its icon, never under it: the title's widest is the line less the icon. */
 .oui-panel-icon + .oui-panel-title { max-width: calc(100% - 16px - var(--oui-s2)); }
 .oui-panel-meta { flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* A state chip in the meta keeps its word: the meta is then as wide as the chip instead of whatever is left over, so in a
+   narrow header it is the actions that go to the next line, not the chip that shrinks to its mark. Text meta still
+   shortens with an ellipsis. :has() is not in WebKit before 15.4: there the chip shrinks as it did in 5.0.4. */
+.oui-panel-meta:has(> .oui-status) { flex: 0 1 auto; }
 .oui-panel-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--oui-s1); min-width: 0; max-width: 100%; margin-inline-start: auto; }
 .oui-panel-head > :last-child:not(.oui-panel-actions) { margin-inline-end: var(--oui-s1); }
 .oui-panel-body { flex: 1 1 auto; min-width: 0; padding: var(--oui-s3); }
