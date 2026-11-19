@@ -1,4 +1,26 @@
-# Orca UI foundation 5.0.2 — Vue and PrimeVue
+# Orca UI foundation 5.0.3 — Vue and PrimeVue
+
+Version 5.0.3 takes in what the Kobra Control and U1 Control migrations found. It is additive: no prop, slot or event is removed, and a component given none of the new props behaves as in 5.0.2, apart from the fixes.
+
+Fixes:
+
+- `OuiFileBrowser`, detail pane: when its content was taller than the browser, the picture's row shrank to nothing and the picture was drawn over the name and facts. Rows are now as tall as their content and the pane scrolls.
+- `OuiFileBrowser`, Delete key: on a focused row with nothing selected, the first press selected the row and asked nothing. It now asks at once.
+- `OuiFileBrowser`, focus: after a delete or a move, focus stays in the list (the first row, or the list when it is empty) instead of falling to the page.
+- `OuiFileBrowser`, the last column is 168 px (was 132): a short date and time fits in English and pt-BR.
+- `OuiConfirm`: once closed, focus goes back to what had it when the dialog opened, if that is still on the page; then it emits the new `closed` event.
+- `OuiSetpoint`: `describedby` now reaches the number field itself (PrimeVue was putting it on the field's wrapper).
+
+New, all optional:
+
+- `OuiSetpoint`: `inputId` (an id for the field, and a real `<label>`), `error` (a line under the row, from the page), `validate` (asked before every `set`; it can refuse a value, with a reason shown in that line, and may be async; with it the field no longer clamps to `min`..`max`), `offAlways` (Off stays enabled with no target).
+- `OuiFileBrowser`: `sort` (the order the list opens in, e.g. `{ key: 'modified', down: true }`); a `#folder` slot beside the path for what can be done to the open folder (rename, move, delete, new folder); `readonly` on a folder (its files can be looked at, not moved, deleted or added to).
+- `OuiCamera`: a `frame` event each time the built-in picture has loaded; `fit="contain"` to show a picture that is not 16:9 whole; a `#picture` slot for a page's own player (`<video>`, canvas).
+- `OuiPanel`: `hintId`, the id of the hint's text, for a control's `aria-describedby` (`OuiHint` takes `id`).
+
+To update from 5.0.2, replace `ui/shared/` with the 5.0.3 snapshot and rebuild. Then remove what a plugin added to work around these: its own heater row, CSS on `.oui-files-detail`, `.oui-files-move` or the date column, a click on a column header at mount, folder actions in `#toolbar`, a `<video>` laid over `OuiCamera`, a captured `load` listener on the camera, and focus moved by hand after a delete.
+
+## 5.0.2
 
 Version 5.0.2 fixes `OuiHint` (and so every `OuiPanel` with a `hint`); nothing else changes:
 

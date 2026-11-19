@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUpdate, onUpdated, ref, watch } from 'vue';
 import Button from 'primevue/button';
 import Select from 'primevue/select';
 import OuiConfirm from './OuiConfirm.vue';
@@ -20,6 +20,9 @@ import { chevronDown, chevronRight, file as fileIcon, files as filesIcon, folder
  * rail's place, and selecting and deleting work as they do with folders. A storage that has folders but cannot move
  * files (`movable` false) keeps the tree for browsing and has no "Move to" and no dragging.
  *
+ * Folders are shown in the tree only; the table lists files. What can be done to the open folder itself (rename it,
+ * move it, delete it, make a folder in it) is the page's, in `#folder`, which gets that folder and sits beside the path.
+ *
  * Selecting: a click selects one file; Cmd/Ctrl-click and the checkbox add or remove one; Shift-click (and Shift with
  * the arrows) selects the range from the last one; the header checkbox and Cmd/Ctrl+A select all; Escape clears.
  * Moving: drag the selection onto a folder in the tree, or use "Move to" in the bar over the table, which does the
@@ -27,7 +30,8 @@ import { chevronDown, chevronRight, file as fileIcon, files as filesIcon, folder
  * Keys in the table: arrows, Home, End, Space (toggle), Enter (open), Delete. In the tree: arrows, Home, End,
  * Enter (open the folder).
  */
-export interface OuiFolder { id: string; name: string; /** Missing or null: a root. */ parent?: string | null; count?: number; /** Not a place files can be moved to. */ locked?: boolean }
+export interface OuiFolder { id: string; name: string; /** Missing or null: a root. */ parent?: string | null; count?: number; /** Not a place files can be moved to. */ locked?: boolean;
+  /** Its files can be looked at and opened, not moved, deleted or added to (a camera or system folder). */ readonly?: boolean }
 export interface OuiFile { id: string; name: string; /** Bytes and time for sorting; the texts are what is shown. */ size?: number | null; sizeText?: string; modified?: number | null; modifiedText?: string;
   /** A short tag after the name ("G-code", "3MF"). */ kind?: string; thumb?: string | null; /** Facts for the detail panel. */ facts?: OuiFact[] }
 export interface OuiFileBrowserLabels { folders: string; files: string; name: string; size: string; modified: string; selectAll: string; select: (name: string) => string;
@@ -41,10 +45,12 @@ const props = withDefaults(defineProps<{ /** The storage's folders, flat. None: 
   labels: OuiFileBrowserLabels; loading?: boolean; /** Moving and deleting are off (the printer is busy); the page says why, once. */ readonly?: boolean; describedby?: string;
   /** The storage can move files between folders (default true). False: the tree stays, "Move to" and dragging go. */ movable?: boolean;
   /** The files could not be read: shown in place of the table, with `labels.loadFailed` and a `retry` button. */ error?: string | null;
-  /** A move or delete is under way: the bulk actions wait for it. */ busy?: boolean }>(), { folders: () => [], folder: '', movable: true });
+  /** A move or delete is under way: the bulk actions wait for it. */ busy?: boolean;
+  /** The order the list opens in (default: by name). A printer's list usually reads newest first: `{ key: 'modified', down: true }`. The user can still sort by any column. */
+  sort?: { key: 'name' | 'size' | 'modified'; down?: boolean } }>(), { folders: () => [], folder: '', movable: true });
 const emit = defineEmits<{ 'update:folder': [id: string]; 'update:selected': [ids: string[]]; move: [payload: { ids: string[]; to: string }]; delete: [ids: string[]]; open: [id: string]; retry: [] }>();
 const hasTree = computed(() => props.folders.length > 0);
-const locked = computed(() => props.readonly || props.busy);
+const locked = computed(() => props.readonly || props.busy || !!byId.value.get(props.folder)?.readonly);
 
 // ---- folders -------------------------------------------------------------------------------------------------------
 const byId = computed(() => new Map(props.folders.map(f => [f.id, f])));
@@ -94,7 +100,7 @@ function onTreeKey(event: KeyboardEvent) {
 
 // ---- files and selection -------------------------------------------------------------------------------------------
 type SortKey = 'name' | 'size' | 'modified';
-const sortKey = ref<SortKey>('name'); const sortDown = ref(false);
+const sortKey = ref<SortKey>(props.sort?.key ?? 'name'); const sortDown = ref(props.sort?.down ?? false);
 function sortBy(key: SortKey) { if (sortKey.value === key) sortDown.value = !sortDown.value; else { sortKey.value = key; sortDown.value = key !== 'name'; } }
 const rows = computed(() => {
   const key = sortKey.value; const sign = sortDown.value ? -1 : 1;
@@ -137,20 +143,22 @@ function onTableKey(event: KeyboardEvent) {
     case ' ': toggleOne(ids[at]); break;
     case 'Enter': emit('open', ids[at]); break;
     case 'Escape': setSelected([]); break;
-    case 'Delete': case 'Backspace': if (!props.selected.length) setSelected([ids[at]]); askDelete(); break;
+    // props.selected is not updated yet when the row was selected just now: say which files, do not read them back.
+    case 'Delete': case 'Backspace': if (props.selected.length) askDelete(); else { setSelected([ids[at]]); anchor.value = ids[at]; askDelete([ids[at]]); } break;
     default: return;
   }
   event.preventDefault();
 }
 
 // ---- move and delete -----------------------------------------------------------------------------------------------
-const targets = computed(() => props.folders.filter(f => !f.locked && f.id !== props.folder).map(f => ({ id: f.id, label: trail(f.id).map(x => x.name).join(' / ') })));
+const takes = (f: OuiFolder | undefined) => !!f && !f.locked && !f.readonly;
+const targets = computed(() => props.folders.filter(f => takes(f) && f.id !== props.folder).map(f => ({ id: f.id, label: trail(f.id).map(x => x.name).join(' / ') })));
 const moveChoice = ref<string | null>(null);
 const canMove = computed(() => hasTree.value && props.movable && targets.value.length > 0);
-function move(to: string, ids = props.selected) { if (!canMove.value || locked.value || !ids.length || to === props.folder || byId.value.get(to)?.locked) return; emit('move', { ids: [...ids], to }); setSelected([]); }
+function move(to: string, ids = props.selected) { if (!canMove.value || locked.value || !ids.length || to === props.folder || !takes(byId.value.get(to))) return; emit('move', { ids: [...ids], to }); setSelected([]); }
 function onMoveChoice(to: string | null) { if (to) move(to); nextTick(() => { moveChoice.value = null; }); }
 const confirming = ref<string[]>([]);
-function askDelete() { if (!locked.value && props.selected.length) confirming.value = [...props.selected]; }
+function askDelete(ids: string[] = props.selected) { if (!locked.value && ids.length) confirming.value = [...ids]; }
 function confirmDelete() { emit('delete', confirming.value); confirming.value = []; }
 const confirmNames = computed(() => confirming.value.slice(0, 4).map(id => props.files.find(f => f.id === id)?.name ?? id));
 
@@ -167,13 +175,22 @@ function onDragStart(event: DragEvent, id: string) {
   event.dataTransfer.setData('text/plain', ids.map(x => props.files.find(f => f.id === x)?.name ?? x).join('\n'));
   if (ghost.value) { ghost.value.textContent = props.labels.selected(ids.length); event.dataTransfer.setDragImage(ghost.value, 12, 12); }
 }
-const canDrop = (id: string) => dragging.value.length > 0 && id !== props.folder && !byId.value.get(id)?.locked;
+const canDrop = (id: string) => dragging.value.length > 0 && id !== props.folder && takes(byId.value.get(id));
 function onDragOver(event: DragEvent, id: string) { if (!canDrop(id)) return; event.preventDefault(); if (event.dataTransfer) event.dataTransfer.dropEffect = 'move'; dropOn.value = id; }
 function onDragLeave(id: string) { if (dropOn.value === id) dropOn.value = null; }
 function onDrop(event: DragEvent, id: string) { if (!canDrop(id)) return; event.preventDefault(); const ids = dragging.value; dragging.value = []; dropOn.value = null; move(id, ids); }
 function onDragEnd() { dragging.value = []; dropOn.value = null; }
 
 const one = computed(() => (pickedRows.value.length === 1 ? pickedRows.value[0] : null));
+
+// When what had focus goes away (the deleted or moved rows, the bar's buttons once nothing is selected), focus stays in the
+// list instead of falling to the page: on the first row, or on the list itself when it is empty. The same when the delete
+// question has closed and the row it would give focus back to is already gone.
+const list = ref<HTMLElement>();
+let hadFocus = false;
+onBeforeUpdate(() => { hadFocus = !!list.value?.contains(document.activeElement); });
+function holdFocus() { if (!list.value?.contains(document.activeElement)) (table.value?.querySelector<HTMLElement>('.oui-files-row[tabindex="0"]') ?? list.value)?.focus(); }
+onUpdated(() => { if (hadFocus) holdFocus(); });
 </script>
 <template>
   <div class="oui-files"><div class="oui-files-grid" :data-flat="!hasTree || undefined" :data-dragging="dragging.length ? true : undefined">
@@ -192,12 +209,13 @@ const one = computed(() => (pickedRows.value.length === 1 ? pickedRows.value[0] 
       <div v-if="$slots.rail" class="oui-files-railfoot"><slot name="rail" /></div>
     </nav>
 
-    <section class="oui-files-list" :aria-label="labels.files">
+    <section ref="list" class="oui-files-list" :aria-label="labels.files" tabindex="-1">
       <div v-if="hasTree || $slots.toolbar" class="oui-files-toolbar">
         <ol v-if="hasTree" class="oui-files-path" :aria-label="labels.folders">
           <li v-for="(f, i) in path" :key="f.id"><OuiIcon v-if="i" :icon="chevronRight" :size="12" class="oui-muted" />
             <button v-if="i < path.length - 1" type="button" class="oui-files-crumb" @click="openFolder(f.id)">{{ f.name }}</button><strong v-else aria-current="page">{{ f.name }}</strong></li>
         </ol>
+        <div v-if="hasTree && $slots.folder" class="oui-files-folderactions"><slot name="folder" :folder="byId.get(folder)" /></div>
         <div v-if="$slots.toolbar" class="oui-files-tools"><slot name="toolbar" /></div>
       </div>
       <!-- Always there, so selecting does not move the table: the count, and what can be done with the selection. -->
@@ -209,7 +227,7 @@ const one = computed(() => (pickedRows.value.length === 1 ? pickedRows.value[0] 
           <slot name="bulk" :ids="selected" />
           <Select v-if="canMove" v-model="moveChoice" :options="targets" option-label="label" option-value="id" :placeholder="labels.moveTo" :aria-label="labels.moveTo" size="small" class="oui-files-move"
             :disabled="locked" :aria-describedby="describedby" @update:model-value="onMoveChoice" />
-          <Button :label="labels.remove" severity="danger" outlined size="small" :disabled="locked" :aria-describedby="describedby" @click="askDelete"><template #icon><OuiIcon :icon="trash" :size="13" /></template></Button>
+          <Button :label="labels.remove" severity="danger" outlined size="small" :disabled="locked" :aria-describedby="describedby" @click="askDelete()"><template #icon><OuiIcon :icon="trash" :size="13" /></template></Button>
         </template>
       </div>
       <div class="oui-files-scroll">
@@ -255,7 +273,7 @@ const one = computed(() => (pickedRows.value.length === 1 ? pickedRows.value[0] 
     <span ref="ghost" class="oui-files-ghost" aria-hidden="true" />
   </div>
   <OuiConfirm :visible="confirming.length > 0" :title="labels.removeTitle(confirming.length)" :confirm-label="labels.remove" :cancel-label="labels.cancel" danger
-    @update:visible="(v: boolean) => { if (!v) confirming = []; }" @confirm="confirmDelete">
+    @update:visible="(v: boolean) => { if (!v) confirming = []; }" @confirm="confirmDelete" @closed="holdFocus">
     <p>{{ labels.removeText }}</p>
     <ul class="oui-files-names"><li v-for="n in confirmNames" :key="n" class="oui-truncate oui-mono">{{ n }}</li><li v-if="confirming.length > confirmNames.length" class="oui-meta">{{ labels.andMore(confirming.length - confirmNames.length) }}</li></ul>
   </OuiConfirm></div>
@@ -283,19 +301,22 @@ const one = computed(() => (pickedRows.value.length === 1 ? pickedRows.value[0] 
 .oui-files-foldername { flex: 1 1 0; }
 .oui-files-railfoot { padding: var(--oui-s3); border-top: 1px solid var(--oui-border); }
 .oui-files-list { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.orca-ui .oui-files-list:focus { outline: none; }
 .oui-files-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--oui-s2) var(--oui-s3); min-height: 48px; padding: var(--oui-s2) var(--oui-s3); }
-.oui-files-path { flex: 1 1 160px; display: flex; flex-wrap: wrap; align-items: center; gap: 2px; min-width: 0; margin: 0; padding: 0; list-style: none; }
+/* The path, the open folder's actions right after it, and the page's tools at the far end. */
+.oui-files-path { flex: 0 1 auto; display: flex; flex-wrap: wrap; align-items: center; gap: 2px; min-width: 0; margin: 0; padding: 0; list-style: none; }
 .oui-files-path > li { display: inline-flex; align-items: center; gap: 2px; min-width: 0; }
 .oui-files-path strong { padding: 0 4px; font-weight: 700; }
 .oui-files-crumb { padding: 2px 4px; border: 0; border-radius: var(--oui-radius-sm); color: var(--oui-muted); background: none; cursor: pointer; }
 .oui-files-crumb:hover { color: var(--oui-text); background: var(--oui-control); }
-.oui-files-tools { display: flex; flex-wrap: wrap; align-items: center; gap: var(--oui-s2); }
+.oui-files-tools { display: flex; flex-wrap: wrap; align-items: center; gap: var(--oui-s2); margin-inline-start: auto; }
+.oui-files-folderactions { display: flex; align-items: center; gap: var(--oui-s1); }
 .oui-files-bar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--oui-s2); min-height: 40px; padding: 4px var(--oui-s3); background: var(--oui-raised); border-block: 1px solid var(--oui-border); }
 .oui-files-move { min-width: 150px; }
 .oui-files-scroll { flex: 1 1 auto; min-height: 0; overflow: auto; }
 .oui-files-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
 .oui-files-table th { position: sticky; top: 0; z-index: 1; height: 30px; padding: 0 var(--oui-s3); text-align: start; background: var(--oui-surface); box-shadow: inset 0 -1px 0 var(--oui-border); }
-.oui-files-table th:nth-child(3) { width: 96px; } .oui-files-table th:nth-child(4) { width: 132px; }
+.oui-files-table th:nth-child(3) { width: 96px; } .oui-files-table th:nth-child(4) { width: 168px; }
 .oui-files-table th.oui-num, .oui-files-table td.oui-num { text-align: end; }
 .oui-files-sort { display: inline-flex; align-items: center; gap: 2px; padding: 0; border: 0; background: none; cursor: pointer; font-size: var(--oui-text-xs); font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--oui-muted); }
 .oui-files-sort:hover { color: var(--oui-text); }
@@ -310,7 +331,9 @@ const one = computed(() => (pickedRows.value.length === 1 ? pickedRows.value[0] 
 .oui-files-name { display: flex; align-items: center; gap: var(--oui-s2); min-width: 0; }
 .oui-files-name > .oui-truncate { font-weight: 600; }
 .oui-files-skeleton td { height: 44px; padding: 0 var(--oui-s3); border-bottom: 1px solid var(--oui-border); }
-.oui-files-detail { display: grid; align-content: start; gap: var(--oui-s3); min-width: 0; min-height: 0; overflow-y: auto; padding: var(--oui-s3); border-inline-start: 1px solid var(--oui-border); }
+/* Rows are as tall as their content, never less: the picture has no minimum of its own (aspect-ratio, clipped), and in a
+   pane shorter than its content an auto row would shrink it to nothing and draw it over the name. The pane scrolls instead. */
+.oui-files-detail { display: grid; grid-auto-rows: max-content; align-content: start; gap: var(--oui-s3); min-width: 0; min-height: 0; overflow-y: auto; padding: var(--oui-s3); border-inline-start: 1px solid var(--oui-border); }
 .oui-files-preview { display: grid; place-items: center; aspect-ratio: 16 / 10; overflow: hidden; border-radius: var(--oui-radius); background: var(--oui-inset); box-shadow: inset 0 0 0 1px var(--oui-border); }
 .oui-files-preview > img { display: block; width: 100%; height: 100%; object-fit: contain; }
 .oui-files-detailhead { display: flex; flex-wrap: wrap; align-items: center; gap: var(--oui-s2); min-width: 0; }

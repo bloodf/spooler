@@ -1,6 +1,6 @@
 # Migrating a plugin to Orca UI foundation 5.0
 
-Current release: **5.0.2** (5.0.1 with `OuiHint` fixed: a closed bubble takes no room and an open one stays inside the window, see README; 5.0.1 was 5.0.0 plus the file backend adapter: `useFileBackend`, and `OuiFileBrowser` for storages with no folders or no move). Nothing 5.0.0 pages rely on changes.
+Current release: **5.0.3** (5.0.2 with what the Kobra and U1 migrations found: file browser fixes, a `#folder` slot, `sort` and read-only folders; opt-in `inputId`, `error`, `validate` and `offAlways` on `OuiSetpoint`; `frame`, `fit` and `#picture` on `OuiCamera`; `hintId` on `OuiPanel`; see README; 5.0.2 was 5.0.1 with `OuiHint` fixed: a closed bubble takes no room and an open one stays inside the window, see README; 5.0.1 was 5.0.0 plus the file backend adapter: `useFileBackend`, and `OuiFileBrowser` for storages with no folders or no move). Nothing 5.0.0 pages rely on changes.
 
 For the agent rolling 5.0 out to one plugin. `DESIGN.md` is the specification (what a page should look like and why); this file is the procedure. The reference screen for each page is in `ui-foundation/gallery/screens/` and its screenshots in `ui-foundation/evidence-5.0.0/after/`: build the plugin's page until it matches its reference, with the plugin's real data.
 
@@ -53,7 +53,7 @@ The accent now colours two things only: the mark tile in `OuiAppBar` and the lin
 - `OuiBanner tone="info"`: grey with a blue mark. The banner is 36 px high (was 44) and its icon has no tile.
 - `OuiJob`: a compact block (section 5). `hero` is accepted and ignored. It no longer pads itself (the hero block did): put it in an `OuiPanel`, or give its container 12 px of padding.
 - `OuiSlot`: a neutral card with a 4 px strip of the filament's colour across its top (was a 40 px sample holding the badge). Badge and state chip are on the first line under the strip.
-- `OuiSetpoint`: a heater that is off reads in the text colour (was blue).
+- `OuiSetpoint`: a heater that is off reads in the text colour (was blue). Its `describedby` is now on the number field itself.
 - `OuiEmpty`: its icon tile is grey unless you give a `tone`.
 - `OuiSpark`: with no `tone` it is teal (was the accent).
 - `OuiSettings`: the open section has a grey fill and a teal mark (was a solid accent block).
@@ -134,9 +134,15 @@ Reference: `gallery/screens/KobraDash.vue`, `U1Dash.vue`.
 
 - **Status block**: `OuiJob` in an `OuiPanel` with no title, class `oui-dash-top`. Put the picture in `#thumb`: it is shown in a fixed 72 px box, so pass the model thumbnail or the printer picture at any size and do not size it yourself. `#status`, the default slot (small `OuiReadout size="sm"` for elapsed, left, finishes) and `#actions` are as before; the actions are now inside the block, at its right.
 - **Main column** (`.oui-dash-main`): the filament module (toolheads or ACE slots as `OuiSlot` in `.oui-cards`), then one Controls module.
+- **Heaters** use the shared `OuiSetpoint`, in both plugins; do not keep a heater row of your own. With no new props it behaves as in 4.x: the field clamps what is typed to `min`..`max` and Off is disabled while there is no target. Since 5.0.3 it can do what the plugins' own rows did:
+  - `validate` is asked before every `set` and can refuse: return nothing or `true` to let the value through, a string to refuse it and show that reason under the row, `false` to refuse it silently. It may be async, for a confirmation. With `validate` the field does not clamp, so what was typed is what is judged: check the range in it, with the message in the page's language.
+  - `error` is a line under the row from the page (the printer refused the target, the command was not confirmed). The page sets and clears it.
+  - `input-id` gives the field an id and makes the row's label a `<label>` for it.
+  - `off-always` keeps Off enabled while there is no target.
+  - The reason line is `role="alert"`, the field is `aria-invalid` and described by it; `describedby` (the busy banner) is on the field as well.
 - **Controls module**: one `OuiPanel` with `.oui-controls` inside, and one `.oui-controls-group` per task, each starting with `<p class="oui-label">`. Heaters stay `OuiSetpoint`; fan, speed, light, cover and mode rows become `OuiControlRow` (`label`, `icon`, `tone`, `value`, and the control in its slot). This replaces "Bed and chamber" and "Temperature and air": U1's bed goes under Temperature, speed, top cover and light under Machine; Kobra's nozzle and bed under Temperature, fan, speed mode and light under Machine.
 - **Side column** (`.oui-dash-side`): Camera, then Move (Kobra), then Printer.
-- **Camera module**: `OuiPanel flush` with the rate, save and on/off controls in `#actions` (small), and `OuiCamera` as the body: `src`, `alt`, `state` (`live`, `off`, `loading`, `error`), `title` and `text` for the states without a picture, `#overlay` for chips over the picture, `#actions` for the way out. The paragraph about the frame rate becomes the panel's `hint`.
+- **Camera module**: `OuiPanel flush` with the rate, save and on/off controls in `#actions` (small), and `OuiCamera` as the body: `src`, `alt`, `state` (`live`, `off`, `loading`, `error`), `title` and `text` for the states without a picture, `#overlay` for chips over the picture, `#actions` for the way out. A plugin that plays the stream itself (a `<video>`, a canvas) puts its player in `#picture`, with the class `oui-camera-picture` and `state="live"` on the component, instead of `src`; do not lay a player over the component. `@frame` fires each time the built-in picture has loaded (the picture only, never an icon; it gets the `<img>`): use it to acknowledge a frame, not a captured `load` listener. `fit="contain"` shows a picture that is not 16:9 whole, with bars; the default, `cover`, fills the box and crops. If a control outside the hint is explained by it (the rate select), give the panel `hint-id` and point the control's `aria-describedby` at that id. The paragraph about the frame rate becomes the panel's `hint`.
 - **Empty and loading**: a module with nothing to show keeps its header and shows one `OuiEmpty compact` row (`state="offline"` when the printer is away). While the first read is under way, show `.oui-skeleton` bars. Do not hide modules.
 - **Stock leaves the dashboard.** Remove the stock module and its link controls from the dashboard. The spool chooser inside each slot card stays.
 
@@ -175,6 +181,7 @@ const files = useFileBackend(backend, {
 ```vue
 <OuiFileBrowser v-bind="files.props" :labels="labels" :readonly="printerBusy" :describedby="busyBannerId" v-on="files.on" @open="onOpen">
   <template #toolbar><!-- search --></template>
+  <template #folder="{ folder }"><!-- rename, move, delete the open folder; new folder --></template>
   <template #rail><!-- free space --></template>
   <template #actions="{ file }"><!-- Print, Download, Rename for one file --></template>
   <template #selection="{ files }"><!-- actions for several, if any --></template>
@@ -189,7 +196,7 @@ The adapter's four methods:
 
 | Method | Returns | Notes |
 |---|---|---|
-| `folders()` optional | `OuiFolder[]`: `{ id, name, parent?, count?, locked? }`, flat | A missing `parent` is a root. `locked` folders cannot receive files. Omit the method, or return `[]`, when the storage has no folders |
+| `folders()` optional | `OuiFolder[]`: `{ id, name, parent?, count?, locked?, readonly? }`, flat | A missing `parent` is a root. `locked` folders cannot receive files. `readonly` folders (a camera or system root) show their files and offer no delete, no move and no dragging while open, and cannot receive files. Omit the method, or return `[]`, when the storage has no folders |
 | `list(folder)` | `OuiFile[]`: `{ id, name, size?, sizeText?, modified?, modifiedText?, kind?, thumb?, facts? }` | `size` and `modified` are numbers for sorting; the texts are what is shown, in the page's language; `facts` fill the detail panel |
 | `remove(ids, folder)` | nothing | Called after the component's own `OuiConfirm`: do not confirm again |
 | `move(ids, to, from)` optional | nothing | From a drop on a folder or from "Move to…". Omit when the storage cannot move files |
@@ -207,9 +214,15 @@ What the component offers follows from the adapter, with nothing to configure:
 - **U1 Control**: Moonraker has real folders. Map the adapter onto the plugin's bridge to Moonraker's file endpoints: the directory listing of a root for `folders()` and `list()` (`GET /server/files/directory`, with `extended` for metadata), `POST /server/files/move` per file for `move()`, `DELETE /server/files/{root}/{path}` per file for `remove()`. Use the path under the root as the id of a folder and of a file. Check the endpoint names and fields against the Moonraker version the plugin targets; they are named here from its documentation, not from a test.
 - **Kobra Control**: start with `list` and `remove` only. If the Kobra's storage turns out to have folders, add `folders()`; if the printer can also move files, add `move()`. The page does not change in either case.
 - `labels`: every string, in the page's language (`OuiFileBrowserLabels`; several are functions of a count). Give `loadFailed` and `retry` too: they are shown when a read fails.
+- **Folders are shown in the tree only; the table lists files.** What can be done to the open folder itself (rename, move, delete, new folder) goes in the `#folder` slot, which sits beside the path and gets `{ folder }` (the open `OuiFolder`). The page does the work and then calls `files.reload()`. Do not put folder actions in `#toolbar`; that is for search and filters. The slot is not rendered when the storage has no folders.
+- A page may change the listed files in place, for example to fill in `thumb` as thumbnails arrive: `files.files` is writable and reactive, rows keep `[data-file="<id>"]`, and the selection is kept as long as the ids stay. `files.reload({ quiet: true })` reads again without the skeleton rows.
+- `sort`: the order the list opens in, `{ key: 'name' | 'size' | 'modified', down?: boolean }`. The default is by name; a list that should read newest first passes `{ key: 'modified', down: true }`. The user can still sort by any column.
+- The last column is 168 px: enough for a short date and time ("11/18/26, 7:15 PM", "18/11/2026, 19:15"). Do not put more than that in `modifiedText`.
+- The detail pane scrolls when a file's facts and actions are taller than the browser; a long `#actions` slot is fine.
+- After a delete or a move, focus stays in the list. Do not move focus yourself.
 - `readonly` while the printer cannot take file changes (printing): the bulk actions are disabled and point at the page's banner with `describedby`.
 - Set its height: `--oui-files-height` on a parent (the reference uses the window less the bars above). Without it the component is as tall as its content, at least 360 px.
-- Test hooks: `[data-folder="<id>"]` on tree items, `[data-file="<id>"]` on rows, `aria-selected` on both, `.oui-files-move` (absent when moving is not offered), `[data-files-retry]`, `[data-dlg="confirm"]` and `[data-dlg="cancel"]` in the confirmation.
+- Test hooks: `[data-folder="<id>"]` on tree items, `[data-file="<id>"]` on rows, `aria-selected` on both, `.oui-files-move` (absent when moving is not offered), `.oui-files-folderactions` (the `#folder` slot), `[data-files-retry]`, `[data-dlg="confirm"]` and `[data-dlg="cancel"]` in the confirmation.
 
 The component can still be driven by hand (`folders`, `files`, `folder`, `selected`, `loading`, `error`, `busy`, `movable` and the `move`, `delete`, `retry` events), which is what `useFileBackend` does. Use the adapter in the plugins, so both behave the same.
 
@@ -238,24 +251,24 @@ Built size of each shared component (`node scripts/sizes.mjs`): one minified bui
 | (core) index.ts + base.css + preset | 52.9 | 28.8 | 54.1 | 29.3 |
 | OuiAppBar | 6.9 | 2.5 | 6.8 | 2.5 |
 | OuiBanner | 5.7 | 2.1 | 5.7 | 2.1 |
-| OuiCamera | 6.9 | 2.5 | new | new |
-| OuiConfirm | 1.7 | 0.8 | 1.7 | 0.8 |
+| OuiCamera | 7.3 | 2.7 | new | new |
+| OuiConfirm | 2.1 | 1.0 | 1.7 | 0.8 |
 | OuiControlRow | 3.6 | 1.4 | new | new |
 | OuiEmpty | 5.1 | 1.9 | 5.2 | 1.9 |
-| OuiFileBrowser | 35.4 | 9.7 | new | new |
+| OuiFileBrowser | 36.6 | 10.1 | new | new |
 | useFileBackend | 1.7 | 0.8 | new | new |
 | OuiFormRow | 2.0 | 0.9 | 2.0 | 0.9 |
-| OuiFormSection | 8.2 | 2.9 | 5.8 | 1.9 |
-| OuiHint | 4.4 | 1.9 | new | new |
+| OuiFormSection | 8.3 | 2.9 | 5.8 | 1.9 |
+| OuiHint | 4.5 | 1.9 | new | new |
 | OuiIcon | 1.9 | 0.8 | 2.0 | 0.8 |
 | OuiJob | 5.7 | 1.9 | 4.8 | 1.7 |
 | OuiKeyValue | 1.3 | 0.7 | 1.3 | 0.7 |
 | OuiLevel | 1.4 | 0.7 | 1.5 | 0.8 |
 | OuiPageHeader | 1.6 | 0.7 | new | new |
-| OuiPanel | 7.1 | 2.5 | 4.6 | 1.6 |
+| OuiPanel | 7.1 | 2.6 | 4.6 | 1.6 |
 | OuiReadout | 4.9 | 1.7 | 5.0 | 1.8 |
 | OuiRequirement | 8.4 | 2.9 | 8.7 | 3.0 |
-| OuiSetpoint | 10.2 | 3.3 | 10.2 | 3.3 |
+| OuiSetpoint | 11.5 | 3.8 | 10.2 | 3.3 |
 | OuiSettings | 11.8 | 4.1 | 11.9 | 4.1 |
 | OuiSlot | 105.1 | 74.8 | 105.7 | 74.9 |
 | OuiSpark | 3.8 | 1.5 | 3.8 | 1.5 |
@@ -266,7 +279,7 @@ Built size of each shared component (`node scripts/sizes.mjs`): one minified bui
 | OuiToastHost | 8.1 | 3.0 | 8.1 | 3.1 |
 | OuiToolbar | 1.2 | 0.6 | 1.2 | 0.6 |
 
-What a 4.2.2 page gains by updating: `OuiPanel` now carries `OuiHint` (about 2.5 kB raw, once per page). A printer plugin that adopts the Files tab adds `OuiFileBrowser` and `useFileBackend`, 37.1 kB raw together, including `OuiConfirm`, `OuiEmpty`, `OuiKeyValue`, `OuiThumb` and `OuiIcon`, which those pages already have; it uses PrimeVue's Button, Select and Dialog, which they also already import. `OuiSpool` and `OuiSlot` are the eight spool renders (about 72 kB), unchanged. Measure the plugin's real page against its limit (90 % of 1,572,864 bytes) after migrating; these figures are not a substitute.
+What a 4.2.2 page gains by updating: `OuiPanel` now carries `OuiHint` (about 2.5 kB raw, once per page). A printer plugin that adopts the Files tab adds `OuiFileBrowser` and `useFileBackend`, 38.3 kB raw together, including `OuiConfirm`, `OuiEmpty`, `OuiKeyValue`, `OuiThumb` and `OuiIcon`, which those pages already have; it uses PrimeVue's Button, Select and Dialog, which they also already import. `OuiSpool` and `OuiSlot` are the eight spool renders (about 72 kB), unchanged. Measure the plugin's real page against its limit (90 % of 1,572,864 bytes) after migrating; these figures are not a substitute.
 
 ## 8. Known limits
 

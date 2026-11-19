@@ -8,6 +8,7 @@ import type { OuiTone } from './tones';
    Every module has the same 40 px neutral header; only its icon may carry a colour. */
 defineProps<{ title?: string; icon?: OuiIconData; /** Colour of the header icon: grey by default, a hue for a domain (see DESIGN.md). */ tone?: OuiTone; meta?: string;
   /** What the module needs explained, behind an (i) next to the title: replaces a helper paragraph under the module. */ hint?: string; /** Accessible name of the (i) button ("About the camera"). */ hintLabel?: string;
+  /** The id of the hint's text: give it to a control's `aria-describedby` when the hint explains that control. */ hintId?: string;
   /** No body padding: for tables, lists and media that run edge to edge. */ flush?: boolean;
   /** Fill the grid cell and let the body scroll inside it. */ fill?: boolean }>();
 </script>
@@ -16,7 +17,7 @@ defineProps<{ title?: string; icon?: OuiIconData; /** Colour of the header icon:
     <header v-if="title || $slots.title || $slots.actions" class="oui-panel-head">
       <OuiIcon v-if="icon" :icon="icon" :size="16" :tone="tone ?? 'neutral'" class="oui-panel-icon" />
       <h2 class="oui-panel-title"><slot name="title">{{ title }}</slot></h2>
-      <OuiHint v-if="hint || $slots.hint" :label="hintLabel ?? title ?? ''"><slot name="hint">{{ hint }}</slot></OuiHint>
+      <OuiHint v-if="hint || $slots.hint" :id="hintId" :label="hintLabel ?? title ?? ''"><slot name="hint">{{ hint }}</slot></OuiHint>
       <span v-if="meta || $slots.meta" class="oui-panel-meta oui-meta"><slot name="meta">{{ meta }}</slot></span>
       <div v-if="$slots.actions" class="oui-panel-actions"><slot name="actions" /></div>
     </header>

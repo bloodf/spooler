@@ -198,8 +198,8 @@ The main column is what you work on, the side column what you watch. The order u
 
 - **Status block** (`OuiJob` in a header-less `OuiPanel`, `.oui-dash-top`): one row from 1100 px, two from 640, stacked below. The picture (`#thumb`: the model's thumbnail when the printer gives one, else the printer drawing) is a fixed 72 px box; in 4.x it was the tallest thing on the page. State chip, file name on up to two lines, one line of detail; the percentage at 28 px beside an 8 px teal bar; elapsed, left and finish time as small readouts; the job's actions. The whole block is about 96 px high at full width.
 - **Filament module**: `OuiSlot` cards in `.oui-cards` (4, 2 or 1 across, never 3 + 1). A slot card is neutral: a 4 px strip of the filament's colour across the top, identity badge and state chip on the first line, the drawn spool with name and material, the amount with its level, then the slot's own controls and actions. The spool chooser in the card is how a slot is linked without leaving the dashboard; the full stock is its own tab.
-- **Controls module**: one `OuiPanel` holding `.oui-controls` with one `.oui-controls-group` per task (Temperature, Machine). Groups sit side by side when the module is wide enough, and stack when not. In a group: an 11 px label, then rows separated by hairlines. A heater is an `OuiSetpoint` (icon, reading in its phase colour, target, small chart, input, Set, Off); anything else is an `OuiControlRow` (icon, label, what it reads now, the control). Both use the same columns and a 44 px row, so everything lines up.
-- **Camera module**: `OuiPanel flush` with the rate, snapshot and on/off as small controls in its header, and `OuiCamera` as its body: a 16:9 box that keeps its size whether the camera is live, off, starting or failed, so turning it on does not move the page. The rate and "Live" are chips over the picture. What the rate means is the header's (i).
+- **Controls module**: one `OuiPanel` holding `.oui-controls` with one `.oui-controls-group` per task (Temperature, Machine). Groups sit side by side when the module is wide enough, and stack when not. In a group: an 11 px label, then rows separated by hairlines. A heater is an `OuiSetpoint` (icon, reading in its phase colour, target, small chart, input, Set, Off; a value the page refuses is not sent, and the reason is one line under the row); anything else is an `OuiControlRow` (icon, label, what it reads now, the control). Both use the same columns and a 44 px row, so everything lines up.
+- **Camera module**: `OuiPanel flush` with the rate, snapshot and on/off as small controls in its header, and `OuiCamera` as its body: a 16:9 box that keeps its size whether the camera is live, off, starting or failed, so turning it on does not move the page. The rate and "Live" are chips over the picture. The picture is an image address, or the page's own player in `#picture`. A camera that is not 16:9 is shown whole (`fit="contain"`), with bars, rather than cropped. What the rate means is the header's (i).
 - **Empty and loading**: a module that cannot show anything is one row (`OuiEmpty compact`, with `state="offline"`, `"error"` or `"empty"`), never a reserved hole and never hidden: the page keeps its shape. While the first read is under way, each module shows `.oui-skeleton` bars the size of its content. A page with nothing to show at all (no printer chosen) is one `OuiPanel` with `OuiEmpty` and its illustration and the way out.
 
 ### Stock tab (Kobra Control, U1 Control)
@@ -220,13 +220,15 @@ Choose the place once, on the left; every row then has one action, named with th
 
 One surface, three panes: the folder tree, the open folder as a table, and what is selected.
 
-- **Tree** (`role="tree"`): folders with counts; the open one has the teal mark. Arrows move, Right and Left open and close, Enter opens the folder.
+- **Tree** (`role="tree"`): folders with counts; the open one has the teal mark. Folders are in the tree only: the table lists files, and what can be done to the open folder (rename, move, delete, new folder) sits beside the path (`#folder`). A read-only folder shows its files and offers nothing that would change them. Arrows move, Right and Left open and close, Enter opens the folder.
 - **Table** (`role="grid"`, multi-selectable): checkbox, thumbnail and name with a kind chip, size, changed. Sort by any column.
 - **Selecting**: click selects one; Cmd/Ctrl-click and the checkbox add or remove one; Shift-click and Shift with the arrows select a range; the header checkbox (with its indeterminate state) and Cmd/Ctrl+A select all; Escape clears. Space toggles, Enter opens, Delete asks to delete.
 - **The bar over the table** is always there, so selecting does not move anything: the file count, or "3 selected" with Clear, "Move to…" and Delete.
 - **Moving**: drag the selection onto a folder in the tree (folders that can take it are outlined while dragging, the one under the pointer is filled), or choose the folder in "Move to…", which is the same action from the keyboard.
 - **Deleting** always asks first (`OuiConfirm`), with the count and the first four names.
-- **Detail**: one file selected shows its picture, name, facts and the page's actions for it (Print is the page's primary); several show the count and their names; none says so in one line.
+- **Detail**: one file selected shows its picture, name, facts and the page's actions for it (Print is the page's primary); several show the count and their names; none says so in one line. It scrolls when it is taller than the browser.
+- **Order**: by name unless the page asks otherwise (`sort`); a printer's own list usually opens newest first.
+- **Focus**: after a delete or a move it stays in the list, on the first row.
 - Under 980 px the detail goes under the table; under 620 px the tree goes above it.
 
 One component, the same in U1 Control and Kobra Control. The storage is behind an adapter (`OuiFileBackend`: `folders()`, `list(folder)`, `remove(ids)`, `move(ids, to)`), and `useFileBackend(adapter)` gives the component its state and handlers, so reading, failing, retrying and re-reading after a change behave the same in both. What the storage cannot do is left out of the adapter and the page stops offering it, with no hole where it was:
@@ -260,9 +262,9 @@ Import each from `shared/src/components` (or its own `.vue` file).
 | `OuiHint` | **new.** The (i): opens on hover and focus, closes on Escape, and is the button's description for a screen reader. Closed it takes no room; open it places itself inside the window, whichever edge its button is near |
 | `OuiStatus` | a state, as a tinted chip (default) or `plain` coloured text |
 | `OuiJob` | the compact status block: picture, state, name, percentage or count, bar, stats, actions. `compact` for the dock; `stale` is grey. `hero` is accepted and ignored |
-| `OuiSetpoint` | a controlled value: reading in its phase colour, target, chart, input, Set, Off |
+| `OuiSetpoint` | a controlled value: reading in its phase colour, target, chart, input, Set, Off. Opt-in: `validate` (refuse a value, with a reason line), `error`, `inputId`, `offAlways` |
 | `OuiControlRow` | **new.** A line of a controls module: icon, label, current value, control. With `.oui-controls` and `.oui-controls-group` |
-| `OuiCamera` | **new.** The 16:9 picture box with its live, off, loading and error states |
+| `OuiCamera` | **new.** The 16:9 picture box with its live, off, loading and error states; `fit`, a `frame` event per picture, `#picture` for the page's own player |
 | `OuiSlot` | a toolhead or slot as a neutral card: a 4 px strip of the filament's colour, badge and state, drawn spool, filament, amount with its level, extra rows, actions; `active` |
 | `OuiFileBrowser`, `useFileBackend` | **new.** The Files tab (above) and the adapter that feeds it |
 | `OuiSpool`, `OuiSwatch`, `OuiLevel` | unchanged |
