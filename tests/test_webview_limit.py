@@ -31,6 +31,7 @@ class WebViewLimit(unittest.TestCase):
             lighter = sp.fit_webview(page)
         self.assertNotRegex(lighter, sp._FONT_DATA)
         self.assertIn('local("Manrope")', lighter)
+        self.assertNotIn('local("Manrope")format', lighter)   # local() with format() would void the whole src
         self.assertLess(size(lighter), size(page))
         self.assertEqual(lighter.count("<script"), page.count("<script"))   # only the font data changed
 

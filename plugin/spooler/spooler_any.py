@@ -9881,7 +9881,7 @@ def page_html(mode: str, view: str = "main", settings: dict | None = None, page:
 # OrcaSlicer on Windows shows a page through WebView2, which takes at most 2 MiB once the page is base64-encoded:
 # 1.5 MiB of UTF-8. A bigger page stays blank (0.30.0's tab was 1,573,958 bytes, 1,094 over, and never loaded).
 WEBVIEW_PAGE_LIMIT = 1_572_864
-_FONT_DATA = re.compile(r"url\(data:font/[\w.+-]+;base64,[A-Za-z0-9+/=]+\)")
+_FONT_DATA = re.compile(r"url\(data:font/[\w.+-]+;base64,[A-Za-z0-9+/=]+\)(?:\s*format\([^)]*\))?")   # local() takes no format()
 
 
 def fit_webview(html: str) -> str:
