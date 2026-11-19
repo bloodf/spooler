@@ -10,6 +10,7 @@ export interface SettingsBoot {
   plate_check: boolean; plate_margin: number; weight_display: 'grams' | 'percent' | 'both'; show_cart: boolean;
   spool_columns: 1 | 2; spool_view: 'table' | 'cards'; progress: ProgressSettings; stats: StatsSettings; display: Record<string, boolean>;
   drying: Record<string, number>; cur_code: string; wizard: boolean; log_path: string; auto_keep_slots: boolean;
+  /** Seconds between the page's Spoolman re-reads; 0 = off. */ refresh_s?: number;
   /** New RFID spools the user chose not to add (Printer tab), all printers. */ rfid_skipped?: number;
   presets: PresetSettings; parents: ParentBase[];
   save_calibration: 'ask' | 'auto' | 'never';

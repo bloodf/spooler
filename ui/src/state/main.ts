@@ -2,6 +2,7 @@ import { computed, reactive, ref, watch } from 'vue';
 import * as bridge from '../core/bridge';
 import { boot } from '../core/boot';
 import { t } from '../core/i18n';
+import { autoRefresh, cleanEvery, userBusy } from '../core/autorefresh';
 import { useToast } from '../../shared/src/components';
 import { computeDupes, type Spool } from '../logic/spools';
 import { computeInUse, liveSig, type LivePrinter, type ManualPrinter, type SlicePick, type Words } from '../logic/printers';
@@ -57,6 +58,8 @@ export const m = reactive({
   now: Date.now(),
   tab: readTab(),
   view: boot.view as 'main' | 'settings',
+  refreshS: cleanEvery(boot.settings.refresh_s),   // Settings > Refresh Spoolman every (0 = off)
+  retrying: false,                                // the timed re-reads failed: "Spoolman unreachable, retrying"
 });
 
 function readTab(): 'spools' | 'printer' | 'stats' {
@@ -139,6 +142,8 @@ export const on = <K extends keyof typeof listeners>(k: K, h: Parameters<(typeof
 
 function render(p: any): void {
   m.received = true;
+  if (p.refresh_s !== undefined && cleanEvery(p.refresh_s) !== m.refreshS) { m.refreshS = cleanEvery(p.refresh_s); auto?.restart(); }
+  answered?.(!!p.ok || p.error_code === 'no_url');   // no address yet is not Spoolman being unreachable
   m.peers = { u1control: !!p.peers?.u1control };
   m.readFails = p.ok ? 0 : m.readFails + 1;
   if (!p.ok) {
@@ -251,6 +256,19 @@ export function answerCalibration(name: string, save: boolean): void {
 export const settingsPage = ref('');
 export const openSettings = (page = ''): void => { settingsPage.value = page; bridge.postMain({ type: 'settings', ...(page ? { page } : {}) }); };
 
+// Timed re-reads of the spool list (and with it the Printer tab's links and Stats): one at a time, answered by the
+// next spools message, paused while hidden (core/autorefresh.ts). The Spoolman WebSocket and the peers' link
+// signal still refresh at once.
+let auto: ReturnType<typeof autoRefresh> | null = null;
+let answered: ((ok: boolean) => void) | null = null;
+function timedRead(): Promise<boolean> {
+  return new Promise(resolve => {
+    const timer = window.setTimeout(() => { answered = null; resolve(false); }, PENDING_TIMEOUT_MS);
+    answered = ok => { window.clearTimeout(timer); answered = null; if (ok && m.tab === 'stats') askStats(); resolve(ok); };
+    bridge.postMain({ type: 'refresh' });
+  });
+}
+
 export function pollLive(): void {
   if (m.liveOn && m.showPrinterTab && m.tab === 'printer' && m.view === 'main') bridge.postMain({ type: 'live' });
 }
@@ -263,14 +281,14 @@ export function start(): () => void {
   bridge.attach();
   const off = bridge.onMessage(onMessage);
   bridge.postMain({ type: 'ready' });
+  auto = autoRefresh({ load: timedRead, every: () => m.refreshS, held: () => m.view !== 'main' || userBusy(), onFailing: f => { m.retrying = f; } });
   const ids = [
-    window.setInterval(() => bridge.postMain({ type: 'refresh' }), boot.refresh_ms),
     // Lets the plugin send preset edits made in OrcaSlicer to Spoolman soon after they are made.
     window.setInterval(() => bridge.postMain({ type: 'tick' }), 10_000),
     window.setInterval(pollLive, 5000),
     window.setInterval(() => { if (m.liveOn && m.usage.enabled && m.tab !== 'printer') bridge.postMain({ type: 'live' }); }, 30_000),
     window.setInterval(() => { m.now = Date.now(); }, 30_000),
   ];
-  return () => { off(); ids.forEach(clearInterval); };
+  return () => { off(); auto?.stop(); auto = null; ids.forEach(clearInterval); };
 }
 export { usageBusy };

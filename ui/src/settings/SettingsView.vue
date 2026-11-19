@@ -15,6 +15,7 @@ import SettingsPages from '../components/SettingsPages.vue';
 import * as bridge from '../core/bridge';
 import { boot } from '../core/boot';
 import { m, settingsPage } from '../state/main';
+import { REFRESH_DEFAULT_S } from '../core/autorefresh';
 import { t, tn, langPref, setLangPref, autoLocale, onLangPref } from '../core/i18n';
 import { LOCALES } from '../core/i18n-core';
 import type { LangPref } from '../core/i18n-core';
@@ -115,6 +116,10 @@ onMounted(follow);
         <OuiFormRow v-if="form.source === 'spoolman'" :label="t('set.calibration')" :hint="t('set.calibrationHelp')">
           <div class="oui-row" role="radiogroup" :aria-label="t('set.calibration')" data-test="save-calibration"><span v-for="v in ['ask', 'auto', 'never'] as const" :key="v" class="oui-row set-opt">
             <RadioButton v-model="form.save_calibration" :input-id="`cal-${v}`" name="save-calibration" :value="v" /><label :for="`cal-${v}`">{{ t(`set.calibration.${v}`) }}</label></span></div>
+        </OuiFormRow>
+        <OuiFormRow v-if="form.source === 'spoolman'" :label="t('set.refresh')" :hint="t('set.refreshHelp')">
+          <Select :model-value="form.refresh_s ?? REFRESH_DEFAULT_S" :options="[0, 10, 15, 30, 60, 120, 300].map(n => ({ value: n, label: n ? t('set.refreshOption', { n }) : t('set.refreshOff') }))"
+                  option-label="label" option-value="value" :aria-label="t('set.refresh')" data-test="refresh-every" @update:model-value="form.refresh_s = $event" />
         </OuiFormRow>
       </OuiFormSection>
 
