@@ -5,7 +5,7 @@ import InputText from 'primevue/inputtext';
 import Select from 'primevue/select';
 import Checkbox from 'primevue/checkbox';
 import { OuiBanner, OuiEmpty, OuiIcon, OuiPanel, OuiSwatch, OuiToolbar } from '../../shared/src/components';
-import { filter, plus, refresh as refreshIcon, search, settings } from '../../shared/src/icons';
+import { filter, plus, refresh as refreshIcon, search, settings, type OuiIconData } from '../../shared/src/icons';
 import shelf from '../assets/spooler-shelf.webp';
 import SpoolTable, { type GroupInfo, type Row } from './SpoolTable.vue';
 import SpoolDetail from './SpoolDetail.vue';
@@ -13,7 +13,7 @@ import SpoolEditor from './SpoolEditor.vue';
 import PlatePanel from './PlatePanel.vue';
 import PeerNote from './PeerNote.vue';
 import * as bridge from '../core/bridge';
-import { m, inUse, sourceOff, refresh, openSettings } from '../state/main';
+import { m, inUse, sourceOff, refresh, openSettings, setListView } from '../state/main';
 import { menu, shownSpool, openEditor } from '../state/menu';
 import { t, tn, fmt } from '../core/i18n';
 import { COLOR_FAMILIES, colorFamily, closestSpools, compareSpools, groupSpools, spoolMatches, stackEntries, shown, totals, type SortKey, type Spool } from '../logic/spools';
@@ -34,6 +34,11 @@ function readFlag(k: string) { try { return localStorage.getItem(k) === '1'; } c
 watch(filtersOpen, v => { try { localStorage.setItem('spooler.filters', v ? '1' : '0'); } catch { /* per viewer */ } });
 watch(() => m.plate, p => { if (!p && sortKey.value === 'plate') sortKey.value = lastSort.value; });
 watch(sortKey, k => { if (k !== 'plate') lastSort.value = k; });
+
+// Table or cards: this viewer's pick, else the Settings default. Both draw the same rows.
+const view = computed(() => m.viewPick ?? m.listView ?? 'table');
+const VIEWS: ['table' | 'cards', OuiIconData][] = [['table', [['path', { d: 'M3 5h18M3 12h18M3 19h18' }]]],
+  ['cards', [['rect', { x: 3, y: 3, width: 7, height: 7, rx: 1 }], ['rect', { x: 14, y: 3, width: 7, height: 7, rx: 1 }], ['rect', { x: 3, y: 14, width: 7, height: 7, rx: 1 }], ['rect', { x: 14, y: 14, width: 7, height: 7, rx: 1 }]]]];
 
 const uniq = (xs: (string | undefined)[]) => [...new Set(xs.filter(Boolean) as string[])].sort();
 const materials = computed(() => uniq(m.spools.map(s => s.filament?.material)).map(v => ({ value: v, label: v })));
@@ -95,7 +100,7 @@ const groupInfo = computed<Record<string, GroupInfo> | null>(() => (grouped.valu
 const columns = computed<Row[][]>(() => {
   const all = rows.value;
   const heads = all.map((_, i) => i).filter(i => !(all[i].kind === 'spool' && all[i].child));
-  if (m.columns !== 2 || heads.length < 2) return [all];
+  if (m.columns !== 2 || view.value === 'cards' || heads.length < 2) return [all];
   let cut = -1;
   for (let j = 1; j < heads.length; j++) {
     if (grouped.value && all[heads[j]].group === all[heads[j] - 1].group) continue;
@@ -166,6 +171,10 @@ const setArchived = (on: boolean) => bridge.postMain({ type: 'spool_action', act
                   data-test="filters-toggle" @click="filtersOpen = !filtersOpen"><template #icon><OuiIcon :icon="filter" :size="14" /></template></Button>
           <span class="oui-toolbar-summary oui-meta oui-num" :class="{ 'sv-bad': !!m.profiles.error }" aria-live="polite" data-test="count">{{ listState === 'list' || listState === 'no_match' ? countLine : '' }}</span>
           <template #end>
+            <span class="oui-row sv-views" role="group" :aria-label="t('list.view')">
+              <Button v-for="[v, icon] in VIEWS" :key="v" severity="secondary" :text="view !== v" size="small" :label="t(`list.${v}`)" :aria-pressed="view === v"
+                      :data-test="`view-${v}`" @click="setListView(v)"><template #icon><OuiIcon :icon="icon" :size="14" /></template></Button>
+            </span>
             <Button v-if="m.source === 'spoolman'" severity="secondary" size="small" :label="t('editor.add')" :disabled="!!sourceOff" data-test="add-spool" @click="openEditor(null)">
               <template #icon><OuiIcon :icon="plus" :size="14" /></template></Button>
           </template>
@@ -198,7 +207,7 @@ const setArchived = (on: boolean) => bridge.postMain({ type: 'spool_action', act
             <template #actions><Button severity="secondary" :label="t('filters.clear')" :disabled="!anyFilter" @click="clearFilters" /></template></OuiEmpty>
           <div v-else class="sp-cols" data-test="list">
             <div v-for="(part, i) in columns" :key="i" class="sp-col">
-              <SpoolTable :rows="part" :groups="groupInfo" :selected="selected?.id ?? null" @stack="k => (openStacks = flip(openStacks, k))" @group="k => (collapsed = flip(collapsed, k))" />
+              <SpoolTable :cards="view === 'cards'" :rows="part" :groups="groupInfo" :selected="selected?.id ?? null" @stack="k => (openStacks = flip(openStacks, k))" @group="k => (collapsed = flip(collapsed, k))" />
             </div>
           </div>
         </section>
@@ -223,6 +232,7 @@ const setArchived = (on: boolean) => bridge.postMain({ type: 'spool_action', act
 .sp-col { container: sp-col / inline-size; min-width: 0; }
 @container sp-list (min-width: 1040px) { .sp-two > .sp-cols { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; } .sp-col + .sp-col { border-inline-start: 1px solid var(--oui-border); } }
 @container sp-list (max-width: 1039.9px) { .orca-ui .sp-col + .sp-col thead { display: none; } .sp-col + .sp-col { border-top: 1px solid var(--oui-border); } }
+.sv-views { gap: 2px; }
 .sv-panel { border-top: 1px solid var(--oui-border); }
 .sv-copt { display: inline-flex; align-items: center; gap: var(--oui-s2); width: 100%; }
 .sv-n { margin-inline-start: auto; padding-inline-start: var(--oui-s3); }
