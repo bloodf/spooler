@@ -21,11 +21,11 @@ const cart = computed(() => !props.band && m.cart && typeof s.value.remaining_we
 </script>
 <template>
   <span class="sp-chips">
-    <OuiStatus v-if="level" :state="level === 'out' ? 'error' : 'warn'">{{ t(level === 'out' ? 'spool.out' : 'spool.low') }}</OuiStatus>
+    <OuiStatus v-if="level" :state="level === 'out' ? 'error' : 'warn'" :title="t(level === 'out' ? 'spool.out' : 'spool.low')">{{ t(level === 'out' ? 'spool.out' : 'spool.low') }}</OuiStatus>
     <Button v-if="cart" severity="secondary" text size="small" class="sp-cart" :aria-label="t('spool.reorder', { q: cartQuery })" :title="t('spool.reorder', { q: cartQuery })"
             data-test="cart" @click.stop="bridge.postMain({ type: 'order', query: cartQuery })"><template #icon><OuiIcon :icon="store" :size="14" /></template></Button>
     <span v-if="s.use_first && shown(m.disp, 'use_first') && !s.archived" class="oui-chip" data-tone="accent" data-solid data-chip="use-first" :title="t('spool.useFirstHelp')">{{ t('spool.useFirst') }}</span>
-    <span v-if="plate" class="oui-chip" data-tone="accent"><span class="oui-truncate">{{ t('spool.onPlate', { slots: plate }) }}</span></span>
+    <span v-if="plate" class="oui-chip" data-tone="accent" :title="t('spool.onPlate', { slots: plate })"><span class="oui-truncate">{{ t('spool.onPlate', { slots: plate }) }}</span></span>
     <span v-if="where" class="oui-chip" :title="t('spool.loadedIn', { where })"><span class="oui-truncate">{{ t('spool.inUse', { where }) }}</span></span>
     <span v-if="dried !== null" class="oui-chip" :data-tone="driedOld(s, dried) ? 'warn' : undefined" data-test="dried"
           :title="driedOld(s, dried) ? t('spool.driedOld', { days: s.dry_days }) : t('spool.driedHelp')">{{ dried === 0 ? t('spool.driedToday') : t('spool.driedAgo', { n: dried }) }}</span>
