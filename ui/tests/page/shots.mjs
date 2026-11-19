@@ -28,7 +28,7 @@ const usage = {enabled: true, mode: 'ask', prints: [
   {id: 'b', name: 'Headphone_Stand', printer: 'X1C', result: 'finished', time: now - 90000, state: 'unknown', rows: [{slot: 2, grams: 94.3, label: 'Acme PLA Black', state: 'unknown', op: 'book', error: 'Spoolman timed out', colour: '1a1a1a'}]}]};
 const payload = SCN === 'nourl' ? {type: 'spools', ok: false, error: 'No Spoolman URL configured yet - click Settings to set one.', error_code: 'no_url', peers: {u1control: false}}
   : {type: 'spools', ok: true, origin: 1, source: 'spoolman', spools: SCN === 'empty' ? [] : SPOOLS, low_stock_grams: 100, weight_display: 'both', display: ${JSON.stringify(DISPLAY)},
-    show_cart: true, spool_columns: 1, spool_view: SCN === 'cards' ? 'cards' : 'table', show_printer_tab: true, live_ok: true, profiles: {count: 12}, peers: {u1control: SCN !== 'empty'}, usage, stats: {on: true, cur: 'spoolman'},
+    show_cart: true, spool_columns: 1, spool_view: SCN.startsWith('cards') ? 'cards' : 'table', show_printer_tab: true, live_ok: true, profiles: {count: 12}, peers: {u1control: SCN !== 'empty'}, usage, stats: {on: true, cur: 'spoolman'},
     printers: [{id: 'p1', name: 'X1C', ip: '192.168.1.50', has_code: true, units: []}, {id: 'p2', name: 'Workshop Prusa', units: [{kind: 'ams', slots: ['5', null, null, null]}, {kind: 'ext', slots: [null]}]}]};
 await until(() => __t.handler);
 __t.handler(payload);
@@ -60,6 +60,7 @@ await until(() => SCN === 'nourl' || SCN === 'empty' || __t.sent.some(m => m.typ
 const ask = [...__t.sent].reverse().find(m => m.type === 'spool_detail');
 if (ask) __t.handler({type: 'spool_detail', detail: {id: ask.id, sign: '€', grams: 360, cost: 7.2, rate: 45, weeks: 1.6,
   prints: [96, 94.3, 31.5, 12.5, 125.7].map((g, i) => ({time: now - i * 4 * 86400 - 3600, name: ['Desk_Organiser_Plate_1', 'Headphone_Stand', 'Cable_Clip_x12', 'Benchy', 'Drawer_Divider_Set'][i], grams: g, cost: g * .02}))}});
+if (SCN === 'cardsclosed') { document.querySelector('[data-test="detail-close"]').click(); await settle(); }
 await sleep(500);
 `;
 // [scene, page mode, theme, language, width, height, zoom]: the reference sizes (1900x1000, 1280x720, 720 narrow) and the 380 px dock.
@@ -68,6 +69,7 @@ const SCENES = [
   ['spools', 'tab', 'dark', 'pt_BR', 1280, 720, 1], ['spools', 'tab', 'dark', 'en', 720, 1000, 1], ['spools', 'tab', 'light', 'pt_BR', 720, 1000, 1], ['spools', 'tab', 'dark', 'en', 640, 900, 2],
   ['spools', 'main', 'light', 'pt_BR', 380, 900, 1], ['spools', 'main', 'dark', 'en', 380, 900, 1],
   ['cards', 'tab', 'light', 'en', 1900, 1000, 1], ['cards', 'tab', 'dark', 'en', 1900, 1000, 1], ['cards', 'tab', 'light', 'en', 1280, 720, 1], ['cards', 'tab', 'dark', 'en', 1280, 720, 1],
+  ['cardsclosed', 'tab', 'light', 'en', 1280, 720, 1], ['cardsclosed', 'tab', 'dark', 'en', 1280, 720, 1],
   ['cards', 'main', 'light', 'en', 380, 900, 1], ['cards', 'main', 'dark', 'en', 380, 900, 1],
   ['menu', 'tab', 'dark', 'en', 1280, 720, 1], ['menu', 'tab', 'light', 'pt_BR', 720, 1000, 1],
   ['empty', 'tab', 'light', 'pt_BR', 1280, 720, 1], ['nourl', 'tab', 'dark', 'en', 1280, 720, 1], ['nourl', 'main', 'light', 'en', 380, 900, 1], ['error', 'tab', 'light', 'en', 1280, 720, 1],
@@ -82,7 +84,7 @@ const dir = await mkdtemp(join(tmpdir(), 'spooler-shots-'));
 const browser = await launch();
 const metrics = [];
 try {
-  for (const [scn, mode, theme, lang, width, height, scale] of SCENES.filter(s => !process.env.ONLY || s[0] === process.env.ONLY)) {
+  for (const [scn, mode, theme, lang, width, height, scale] of SCENES.filter(s => !process.env.ONLY || s[0].startsWith(process.env.ONLY))) {
     const boot = { mode, view: mode === 'settings' ? 'settings' : 'main', version: '0.20.1', lang, pref: 'auto', low_stock_default: 100, refresh_ms: 600000,
       display_defaults: DISPLAY, own_fields: ['tag', 'orca_settings', 'dried'], settings: { ...SETTINGS, wizard: scn === 'wizard' } };
     const file = join(dir, `${scn}.html`);
