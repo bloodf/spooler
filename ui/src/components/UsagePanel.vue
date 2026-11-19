@@ -119,8 +119,8 @@ const left = (id?: number | null) => m.spools.find(s => s.id === id)?.remaining_
             <Button severity="secondary" size="small" :disabled="busy" :label="r.op === 'undo' ? t('usage.wasntAddedBack') : t('usage.wasntBooked')" @click="resolve(p, r.slot, 'not_applied')" />
           </div>
         </div>
-        <p v-if="p.state === 'pending' && (p.late || p.result !== 'finished')" class="oui-meta">{{ p.late ? t('usage.late') : t('usage.estimate') }}</p>
-        <p v-if="p.state === 'pending' && !bookable(p)" class="oui-meta us-why">{{ t('usage.gramsNeeded') }}</p>
+        <p v-if="p.state === 'pending' && (p.late || p.result !== 'finished')" class="us-note"><OuiStatus state="warn" variant="plain">{{ p.late ? t('usage.late') : t('usage.estimate') }}</OuiStatus></p>
+        <p v-if="p.state === 'pending' && !bookable(p)" class="us-note us-why"><OuiStatus state="warn" variant="plain">{{ t('usage.gramsNeeded') }}</OuiStatus></p>
       </article>
     </div>
     <Dialog :visible="!!undoPrint" modal :header="t('usage.undoTitle')" :closable="!usageState.undoing" :draggable="false" :style="{ width: 'min(520px, calc(100vw - 32px))' }"
@@ -141,10 +141,10 @@ const left = (id?: number | null) => m.spools.find(s => s.id === id)?.remaining_
 </template>
 <style>
 .us-mode-l { white-space: nowrap; }
-.us-pad { padding: var(--oui-s3) var(--oui-s4); }
-.orca-ui .us-toggle { display: flex; flex-wrap: wrap; align-items: center; gap: var(--oui-s2); width: 100%; padding: var(--oui-s3) var(--oui-s4); border: 0; background: none; color: var(--oui-text); font: inherit; text-align: start; cursor: pointer; }
+.us-pad { padding: var(--oui-s3); }
+.orca-ui .us-toggle { display: flex; flex-wrap: wrap; align-items: center; gap: var(--oui-s2); width: 100%; padding: var(--oui-s3); border: 0; background: none; color: var(--oui-text); font: inherit; text-align: start; cursor: pointer; }
 .us-list { display: grid; }
-.us-card { display: grid; gap: var(--oui-s2); padding: var(--oui-s3) var(--oui-s4); border-top: 1px solid var(--oui-border); min-width: 0; }
+.us-card { display: grid; gap: var(--oui-s2); padding: var(--oui-s3); border-top: 1px solid var(--oui-border); min-width: 0; }
 .us-card.undone .us-name { color: var(--oui-muted); text-decoration: line-through; }
 .us-head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--oui-s2); }
 .us-id { flex: 1 1 180px; display: grid; gap: 1px; min-width: 0; }
@@ -155,7 +155,7 @@ const left = (id?: number | null) => m.spools.find(s => s.id === id)?.remaining_
 .us-spool { min-width: 0; overflow-wrap: anywhere; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .us-sel { min-width: 0; flex: 1 1 180px; max-width: 100%; }
 .us-g input { width: 96px; }
-.us-why { color: var(--oui-warning); }
+.us-note > .oui-status { white-space: normal; }
 .us-undo { list-style: none; display: grid; gap: var(--oui-s2); padding: var(--oui-s3); }
 .us-undo li { display: grid; grid-template-columns: 14px minmax(0, 1fr) auto; gap: var(--oui-s2); align-items: center; }
 @container oui-page (max-width: 560px) { .us-row { grid-template-columns: 14px minmax(0, 1fr); } .us-spool, .us-g { grid-column: 2; } .us-mode-l { display: none; } }

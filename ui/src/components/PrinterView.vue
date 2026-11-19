@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import Button from 'primevue/button';
-import { OuiEmpty, OuiIcon, OuiPanel } from '../../shared/src/components';
+import { OuiEmpty, OuiHint, OuiIcon, OuiPageHeader, OuiPanel } from '../../shared/src/components';
 import { plus, printer } from '../../shared/src/icons';
 import ProgressPanel from './ProgressPanel.vue';
 import PrinterPanel from './PrinterPanel.vue';
@@ -16,7 +16,7 @@ import { t } from '../core/i18n';
 import { isNet } from '../logic/printers';
 const linkedAny = computed(() => m.spools.some(s => s.ams && !s.archived));
 const liveOf = (id: string) => (m.live.links?.[id] === 'live' ? m.live.printers.find(x => x.link === id) : undefined);
-// How booking and linking work, said once for the tab: only the parts true for one of the printers shown.
+// How booking and linking work, said once for the tab, behind the page header's (i): only the parts true for one of the printers shown.
 const how = computed(() => {
   const out: string[] = [];
   if (m.cfg.some(p => p.auto)) out.push(t('printer.autoNote'), t('printer.klipperNote'));
@@ -29,11 +29,15 @@ const how = computed(() => {
 </script>
 <template>
   <div class="oui-stack pv">
-    <PeerNote where="printer" />
-    <details v-if="how.length" class="pv-how oui-well" data-test="how-booking">
-      <summary>{{ t('printer.howTitle') }}</summary>
-      <p v-for="(line, i) in how" :key="i" class="oui-meta">{{ line }}</p>
-    </details>
+    <OuiPageHeader :title="t('nav.printer')">
+      <template #actions>
+        <OuiHint v-if="how.length || m.peers.u1control" end :label="t('printer.howTitle')">
+          <PeerNote where="printer" />
+          <span v-if="how.length" class="sp-hint-p" data-test="how-booking"><strong class="sp-hint-p">{{ t('printer.howTitle') }}</strong><span v-for="(line, i) in how" :key="i" class="sp-hint-p">{{ line }}</span></span>
+        </OuiHint>
+        <Button v-if="m.cfg.length || linkedAny" severity="secondary" :label="t('printer.add')" data-test="add-printer" @click="addPrinter"><template #icon><OuiIcon :icon="plus" :size="14" /></template></Button>
+      </template>
+    </OuiPageHeader>
     <RfidPanel />
     <ProgressPanel />
     <!-- The plate check, the bookings and the printers pack into columns (two from 1160 px, three from 1800 px), each
@@ -44,9 +48,8 @@ const how = computed(() => {
       <PrinterPanel v-for="p in m.cfg" :key="p.id" :p="p" />
       <LinkedPanel v-if="linkedAny" />
     </div>
-    <OuiPanel v-if="!m.cfg.length && !linkedAny"><OuiEmpty compact :icon="printer" tone="magenta" :title="t('printer.none')">
+    <OuiPanel v-if="!m.cfg.length && !linkedAny"><OuiEmpty compact :icon="printer" :title="t('printer.none')">
       <template #actions><Button :label="t('printer.add')" data-test="add-printer" @click="addPrinter"><template #icon><OuiIcon :icon="plus" :size="14" /></template></Button></template></OuiEmpty></OuiPanel>
-    <div v-else><Button severity="secondary" :label="t('printer.add')" data-test="add-printer" @click="addPrinter"><template #icon><OuiIcon :icon="plus" :size="14" /></template></Button></div>
   </div>
 </template>
 <style>
@@ -55,7 +58,4 @@ const how = computed(() => {
 .pv-grid:empty { display: none; }
 @container oui-page (min-width: 1160px) { .pv-grid { columns: 2; } }
 @container oui-page (min-width: 1800px) { .pv-grid { columns: 3; } }
-.pv-how { padding: var(--oui-s2) var(--oui-s3); }
-.pv-how summary { cursor: pointer; color: var(--oui-primary); font-weight: 600; }
-.pv-how p { max-width: 96ch; margin-top: var(--oui-s2); }
 </style>

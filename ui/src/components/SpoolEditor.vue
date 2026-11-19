@@ -220,8 +220,8 @@ async function save() {
 
         <aside class="se-preview" :aria-label="t('editor.preview')" data-test="editor-preview">
           <p class="oui-label">{{ t('editor.preview') }}</p>
-          <div class="se-card oui-hero oui-on-band">
-            <OuiSpool v-bind="spoolPaint(pf)" :direction="spoolDirection(pf)" :fraction="fraction" :size="120" />
+          <div class="se-card">
+            <div class="se-well oui-well"><OuiSpool v-bind="spoolPaint(pf)" :direction="spoolDirection(pf)" :fraction="fraction" :size="120" /></div>
             <div class="se-id">
               <p class="oui-meta">{{ adding ? t('editor.newSpool') : t('spool.numbered', { id: editor.id }) }}</p>
               <p class="se-name" data-test="preview-name">{{ pf.name || t('editor.unnamed') }}</p>
@@ -260,7 +260,8 @@ async function save() {
 .se-col { display: inline-flex; align-items: center; }
 .se-col input[type=color] { width: 40px; height: var(--oui-control-sm, 32px); padding: 0; border: 1px solid var(--oui-control-border); border-radius: var(--oui-radius); background: none; }
 .se-preview { display: grid; gap: var(--oui-s2); }
-.se-card { display: grid; justify-items: center; gap: var(--oui-s3); padding: var(--oui-s4); border-radius: var(--oui-radius); }
+.se-card { display: grid; gap: var(--oui-s3); }
+.se-well { display: grid; place-items: center; padding: var(--oui-s4); }
 .se-id { display: grid; gap: var(--oui-s1); width: 100%; min-width: 0; }
 .se-name { font-size: var(--oui-text-lg, 1.125rem); font-weight: 700; overflow-wrap: anywhere; }
 .se-sub { display: flex; align-items: center; gap: 6px; }

@@ -174,7 +174,7 @@ test('cards: each shows its spool, colour, weight and state; the unknown amount 
   assert(card(12).querySelector('.oui-spool .oui-spool-unknown') === null && card(14).querySelector('.oui-spool[data-unknown] .oui-spool-unknown'), '? only for the unknown amount');
   assert(!card(12).querySelector('button'), 'nothing interactive inside a card');
   const cards = qa('.sc-card'), top = cards[0].getBoundingClientRect().top, first = cards.filter(c => c.getBoundingClientRect().top === top);
-  eq(first.length, 2, 'two cards a row beside the open detail at 1280 px');
+  eq(first.length, 3, 'three cards a row beside the open detail at 1280 px');
   eq(new Set(first.map(c => c.getBoundingClientRect().height)).size, 1, 'a row shares one height');
   const cut = qa('.sc-card .oui-chip, .sc-card .oui-status, .sc-card .oui-chip .oui-truncate').filter(e => e.scrollWidth > e.clientWidth + 1).map(text);
   eq(cut, [], 'no chip cut off');
@@ -322,8 +322,9 @@ test('card actions only for Spoolman; archived spool; move that unlinks a U1 too
   eq(qa('tr[data-spool]').length, 3, 'one row per spool');
   await open(3);
   const actions = vis(panel(3));
-  for (const s of ['Set weight from scale', 'Use filament', 'Move', 'Unarchive', 'Add a spool of this filament', 'Open in Spoolman', 'Archived'])
+  for (const s of ['Set weight from scale', 'Use filament', 'Move', 'Unarchive', 'Add a spool of this filament', 'Archived'])
     assert(actions.includes(s), 'detail has ' + s);
+  assert(btn('Open in Spoolman', panel(3)), 'Open in Spoolman, an icon button in the detail header');
   assert(!btn('Archive', panel(3)), 'no Archive on an archived spool');
   eq(row(3).getAttribute('aria-selected'), 'true', 'its row is the selected one');
   await click(btn('Move', panel(3)));
@@ -530,6 +531,42 @@ test('380 px dock: every tab is reachable, icons only, named', `
     assert(b.title && text(b).startsWith(b.title), 'named and with a tooltip: ' + b.dataset.tab);
   }
 `, { width: 380, mode: 'main' });
+test('380 px dock: no tab runs wider than the window, and an open (i) stays inside it', `
+  await spools(SPOOLS, {usage: {enabled: true, mode: 'ask', prints: []}, stats: {on: true, cur: 'spoolman'}, peers: {u1control: true}});
+  let bubbles = 0;
+  for (const name of ['spools', 'printer', 'stats']) {
+    await tab(name); await settle();
+    assert(document.documentElement.scrollWidth <= innerWidth, name + ': no sideways scroll (' + document.documentElement.scrollWidth + ' px)');
+    const b = qa('.oui-hint-btn').find(e => e.offsetParent !== null);
+    if (!b) continue;
+    b.focus(); await settle();
+    const r = q('.oui-hint-bubble', b.parentElement).getBoundingClientRect();
+    assert(r.left >= 0 && r.right <= innerWidth && r.width >= 200, name + ': the bubble is inside the window: ' + r.left + '..' + r.right);
+    b.blur(); bubbles++;
+  }
+  assert(bubbles >= 2, 'the Spools and Printer headers have their (i)');
+`, { width: 380, mode: 'main' });
+test('page grammar: each tab opens with a page header and one primary action; the detail is neutral with one large figure', `
+  await spools([...SPOOLS, {...SPOOLS[0], id: 9, remaining_weight: 40}], {display: {...DEFAULTS, group_same: false}, usage: {enabled: true, mode: 'ask', prints: []}, stats: {on: true, cur: 'spoolman'}});
+  const head = q('.sv > .oui-pagehead');
+  eq(text(q('.oui-pagehead-title', head)), 'Spools', 'what the page shows');
+  eq(text(q('.oui-pagehead-meta', head)), '3 spools · 1,420 g left · Low stock: 1 · 2 OrcaSlicer filament presets', 'count, what is left, how many are low, presets');
+  assert(q('[data-test="sync"]', head) && q('[data-test="add-spool"]', head), 'Sync and Add are the page actions');
+  eq(text(byTest('count')), '3 of 3 spools', 'the toolbar counts what the filters show');
+  await open(1);
+  const primary = () => qa('.oui-page .p-button').filter(b => b.offsetParent !== null && !/p-button-(secondary|danger|text)/.test(b.className)).map(text);
+  eq(primary(), ['Add Spool'], 'one primary action on the page');
+  const d = panel(1);
+  assert(d.closest('.oui-split[data-detail]'), 'the detail sits beside the list in the shared split');
+  assert(!q('.oui-hero, .oui-on-band', d) && q('.oui-well .oui-spool', d), 'the spool on a neutral well, no filled block');
+  eq(text(q('.sd-figure', d)), '400', 'the amount is the one large figure');
+  assert(vis(d).includes('400 g of 1,000 g · 40%'), 'with what it is out of: ' + vis(byTest('weight')));
+  await tab('printer');
+  eq(text(q('.pv > .oui-pagehead .oui-pagehead-title')), 'Printer', 'printer tab header');
+  eq(primary(), ['Add printer'], 'no printers yet: Add printer is the way out');
+  await tab('stats');
+  assert(text(q('.stv > .oui-pagehead .oui-pagehead-title')) === 'Stats' && q('.stv > .oui-pagehead [data-test="period"]'), 'stats tab header holds the period');
+`);
 
 // ------------------------------------------------------------------ status, errors, empty states (F10, S01, S02, B-20)
 test('F10: a read error keeps the old list of the same source, marked; another source drops it', `
@@ -604,13 +641,6 @@ test('banners: a dismissed notice stays dismissed while the same condition lasts
   await post({type: 'spools', ok: false, origin: 3, error: 'SYNTHETIC OFFLINE B', error_code: 'read_failed'});
   await until(() => byTest('stale'), 'a new condition: back');
   assert(text(byTest('stale')).includes('SYNTHETIC OFFLINE B'), 'with the new reason');
-  await spools(SPOOLS, {peers: {u1control: true}});
-  const peer = () => qa('[data-test="peer-u1"]').find(e => e.offsetParent !== null);
-  await click(btn('Close', peer()));
-  await until(() => !peer(), 'peer note dismissed');
-  await spools(SPOOLS, {peers: {u1control: true}});
-  await settle();
-  assert(!peer(), 'peer note stays dismissed while U1 Control runs');
 `);
 test('banners: a closed notice shows again when its condition clears and later returns', `
   await spools([{id: 1, remaining_weight: 100, filament: {id: 1, name: 'OldSpool', material: 'PLA'}}]);
@@ -654,8 +684,17 @@ test('X01/X05: with U1 Control running, each tab says where the U1 lives and why
   await spools(SPOOLS, {peers: {u1control: true}});
   assert(text(byTest('peer-u1')).includes('U1 Control tab'), 'spools tab line');
   assert(!document.body.textContent.includes('u1control'), 'named U1 Control, never u1control');
-  await click(q('[data-test="peer-u1"] summary'));
   assert(text(byTest('peer-u1')).includes('no way to hide a tab'), 'honest about the host limit');
+  const hint = byTest('peer-u1').closest('.oui-hint'), bubble = q('.oui-hint-bubble', hint);
+  assert(hint.closest('.oui-pagehead'), 'behind the page header (i)');
+  eq([q('button', hint).getAttribute('aria-label'), q('button', hint).getAttribute('aria-describedby')], ['Why two tabs?', bubble.id], 'the (i) is named and described by the note');
+  q('button', hint).focus(); await settle();
+  assert(bubble.hasAttribute('data-open') && getComputedStyle(bubble).visibility === 'visible', 'opens on keyboard focus');
+  await press('Escape');
+  assert(!bubble.hasAttribute('data-open'), 'Escape closes it');
+  await tab('printer');
+  const there = qa('[data-test="peer-u1"]').find(e => e.closest('.pv'));
+  assert(text(there).includes('This tab shows what Spooler reads') && there.closest('.oui-pagehead'), 'the printer tab has its own line, in its header (i)');
   await spools(SPOOLS, {peers: {u1control: false}});
   assert(!byTest('peer-u1'), 'solo: nothing');
 `);
@@ -800,7 +839,7 @@ test('network printer: PrusaLink link form, toolheads, and a slice-filled toolhe
   assert(vis(q('.pp-link')).includes('Serial number'), 'Bambu asks for the serial');
   await pick(q('[data-test="link-type"]'), 'PrusaLink');
   assert(!vis(q('.pp-link')).includes('Serial number'), 'no serial for PrusaLink');
-  assert(vis(q('.pp-link')).includes('Password') && vis(q('.pp-link')).includes('always asked'), 'password label and the asking note');
+  assert(vis(q('.pp-link')).includes('Password') && text(q('.pp-link .oui-hint-bubble')).includes('always asked'), 'password label, and the asking note behind the form (i)');
   await type(q('.pp-link input[placeholder="192.168.1.50"]'), '10.0.0.5');
   await type(byTest('link-user'), 'maker');
   await type(q('.pp-link input[type="password"]'), 'secret');

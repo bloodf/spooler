@@ -37,5 +37,5 @@ function back() { if (wizard.step > 0) wizard.step -= 1; }
 <style scoped>
 .wz { display: grid; gap: var(--oui-s2); } .wz p { margin: 0; }
 .wz-dots { display: flex; gap: 6px; justify-content: center; margin-top: 12px; }
-.wz-dots i { width: 8px; height: 8px; border-radius: 50%; background: var(--oui-border); } .wz-dots i.on { background: var(--oui-primary); }
+.wz-dots i { width: 8px; height: 8px; border-radius: 50%; background: var(--oui-border); } .wz-dots i.on { background: var(--oui-primary-mark); }
 </style>

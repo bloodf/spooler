@@ -31,7 +31,7 @@ const slotsOf = (key: string | number, slots: Map<number, Spool>) => (key === 'e
 const count = (units: [string | number, Map<number, Spool>][]) => units.reduce((a, u) => a + u[1].size, 0);
 </script>
 <template>
-  <OuiPanel v-for="p in printers" :key="p.name" class="lp" :title="p.name" :icon="printer" tone="magenta" :meta="tn('linked.count', count(p.units))">
+  <OuiPanel v-for="p in printers" :key="p.name" class="lp" :title="p.name" :icon="printer" :meta="tn('linked.count', count(p.units))" :hint="t('linked.note')">
     <div class="oui-stack">
       <template v-for="[key, slots] in p.units" :key="String(key)">
         <h3 class="oui-label">{{ key === 'ext' ? t('printer.external') : `${t('printer.ams')} ${+key + 1}` }}</h3>
@@ -42,7 +42,6 @@ const count = (units: [string | number, Map<number, Spool>][]) => units.reduce((
           </SpoolSlot>
         </div>
       </template>
-      <p class="oui-meta">{{ t('linked.note') }}</p>
     </div>
   </OuiPanel>
 </template>

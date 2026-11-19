@@ -35,19 +35,19 @@ function skip(o: RfidOffer) {
 <template>
   <!-- Always rendered, so a screen reader hears the first offer appear (a live region added with its content isn't read). -->
   <p class="oui-sr" aria-live="polite" data-test="rfid-live">{{ offers.length ? tn('rfid.title', offers.length) : '' }}</p>
-  <OuiPanel v-if="offers.length" :title="tn('rfid.title', offers.length)" :icon="rfid" tone="magenta" data-test="rfid">
+  <OuiPanel v-if="offers.length" :title="tn('rfid.title', offers.length)" :icon="rfid" tone="magenta" :hint="t('rfid.skipHelp')" :hint-label="t('rfid.skip')" data-test="rfid">
     <ul class="rf-rows">
       <li v-for="o in offers" :key="o.printer + ':' + o.tag" class="rf-row" data-test="rfid-offer">
         <OuiSpool v-bind="paint(o)" :fraction="spoolFraction(null, o.remain)" :size="36" />
         <span class="rf-what"><strong>{{ t('rfid.offer', { where: where(o) }) }}</strong><span class="oui-meta">{{ line(o) }}</span></span>
         <span class="rf-act">
-          <Button size="small" :label="t('rfid.add')" :disabled="!!sourceOff" data-test="rfid-add" :aria-label="`${t('rfid.add')}: ${where(o)}`" @click="openEditor(null, { offer: o, where: where(o) })">
+          <Button severity="secondary" size="small" :label="t('rfid.add')" :disabled="!!sourceOff" data-test="rfid-add" :aria-label="`${t('rfid.add')}: ${where(o)}`" @click="openEditor(null, { offer: o, where: where(o) })">
             <template #icon><OuiIcon :icon="plus" :size="14" /></template></Button>
           <Button severity="secondary" text size="small" :label="t('rfid.skip')" :aria-label="`${t('rfid.skip')}: ${where(o)}`" aria-describedby="rf-skip-help" data-test="rfid-skip" @click="skip(o)" />
         </span>
       </li>
     </ul>
-    <template #footer><p id="rf-skip-help" class="oui-meta">{{ t('rfid.skipHelp') }}</p></template>
+    <p id="rf-skip-help" class="oui-sr">{{ t('rfid.skipHelp') }}</p>
   </OuiPanel>
 </template>
 <style>

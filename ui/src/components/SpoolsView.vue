@@ -4,8 +4,8 @@ import Button from 'primevue/button';
 import InputText from 'primevue/inputtext';
 import Select from 'primevue/select';
 import Checkbox from 'primevue/checkbox';
-import { OuiBanner, OuiEmpty, OuiIcon, OuiPanel, OuiSwatch, OuiToolbar } from '../../shared/src/components';
-import { filter, plus, refresh as refreshIcon, search, settings, type OuiIconData } from '../../shared/src/icons';
+import { OuiBanner, OuiEmpty, OuiHint, OuiIcon, OuiPageHeader, OuiPanel, OuiSwatch, OuiToolbar } from '../../shared/src/components';
+import { download, filter, plus, refresh as refreshIcon, search, settings, type OuiIconData } from '../../shared/src/icons';
 import shelf from '../assets/spooler-shelf.webp';
 import SpoolTable, { type GroupInfo, type Row } from './SpoolTable.vue';
 import SpoolDetail from './SpoolDetail.vue';
@@ -14,10 +14,10 @@ import SpoolEditor from './SpoolEditor.vue';
 import PlatePanel from './PlatePanel.vue';
 import PeerNote from './PeerNote.vue';
 import * as bridge from '../core/bridge';
-import { m, inUse, sourceOff, refresh, openSettings, setListView } from '../state/main';
+import { m, inUse, sourceOff, pending, refresh, syncPresets, openSettings, setListView } from '../state/main';
 import { menu, shownSpool, openEditor } from '../state/menu';
-import { t, tn, fmt } from '../core/i18n';
-import { COLOR_FAMILIES, colorFamily, closestSpools, compareSpools, groupSpools, spoolMatches, stackEntries, stackLead, shown, totals, type SortKey, type Spool } from '../logic/spools';
+import { t, tn, fmt, locale } from '../core/i18n';
+import { COLOR_FAMILIES, colorFamily, closestSpools, compareSpools, formatWeight, groupSpools, lowLevel, spoolMatches, stackEntries, stackLead, shown, totals, type SortKey, type Spool } from '../logic/spools';
 
 const query = ref('');
 const material = ref<string | null>(null);
@@ -138,11 +138,19 @@ watch(() => menu.picks, async () => {
   detail.scrollIntoView({ block: 'nearest' });
 });
 
+// The page header's line of facts: how many spools, what they hold together, how many are low, and the presets made from them.
+const headMeta = computed(() => {
+  const stock = m.spools.filter(s => !s.archived);
+  if (!m.received || !stock.length) return '';
+  const grams = stock.reduce((a, s) => a + (typeof s.remaining_weight === 'number' ? s.remaining_weight : 0), 0);
+  const low = stock.filter(s => lowLevel(s.remaining_weight, m.low)).length;
+  return [tn('group.count', stock.length), t('weight.left', { w: formatWeight(grams, shown(m.disp, 'exact_weight'), locale.value) }), low ? `${t('stats.low')}: ${low}` : '',
+    m.profiles.count && !m.profiles.error ? tn('list.presets', m.profiles.count) : ''].filter(Boolean).join(' · ');
+});
 // Summary (count, presets) and the list state: first use, no address, read error, empty, filters (S01/S02).
 const countLine = computed(() => {
   const base = tn('list.count', m.spools.length, { shown: filtered.value.length });
-  return m.profiles.error ? `${base} · ${t('list.presetsFailed', { error: m.profiles.error })}`
-    : m.profiles.count ? `${base} · ${tn('list.presets', m.profiles.count)}` : base;
+  return m.profiles.error ? `${base} · ${t('list.presetsFailed', { error: m.profiles.error })}` : base;
 });
 const listState = computed(() => {
   if (!m.received) return 'loading';
@@ -158,16 +166,22 @@ const setArchived = (on: boolean) => bridge.postMain({ type: 'spool_action', act
 
 <template>
   <div class="oui-stack sv">
-    <PeerNote where="spools" />
+    <OuiPageHeader :title="t('nav.spools')" :meta="headMeta">
+      <template #actions>
+        <OuiHint v-if="m.peers.u1control" end :label="t('peer.whyTitle')"><PeerNote where="spools" /></OuiHint>
+        <Button severity="secondary" :label="t('list.sync')" :disabled="!!sourceOff || pending('send')" :title="t('list.syncHelp')" aria-describedby="sv-why" data-test="sync" @click="syncPresets">
+          <template #icon><OuiIcon :icon="download" :size="14" /></template></Button>
+        <Button v-if="m.source === 'spoolman'" :label="t('editor.add')" :disabled="!!sourceOff" data-test="add-spool" @click="openEditor(null)"><template #icon><OuiIcon :icon="plus" :size="14" /></template></Button>
+      </template>
+    </OuiPageHeader>
     <OuiBanner :show="!!staleAt" tone="warn" :title="t('list.stale', { error: m.loadError, time: staleAt })" data-test="stale"
                dismissible :dismiss-key="`stale:${m.source}:${m.loadError}`" :close-label="t('common.close')">
       <template #actions><Button severity="secondary" size="small" :label="t('common.retry')" @click="refresh"><template #icon><OuiIcon :icon="refreshIcon" :size="14" /></template></Button></template>
     </OuiBanner>
     <PlatePanel v-if="!m.showPrinterTab" />
 
-    <div class="sp-grid" :class="{ 'sp-with-detail': !!selected || !!stackSpools }">
+    <div class="oui-split sp-grid" :data-detail="!!selected || !!stackSpools || undefined">
       <OuiPanel flush class="sp-list">
-        <h2 class="oui-sr">{{ t('nav.spools') }}</h2>
         <OuiToolbar :label="t('filters.searchLabel')">
           <InputText v-model="query" type="search" size="small" :placeholder="t('filters.search')" :aria-label="t('filters.searchLabel')" data-test="search" />
           <Select v-model="material" size="small" :options="materials" option-label="label" option-value="value" show-clear :placeholder="t('filters.allMaterials')" :aria-label="t('filters.material')" data-test="material" />
@@ -180,11 +194,9 @@ const setArchived = (on: boolean) => bridge.postMain({ type: 'spool_action', act
           <span class="oui-toolbar-summary oui-meta oui-num" :class="{ 'sv-bad': !!m.profiles.error }" aria-live="polite" data-test="count">{{ listState === 'list' || listState === 'no_match' ? countLine : '' }}</span>
           <template #end>
             <span class="oui-row sv-views" role="group" :aria-label="t('list.view')">
-              <Button v-for="[v, icon] in VIEWS" :key="v" severity="secondary" :text="view !== v" size="small" :label="t(`list.${v}`)" :aria-pressed="view === v"
+              <Button v-for="[v, icon] in VIEWS" :key="v" severity="secondary" :text="view !== v" size="small" :aria-label="t(`list.${v}`)" :title="t(`list.${v}`)" :aria-pressed="view === v"
                       :data-test="`view-${v}`" @click="setListView(v)"><template #icon><OuiIcon :icon="icon" :size="14" /></template></Button>
             </span>
-            <Button v-if="m.source === 'spoolman'" severity="secondary" size="small" :label="t('editor.add')" :disabled="!!sourceOff" data-test="add-spool" @click="openEditor(null)">
-              <template #icon><OuiIcon :icon="plus" :size="14" /></template></Button>
           </template>
         </OuiToolbar>
         <div v-show="filtersOpen" id="sv-panel" class="oui-toolbar sv-panel" role="group" :aria-label="t('filters.toggle')">
@@ -207,10 +219,10 @@ const setArchived = (on: boolean) => bridge.postMain({ type: 'spool_action', act
             <template #actions><Button :label="t('nav.openSettings')" @click="openSettings('s-src')"><template #icon><OuiIcon :icon="settings" :size="14" /></template></Button></template></OuiEmpty>
           <OuiEmpty v-else-if="listState === 'error'" state="error" :title="t('list.readFailed.title')" data-test="empty-error">
             <span class="oui-error-detail">{{ m.loadError }}</span>
-            <template #actions><Button :label="t('common.retry')" @click="refresh"><template #icon><OuiIcon :icon="refreshIcon" :size="14" /></template></Button>
+            <template #actions><Button severity="secondary" :label="t('common.retry')" @click="refresh"><template #icon><OuiIcon :icon="refreshIcon" :size="14" /></template></Button>
               <Button severity="secondary" :label="t('nav.openSettings')" @click="openSettings('s-src')" /></template></OuiEmpty>
           <OuiEmpty v-else-if="listState === 'empty'" :image="shelf" :title="t('list.empty.title')" :text="m.source === 'bambu' ? t('list.empty.bambu') : t('list.empty.body')" data-test="empty-none">
-            <template #actions><Button v-if="m.source === 'spoolman'" :label="t('editor.add')" @click="openEditor(null)"><template #icon><OuiIcon :icon="plus" :size="14" /></template></Button><Button :label="t('list.refresh')" @click="refresh"><template #icon><OuiIcon :icon="refreshIcon" :size="14" /></template></Button></template></OuiEmpty>
+            <template #actions><Button v-if="m.source === 'spoolman'" severity="secondary" :label="t('editor.add')" @click="openEditor(null)"><template #icon><OuiIcon :icon="plus" :size="14" /></template></Button><Button severity="secondary" :label="t('list.refresh')" @click="refresh"><template #icon><OuiIcon :icon="refreshIcon" :size="14" /></template></Button></template></OuiEmpty>
           <OuiEmpty v-else-if="listState === 'no_match'" :icon="search" tone="neutral" :title="t('list.noMatch.title')" :text="t('list.noMatch.body')" data-test="empty-filter">
             <template #actions><Button severity="secondary" :label="t('filters.clear')" :disabled="!anyFilter" @click="clearFilters" /></template></OuiEmpty>
           <div v-else class="sp-cols" data-test="list">
@@ -219,7 +231,8 @@ const setArchived = (on: boolean) => bridge.postMain({ type: 'spool_action', act
             </div>
           </div>
         </section>
-        <template v-if="sourceOff" #footer><p id="sv-why" class="oui-meta">{{ t('list.actionsOff', { reason: sourceOff }) }}</p></template>
+        <!-- Why Sync and Send are off: the list's own state above (loading, no address, read error) or the banner says it to the eye. -->
+        <p v-if="sourceOff" id="sv-why" class="oui-sr">{{ t('list.actionsOff', { reason: sourceOff }) }}</p>
       </OuiPanel>
       <StackDetail v-if="stackSpools" id="sp-detail" :spools="stackSpools" class="sp-detail" />
       <SpoolDetail v-else-if="selected" id="sp-detail" :spool="selected" :back="backN" class="sp-detail" />
@@ -229,15 +242,15 @@ const setArchived = (on: boolean) => bridge.postMain({ type: 'spool_action', act
 </template>
 
 <style>
-/* List and detail side by side from about 1160 px; the detail under the list below that. */
-.sp-grid { display: grid; gap: var(--oui-s3); grid-template-columns: minmax(0, 1fr); align-items: start; }
-.sp-scroll { container: sp-list / inline-size; max-height: calc(100vh - 136px); min-height: 200px; overflow: auto; border-top: 1px solid var(--oui-border); }
-.sp-with-detail .sp-scroll { max-height: 380px; }
-@container oui-page (min-width: 1160px) {
-  .sp-with-detail { grid-template-columns: minmax(0, 7fr) minmax(440px, 5fr); }
-  .sp-with-detail .sp-scroll { max-height: calc(100vh - 136px); }
-  .sp-detail { position: sticky; top: 64px; }
+/* .oui-split: list and detail side by side from 900 px (the detail is 320 px, 400 from 1160 px: it holds a table);
+   the detail under the list below that. The list scrolls inside its panel, so the detail stays in view. */
+.sp-scroll { container: sp-list / inline-size; max-height: calc(100vh - 180px); min-height: 200px; overflow: auto; border-top: 1px solid var(--oui-border); }
+.sp-grid[data-detail] .sp-scroll { max-height: 380px; }
+@container oui-page (min-width: 900px) {
+  .sp-grid[data-detail] .sp-scroll { max-height: calc(100vh - 180px); }
+  .sp-grid > .sp-detail { position: sticky; top: 56px; }
 }
+@container oui-page (min-width: 1160px) { .sp-grid[data-detail] { grid-template-columns: minmax(0, 1fr) 400px; } }
 .sp-col { container: sp-col / inline-size; min-width: 0; }
 @container sp-list (min-width: 1040px) { .sp-two > .sp-cols { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; } .sp-col + .sp-col { border-inline-start: 1px solid var(--oui-border); } }
 @container sp-list (max-width: 1039.9px) { .orca-ui .sp-col + .sp-col thead { display: none; } .sp-col + .sp-col { border-top: 1px solid var(--oui-border); } }

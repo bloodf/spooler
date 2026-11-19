@@ -22,7 +22,7 @@ const frac = (p: number | null) => (p === null ? null : p / 100);
 </script>
 
 <template>
-  <OuiPanel :title="f.name || t('spool.numbered', { id: spools[0]?.id })" :icon="layers" tone="accent" :meta="count" data-test="stack-detail">
+  <OuiPanel :title="f.name || t('spool.numbered', { id: spools[0]?.id })" :icon="layers" tone="magenta" :meta="count" data-test="stack-detail">
     <template #actions>
       <Button severity="secondary" text size="small" :aria-label="t('detail.close')" :title="t('detail.close')" data-test="detail-close" @click="closeDetail"><template #icon><OuiIcon :icon="x" :size="14" /></template></Button>
     </template>
@@ -51,12 +51,12 @@ const frac = (p: number | null) => (p === null ? null : p / 100);
 </template>
 
 <style>
-.sk-head { display: flex; align-items: center; gap: var(--oui-s4); }
+.sk-head { display: flex; align-items: center; gap: var(--oui-s4); padding: var(--oui-s3); border-radius: var(--oui-radius); background: var(--oui-inset); }
 .sk-sum { display: grid; gap: var(--oui-s1); flex: 1; min-width: 0; font-size: var(--oui-text-lg); }
-.sk-list { display: grid; gap: var(--oui-s2); margin: var(--oui-s4) 0 0; padding: 0; list-style: none; }
-.orca-ui .sk-spool { display: flex; align-items: center; gap: var(--oui-s3); width: 100%; padding: var(--oui-s2) var(--oui-s3); border: 1px solid var(--oui-border); border-radius: var(--oui-radius);
-  background: none; color: var(--oui-text); font: inherit; text-align: start; cursor: pointer; }
-.orca-ui .sk-spool:hover { border-color: var(--oui-primary); }
-.orca-ui .sk-spool:focus-visible { outline: 2px solid var(--oui-primary); outline-offset: 1px; }
+.sk-list { display: grid; gap: var(--oui-s2); margin: var(--oui-s3) 0 0; padding: 0; list-style: none; }
+.orca-ui .sk-spool { display: flex; align-items: center; gap: var(--oui-s3); width: 100%; padding: var(--oui-s2) var(--oui-s3); border: 0; border-radius: var(--oui-radius-lg);
+  background: var(--oui-raised); box-shadow: inset 0 0 0 1px var(--oui-border); color: var(--oui-text); font: inherit; text-align: start; cursor: pointer; }
+.orca-ui .sk-spool:hover { box-shadow: inset 0 0 0 1px var(--oui-control-border); }
+.orca-ui .sk-spool:focus-visible { outline: 2px solid var(--oui-primary-mark); outline-offset: 1px; }
 .sk-body { display: grid; gap: 4px; flex: 1; min-width: 0; }
 </style>

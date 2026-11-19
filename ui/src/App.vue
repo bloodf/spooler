@@ -2,7 +2,7 @@
 import { computed, onBeforeUnmount, watch } from 'vue';
 import Button from 'primevue/button';
 import { OuiAppBar, OuiIcon, OuiStatus, OuiToastHost, type OuiState, type OuiTab } from '../shared/src/components';
-import { chart, download, note, printer, refresh as refreshIcon, settings, spool } from '../shared/src/icons';
+import { chart, note, printer, refresh as refreshIcon, settings, spool } from '../shared/src/icons';
 import Logo from './components/Logo.vue';
 import CalibrationPanel from './components/CalibrationPanel.vue';
 import SpoolsView from './components/SpoolsView.vue';
@@ -14,7 +14,7 @@ import SettingsView from './settings/SettingsView.vue';
 import { leave, saved } from './settings/state';
 import * as bridge from './core/bridge';
 import { boot } from './core/boot';
-import { m, start, setTab, statsOn, plateAttention, usageAttention, pollLive, sourceOff, pending, refresh, syncPresets, openSettings } from './state/main';
+import { m, start, setTab, statsOn, plateAttention, usageAttention, pollLive, pending, refresh, openSettings } from './state/main';
 import { t, fmt } from './core/i18n';
 
 // Three surfaces share this page: the native tab (spool views + Settings as its last tab), the separate spool window
@@ -71,8 +71,6 @@ const state = computed<{ state: OuiState; label: string; text: string }>(() => {
           <span v-if="m.retrying" class="oui-meta" role="status" data-test="retrying">{{ t('list.retrying') }}</span>
           <Button severity="secondary" text size="small" :aria-label="t('list.refresh')" :title="t('list.refresh')" :loading="pending('refresh')" data-test="refresh" @click="refresh">
             <template #icon><OuiIcon :icon="refreshIcon" :size="14" /></template></Button>
-          <Button severity="secondary" size="small" class="sp-sync" :label="t('list.sync')" :aria-label="t('list.sync')" :disabled="!!sourceOff || pending('send')" :title="t('list.syncHelp')"
-                  aria-describedby="sv-why" data-test="sync" @click="syncPresets"><template #icon><OuiIcon :icon="download" :size="14" /></template></Button>
           <Button v-if="boot.mode === 'main'" severity="secondary" text size="small" :aria-label="t('nav.settings')" :title="t('nav.settings')" data-test="settings-btn" @click="openSettings()">
             <template #icon><OuiIcon :icon="settings" :size="14" /></template></Button>
         </template>
@@ -101,10 +99,20 @@ const state = computed<{ state: OuiState; label: string; text: string }>(() => {
    Traditional Chinese one isn't picked first for the shared Han characters. */
 html:lang(zh-CN) { --oui-font: 'Manrope', 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', 'Noto Sans SC', 'Source Han Sans SC', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
 .oui-page > [role='tabpanel'] { min-width: 0; }
-/* Narrow bar (the 380 px dock): the page actions keep their icons and drop their words; the state keeps its chip. */
+/* Module headers wrap in the 380 px dock rather than push the page wider than the window. */
+.oui-page .oui-panel-head { flex-wrap: wrap; }
+/* The (i) bubbles (OuiHint) open inside their module, at the height of their (i): the shared bubble hangs from the (i)
+   itself, 300 px to one side, and ran past the window in the 380 px dock and in a right-hand column. */
+:where(.oui-page) :is(.oui-panel, .oui-pagehead) { position: relative; }
+.orca-ui .oui-hint.oui-hint { position: static; }
+.orca-ui .oui-hint.oui-hint > .oui-hint-bubble { top: auto; left: var(--oui-s3); right: auto; margin-top: 26px; max-width: min(340px, calc(100% - 2 * var(--oui-s3))); }
+.orca-ui .oui-pagehead .oui-hint.oui-hint > .oui-hint-bubble { left: auto; right: 0; max-width: min(340px, 100%); }
+/* A paragraph inside an (i) bubble. */
+.sp-hint-p { display: block; }
+.sp-hint-p + .sp-hint-p { margin-top: var(--oui-s2); }
+/* Narrow bar (the 380 px dock): the tabs keep their icons and drop their words; the state keeps its chip. */
 @container oui-appbar (max-width: 520px) {
-  .sp-sync .p-button-label, .sp-state { display: none; }
+  .sp-state { display: none; }
   .oui-appbar-tab > span:not([class]) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-  .sp-sync.p-button { width: var(--oui-control-sm); padding-inline: 0; }
 }
 </style>
