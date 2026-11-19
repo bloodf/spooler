@@ -279,6 +279,19 @@ class UnreadableFilesTest(unittest.TestCase):
         self.assertTrue((self.dir / "spooler_settings.json.bad").exists())
         self.assertEqual(settings["spoolman_url"], "")
         self.assertEqual(settings["spool_columns"], 1)
+        self.assertEqual(sp.spool_view(), "table")
+
+    def test_spool_list_view_is_saved_checked(self):
+        path = self.dir / "spooler_settings.json"
+        self._swap("SETTINGS_FILE", path)
+        self._swap("OLD_SETTINGS", self.dir / "missing.json")
+        sp.save_spool_view("cards")
+        self.assertEqual(sp.spool_view(), "cards")
+        sp.save_spool_view(None)  # an older page sends nothing: the setting stays
+        self.assertEqual(sp.spool_view(), "cards")
+        sp.save_spool_view("<grid>")
+        self.assertEqual(sp.spool_view(), "table")
+        self.assertEqual(sp.settings_boot("", 100)["spool_view"], "table")
 
     def test_codes_are_written_in_one_step_and_private(self):
         import os

@@ -35,6 +35,8 @@ export const m = reactive({
   disp: { ...boot.display_defaults } as Record<string, boolean>,
   cart: false,
   columns: 1 as 1 | 2,
+  listView: null as null | 'table' | 'cards',   // Settings > Spool list default (null until the plugin says)
+  viewPick: readView(),                         // this viewer's own pick on the list (localStorage)
   cfg: [] as ManualPrinter[],
   printersRev: 0,
   slicePicks: [] as SlicePick[],
@@ -60,6 +62,13 @@ export const m = reactive({
 function readTab(): 'spools' | 'printer' | 'stats' {
   try { const v = localStorage.getItem('spooler.tab'); if (v === 'printer' || v === 'stats') return v; } catch { /* per viewer */ }
   return 'spools';
+}
+function readView(): 'table' | 'cards' | null {
+  try { const v = localStorage.getItem('spooler.view'); return v === 'table' || v === 'cards' ? v : null; } catch { return null; }
+}
+export function setListView(v: 'table' | 'cards' | null): void {
+  m.viewPick = v;
+  try { if (v) localStorage.setItem('spooler.view', v); else localStorage.removeItem('spooler.view'); } catch { /* per viewer */ }
 }
 export function setTab(v: 'spools' | 'printer' | 'stats'): void {
   m.tab = v;
@@ -150,6 +159,11 @@ function render(p: any): void {
   if (p.display && typeof p.display === 'object') m.disp = { ...boot.display_defaults, ...p.display };
   if (typeof p.show_cart === 'boolean') m.cart = p.show_cart;
   if (p.spool_columns) m.columns = p.spool_columns === 2 ? 2 : 1;
+  if (p.spool_view) {
+    const v = p.spool_view === 'cards' ? 'cards' : 'table';
+    if (m.listView && v !== m.listView) setListView(null);   // a new default in Settings wins over the old pick
+    m.listView = v;
+  }
   if (Array.isArray(p.printers)) m.cfg = p.printers;
   if (typeof p.printers_rev === 'number') m.printersRev = p.printers_rev;
   if (Array.isArray(p.slice_picks)) m.slicePicks = p.slice_picks;

@@ -268,6 +268,7 @@ export const de: Record<MessageKey, string> = {
   'set.previewMore': '+ {n} weitere', 'set.weights': 'Spulengewichte', 'set.weightsLabel': 'Restgewicht auf den Spulenkarten anzeigen als:',
   'set.weight.grams': 'Gramm', 'set.weight.percent': 'Prozent', 'set.weight.both': 'Beides', 'set.layout': 'Spulenliste',
   'set.layoutLabel': 'Spulen im Tab Spulen anzeigen als:', 'set.one': 'Eine Spalte', 'set.two': 'Zwei Spalten',
+  'list.view': 'Ansicht', 'list.table': 'Tabelle', 'list.cards': 'Karten', 'set.viewLabel': 'Liste anzeigen als:',
   'set.layoutHelp': 'In einem schmalen Fenster werden aus zwei Spalten eine, damit die Namen lesbar bleiben.',
   'set.display': 'Anzeige', 'set.displayHelp': 'Wählen Sie, was die Tabs Spulen und Drucker anzeigen.', 'set.displaySpools': 'Tab Spulen',
   'set.displayHeads': 'Tab Drucker: jeder Slot', 'set.displayNote': 'Änderungen gelten nach dem Speichern und bleiben auf diesem Computer.',

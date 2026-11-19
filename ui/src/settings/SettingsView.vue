@@ -162,6 +162,10 @@ onMounted(follow);
           <div class="oui-row" role="radiogroup" :aria-label="t('set.layoutLabel')"><span v-for="c in [1, 2]" :key="c" class="oui-row set-opt">
             <RadioButton v-model="form.spool_columns" :input-id="`cols-${c}`" name="spool-cols" :value="c" /><label :for="`cols-${c}`">{{ c === 1 ? t('set.one') : t('set.two') }}</label></span></div>
         </OuiFormRow>
+        <OuiFormRow :label="t('set.viewLabel')">
+          <div class="oui-row" role="radiogroup" :aria-label="t('set.viewLabel')"><span v-for="v in (['table', 'cards'] as const)" :key="v" class="oui-row set-opt">
+            <RadioButton v-model="form.spool_view" :input-id="`view-${v}`" name="spool-view" :value="v" /><label :for="`view-${v}`">{{ t(`list.${v}`) }}</label></span></div>
+        </OuiFormRow>
         <OuiFormRow :label="t('set.preview')"><div class="set-cols" :class="{ two: form.spool_columns === 2 }" aria-hidden="true">
           <span v-for="c in ['accent', 'teal', 'sky', 'lime']" :key="c" :data-tone="c" /></div></OuiFormRow>
       </OuiFormSection>

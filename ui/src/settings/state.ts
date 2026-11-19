@@ -69,7 +69,7 @@ export function save(): void {
   saving.value = true;
   bridge.postSettings({
     type: 'save', source: form.source, url: form.url.trim(), low_stock: form.low_stock, plate_check: form.plate_check, plate_margin: form.plate_margin,
-    weight_display: form.weight_display, show_cart: form.show_cart, spool_columns: form.spool_columns, progress: { ...form.progress },
+    weight_display: form.weight_display, show_cart: form.show_cart, spool_columns: form.spool_columns, spool_view: form.spool_view, progress: { ...form.progress },
     stats: { ...form.stats }, display: { ...form.display }, drying: { ...form.drying }, auto_keep_slots: form.auto_keep_slots,
     presets: JSON.parse(JSON.stringify(form.presets)),
     save_calibration: form.save_calibration,
@@ -92,7 +92,7 @@ function onMessage(d: any): void {
     if (typeof d.rfid_skipped === 'number') rfidSkipped.value = d.rfid_skipped;
     reset({ url: d.url || '', source: d.source || 'spoolman', low_stock: d.low_stock, plate_check: d.plate_check !== false,
       ...(d.plate_margin !== undefined ? { plate_margin: d.plate_margin } : {}), weight_display: d.weight_display || 'both', show_cart: d.show_cart === true,
-      spool_columns: d.spool_columns === 2 ? 2 : 1, progress: { on: true, finish: true, slot: true, idle: 'line', ...(d.progress || {}) },
+      spool_columns: d.spool_columns === 2 ? 2 : 1, spool_view: d.spool_view === 'cards' ? 'cards' : 'table', progress: { on: true, finish: true, slot: true, idle: 'line', ...(d.progress || {}) },
       stats: { on: true, cur: 'spoolman', ...(d.stats || {}) }, ...(d.display ? { display: d.display } : {}), ...(d.drying ? { drying: d.drying } : {}),
       ...(d.cur_code ? { cur_code: d.cur_code } : {}), wizard: !!d.wizard, auto_keep_slots: d.auto_keep_slots === true,
       ...(d.presets ? { presets: d.presets } : {}), ...(Array.isArray(d.parents) ? { parents: d.parents } : {}),

@@ -4,6 +4,8 @@ Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); 
 0.9.0 are Spoolio's.
 
 ## [Unreleased]
+### Added
+- The Spools list can show cards as well as the table: **Table** and **Cards** in the list's toolbar. Each card shows the spool filled to what is left, its name, manufacturer, material, colour, weight left with a bar, location and state (low stock, RFID, dried, in a printer, archived). Search, filters, sort, groups and stacks work the same in both, and a card opens the same detail as a row. Your pick is remembered; Settings > Spool list sets the default.
 
 ## [0.30.0] - 2026-11-18
 ### Added
