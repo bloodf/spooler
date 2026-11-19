@@ -143,7 +143,7 @@ export const on = <K extends keyof typeof listeners>(k: K, h: Parameters<(typeof
 function render(p: any): void {
   m.received = true;
   if (p.refresh_s !== undefined && cleanEvery(p.refresh_s) !== m.refreshS) { m.refreshS = cleanEvery(p.refresh_s); auto?.restart(); }
-  answered?.(!!p.ok);
+  answered?.(!!p.ok || p.error_code === 'no_url');   // no address yet is not Spoolman being unreachable
   m.peers = { u1control: !!p.peers?.u1control };
   m.readFails = p.ok ? 0 : m.readFails + 1;
   if (!p.ok) {
