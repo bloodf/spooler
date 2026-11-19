@@ -90,11 +90,14 @@ SCENES = {
           .filter(function (tab) { return tab.getBoundingClientRect().right > strip; })
           .forEach(function (tab) { tab.remove(); });"""},
     # "See what each slot holds": the printers and their toolheads
-    "slots": {"view": "printer", "display": {"head_rfid": False}, "script": """
-        // Show the first printer's toolheads only: what follows them would be cut by the square's edge.
+    "slots": {"view": "printer", "display": {"head_rfid": False, "head_preset": False}, "script": """
+        // Show the first printer's toolheads only, Assign and Change included: what follows them would be cut by the
+        // square's edge, and so would the toolheads' buttons under the booking notes.
+        document.querySelector('[data-test="how-booking"]').remove();
         var panel = document.querySelector('.oui-cards').closest('.oui-panel');
         while (panel.nextElementSibling) panel.nextElementSibling.remove();
-        panel.querySelectorAll('.pp-note, .pp-presets, .pp-klipper').forEach(function (el) { el.remove(); });"""},
+        panel.querySelectorAll('.pp-note, .pp-presets, .pp-klipper').forEach(function (el) { el.remove(); });
+        document.querySelectorAll('[data-test="add-printer"]').forEach(function (el) { el.parentElement.remove(); });"""},
     # "Check filament before a print": the last slice's check
     "check": {"view": "printer", "plate": True, "script": """
         await until(function () { return document.querySelector('[data-test="plate"]'); });
@@ -105,7 +108,12 @@ SCENES = {
           var r = el.getBoundingClientRect();
           if (!el.children.length && r.height && r.top < bar && r.bottom > bar + 2) hidden = Math.max(hidden, bar - r.top);
         });
-        if (hidden) scrollBy(0, -hidden - 6);"""},
+        if (hidden) scrollBy(0, -hidden - 6);
+        // The printer below the check runs past the square's bottom edge: show none of its lines cut in half.
+        document.querySelectorAll('.oui-slot *').forEach(function (el) {
+          var r = el.getBoundingClientRect();
+          if (!el.children.length && r.height && r.bottom > innerHeight - 4) el.style.visibility = 'hidden';
+        });"""},
 }
 
 LANGS = {"en": "en", "pt-BR": "pt_BR"}     # file suffix -> what OrcaSlicer reports as its language
@@ -153,18 +161,24 @@ def demo_state(sp):
     printers = [{"target": U1, "label": "Snapmaker U1"}, {"target": SV06, "label": "Sovol SV06"}]
     sp._profiles["names"] = sp.profile_names(spools, printers)
     by_id = {s["id"]: s for s in spools}
-    heads = [3, 4, 6, 5]
+    # T1, T2 and T4 hold the spools U1 Control linked by their Spoolman location ("Snapmaker U1 T<n>"), so the
+    # cards offer Change and Unassign; T3 holds a purple PETG that is no spool in Spoolman: its amount is unknown
+    # (the reel drawn full with a "?") and its card offers Assign spool.
+    heads = [by_id[3]["filament"], by_id[4]["filament"], {"material": "PETG", "color_hex": "8E4EC6", "vendor": {"name": "Generic"}},
+             by_id[5]["filament"]]
     u1 = {"print_task_config": {
         "filament_exist": [True] * 4,
-        "filament_type": [by_id[i]["filament"]["material"] for i in heads],
-        "filament_sub_type": ["SnapSpeed"] * 4,
-        "filament_vendor": ["Snapmaker"] * 4,
-        "filament_color_rgba": [by_id[i]["filament"]["color_hex"] + "FF" for i in heads],
-        "filament_spool_id": heads,
-    }, "filament_detect": {"info": [{"CARD_UID": [0x60, 0x82, 0x7A, 0x6A]}] * 4}}
+        "filament_type": [f["material"] for f in heads],
+        "filament_sub_type": ["SnapSpeed", "SnapSpeed", "Basic", "SnapSpeed"],
+        "filament_vendor": [f["vendor"]["name"] for f in heads],
+        "filament_color_rgba": [f["color_hex"] + "FF" for f in heads],
+        "filament_spool_id": [0] * 4,
+    }, "filament_detect": {"info": [{"CARD_UID": [0x60, 0x82, 0x7A, 0x6A]}, {}, {}, {}]}}
+    sp._ui_snap["printers"] = [{"target": U1, "label": "Snapmaker U1", "model": "Snapmaker U1"}]
     sp._live["printers"].clear()
     for pid, name, doc in (("auto-u1", "Snapmaker U1", sp.moon_report(u1, None, spools, U1)),
                            ("auto-sv06", "Sovol SV06", sp.moon_report({}, 11, spools, SV06))):
+        doc[0]["u1"] = pid == "auto-u1"   # what a poll of a U1 notes: U1 Control links its toolheads
         sp.live_apply(pid, name, doc[0], link=pid)
         with sp._live_lock:
             sp.moon_mark(pid, doc[0], doc[1])
