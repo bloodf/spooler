@@ -4,21 +4,23 @@ Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); 
 0.9.0 are Spoolio's.
 
 ## [Unreleased]
+
+## [0.30.0] - 2026-11-18
 ### Added
-- Assign a spool to a Snapmaker U1 toolhead or an Anycubic ACE slot from the Printer tab. Each slot card has **Assign spool** / **Change spool**, with a search that shows each spool drawn in its colour with its material and weight, and **Unassign** for a linked spool. The link is the spool's Spoolman location, written the way the owning plugin reads it: `<printer> T<n>` for U1 Control, `<printer> S<n>` for Kobra Control; the spool that held that slot before loses the location. Nothing is sent to the printer. While the printer prints, Spooler asks first. Spooler now also reads Kobra Control's `S<n>` links on the ACE slots, before matching by colour. A slot whose spool the printer itself reports (U1 extended firmware) and Bambu, Happy Hare and AFC slots stay read-only. Hand-set slots (added printers, Klipper toolheads and gates) get **Change spool** too.
+- Assign a spool to a Snapmaker U1 toolhead or an Anycubic ACE slot from the Printer tab. Each slot card has **Assign spool** / **Change spool**, with a search that shows each spool in its colour with its material and weight, and **Unassign** for a linked spool. Spooler saves the link as the spool's Spoolman location, in the form U1 Control (`<printer> T<n>`) and Kobra Control (`<printer> S<n>`) read; the spool that held the slot before loses that location. Nothing is sent to the printer, and Spooler asks first while the printer is printing. Spooler also reads Kobra Control's `S<n>` links on ACE slots before matching by colour. Slots whose spool the printer reports itself (U1 extended firmware) and Bambu, Happy Hare and AFC slots stay read-only. Hand-set slots (added printers, Klipper toolheads and gates) get **Change spool** too.
 ### Changed
-- Settings is a set of pages: a list of pages beside the open one, or in a narrow window the list first and one page at a time with a Back button. Version, updates and the log file have their own About page. The last page opens again next time, a page with a problem (a failed source test) is marked in the list, and focus moves to the page heading when a page opens. Open Settings from an empty or failed spool list opens the source page, also in the separate Settings window.
-- The Printer tab uses the width: printers, the plate check and the bookings sit in two columns from about 1160 px and three from 1800 px.
-- The long notes about presets and booking show once, in a collapsible **How booking works** at the top of the Printer tab, with only the parts that apply to your printers. Each printer has a one-line chip instead, such as "Booked by U1 Control".
-- A printer that hasn't reported its slots shows a turning mark, and after 45 seconds says it may not and what to check.
-- Spools show as the drawn spool, filled to what is left, in more places: the spool pickers (assign a slot, pick after a slice), the RFID offers, and the Stats "Most used" and "Running low" lists. The weight and percentage text stay as they were.
-- A printer slot's drawn spool follows the real amount: Spoolman's weight, else the printer's percentage. When neither is known a loaded slot shows a full reel in its colour with a small "?" badge, the amount unknown, no longer a made-up level (a slot with no reading drew as full or 60 %); an empty slot shows the bare reel (shared UI foundation 4.2.2).
+- Settings is split into pages: a list of pages beside the open one, or in a narrow window the list first and one page at a time with a Back button. Version, updates and the log file have their own About page. Settings opens on the page you used last, a page with a problem (such as a failed source test) is marked in the list, and Open Settings from an empty or failed spool list goes straight to the source page, also in the separate Settings window.
+- The Printer tab uses the full width: printers, the plate check and the bookings sit in two columns from about 1160 px wide and in three from 1800 px.
+- The notes about presets and booking show once, in a collapsible **How booking works** at the top of the Printer tab, with only the parts that apply to your printers. Each printer gets a one-line chip instead, such as "Booked by U1 Control".
+- A printer that hasn't reported its slots yet shows a spinner, and after 45 seconds says it may not and what to check.
+- Spools are drawn filled to what is left in more places: the spool pickers (assign a slot, pick after a slice), the RFID offers, and the Stats "Most used" and "Running low" lists. The weight and percentage text stay as they were.
+- A printer slot's spool picture follows the real amount: Spoolman's weight, else the printer's percentage. When neither is known, a loaded slot shows a full reel in its colour with a small "?" badge instead of a made-up level (before, a slot with no reading was drawn full or at 60 %). An empty slot shows the bare reel.
 - NOTICE.md credits Pablo Saura Sánchez (@saurasanchezpablo, #2: Klipper lanes from Moonraker's lane_data, plate slots kept on lanes, preset edits sent to Spoolman's orca_settings, other Spoolman fields kept) and Jefferson J. Raimon (@jeffersonraimon, #20: preset cost from spool prices), whose contributions were made under MIT.
 ### Fixed
 - The Printer tab no longer shows "100 % on the printer" for a U1 toolhead or an ACE slot holding a Spoolman spool: that number was Spoolman's weight. A printer percentage shows only when the printer reports one (Bambu AMS, an Anycubic slot's own reading).
-- Long preset and location lines on a slot card are cut with an ellipsis (the full text on hover) instead of running past the card.
+- Long preset and location lines on a slot card are cut short with an ellipsis (the full text shows on hover) instead of running past the card.
 - The Happy Hare note no longer shows on a Snapmaker U1, or on a printer without reported gates.
-- "Add printer" and "Assign spool" had two plus signs (the icon and the text) in every language.
+- "Add printer" and "Assign spool" no longer show two plus signs in every language.
 
 ## [0.29.1] - 2026-11-17
 
