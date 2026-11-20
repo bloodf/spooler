@@ -5,6 +5,12 @@ Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); 
 
 ## [Unreleased]
 
+## [0.32.3] - 2026-11-20
+
+### Fixed
+- Spooler's settings, log and other files now live in the data folder OrcaSlicer actually runs with. Started with `--datadir`, OrcaSlicer kept Spooler reading the settings of the default data folder, including its Spoolman address, every 5 seconds, which OrcaSlicer's sandbox refused each time. The folder above OrcaSlicer's `orca_plugins` is used now, as Kobra Control and U1 Control do; the default folder is only the fallback.
+- A settings file OrcaSlicer's sandbox refuses is no longer read again on every refresh: it is skipped until OrcaSlicer restarts.
+
 ## [0.32.2] - 2026-11-20
 ### Changed
 - The plugin's code is split into one module per area (settings, Spoolman and Bambu Cloud, filament profiles, each printer kind, the page bridge and so on) inside the `spooler_any.whl` wheel, instead of one large file. Orca Cloud's automated review timed out on the single 560 KB file and never published 0.32.1. Spooler works exactly as before, and the page is unchanged.

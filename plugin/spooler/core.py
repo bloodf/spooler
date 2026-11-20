@@ -30,7 +30,7 @@ except (ImportError, AttributeError):
 _SLICING = hasattr(getattr(orca, "slicing", None), "SlicingPipelineCapabilityBase")
 
 PLUGIN_NAME = "Spooler"
-PLUGIN_VERSION = "0.32.2"
+PLUGIN_VERSION = "0.32.3"
 # The build target the log reports: one wheel for every operating system.
 BUILD_TARGET = "any"
 
@@ -74,13 +74,19 @@ def _config_root() -> Path:
     return Path(os.environ.get("XDG_CONFIG_HOME") or Path.home() / ".config")
 
 
-def _data_dir() -> Path:
+def _data_dir(plugin_dir: Path = PLUGIN_DIR) -> Path:
     """Settings, log and tab-icon folder, inside OrcaSlicer's data folder.
 
     Not the plugin folder: updates would reset it, and OrcaSlicer expects that folder to
-    hold only the plugin file.
+    hold only the plugin file. OrcaSlicer installs plugins under <data folder>/orca_plugins
+    (and only that data folder is open to them), so the folder above orca_plugins is the data
+    folder, also when OrcaSlicer runs with --datadir; the same rule as Kobra Control and U1
+    Control use. The default location is only a fallback for a plugin loaded from elsewhere.
     """
-    for parent in PLUGIN_DIR.parents:
+    for parent in plugin_dir.parents:
+        if parent.name == "orca_plugins":
+            return parent.parent / "spooler"
+    for parent in plugin_dir.parents:
         if parent.name == "OrcaSlicer":
             return parent / "spooler"
     return _config_root() / "OrcaSlicer" / "spooler"
@@ -190,6 +196,9 @@ def _report(key: str, error: str | None, exc_info: bool = False) -> None:
         log.warning("%s failed: %s", key, error, exc_info=exc_info)
 
 
+_denied_reads: set = set()   # settings files the sandbox refused this session
+
+
 def get_settings() -> dict:
     defaults = {
         "spoolman_url": "",
@@ -209,8 +218,15 @@ def get_settings() -> dict:
         "spoolman_refresh_s": REFRESH_DEFAULT,
     }
     for path in (SETTINGS_FILE, OLD_SETTINGS):
+        if path in _denied_reads:
+            continue
         try:
             saved = json.loads(path.read_text(encoding="utf-8"))
+        except PermissionError:
+            # OrcaSlicer's sandbox refused it: not asked again on every refresh (each refusal is a log line and,
+            # off the UI thread, may queue a permission prompt). Read again after a restart.
+            _denied_reads.add(path)
+            continue
         except ValueError:
             if path == SETTINGS_FILE:
                 _filament_profiles._keep_unreadable(path)
