@@ -188,9 +188,11 @@ const one = computed(() => (pickedRows.value.length === 1 ? pickedRows.value[0] 
 // question has closed and the row it would give focus back to is already gone.
 const list = ref<HTMLElement>();
 let hadFocus = false;
-onBeforeUpdate(() => { hadFocus = !!list.value?.contains(document.activeElement); });
+// Sticky until onUpdated has read it: one change of the files can update this component twice in the same flush (the rows,
+// then the selection that the gone rows leave), and by the second time the focused row has already been removed.
+onBeforeUpdate(() => { hadFocus ||= !!list.value?.contains(document.activeElement); });
 function holdFocus() { if (!list.value?.contains(document.activeElement)) (table.value?.querySelector<HTMLElement>('.oui-files-row[tabindex="0"]') ?? list.value)?.focus(); }
-onUpdated(() => { if (hadFocus) holdFocus(); });
+onUpdated(() => { if (hadFocus) holdFocus(); hadFocus = false; });
 </script>
 <template>
   <div class="oui-files"><div class="oui-files-grid" :data-flat="!hasTree || undefined" :data-dragging="dragging.length ? true : undefined">
@@ -301,6 +303,8 @@ onUpdated(() => { if (hadFocus) holdFocus(); });
 .oui-files-foldername { flex: 1 1 0; }
 .oui-files-railfoot { padding: var(--oui-s3); border-top: 1px solid var(--oui-border); }
 .oui-files-list { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+/* Only the rows give way when the list is short: the toolbar, the bar and the foot keep their height (a wrapped toolbar was cut). */
+.oui-files-toolbar, .oui-files-bar, .oui-files-listfoot { flex: none; }
 .orca-ui .oui-files-list:focus { outline: none; }
 .oui-files-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--oui-s2) var(--oui-s3); min-height: 48px; padding: var(--oui-s2) var(--oui-s3); }
 /* The path, the open folder's actions right after it, and the page's tools at the far end. */
@@ -310,6 +314,8 @@ onUpdated(() => { if (hadFocus) holdFocus(); });
 .oui-files-crumb { padding: 2px 4px; border: 0; border-radius: var(--oui-radius-sm); color: var(--oui-muted); background: none; cursor: pointer; }
 .oui-files-crumb:hover { color: var(--oui-text); background: var(--oui-control); }
 .oui-files-tools { display: flex; flex-wrap: wrap; align-items: center; gap: var(--oui-s2); margin-inline-start: auto; }
+/* No folders, so no path before it: the slot is the whole bar, from its left. A page spreads its items with .oui-spacer. */
+.oui-files-grid[data-flat] .oui-files-tools { flex: 1 1 auto; margin-inline-start: 0; }
 .oui-files-folderactions { display: flex; align-items: center; gap: var(--oui-s1); }
 .oui-files-bar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--oui-s2); min-height: 40px; padding: 4px var(--oui-s3); background: var(--oui-raised); border-block: 1px solid var(--oui-border); }
 .oui-files-move { min-width: 150px; }
@@ -342,17 +348,19 @@ onUpdated(() => { if (hadFocus) holdFocus(); });
 .oui-files-names { display: grid; gap: 2px; margin: 0; padding: 0; list-style: none; min-width: 0; }
 .oui-files-ghost { position: absolute; top: -200px; left: 0; padding: 4px 10px; border-radius: var(--oui-radius); font-weight: 650; color: var(--oui-on-primary); background: var(--oui-primary); }
 /* Narrower: the detail goes under the list; narrower still, the folders go above it. */
+/* Stacked, the detail (and the tree, narrower still) get a share of the height at most and scroll inside it: the table
+   keeps the rest. Sized to their content they took the height first, and a tall detail left the table none. */
 @container oui-files (max-width: 980px) {
-  .oui-files-grid { grid-template-columns: 208px minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; }
+  .oui-files-grid { grid-template-columns: 208px minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) fit-content(40%); }
   .oui-files-grid[data-flat] { grid-template-columns: minmax(0, 1fr); }
   .oui-files-detail { grid-column: 1 / -1; grid-template-columns: 160px minmax(0, 1fr); border-inline-start: 0; border-top: 1px solid var(--oui-border); }
   .oui-files-detail > .oui-files-preview { grid-row: span 3; }
   .oui-files-detail > .oui-empty { grid-column: 1 / -1; padding-block: var(--oui-s3); }
 }
 @container oui-files (max-width: 620px) {
-  .oui-files-grid { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto; }
-  .oui-files-grid[data-flat] { grid-template-rows: minmax(0, 1fr) auto; }
-  .oui-files-rail { border-inline-end: 0; border-bottom: 1px solid var(--oui-border); max-height: 168px; }
+  .oui-files-grid { grid-template-columns: minmax(0, 1fr); grid-template-rows: fit-content(26%) minmax(0, 1fr) fit-content(30%); }
+  .oui-files-grid[data-flat] { grid-template-rows: minmax(0, 1fr) fit-content(40%); }
+  .oui-files-rail { border-inline-end: 0; border-bottom: 1px solid var(--oui-border); }
   .oui-files-table th:nth-child(4), .oui-files-table td:nth-child(4) { display: none; }
 }
 </style>

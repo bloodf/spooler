@@ -5,6 +5,10 @@ Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); 
 
 ## [Unreleased]
 
+### Changed
+
+- Shared Orca UI foundation 5.0.8 (Vue 3.5.46, lucide-static 1.77.0); no visible change.
+
 ## [0.32.3] - 2026-11-20
 
 ### Fixed

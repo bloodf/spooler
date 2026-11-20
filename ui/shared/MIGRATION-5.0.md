@@ -1,6 +1,6 @@
 # Migrating a plugin to Orca UI foundation 5.0
 
-Current release: **5.0.5** (5.0.4 with a state chip kept whole in a narrow `OuiPanel` header, see README; 5.0.4 was 5.0.3 with `OuiPanel`'s header wrapping inside its panel in narrow places, see README; 5.0.3 was 5.0.2 with what the Kobra and U1 migrations found: file browser fixes, a `#folder` slot, `sort` and read-only folders; opt-in `inputId`, `error`, `validate` and `offAlways` on `OuiSetpoint`; `frame`, `fit` and `#picture` on `OuiCamera`; `hintId` on `OuiPanel`; see README; 5.0.2 was 5.0.1 with `OuiHint` fixed: a closed bubble takes no room and an open one stays inside the window, see README; 5.0.1 was 5.0.0 plus the file backend adapter: `useFileBackend`, and `OuiFileBrowser` for storages with no folders or no move). Nothing 5.0.0 pages rely on changes.
+Current release: **5.0.8** (5.0.7 with Vue 3.5.46 and lucide-static 1.77.0, no source changes; 5.0.7 was 5.0.6 with `OuiFileBrowser` keeping room for its table when the detail is stacked under it, and its `#toolbar` slot spanning the bar when there are no folders, see README; 5.0.6 was 5.0.5 with `OuiSetpoint` safe to type in while the printer's status ticks, decimals, `locale`, `inputProps` and accessible names on it, and the file browser keeping focus after a slow delete, see README; 5.0.5 was 5.0.4 with a state chip kept whole in a narrow `OuiPanel` header, see README; 5.0.4 was 5.0.3 with `OuiPanel`'s header wrapping inside its panel in narrow places, see README; 5.0.3 was 5.0.2 with what the Kobra and U1 migrations found: file browser fixes, a `#folder` slot, `sort` and read-only folders; opt-in `inputId`, `error`, `validate` and `offAlways` on `OuiSetpoint`; `frame`, `fit` and `#picture` on `OuiCamera`; `hintId` on `OuiPanel`; see README; 5.0.2 was 5.0.1 with `OuiHint` fixed: a closed bubble takes no room and an open one stays inside the window, see README; 5.0.1 was 5.0.0 plus the file backend adapter: `useFileBackend`, and `OuiFileBrowser` for storages with no folders or no move). Nothing 5.0.0 pages rely on changes.
 
 For the agent rolling 5.0 out to one plugin. `DESIGN.md` is the specification (what a page should look like and why); this file is the procedure. The reference screen for each page is in `ui-foundation/gallery/screens/` and its screenshots in `ui-foundation/evidence-5.0.0/after/`: build the plugin's page until it matches its reference, with the plugin's real data.
 
@@ -140,6 +140,10 @@ Reference: `gallery/screens/KobraDash.vue`, `U1Dash.vue`.
   - `error` is a line under the row from the page (the printer refused the target, the command was not confirmed). The page sets and clears it.
   - `input-id` gives the field an id and makes the row's label a `<label>` for it.
   - `off-always` keeps Off enabled while there is no target.
+  - To refuse a value while it is typed, not at Set: bind `v-model:draft` (a number at every keystroke, null when the field is blank), and from it set `invalid` (Set is disabled and the field marked at once) and `error` (the reason). `error-id` gives the reason line an id the page chooses. `validate` is still the place for a confirmation at Set, and still what turns the field's clamping off.
+  - `max-fraction-digits` lets the field take decimals (default: whole numbers) and `locale` sets the language they are typed in (a decimal comma in pt-BR). `input-props` passes anything else to PrimeVue's InputNumber: a key or paste handler, `step`, a test hook. Give it values that stay the same between renders (handlers defined once, not inline), or the field redraws on every render.
+  - `set-aria-label` and `off-aria-label` name the two buttons when a page has several rows ("Set T1 to the typed temperature"); `data-set` and `data-off` are unchanged.
+  - What is typed counts at once: Set is enabled from the first digit and sends what the field shows, and a status update while the user types does not touch the field. Do not work around either in the page.
   - The reason line is `role="alert"`, the field is `aria-invalid` and described by it; `describedby` (the busy banner) is on the field as well.
 - **Controls module**: one `OuiPanel` with `.oui-controls` inside, and one `.oui-controls-group` per task, each starting with `<p class="oui-label">`. Heaters stay `OuiSetpoint`; fan, speed, light, cover and mode rows become `OuiControlRow` (`label`, `icon`, `tone`, `value`, and the control in its slot). This replaces "Bed and chamber" and "Temperature and air": U1's bed goes under Temperature, speed, top cover and light under Machine; Kobra's nozzle and bed under Temperature, fan, speed mode and light under Machine.
 - **Side column** (`.oui-dash-side`): Camera, then Move (Kobra), then Printer.
@@ -191,7 +195,7 @@ const files = useFileBackend(backend, {
 </OuiFileBrowser>
 ```
 
-`useFileBackend` reads the folders and the open folder's files, shows skeleton rows while it waits, shows the failure with a "Try again" button when a read fails, runs `move` and `delete`, holds the bulk actions while one is under way, and reads the storage again afterwards whether it succeeded or not. A slow answer for a folder the user has left is dropped. Do not reimplement any of that in the page. `files.selected`, `files.folder`, `files.files`, `files.loading`, `files.busy` and `files.error` can be read, `files.selected` can be set, and `files.reload()` reads again (call it after an upload, a rename, a new folder).
+`useFileBackend` reads the folders and the open folder's files (side by side when the open folder is known), shows skeleton rows while it waits, shows the failure with a "Try again" button when a read fails, runs `move` and `delete`, holds the bulk actions while one is under way, and reads the storage again afterwards whether it succeeded or not. A slow answer for a folder the user has left is dropped. Do not reimplement any of that in the page. `files.selected`, `files.folder`, `files.files`, `files.loading`, `files.busy` and `files.error` can be read, `files.selected` can be set, and `files.reload()` reads again (call it after an upload, a rename, a new folder).
 
 The adapter's four methods:
 
@@ -219,7 +223,8 @@ What the component offers follows from the adapter, with nothing to configure:
 - A page may change the listed files in place, for example to fill in `thumb` as thumbnails arrive: `files.files` is writable and reactive, rows keep `[data-file="<id>"]`, and the selection is kept as long as the ids stay. `files.reload({ quiet: true })` reads again without the skeleton rows.
 - `sort`: the order the list opens in, `{ key: 'name' | 'size' | 'modified', down?: boolean }`. The default is by name; a list that should read newest first passes `{ key: 'modified', down: true }`. The user can still sort by any column.
 - The last column is 168 px: enough for a short date and time ("11/18/26, 7:15 PM", "18/11/2026, 19:15"). Do not put more than that in `modifiedText`.
-- The detail pane scrolls when a file's facts and actions are taller than the browser; a long `#actions` slot is fine.
+- The detail pane scrolls when a file's facts and actions are taller than the browser; a long `#actions` slot is fine. Under 980 px, where it sits under the table, it gets at most 40 % of the height (5.0.7): do not set the grid's rows from the plugin.
+- With no folders, `#toolbar` is the whole bar, from its left: put `<span class="oui-spacer" />` between the items that should sit at each end. Do not style `.oui-files-tools`.
 - After a delete or a move, focus stays in the list. Do not move focus yourself.
 - `readonly` while the printer cannot take file changes (printing): the bulk actions are disabled and point at the page's banner with `describedby`.
 - Set its height: `--oui-files-height` on a parent (the reference uses the window less the bars above). Without it the component is as tall as its content, at least 360 px.
@@ -256,8 +261,8 @@ Built size of each shared component (`node scripts/sizes.mjs`): one minified bui
 | OuiConfirm | 2.1 | 1.0 | 1.7 | 0.8 |
 | OuiControlRow | 3.6 | 1.4 | new | new |
 | OuiEmpty | 5.1 | 1.9 | 5.2 | 1.9 |
-| OuiFileBrowser | 36.6 | 10.1 | new | new |
-| useFileBackend | 1.7 | 0.8 | new | new |
+| OuiFileBrowser | 36.8 | 10.1 | new | new |
+| useFileBackend | 1.9 | 0.8 | new | new |
 | OuiFormRow | 2.0 | 0.9 | 2.0 | 0.9 |
 | OuiFormSection | 8.6 | 3.0 | 5.8 | 1.9 |
 | OuiHint | 4.5 | 1.9 | new | new |
@@ -269,7 +274,7 @@ Built size of each shared component (`node scripts/sizes.mjs`): one minified bui
 | OuiPanel | 7.4 | 2.6 | 4.6 | 1.6 |
 | OuiReadout | 4.9 | 1.7 | 5.0 | 1.8 |
 | OuiRequirement | 8.4 | 2.9 | 8.7 | 3.0 |
-| OuiSetpoint | 11.5 | 3.8 | 10.2 | 3.3 |
+| OuiSetpoint | 12.4 | 4.1 | 10.2 | 3.3 |
 | OuiSettings | 11.8 | 4.1 | 11.9 | 4.1 |
 | OuiSlot | 105.1 | 74.8 | 105.7 | 74.9 |
 | OuiSpark | 3.8 | 1.5 | 3.8 | 1.5 |
@@ -280,7 +285,7 @@ Built size of each shared component (`node scripts/sizes.mjs`): one minified bui
 | OuiToastHost | 8.1 | 3.0 | 8.1 | 3.1 |
 | OuiToolbar | 1.2 | 0.6 | 1.2 | 0.6 |
 
-What a 4.2.2 page gains by updating: `OuiPanel` now carries `OuiHint` (about 2.5 kB raw, once per page). A printer plugin that adopts the Files tab adds `OuiFileBrowser` and `useFileBackend`, 38.3 kB raw together, including `OuiConfirm`, `OuiEmpty`, `OuiKeyValue`, `OuiThumb` and `OuiIcon`, which those pages already have; it uses PrimeVue's Button, Select and Dialog, which they also already import. `OuiSpool` and `OuiSlot` are the eight spool renders (about 72 kB), unchanged. Measure the plugin's real page against its limit (90 % of 1,572,864 bytes) after migrating; these figures are not a substitute.
+What a 4.2.2 page gains by updating: `OuiPanel` now carries `OuiHint` (about 2.5 kB raw, once per page). A printer plugin that adopts the Files tab adds `OuiFileBrowser` and `useFileBackend`, 38.7 kB raw together, including `OuiConfirm`, `OuiEmpty`, `OuiKeyValue`, `OuiThumb` and `OuiIcon`, which those pages already have; it uses PrimeVue's Button, Select and Dialog, which they also already import. `OuiSpool` and `OuiSlot` are the eight spool renders (about 72 kB), unchanged. Measure the plugin's real page against its limit (90 % of 1,572,864 bytes) after migrating; these figures are not a substitute.
 
 ## 8. Known limits
 

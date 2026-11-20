@@ -229,7 +229,7 @@ One surface, three panes: the folder tree, the open folder as a table, and what 
 - **Detail**: one file selected shows its picture, name, facts and the page's actions for it (Print is the page's primary); several show the count and their names; none says so in one line. It scrolls when it is taller than the browser.
 - **Order**: by name unless the page asks otherwise (`sort`); a printer's own list usually opens newest first.
 - **Focus**: after a delete or a move it stays in the list, on the first row.
-- Under 980 px the detail goes under the table; under 620 px the tree goes above it.
+- Under 980 px the detail goes under the table; under 620 px the tree goes above it. Stacked, the detail and the tree get a share of the height at most and scroll inside it, so the table always keeps room for its rows.
 
 One component, the same in U1 Control and Kobra Control. The storage is behind an adapter (`OuiFileBackend`: `folders()`, `list(folder)`, `remove(ids)`, `move(ids, to)`), and `useFileBackend(adapter)` gives the component its state and handlers, so reading, failing, retrying and re-reading after a change behave the same in both. What the storage cannot do is left out of the adapter and the page stops offering it, with no hole where it was:
 
@@ -262,7 +262,7 @@ Import each from `shared/src/components` (or its own `.vue` file).
 | `OuiHint` | **new.** The (i): opens on hover and focus, closes on Escape, and is the button's description for a screen reader. Closed it takes no room; open it places itself inside the window, whichever edge its button is near |
 | `OuiStatus` | a state, as a tinted chip (default) or `plain` coloured text |
 | `OuiJob` | the compact status block: picture, state, name, percentage or count, bar, stats, actions. `compact` for the dock; `stale` is grey. `hero` is accepted and ignored |
-| `OuiSetpoint` | a controlled value: reading in its phase colour, target, chart, input, Set, Off. Opt-in: `validate` (refuse a value, with a reason line), `error`, `inputId`, `offAlways` |
+| `OuiSetpoint` | a controlled value: reading in its phase colour, target, chart, input, Set, Off. Opt-in: `validate` (refuse a value at Set, with a reason line), `v-model:draft` with `invalid` (refuse it while it is typed), `error`, `inputId`, `offAlways`, decimals and `locale` |
 | `OuiControlRow` | **new.** A line of a controls module: icon, label, current value, control. With `.oui-controls` and `.oui-controls-group` |
 | `OuiCamera` | **new.** The 16:9 picture box with its live, off, loading and error states; `fit`, a `frame` event per picture, `#picture` for the page's own player |
 | `OuiSlot` | a toolhead or slot as a neutral card: a 4 px strip of the filament's colour, badge and state, drawn spool, filament, amount with its level, extra rows, actions; `active` |

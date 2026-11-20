@@ -43,13 +43,20 @@ export function useFileBackend(backend: OuiFileBackend, options: OuiFileBackendO
     if (!quiet) loading.value = true;
     try {
       // ponytail: the whole tree in one call, read again after every change; make it lazy per folder if a storage is too big for that.
+      let list: OuiFile[] | undefined;
       if (!filesOnly) {
+        // The open folder's files are asked for alongside the tree, not after it: a tree that takes a request per folder
+        // does not hold the list back. If the open folder turns out to be gone, its answer is dropped and the new one read.
+        const asked = folder.value;
+        const early = backend.folders && asked ? backend.list(asked) : undefined;
+        early?.catch(() => { /* judged below, or dropped with the folder */ });
         const tree = backend.folders ? await backend.folders() : [];
         if (mine !== turn) return;
         folders.value = tree;
         if (!tree.some(f => f.id === folder.value)) folder.value = (tree.find(f => !f.parent) ?? tree[0])?.id ?? '';
+        if (early && folder.value === asked) list = await early;
       }
-      const list = await backend.list(folder.value);
+      list ??= await backend.list(folder.value);
       if (mine !== turn) return;
       files.value = list; error.value = null;
     } catch (e) {
