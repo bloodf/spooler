@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import Button from 'primevue/button';
-import { OuiPanel } from '../../shared/src/components';
-import { printer } from '../../shared/src/icons';
+import { OuiPanel } from '@orca-plugins/ui-foundation/src/components';
+import { printer } from '@orca-plugins/ui-foundation/src/icons';
 import SpoolSlot from './SpoolSlot.vue';
 import { m } from '../state/main';
 import { showSpool } from '../state/menu';

@@ -3,7 +3,7 @@ import * as bridge from '../core/bridge';
 import { boot } from '../core/boot';
 import { t } from '../core/i18n';
 import { autoRefresh, cleanEvery, userBusy } from '../core/autorefresh';
-import { useToast } from '../../shared/src/components';
+import { useToast } from '@orca-plugins/ui-foundation/src/components';
 import { computeDupes, type Spool } from '../logic/spools';
 import { computeInUse, liveSig, type LivePrinter, type ManualPrinter, type SlicePick, type Words } from '../logic/printers';
 import type { RfidOffer } from '../logic/rfid';

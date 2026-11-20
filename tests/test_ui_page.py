@@ -63,7 +63,7 @@ class Embedded(unittest.TestCase):
         notices = sp.UI_LICENSES
         for name, marker in (("Vue.txt", "Yuxi (Evan) You"), ("PrimeVue.txt", "PrimeTek"), ("PrimeUIX.txt", "PrimeUI License"),
                              ("Lucide.txt", "ISC License"), ("Manrope.txt", "SIL OPEN FONT LICENSE")):
-            text = (UI / "shared" / "licenses" / name).read_text(encoding="utf-8").replace("\r\n", "\n").rstrip("\n")
+            text = (UI / "node_modules" / "@orca-plugins" / "ui-foundation" / "licenses" / name).read_text(encoding="utf-8").replace("\r\n", "\n").rstrip("\n")
             self.assertIn(f"===== {name} =====\n" + text, notices, name)
             self.assertIn(marker, notices, name)
 

@@ -3,7 +3,7 @@
 
 The served page goes to plugin/spooler/app.html, a plain file the wheel ships next to the code (spooler/app.html) and
 ui_page() reads. plugin/spooler/ui_build.py keeps a generated block between the BEGIN/END markers: the page's SHA-256 and size,
-and the licence texts of what the page bundles (ui/shared/licenses: Vue, PrimeVue, PrimeUIX, the Lucide icons and the
+and the licence texts of what the page bundles (ui/node_modules/@orca-plugins/ui-foundation/licenses: Vue, PrimeVue, PrimeUIX, the Lucide icons and the
 Manrope font) as UI_LICENSES, since those licences ask for their notice in every copy. Same input, same bytes.
 `--check` fails when the block or app.html is missing or differs from the built page (CI and tests use it).
 
@@ -30,7 +30,7 @@ ROOT = Path(__file__).resolve().parent.parent
 PLUGIN = ROOT / "plugin" / "spooler" / "ui_build.py"
 SERVED = ROOT / "plugin" / "spooler" / "app.html"
 PAGE = ROOT / "ui" / "dist" / "spooler-ui.html"
-LICENSES = ROOT / "ui" / "shared" / "licenses"
+LICENSES = ROOT / "ui" / "node_modules" / "@orca-plugins" / "ui-foundation" / "licenses"
 LOADER = ROOT / "scripts" / "page_loader.js"
 BUILD_INFO = ROOT / "ui" / "build.json"
 WEBVIEW_PAGE_LIMIT = 1_572_864   # bytes of UTF-8: WebView2's 2 MiB of base64

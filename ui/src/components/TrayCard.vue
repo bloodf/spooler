@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { OuiIcon, OuiLevel, OuiSlot, OuiStatus } from '../../shared/src/components';
-import { rfid } from '../../shared/src/icons';
+import { OuiIcon, OuiLevel, OuiSlot, OuiStatus } from '@orca-plugins/ui-foundation/src/components';
+import { rfid } from '@orca-plugins/ui-foundation/src/icons';
 import { m } from '../state/main';
 import { t, locale } from '../core/i18n';
 import { LEVEL_KEY, formatWeight, lowLevel, originalWeight, shown, spoolFraction } from '../logic/spools';

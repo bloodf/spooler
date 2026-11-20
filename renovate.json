@@ -11,7 +11,17 @@
     "**/__tests__/**",
     "**/test/**",
     "**/tests/**",
-    "**/__fixtures__/**",
-    "**/ui/shared/**"
+    "**/__fixtures__/**"
+  ],
+  "packageRules": [
+    {
+      "matchPackageNames": [
+        "@orca-plugins/ui-foundation"
+      ],
+      "automerge": true,
+      "automergeType": "pr",
+      "platformAutomerge": false,
+      "automergeStrategy": "merge-commit"
+    }
   ]
 }

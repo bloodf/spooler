@@ -1,4 +1,4 @@
-import { applyOrcaTheme, type OrcaTheme } from '../../shared/src';
+import { applyOrcaTheme, type OrcaTheme } from '@orca-plugins/ui-foundation/src';
 
 // The host paints the page through --orca-bg (as the previous pages assumed). We read the resolved colour and
 // follow it; without it the system preference decides. Changes are picked up while the page runs (B-11).

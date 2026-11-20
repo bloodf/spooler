@@ -4,8 +4,8 @@
 // to the page's heading when a page is opened, and a page with an invalid field is flagged in the list.
 import Button from "primevue/button";
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from "vue";
-import { OuiIcon, OuiSettings, type OuiSettingsSection } from "../../shared/src/components";
-import { chevronRight } from "../../shared/src/icons";
+import { OuiIcon, OuiSettings, type OuiSettingsSection } from "@orca-plugins/ui-foundation/src/components";
+import { chevronRight } from "@orca-plugins/ui-foundation/src/icons";
 
 const props = defineProps<{ sections: OuiSettingsSection[]; navLabel: string; backLabel: string; errorLabel: string }>();
 const inner = ref<{ select: (id: string) => void }>();

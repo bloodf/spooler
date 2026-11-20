@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import Button from 'primevue/button';
-import { OuiHint, OuiStatus } from '../../shared/src/components';
+import { OuiHint, OuiStatus } from '@orca-plugins/ui-foundation/src/components';
 import TrayCard from './TrayCard.vue';
 import SpoolPicker from './SpoolPicker.vue';
 import { m } from '../state/main';

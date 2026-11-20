@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { OuiLevel, OuiSlot, OuiStatus } from '../../shared/src/components';
+import { OuiLevel, OuiSlot, OuiStatus } from '@orca-plugins/ui-foundation/src/components';
 import { m } from '../state/main';
 import { t, locale } from '../core/i18n';
 import { LEVEL_KEY, formatWeight, leftLabel, levelTone, lowLevel, originalWeight, percentLeft, shown, spoolFraction, spoolPaint, type Spool } from '../logic/spools';

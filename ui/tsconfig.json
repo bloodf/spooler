@@ -12,5 +12,5 @@
     "types": ["vite/client"],
     "noEmit": true
   },
-  "include": ["src/**/*.ts", "src/**/*.vue", "shared/src/**/*.ts"]
+  "include": ["src/**/*.ts", "src/**/*.vue"]
 }

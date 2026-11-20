@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed, reactive } from 'vue';
 import Button from 'primevue/button';
-import { OuiIcon, OuiJob, OuiPanel, OuiReadout, OuiStatus, type OuiState } from '../../shared/src/components';
-import { calendar, clock, hourglass, layers, x } from '../../shared/src/icons';
+import { OuiIcon, OuiJob, OuiPanel, OuiReadout, OuiStatus, type OuiState } from '@orca-plugins/ui-foundation/src/components';
+import { calendar, clock, hourglass, layers, x } from '@orca-plugins/ui-foundation/src/icons';
 import { m } from '../state/main';
 import { t, tn, fmt } from '../core/i18n';
 import { LIVE_STALE, PROG_LIVE, PROG_STATES, type LivePrinter } from '../logic/printers';

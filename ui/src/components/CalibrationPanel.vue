@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import Button from 'primevue/button';
-import { OuiIcon, OuiPanel } from '../../shared/src/components';
-import { save as saveIcon, spoolman } from '../../shared/src/icons';
+import { OuiIcon, OuiPanel } from '@orca-plugins/ui-foundation/src/components';
+import { save as saveIcon, spoolman } from '@orca-plugins/ui-foundation/src/icons';
 import { m, answerCalibration, pending } from '../state/main';
 import { t, tMaybe, fmt } from '../core/i18n';
 import type { MessageKey } from '../core/messages';
