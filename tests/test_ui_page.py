@@ -1,4 +1,4 @@
-"""The compiled Vue page (ui/ -> embedded in spooler_any.py) and the logic it runs.
+"""The compiled Vue page (ui/ -> plugin/spooler/app.html, shipped next to the code) and the logic it runs.
 
 * The embedded block matches ui/dist/spooler-ui.html (when built) and decompresses to the recorded hash.
 * The page as shipped (decompressed from the plugin, boot filled like page_html does) runs its behaviour
@@ -46,7 +46,7 @@ def run_logic(case, body: str):
 
 
 class Embedded(unittest.TestCase):
-    def test_block_decompresses_to_the_recorded_page(self):
+    def test_app_html_is_the_recorded_page(self):
         page = sp.ui_page()
         self.assertEqual(hashlib.sha256(page.encode("utf-8")).hexdigest(), sp.UI_PAGE_SHA256)
         self.assertEqual(len(page.encode("utf-8")), sp.UI_PAGE_BYTES)
@@ -58,7 +58,7 @@ class Embedded(unittest.TestCase):
         self.assertIn("__VUE_OPTIONS_API__: true", (UI / "vite.config.ts").read_text(encoding="utf-8"))
 
     def test_licences_of_the_bundled_code_ship_in_the_plugin_file(self):
-        # The release is spooler_any.py alone; the page bundles Vue, PrimeVue (PrimeUIX), Lucide icons (ISC) and the
+        # OrcaSlicer installs the package, not its dist-info; the page bundles Vue, PrimeVue (PrimeUIX), Lucide icons (ISC) and the
         # Manrope font (SIL OFL 1.1), whose licences ask for their notice in every copy.
         notices = sp.UI_LICENSES
         for name, marker in (("Vue.txt", "Yuxi (Evan) You"), ("PrimeVue.txt", "PrimeTek"), ("PrimeUIX.txt", "PrimeUI License"),

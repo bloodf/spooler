@@ -54,7 +54,7 @@ jobs:
         run: bash scripts/ci_chrome_sandbox.sh
       - name: Check version numbers agree
         run: python scripts/check_version.py
-      - name: Build the plugin file (spooler_any.py) and wheel
+      - name: Build the plugin wheel (spooler_any.whl)
         run: python scripts/build.py
       - name: Unit tests
         env:
@@ -77,7 +77,7 @@ jobs:
         working-directory: ui
         run: npm ci --ignore-scripts && npm run build
       - name: Committed page matches the build
-        run: git diff --exit-code -- plugin/spooler/spooler_any.py ui/build.json
+        run: git diff --exit-code -- plugin/spooler/spooler_any.py plugin/spooler/app.html ui/build.json
 
   lint:
     name: Lint

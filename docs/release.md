@@ -2,8 +2,8 @@
 
 ## Cutting a release
 
-1. Bump the version at the top of `plugin/spooler/spooler_any.py` and in `ui/package.json` and its lockfile, date the CHANGELOG section, and rebuild the embedded page with `npm --prefix ui run build`.
-2. Push a `v<version>` tag. `release.yml` runs the tests, builds every OS file and opens a draft GitHub release with the notes from CHANGELOG.md.
+1. Bump the version at the top of `plugin/spooler/spooler_any.py` and in `ui/package.json` and its lockfile, date the CHANGELOG section, and rebuild the page with `npm --prefix ui run build` (it writes `plugin/spooler/app.html`).
+2. Push a `v<version>` tag. `release.yml` runs the tests, builds `spooler_any.whl` and opens a draft GitHub release with the notes from CHANGELOG.md.
 3. Publish the draft. `publish-orcacloud.yml` then publishes that version to Orca Cloud.
 
 The draft release also carries the 512 px store tile, copied from `assets/orca-cloud/spooler-tile.png`.

@@ -48,7 +48,7 @@ jobs:
         working-directory: ui
         run: npm ci --ignore-scripts && npm run build
       - name: Committed page matches the build
-        run: git diff --exit-code -- plugin/spooler/spooler_any.py ui/build.json
+        run: git diff --exit-code -- plugin/spooler/spooler_any.py plugin/spooler/app.html ui/build.json
 
       - name: Check the tag matches the plugin version
         run: python scripts/check_version.py "$TAG"
@@ -58,7 +58,7 @@ jobs:
           CHROME: ${{ steps.chrome.outputs.chrome-path }}
         run: python -m unittest discover -s tests
 
-      - name: Build the plugin for every OS
+      - name: Build the plugin wheel (spooler_any.whl)
         run: python scripts/build.py
 
       - name: Changelog section for this version
@@ -80,9 +80,7 @@ jobs:
           metadata="$(jq -cn --arg version "${TAG#v}" --rawfile changelog notes.md \
             '{version: $version, changelog: ($changelog | .[0:4000])}')"
           args=(--form-string "metadata=$metadata")
-          for file in dist/*.py; do
-            args+=(-F "files=@$file")
-          done
+          args+=(-F "files=@dist/spooler_any.whl")
           status="$(curl -sS -o response.json -w '%{http_code}' \
             -H "Authorization: Bearer $oidc_token" \
             "${args[@]}" \

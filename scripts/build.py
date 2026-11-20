@@ -1,17 +1,14 @@
 #!/usr/bin/env python3
-"""Build the plugin file Orca Cloud publishes into dist/.
+"""Build the plugin Orca Cloud publishes into dist/: one pure-Python wheel, spooler_any.whl.
 
-The plugin is a single pure-Python source file that runs on every OS, so the release is one
-universal file, spooler_any.py ("any" is Orca Cloud's suffix for every platform). Uploading six
-identical per-OS copies made Orca Cloud's automated permission review fail with
-SECURITY_SCAN_UNAVAILABLE; one file is what the other plugins publish. A per-OS copy can still be
-built by hand; it differs only in its filename suffix and the BUILD_TARGET it reports in the log.
+The wheel holds the package `spooler`: the plugin code (plugin/spooler/spooler_any.py as spooler/__init__.py) and the
+compiled page as a plain file (plugin/spooler/app.html as spooler/app.html, written by scripts/embed_ui.py). It runs on
+every OS, so the release is one universal file ("any" is Orca Cloud's suffix for every platform). OrcaSlicer takes the
+name and version from METADATA. Zip timestamps are fixed, so equal sources give equal bytes.
 
-    python scripts/build.py                        # spooler_any.py and the wheel
-    python scripts/build.py --target linux_arm64   # one per-OS copy instead
+    python scripts/build.py
 """
 
-import argparse
 import base64
 import hashlib
 import re
@@ -24,33 +21,21 @@ import check_version
 
 ROOT = Path(__file__).resolve().parent.parent
 DIST = ROOT / "dist"
+PAGE = ROOT / "plugin" / "spooler" / "app.html"
 MARKER = 'BUILD_TARGET = "any"\n'
-DEFAULT_TARGETS = ("any",)
-TARGETS = (
-    "any",
-    "win_x86_64",
-    "win_arm64",
-    "linux_x86_64",
-    "linux_arm64",
-    "macosx_arm64",
-    "macosx_x86_64",
-)
 
 
-def build(targets):
+def build():
     check_version.main(["build.py"])
     text = check_version.PLUGIN.read_text(encoding="utf-8")
     if text.count(MARKER) != 1:
         sys.exit(f"error: expected exactly one {MARKER.strip()!r} line in the plugin")
+    if not PAGE.exists():
+        sys.exit(f"error: {PAGE.relative_to(ROOT)} missing; run `npm ci && npm run build` in ui/")
     if DIST.exists():
         shutil.rmtree(DIST)
     DIST.mkdir()
-    for target in targets:
-        out = DIST / f"spooler_{target}.py"
-        stamped = text.replace(MARKER, f'BUILD_TARGET = "{target}"\n')
-        out.write_text(stamped, encoding="utf-8", newline="\n")
-        print(f"built {out.relative_to(ROOT)}")
-    out = build_wheel(text)
+    out = build_wheel(text, PAGE.read_bytes())
     print(f"built {out.relative_to(ROOT)}")
 
 
@@ -64,14 +49,13 @@ def _record_line(name, data):
     return f"{name},sha256={digest},{len(data)}"
 
 
-def build_wheel(text):
-    """One pure-Python wheel (py3-none-any) for every OS, holding the same plugin file as a
-    package. OrcaSlicer takes its name and version from METADATA instead of the PEP 723 block.
-    Not published yet: the per-OS .py files stay the release until it is tried in OrcaSlicer."""
+def build_wheel(text, page):
+    """One pure-Python wheel (py3-none-any) for every OS: the plugin file as a package, and its page next to it."""
     version = _header(text, "version")
     dist_info = f"spooler-{version}.dist-info"
     files = {
         "spooler/__init__.py": text.encode("utf-8"),
+        "spooler/app.html": page,
         f"{dist_info}/METADATA": (
             "Metadata-Version: 2.1\n"
             f"Name: {_header(text, 'name')}\n"
@@ -88,7 +72,7 @@ def build_wheel(text):
     }
     record = [_record_line(name, data) for name, data in files.items()] + [f"{dist_info}/RECORD,,"]
     files[f"{dist_info}/RECORD"] = ("\n".join(record) + "\n").encode("utf-8")
-    out = DIST / f"spooler-{version}-py3-none-any.whl"
+    out = DIST / "spooler_any.whl"
     with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as wheel:
         for name, data in files.items():
             info = zipfile.ZipInfo(name, date_time=(2026, 1, 1, 0, 0, 0))  # same bytes on every build
@@ -98,12 +82,5 @@ def build_wheel(text):
     return out
 
 
-def main():
-    parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-    parser.add_argument("--target", action="append", choices=TARGETS, help="build only this target")
-    args = parser.parse_args()
-    build(tuple(args.target) if args.target else DEFAULT_TARGETS)
-
-
 if __name__ == "__main__":
-    main()
+    build()

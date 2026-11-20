@@ -1,5 +1,5 @@
 {
-  "file": "ui/dist/spooler-ui.html, served as embedded in plugin/spooler/spooler_any.py",
+  "file": "ui/dist/spooler-ui.html, served as plugin/spooler/app.html",
   "sha256": "050a36164a8aead6539a412c808d5ef360f7c678406faba88e755ce99ddae59f",
   "bytes": 703350,
   "gzip": 495756
