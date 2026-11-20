@@ -871,6 +871,17 @@ test('network printer: PrusaLink link form, toolheads, and a slice-filled toolhe
   assert(q('.pp [data-spool="1"]'), 'the toolhead shows the spool the slice put on it');
   assert(vis(q('.pp')).includes('T1'), 'toolheads are named T1, T2');
 `);
+test('a printer found from a preset stays listed when its host is not one Spooler reads, and says why', `
+  const fake = {id: 'auto-127-0-0-1-7125', name: 'Snapmaker U1', auto: true, kind: 'moonraker', ip: 'http://127.0.0.1:7125', units: [], has_code: true};
+  await spools(SPOOLS, {printers: [fake], live_ok: true});
+  await tab('printer');
+  assert(text(q('.pp .oui-status')).includes('Connecting to http://127.0.0.1:7125'), 'connecting first');
+  await post({type: 'live', live: {links: {[fake.id]: 'none'}, printers: []}});
+  await spools(SPOOLS, {printers: [fake], live_ok: true});
+  await settle();
+  assert(!text(q('.pv')).includes('No printers yet'), 'not the empty state');
+  assert(text(q('.pp .oui-status')).includes('not as a Moonraker or Anycubic'), 'the card says why it is not read: ' + text(q('.pp .oui-status')));
+`);
 test('Klipper printer: hand-set gates, toolheads, slice fill switch and presets per printer', `
   const voron = {id: 'auto-v', name: 'Voron', auto: true, kind: 'moonraker', ip: 'http://10.0.0.9', units: [], has_code: true};
   const mk4 = {id: 'mk4', name: 'MK4', type: 'prusalink', ip: '10.0.0.5', has_code: true, units: [{kind: 'tool', slots: [null]}]};
@@ -1240,6 +1251,9 @@ test('wizard: open, next, blocked until tested, back, skip posts done once', `
   await click(byTest('wiz-next'));
   assert(text(byTest('wiz-count')).includes('Step 2 of 6') && byTest('wiz-next').disabled, 'blocked until tested');
   assert(q('.p-dialog #url'), 'the real source controls are in the guide');
+  // Before Save & finish, the guide says which extra fields Spooler adds to Spoolman (filament_profiles.ensure_fields).
+  const fields = text(q('.p-dialog [data-test="src-fields"]'));
+  for (const f of ['Flow ratio', 'Pressure advance', 'Max volumetric speed', 'Dried']) assert(fields.includes(f), 'names ' + f + ': ' + fields);
   await post({type: 'test_result', source: 'spoolman', ok: true, url: 'http://spoolman:7912', version: '0.9'});
   assert(!byTest('wiz-next').disabled, 'unlocked');
   await click(byTest('wiz-next'));
