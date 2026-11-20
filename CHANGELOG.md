@@ -5,6 +5,10 @@ Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); 
 
 ## [Unreleased]
 
+## [0.32.1] - 2026-11-20
+### Changed
+- Spooler now ships as one wheel, `spooler_any.whl`, instead of the single file `spooler_any.py`: the code is `spooler/__init__.py` and the page is a separate `spooler/app.html` next to it, instead of a compressed block at the end of the code. The page and everything Spooler does are unchanged. Installing from a file is now **File > Plugins > Install local plugin** with the wheel; if you installed `spooler_any.py` by hand, remove it first. Orca Cloud installs update as before.
+
 ## [0.32.0] - 2026-11-19
 ### Changed
 - New look, on the shared Orca UI foundation 5.0.5: every page uses OrcaSlicer's own greys and its teal, so Spooler reads as a part of OrcaSlicer. Spooler's magenta stays on its mark and under the open tab. Colour elsewhere says something: a state, a level (green, amber when low, red when almost empty) or a filament's own colour.
