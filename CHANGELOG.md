@@ -5,6 +5,10 @@ Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); 
 
 ## [Unreleased]
 
+## [0.32.2] - 2026-11-20
+### Changed
+- The plugin's code is split into one module per area (settings, Spoolman and Bambu Cloud, filament profiles, each printer kind, the page bridge and so on) inside the `spooler_any.whl` wheel, instead of one large file. Orca Cloud's automated review timed out on the single 560 KB file and never published 0.32.1. Spooler works exactly as before, and the page is unchanged.
+
 ## [0.32.1] - 2026-11-20
 ### Changed
 - Spooler now ships as one wheel, `spooler_any.whl`, instead of the single file `spooler_any.py`: the code is `spooler/__init__.py` and the page is a separate `spooler/app.html` next to it, instead of a compressed block at the end of the code. The page and everything Spooler does are unchanged. Installing from a file is now **File > Plugins > Install local plugin** with the wheel; if you installed `spooler_any.py` by hand, remove it first. Orca Cloud installs update as before.
