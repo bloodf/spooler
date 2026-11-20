@@ -8,7 +8,7 @@ them), and the compiled page sits next to it as `plugin/spooler/app.html`. The m
 ## The page
 
 The tab, the spool window and the Settings window show one Vue 3 + PrimeVue 5 page (the shared Orca UI
-foundation 5.0.8, vendored in `ui/shared/` with its licences, Lucide icons and the Manrope font included). `ui/` builds it into a single offline HTML file; `scripts/embed_ui.py`
+foundation 5.0.8, the `@orca-plugins/ui-foundation` dependency pinned to a tag of github.com/bloodf/orca-ui-foundation, with its licences, Lucide icons and the Manrope font included). `ui/` builds it into a single offline HTML file; `scripts/embed_ui.py`
 writes it to `plugin/spooler/app.html`, which the wheel ships as `spooler/app.html` and `ui_page()` reads, and records
 its hash, size and the bundled licences in `plugin/spooler/ui_build.py`. The page's script is served deflated and
 base64-encoded and unpacked in the page by `scripts/page_loader.js`: the raw page is about 1.6 MB, over the 1.5 MB

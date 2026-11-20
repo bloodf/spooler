@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref } from 'vue';
 import InputText from 'primevue/inputtext';
-import { OuiHint, OuiSpool } from '../../shared/src/components';
+import { OuiHint, OuiSpool } from '@orca-plugins/ui-foundation/src/components';
 import { m } from '../state/main';
 import { t, locale } from '../core/i18n';
 import { formatWeight, shown, spoolDirection, spoolFraction, spoolPaint } from '../logic/spools';

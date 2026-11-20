@@ -2,7 +2,7 @@
 import Dialog from 'primevue/dialog';
 import Button from 'primevue/button';
 import InputText from 'primevue/inputtext';
-import { OuiConfirm } from '../../shared/src/components';
+import { OuiConfirm } from '@orca-plugins/ui-foundation/src/components';
 import { dialog, close, restoreFocus } from '../core/dialog';
 import { t } from '../core/i18n';
 

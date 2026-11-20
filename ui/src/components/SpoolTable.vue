@@ -2,8 +2,8 @@
 import { computed } from 'vue';
 import Column from 'primevue/column';
 import DataTable from 'primevue/datatable';
-import { OuiIcon, OuiLevel, OuiSpool, OuiSwatch } from '../../shared/src/components';
-import { chevronDown, chevronRight, edit, mapPin } from '../../shared/src/icons';
+import { OuiIcon, OuiLevel, OuiSpool, OuiSwatch } from '@orca-plugins/ui-foundation/src/components';
+import { chevronDown, chevronRight, edit, mapPin } from '@orca-plugins/ui-foundation/src/icons';
 import SpoolChips from './SpoolChips.vue';
 import { boot } from '../core/boot';
 import { m, dupes } from '../state/main';

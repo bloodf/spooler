@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import Button from 'primevue/button';
-import { OuiEmpty, OuiHint, OuiIcon, OuiPageHeader, OuiPanel } from '../../shared/src/components';
-import { plus, printer } from '../../shared/src/icons';
+import { OuiEmpty, OuiHint, OuiIcon, OuiPageHeader, OuiPanel } from '@orca-plugins/ui-foundation/src/components';
+import { plus, printer } from '@orca-plugins/ui-foundation/src/icons';
 import ProgressPanel from './ProgressPanel.vue';
 import PrinterPanel from './PrinterPanel.vue';
 import LinkedPanel from './LinkedPanel.vue';

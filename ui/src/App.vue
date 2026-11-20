@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, watch } from 'vue';
 import Button from 'primevue/button';
-import { OuiAppBar, OuiIcon, OuiStatus, OuiToastHost, type OuiState, type OuiTab } from '../shared/src/components';
-import { chart, note, printer, refresh as refreshIcon, settings, spool } from '../shared/src/icons';
+import { OuiAppBar, OuiIcon, OuiStatus, OuiToastHost, type OuiState, type OuiTab } from '@orca-plugins/ui-foundation/src/components';
+import { chart, note, printer, refresh as refreshIcon, settings, spool } from '@orca-plugins/ui-foundation/src/icons';
 import Logo from './components/Logo.vue';
 import CalibrationPanel from './components/CalibrationPanel.vue';
 import SpoolsView from './components/SpoolsView.vue';

@@ -52,6 +52,10 @@ jobs:
         env:
           CHROME: ${{ steps.chrome.outputs.chrome-path }}
         run: bash scripts/ci_chrome_sandbox.sh
+      # The licence test compares the shipped notices with the shared foundation's texts in ui/node_modules.
+      - name: Install page dependencies
+        working-directory: ui
+        run: npm ci --ignore-scripts
       - name: Check version numbers agree
         run: python scripts/check_version.py
       - name: Build the plugin wheel (spooler_any.whl)

@@ -2,7 +2,7 @@
 import { computed, watch } from 'vue';
 import Dialog from 'primevue/dialog';
 import Button from 'primevue/button';
-import { OuiSpool } from '../../shared/src/components';
+import { OuiSpool } from '@orca-plugins/ui-foundation/src/components';
 import { m, words } from '../state/main';
 import { answerPick } from '../state/printers';
 import { dialog } from '../core/dialog';

@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import Button from 'primevue/button';
-import { OuiIcon, OuiStatus } from '../../shared/src/components';
-import { rfid, store } from '../../shared/src/icons';
+import { OuiIcon, OuiStatus } from '@orca-plugins/ui-foundation/src/components';
+import { rfid, store } from '@orca-plugins/ui-foundation/src/icons';
 import * as bridge from '../core/bridge';
 import { m, inUse, plateSlots } from '../state/main';
 import { t } from '../core/i18n';

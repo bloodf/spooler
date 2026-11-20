@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import Button from 'primevue/button';
-import { OuiIcon, OuiLevel, OuiPanel, OuiSpool, OuiSwatch } from '../../shared/src/components';
-import { layers, mapPin, x } from '../../shared/src/icons';
+import { OuiIcon, OuiLevel, OuiPanel, OuiSpool, OuiSwatch } from '@orca-plugins/ui-foundation/src/components';
+import { layers, mapPin, x } from '@orca-plugins/ui-foundation/src/icons';
 import SpoolChips from './SpoolChips.vue';
 import { m } from '../state/main';
 import { closeDetail, pickSpool } from '../state/menu';
