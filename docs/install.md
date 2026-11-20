@@ -28,19 +28,10 @@ is the real one. Regenerate them with `python scripts/store_images/install_guide
 
 ## From a file
 
-1. Download `spooler_any.py` from the [latest release](https://github.com/bloodf/spooler/releases/latest).
+1. Download `spooler_any.whl` from the [latest release](https://github.com/bloodf/spooler/releases/latest).
    It is the same file on Windows, macOS and Linux.
-2. Place it in its own folder called `spooler` inside OrcaSlicer's plugin directory (one Spooler file
-   per folder):
-
-   | OS | Plugin directory |
-   |---|---|
-   | Windows | `%APPDATA%\OrcaSlicer\orca_plugins\` |
-   | macOS | `~/Library/Application Support/OrcaSlicer/orca_plugins/` |
-   | Linux | `~/.config/OrcaSlicer/orca_plugins/` |
-
-3. Restart OrcaSlicer, then tick **Activate** for Spooler.
-
-   <img src="../assets/orca-cloud/install/05-manual-install.png" alt="The orca_plugins/spooler folder with the plugin file and the three plugin directories" width="700">
+2. In OrcaSlicer, open **File > Plugins > Install local plugin** and pick the file. If you installed an older
+   `spooler_any.py` by hand (in an `orca_plugins/spooler` folder), remove it first so the two don't clash.
+3. Tick **Activate** for Spooler.
 
 The [user guide](guide.md) continues from here.

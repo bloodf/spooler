@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""Embed the compiled Vue page (ui/ -> ui/dist/spooler-ui.html, `npm run build`) into the single-file plugin.
+"""Write the compiled Vue page (ui/ -> ui/dist/spooler-ui.html, `npm run build`) next to the plugin, as it is served.
 
-The plugin ships as one .py file, so the page lives in it as a generated block: zlib (level 9) + base64, between
-the BEGIN/END markers, with its SHA-256, and the licence texts of what the page bundles (ui/shared/licenses: Vue,
-PrimeVue, PrimeUIX, the Lucide icons and the Manrope font) as UI_LICENSES, because the release is this one file
-and those licences ask for their notice in every copy. Same input, same bytes. `--check` fails when the block is missing or
-differs from the built page (CI and tests use it).
+The served page goes to plugin/spooler/app.html, a plain file the wheel ships next to the code (spooler/app.html) and
+ui_page() reads. The plugin file keeps a generated block between the BEGIN/END markers: the page's SHA-256 and size,
+and the licence texts of what the page bundles (ui/shared/licenses: Vue, PrimeVue, PrimeUIX, the Lucide icons and the
+Manrope font) as UI_LICENSES, since those licences ask for their notice in every copy. Same input, same bytes.
+`--check` fails when the block or app.html is missing or differs from the built page (CI and tests use it).
 
 The page's script goes in deflated and base64-encoded, run by scripts/page_loader.js: OrcaSlicer on Windows shows a page
 through WebView2, which takes at most 2 MiB once base64-encoded (1.5 MiB of UTF-8), and a bigger page stays blank.
@@ -28,6 +28,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 PLUGIN = ROOT / "plugin" / "spooler" / "spooler_any.py"
+SERVED = ROOT / "plugin" / "spooler" / "app.html"
 PAGE = ROOT / "ui" / "dist" / "spooler-ui.html"
 LICENSES = ROOT / "ui" / "shared" / "licenses"
 LOADER = ROOT / "scripts" / "page_loader.js"
@@ -37,7 +38,6 @@ PAGE_BUDGET = WEBVIEW_PAGE_LIMIT * 9 // 10
 MODULE = re.compile(r'<script type="module"[^>]*>(.*?)</script>', re.S)
 BEGIN = "# --- BEGIN GENERATED UI: scripts/embed_ui.py from ui/ (npm run build); do not edit ---\n"
 END = "# --- END GENERATED UI ---\n"
-WIDTH = 100
 
 
 def licenses() -> str:
@@ -73,17 +73,15 @@ def over_budget(html: str) -> str | None:
 
 def build_info(html: str) -> str:
     data = html.encode("utf-8")
-    info = {"file": "ui/dist/spooler-ui.html, served as embedded in plugin/spooler/spooler_any.py", "sha256": hashlib.sha256(data).hexdigest(),
+    info = {"file": "ui/dist/spooler-ui.html, served as plugin/spooler/app.html", "sha256": hashlib.sha256(data).hexdigest(),
             "bytes": len(data), "gzip": len(gzip.compress(data, 9, mtime=0))}
     return json.dumps(info, indent=2) + "\n"
 
 
 def block(html: str) -> str:
     data = html.encode("utf-8")
-    packed = base64.b64encode(zlib.compress(data, 9)).decode("ascii")
-    lines = "".join(f'    "{packed[i:i + WIDTH]}"\n' for i in range(0, len(packed), WIDTH))
     return (BEGIN + f'UI_PAGE_SHA256 = "{hashlib.sha256(data).hexdigest()}"\n'
-            + f"UI_PAGE_BYTES = {len(data)}\nUI_PAGE_Z64 = (\n{lines})\n" + licenses() + END)
+            + f"UI_PAGE_BYTES = {len(data)}\n" + licenses() + END)
 
 
 def current(text: str) -> str | None:
@@ -106,16 +104,18 @@ def main() -> int:
     want = block(page)
     have = current(text)
     if args.check:
-        if have != want:
-            print("error: the UI block in spooler_any.py doesn't match ui/dist/spooler-ui.html; run scripts/embed_ui.py", file=sys.stderr)
+        if have != want or not SERVED.exists() or SERVED.read_bytes() != page.encode("utf-8"):
+            print("error: plugin/spooler/app.html or the UI block in spooler_any.py doesn't match ui/dist/spooler-ui.html; "
+                  "run scripts/embed_ui.py", file=sys.stderr)
             return 1
         print("UI block matches the built page")
         return 0
     if have is None:
         sys.exit("error: no UI block markers in spooler_any.py")
     PLUGIN.write_text(text.replace(have, want), encoding="utf-8", newline="\n")
+    SERVED.write_bytes(page.encode("utf-8"))
     BUILD_INFO.write_text(build_info(page), encoding="utf-8", newline="\n")
-    print(f"embedded {PAGE.relative_to(ROOT)} ({PAGE.stat().st_size} bytes, served as {len(page.encode('utf-8'))})")
+    print(f"wrote {SERVED.relative_to(ROOT)} from {PAGE.relative_to(ROOT)} ({PAGE.stat().st_size} bytes, served as {len(page.encode('utf-8'))})")
     return 0
 
 

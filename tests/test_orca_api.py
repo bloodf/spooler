@@ -298,7 +298,7 @@ class WheelTest(unittest.TestCase):
     def setUpClass(cls):
         subprocess.run([sys.executable, str(ROOT / "scripts" / "build.py")], check=True, capture_output=True)
         version = sp.PLUGIN_VERSION
-        cls.path = ROOT / "dist" / f"spooler-{version}-py3-none-any.whl"
+        cls.path = ROOT / "dist" / "spooler_any.whl"
         cls.info = f"spooler-{version}.dist-info"
 
     def test_one_dist_info_with_name_version_and_pure_tag(self):
@@ -310,6 +310,7 @@ class WheelTest(unittest.TestCase):
             self.assertIn(f"Version: {sp.PLUGIN_VERSION}\n", metadata)
             self.assertIn("Tag: py3-none-any\n", wheel.read(f"{self.info}/WHEEL").decode())
             self.assertEqual(wheel.read("spooler/__init__.py"), (ROOT / "plugin" / "spooler" / "spooler_any.py").read_bytes())
+            self.assertEqual(wheel.read("spooler/app.html"), (ROOT / "plugin" / "spooler" / "app.html").read_bytes())
 
     def test_files_are_readable_when_unpacked(self):
         with zipfile.ZipFile(self.path) as wheel:
@@ -333,6 +334,7 @@ class WheelTest(unittest.TestCase):
         try:
             module = importlib.import_module("spooler")
             self.assertEqual(Path(module.__file__).name, "__init__.py")
+            self.assertEqual(module.ui_page(), (ROOT / "plugin" / "spooler" / "app.html").read_text(encoding="utf-8"))
             new = [cls for cls in host.decorated if cls not in decorated]
             self.assertEqual([cls.__name__ for cls in new], ["SpoolerPlugin"])
         finally:

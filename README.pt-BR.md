@@ -36,9 +36,9 @@ Abra o [Spooler no Orca Cloud](https://cloud.orcaslicer.com/p/50c35dcbd6f3) e as
 
 Por arquivo:
 
-1. Baixe `spooler_any.py` da [última versão](https://github.com/bloodf/spooler/releases/latest). É o mesmo arquivo no Windows, no macOS e no Linux.
-2. Coloque-o em uma pasta própria chamada `spooler` dentro do diretório de plugins do OrcaSlicer, um arquivo do Spooler por pasta: `%APPDATA%\OrcaSlicer\orca_plugins\` no Windows, `~/Library/Application Support/OrcaSlicer/orca_plugins/` no macOS, `~/.config/OrcaSlicer/orca_plugins/` no Linux.
-3. Reinicie o OrcaSlicer e marque **Activate** no Spooler. Uma aba **Spooler** aparece na barra superior.
+1. Baixe `spooler_any.whl` da [última versão](https://github.com/bloodf/spooler/releases/latest). É o mesmo arquivo no Windows, no macOS e no Linux.
+2. No OrcaSlicer, abra **File > Plugins > Install local plugin** e escolha o arquivo. Se você instalou um `spooler_any.py` antigo à mão, remova-o antes.
+3. Marque **Activate** no Spooler. Uma aba **Spooler** aparece na barra superior.
 
 | Requisito | Detalhe |
 |---|---|
