@@ -313,7 +313,10 @@ class KeepSlotsMarkerTest(BridgeFolder):
             with mock.patch.object(sp, "mark_keep_slots", side_effect=lambda *a: writes.append(a) or real(*a)):
                 async def scenario():
                     run = asyncio.ensure_future(sp.SpoolerKeepSlots().execute())
-                    await asyncio.sleep(0.05)
+                    # Two passes, however slow the runner: wait for their marks, not for a fixed time.
+                    deadline = time.monotonic() + 10
+                    while sum(1 for w in writes if w[0]) < 2 * 2 and time.monotonic() < deadline:
+                        await asyncio.sleep(0.005)
                     await sp.SpoolerKeepSlots().execute()
                     await asyncio.wait_for(run, 1)
                 asyncio.run(scenario())
