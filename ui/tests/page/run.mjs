@@ -1,4 +1,4 @@
-// Behaviour tests of the built Spooler page (ui/dist/spooler-ui.html, the page embedded in spooler_any.py), in an
+// Behaviour tests of the built Spooler page (ui/dist/spooler-ui.html, served as plugin/spooler/app.html), in an
 // owned headless Chrome under a host-like CSP with a scripted OrcaSlicer bridge. Ported from the former page-script
 // tests (tests/test_display.py, test_drying, test_notices, test_review_fixes F10-F12, test_printer_control,
 // test_detail_export, test_stats, test_send, test_wizard, test_u1control) and extended for S01-S05, B-20..B-24, X01/X04/X05.

@@ -9,7 +9,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from plugin_loader import PLUGIN, load
+from plugin_loader import load, sources
 
 sp, orca = load()
 
@@ -19,9 +19,9 @@ HAN = re.compile(r"[一-鿿]")
 
 def tr_texts() -> list[str]:
     """Every English text the plugin passes to tr(), constants and both arms of a conditional included."""
-    tree = ast.parse(PLUGIN.read_text(encoding="utf-8"))
+    trees = [ast.parse(text) for text in sources().values()]
     consts = {}
-    for node in tree.body:
+    for node in (n for tree in trees for n in tree.body):
         if isinstance(node, ast.Assign) and len(node.targets) == 1 and isinstance(node.targets[0], ast.Name):
             try:
                 consts[node.targets[0].id] = ast.literal_eval(node.value)
@@ -37,10 +37,16 @@ def tr_texts() -> list[str]:
             collect(arg.orelse)
         elif isinstance(arg, ast.Name) and isinstance(consts.get(arg.id), str):
             found.append(consts[arg.id])
+        elif isinstance(arg, ast.Attribute) and isinstance(consts.get(arg.attr), str):   # _core.NAME from another module
+            found.append(consts[arg.attr])
         # tr(region) and tr(stage): their values come from BAMBU_REGIONS and STAGES, checked below.
 
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "tr" and node.args:
+    def is_tr(func):   # tr(...) in i18n.py, _i18n.tr(...) in the other modules
+        return (isinstance(func, ast.Name) and func.id == "tr") or (
+            isinstance(func, ast.Attribute) and func.attr == "tr" and isinstance(func.value, ast.Name) and func.value.id == "_i18n")
+
+    for node in (n for tree in trees for n in ast.walk(tree)):
+        if isinstance(node, ast.Call) and is_tr(node.func) and node.args:
             collect(node.args[0])
     return found + list(sp.BAMBU_REGIONS.values()) + list(sp.STAGES.values())
 

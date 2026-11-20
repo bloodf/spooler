@@ -1,6 +1,6 @@
 // Pure rules of the spool editor (Add Spool, Edit Spool): the form a Spoolman spool or filament opens as, what a form
 // sends, what changed, and what is missing. No DOM, no Vue: the unit tests import this file directly. The plugin checks
-// everything again (spooler_any.py SPOOL_FORM / FILAMENT_FORM) before Spoolman sees it.
+// everything again (plugin/spooler/editor.py SPOOL_FORM / FILAMENT_FORM) before Spoolman sees it.
 
 /** A Spoolman extra field, as GET field/spool and field/filament list them. */
 export interface FieldDef {

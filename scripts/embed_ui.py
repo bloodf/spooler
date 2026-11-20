@@ -2,7 +2,7 @@
 """Write the compiled Vue page (ui/ -> ui/dist/spooler-ui.html, `npm run build`) next to the plugin, as it is served.
 
 The served page goes to plugin/spooler/app.html, a plain file the wheel ships next to the code (spooler/app.html) and
-ui_page() reads. The plugin file keeps a generated block between the BEGIN/END markers: the page's SHA-256 and size,
+ui_page() reads. plugin/spooler/ui_build.py keeps a generated block between the BEGIN/END markers: the page's SHA-256 and size,
 and the licence texts of what the page bundles (ui/shared/licenses: Vue, PrimeVue, PrimeUIX, the Lucide icons and the
 Manrope font) as UI_LICENSES, since those licences ask for their notice in every copy. Same input, same bytes.
 `--check` fails when the block or app.html is missing or differs from the built page (CI and tests use it).
@@ -27,7 +27,7 @@ import zlib
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-PLUGIN = ROOT / "plugin" / "spooler" / "spooler_any.py"
+PLUGIN = ROOT / "plugin" / "spooler" / "ui_build.py"
 SERVED = ROOT / "plugin" / "spooler" / "app.html"
 PAGE = ROOT / "ui" / "dist" / "spooler-ui.html"
 LICENSES = ROOT / "ui" / "shared" / "licenses"
@@ -105,13 +105,13 @@ def main() -> int:
     have = current(text)
     if args.check:
         if have != want or not SERVED.exists() or SERVED.read_bytes() != page.encode("utf-8"):
-            print("error: plugin/spooler/app.html or the UI block in spooler_any.py doesn't match ui/dist/spooler-ui.html; "
+            print("error: plugin/spooler/app.html or the UI block in ui_build.py doesn't match ui/dist/spooler-ui.html; "
                   "run scripts/embed_ui.py", file=sys.stderr)
             return 1
         print("UI block matches the built page")
         return 0
     if have is None:
-        sys.exit("error: no UI block markers in spooler_any.py")
+        sys.exit("error: no UI block markers in plugin/spooler/ui_build.py")
     PLUGIN.write_text(text.replace(have, want), encoding="utf-8", newline="\n")
     SERVED.write_bytes(page.encode("utf-8"))
     BUILD_INFO.write_text(build_info(page), encoding="utf-8", newline="\n")

@@ -2,6 +2,7 @@
 a fresh Spoolman version before writes that depend on it, link status ownership on restart, the
 legacy window's replies after it closed, and history scoped to the Spoolman it was booked on."""
 
+import inspect
 import json
 import tempfile
 import threading
@@ -110,8 +111,7 @@ class FreshVersionTest(unittest.TestCase):
         self.assertEqual(call.call_count, 1)
 
     def test_send_changes_checks_the_version_fresh(self):
-        src = Path(sp.__file__).read_text(encoding="utf-8")
-        body = src[src.index("def _send_changes"):src.index("def native_value")]
+        body = inspect.getsource(sp._send_changes)
         self.assertIn("spoolman_version(fresh=True)", body)
 
 

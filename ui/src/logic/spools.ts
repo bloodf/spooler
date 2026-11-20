@@ -1,4 +1,4 @@
-// Pure rules of the spool list, ported from the previous page script (spooler_any.py MAIN_PAGE). No DOM, no Vue:
+// Pure rules of the spool list, ported from the previous page script (the plugin's MAIN_PAGE, before the Vue page). No DOM, no Vue:
 // the unit tests import this file directly. Formatting takes the locale explicitly.
 export interface Vendor { name?: string }
 export interface Filament {

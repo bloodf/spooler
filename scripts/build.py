@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Build the plugin Orca Cloud publishes into dist/: one pure-Python wheel, spooler_any.whl.
 
-The wheel holds the package `spooler`: the plugin code (plugin/spooler/spooler_any.py as spooler/__init__.py) and the
-compiled page as a plain file (plugin/spooler/app.html as spooler/app.html, written by scripts/embed_ui.py). It runs on
+The wheel holds the package `spooler` as it is in plugin/spooler/: its modules (__init__.py and one module per domain)
+and the compiled page as a plain file (app.html, written by scripts/embed_ui.py). It runs on
 every OS, so the release is one universal file ("any" is Orca Cloud's suffix for every platform). OrcaSlicer takes the
 name and version from METADATA. Zip timestamps are fixed, so equal sources give equal bytes.
 
@@ -21,21 +21,20 @@ import check_version
 
 ROOT = Path(__file__).resolve().parent.parent
 DIST = ROOT / "dist"
-PAGE = ROOT / "plugin" / "spooler" / "app.html"
-MARKER = 'BUILD_TARGET = "any"\n'
+PACKAGE = ROOT / "plugin" / "spooler"
+PAGE = PACKAGE / "app.html"
 
 
 def build():
     check_version.main(["build.py"])
     text = check_version.PLUGIN.read_text(encoding="utf-8")
-    if text.count(MARKER) != 1:
-        sys.exit(f"error: expected exactly one {MARKER.strip()!r} line in the plugin")
     if not PAGE.exists():
         sys.exit(f"error: {PAGE.relative_to(ROOT)} missing; run `npm ci && npm run build` in ui/")
     if DIST.exists():
         shutil.rmtree(DIST)
     DIST.mkdir()
-    out = build_wheel(text, PAGE.read_bytes())
+    modules = {f"spooler/{f.name}": f.read_bytes() for f in sorted(PACKAGE.glob("*.py"))}
+    out = build_wheel(text, {**modules, "spooler/app.html": PAGE.read_bytes()})
     print(f"built {out.relative_to(ROOT)}")
 
 
@@ -49,13 +48,12 @@ def _record_line(name, data):
     return f"{name},sha256={digest},{len(data)}"
 
 
-def build_wheel(text, page):
-    """One pure-Python wheel (py3-none-any) for every OS: the plugin file as a package, and its page next to it."""
+def build_wheel(text, package):
+    """One pure-Python wheel (py3-none-any) for every OS: the package's files, then the dist-info."""
     version = _header(text, "version")
     dist_info = f"spooler-{version}.dist-info"
     files = {
-        "spooler/__init__.py": text.encode("utf-8"),
-        "spooler/app.html": page,
+        **package,
         f"{dist_info}/METADATA": (
             "Metadata-Version: 2.1\n"
             f"Name: {_header(text, 'name')}\n"

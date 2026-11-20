@@ -1,6 +1,6 @@
 // Pure rules of Settings > Presets (one preset per filament or per spool, and Advanced tuning) and of the spool editor's
 // Use with field. No DOM, no Vue: the unit tests import this file directly. The plugin checks everything again
-// (spooler_any.py parse_presets / _use_with_text) before it is saved or written to Spoolman.
+// (plugin/spooler/filament_profiles.py parse_presets, editor.py _use_with_text) before it is saved or written to Spoolman.
 
 /** One material's tuning: the base preset to inherit ("Generic PLA", the part before "@") and values set over it. */
 export type TuneRow = Partial<Record<TuneKey | 'parent', number | string>>;
