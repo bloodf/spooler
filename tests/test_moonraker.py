@@ -259,12 +259,14 @@ class ProbeTest(unittest.TestCase):
         finally:
             sp._moon_get = original
 
-    def test_not_moonraker_printers_are_hidden(self):
+    def test_not_moonraker_printers_stay_listed(self):
+        # A printer found from a preset's host stays on the Printer tab when the host is not one Spooler reads;
+        # its card says so (link "none") instead of the tab falling back to "No printers yet".
         sp._auto_printers[:] = [{"id": "auto-a", "name": "A", "units": [], "ip": "http://a",
                                  "serial": "", "kind": "moonraker", "auto": True}]
         sp._live["links"]["auto-a"] = "none"
         try:
-            self.assertEqual(sp.printer_state()["printers"], [])
+            self.assertEqual([p["id"] for p in sp.printer_state()["printers"]], ["auto-a"])
         finally:
             sp._live["links"].pop("auto-a")
             sp._auto_printers.clear()

@@ -189,8 +189,10 @@ def bump_printers_rev() -> None:
 
 def printer_state() -> dict:
     codes = _live_updates.read_codes()
+    # Every printer stays listed, a preset's host that is neither Moonraker nor Anycubic too (link "none", said on
+    # its card): hiding it made the printers found from the presets vanish once the first probe answered.
     printers = [dict(p, has_code=p.get("kind") == "moonraker" or bool(codes.get(_live_updates._code_key(p["id"]))))
-                for p in printers_cfg() if _live_updates._live["links"].get(p["id"]) != "none"]
+                for p in printers_cfg()]
     live = any(p["ip"] and p["has_code"] for p in printers)
     return {"printers": printers, "live_ok": live, "usage": _netprinters.usage_state(), "progress": _core.progress_settings(),
             "stats": _core.stats_settings(), "printers_rev": _printers_rev["n"], "slice_picks": list(_netprinters._slice_picks),

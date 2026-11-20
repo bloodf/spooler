@@ -30,6 +30,8 @@ const tone = (k: string) => (k === 'ok' ? 'success' : k === 'error' ? 'error' : 
         <InputText id="url" v-model="form.url" class="sb-url oui-mono" :placeholder="boot.settings.default_url" autocomplete="off" aria-describedby="conn-status" @input="onUrlInput" />
         <Button type="submit" severity="secondary" :label="t('src.test')" data-test="test"><template #icon><OuiIcon :icon="plug" :size="14" /></template></Button></form>
       <div id="conn-status" aria-live="polite"><OuiBanner :tone="tone(conn.kind)" :title="conn.text" data-test="conn-status" /></div>
+      <!-- Said before the first save: filament_profiles.ensure_fields() adds these to Spoolman when it is read. -->
+      <p class="oui-meta" data-test="src-fields">{{ t('src.fields') }}</p>
     </template>
     <template v-else>
       <div v-if="bambu.pane === 'in'" class="oui-row"><span class="oui-meta">{{ t('bambu.account') }}</span><strong>{{ bambu.account || t('bambu.signedOut') }}</strong>

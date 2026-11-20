@@ -227,6 +227,7 @@ export const pl: Record<MessageKey, string> = {
 
   'link.button': 'Live Link', 'link.live': 'Na żywo', 'link.stale': 'Brak aktualizacji od 3 min', 'link.auth': 'Błędny kod dostępu',
   'link.serial': 'Drukarka potrzebuje numeru seryjnego: dodaj go w Live Link',
+  'link.none': '{ip} odpowiada, ale nie jako drukarka Moonraker ani Anycubic w trybie LAN, więc Spooler jej nie odczytuje',
   'link.unreachable': 'Nie można połączyć z {ip}: czy drukarka jest włączona i w trybie LAN?',
   'link.waiting': 'Połączono, czekanie na dane z drukarki', 'link.connecting': 'Łączenie z {ip}…', 'link.ip': 'Adres IP',
   'link.serialLabel': 'Numer seryjny', 'link.serialPh': 'Opcjonalnie: wykrywany automatycznie', 'link.code': 'Kod dostępu',
@@ -350,6 +351,7 @@ export const pl: Record<MessageKey, string> = {
   'settings.checkingUpdate': 'Sprawdzanie…', 'settings.upToDate': 'Masz najnowszą wersję.',
 
   'src.question': 'Skąd Spooler ma odczytywać twoje szpule?', 'src.url': 'URL twojego własnego serwera Spoolman', 'src.test': 'Testuj',
+  'src.fields': 'Przy odczycie Spoolmana Spooler dodaje używane przez siebie pola dodatkowe: Flow ratio, Pressure advance i Max volumetric speed przy filamentach oraz Dried przy szpulach. Nigdy nie usuwa pola.',
   'bambu.account': 'Konto Bambu Cloud', 'bambu.test': 'Testuj połączenie', 'bambu.signOut': 'Wyloguj',
   'bambu.signInTitle': 'Zaloguj się kontem Bambu Cloud', 'bambu.email': 'E-mail', 'bambu.password': 'Hasło', 'bambu.region': 'Region',
   'bambu.signIn': 'Zaloguj', 'bambu.enterCode': 'Wpisz kod weryfikacyjny Bambu Lab', 'bambu.verify': 'Zweryfikuj', 'bambu.resend': 'Wyślij nowy kod',
