@@ -64,11 +64,14 @@ SCENES = {
         // Longer labels (Portuguese) wrap the actions onto another line: drop the usage chart rather than cut it.
         var usage = document.querySelector('[data-detail="{SHOWN}"] .sd-usage');
         if (usage && usage.getBoundingClientRect().bottom > innerHeight - 12) usage.remove();
+        trim('[data-detail="{SHOWN}"] *');
         document.activeElement.blur();"""},
     # README screenshots: the list with a spool's detail beside it, and the setup guide asking for the address
     "wide": {"view": "spools", "script": f"""
         document.querySelector('tr[data-spool="{SHOWN}"]').click();
         await until(function () {{ return document.querySelector('[data-detail="{SHOWN}"] .sd-history'); }});
+        // Neither the list nor the detail ends on half a row.
+        trim('tr[data-spool], tr[data-stack], [data-detail="{SHOWN}"] *');
         document.activeElement.blur();"""},
     "setup": {"view": "settings", "wizard_step": 1, "script": ""},
     # "See every spool at a glance": the spool list alone
@@ -109,11 +112,8 @@ SCENES = {
           if (!el.children.length && r.height && r.top < bar && r.bottom > bar + 2) hidden = Math.max(hidden, bar - r.top);
         });
         if (hidden) scrollBy(0, -hidden - 6);
-        // The printer below the check runs past the square's bottom edge: show none of its lines cut in half.
-        document.querySelectorAll('.oui-slot *').forEach(function (el) {
-          var r = el.getBoundingClientRect();
-          if (!el.children.length && r.height && r.bottom > innerHeight - 4) el.style.visibility = 'hidden';
-        });"""},
+        // The printer below the check runs past the square's bottom edge: show none of its lines or buttons cut in half.
+        trim('.oui-slot *');"""},
 }
 
 LANGS = {"en": "en", "pt-BR": "pt_BR"}     # file suffix -> what OrcaSlicer reports as its language
@@ -288,6 +288,16 @@ def plugin_page(sp, view: str, spools_msg: dict, live_msg: dict, wizard_step: in
   function top(el) {{
     var bar = document.querySelector('.oui-appbar');
     scrollBy(0, el.getBoundingClientRect().top - (bar ? bar.getBoundingClientRect().bottom : 0) - 12);
+  }}
+  // Hide the lines, chips and buttons under ``selector`` that a bottom edge would cut in half: the viewport's, or
+  // that of a scrolling parent. The panels holding them are taller than a line and stay.
+  function trim(selector) {{
+    document.querySelectorAll(selector).forEach(function (el) {{
+      var r = el.getBoundingClientRect(), edge = innerHeight - 12;
+      for (var p = el.parentElement; p && p !== document.body; p = p.parentElement)
+        if (p.scrollHeight > p.clientHeight + 1 && /auto|scroll/.test(getComputedStyle(p).overflowY)) edge = Math.min(edge, p.getBoundingClientRect().bottom - 2);
+      if (r.height && r.height < 64 && r.bottom > edge) el.style.visibility = 'hidden';
+    }});
   }}
   window.addEventListener("load", function () {{
     var steps = sleep(200).then(async function () {{
