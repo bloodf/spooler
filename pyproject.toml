@@ -1,5 +1,5 @@
-# Tooling config only - the plugin itself is a single file with PEP 723
-# metadata at the top of plugin/spooler/spooler_any.py.
+# Tooling config only - the plugin is the package plugin/spooler/, with its PEP 723
+# metadata at the top of plugin/spooler/__init__.py.
 [tool.ruff]
 line-length = 100
 target-version = "py312"

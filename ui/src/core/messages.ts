@@ -1,6 +1,6 @@
 // Every visible string of the Spooler pages, in English and Brazilian Portuguese; Spanish, German and Simplified Chinese
 // are in messages-es.ts, messages-de.ts and messages-zh.ts. Texts produced in Python (Spoolman errors, plate check rows,
-// action results) are worded there in the same language (tr() in spooler_any.py) and shown as they come, inside these.
+// action results) are worded there in the same language (tr() in plugin/spooler/i18n.py) and shown as they come, inside these.
 export const en = {
   'common.cancel': 'Cancel', 'common.close': 'Close', 'common.dismiss': 'Dismiss', 'common.goBack': 'Go back', 'common.loading': 'Loading…',
   'common.ok': 'OK', 'common.retry': 'Try again', 'common.save': 'Save', 'common.unknownError': 'Unknown error',

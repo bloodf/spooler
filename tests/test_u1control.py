@@ -14,7 +14,7 @@ from pathlib import Path
 from unittest import mock
 
 from fake_bundle import FIXTURES, SV06, U1
-from plugin_loader import PLUGIN, load
+from plugin_loader import load, sources
 
 sp, orca = load()
 
@@ -124,7 +124,7 @@ class LocationTest(Snapshot):
         # every Spoolman write is a filament PATCH, a spool use PUT or the used-weight PATCH of an undo.
         action = inspect.getsource(sp._spool_write)
         self.assertIn('"location"', action)
-        source = (PLUGIN.read_text(encoding="utf-8").replace(action, "").replace(inspect.getsource(sp.editor_save), "")
+        source = ("".join(sources().values()).replace(action, "").replace(inspect.getsource(sp.editor_save), "")
                   .replace(inspect.getsource(sp.slot_bind), ""))
         writes = re.findall(r'"(PATCH|POST|PUT|DELETE)",\s*f?"([^"]+)"', source)
         self.assertTrue(writes)

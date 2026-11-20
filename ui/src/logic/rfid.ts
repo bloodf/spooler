@@ -1,4 +1,4 @@
-// A Bambu RFID spool no Spoolman spool carries (spooler_any.py rfid_offers): the editor it opens, pre-filled from what the
+// A Bambu RFID spool no Spoolman spool carries (plugin/spooler/rfid.py rfid_offers): the editor it opens, pre-filled from what the
 // printer reported, and the Spoolman filament it restocks when one matches. No DOM, no Vue: the unit tests import this file.
 import { densityFor, type Raw } from './editor.ts';
 

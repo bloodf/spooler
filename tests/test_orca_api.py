@@ -309,8 +309,14 @@ class WheelTest(unittest.TestCase):
             self.assertIn("Name: Spooler\n", metadata)
             self.assertIn(f"Version: {sp.PLUGIN_VERSION}\n", metadata)
             self.assertIn("Tag: py3-none-any\n", wheel.read(f"{self.info}/WHEEL").decode())
-            self.assertEqual(wheel.read("spooler/__init__.py"), (ROOT / "plugin" / "spooler" / "spooler_any.py").read_bytes())
-            self.assertEqual(wheel.read("spooler/app.html"), (ROOT / "plugin" / "spooler" / "app.html").read_bytes())
+            package = ROOT / "plugin" / "spooler"
+            shipped = sorted(n.split("/", 1)[1] for n in names if n.startswith("spooler/"))
+            self.assertEqual(shipped, sorted([f.name for f in package.glob("*.py")] + ["app.html"]))
+            for name in shipped:
+                self.assertEqual(wheel.read(f"spooler/{name}"), (package / name).read_bytes(), name)
+            for name in shipped:   # each module small enough for Orca Cloud's review to read (U1 and Kobra pass)
+                if name.endswith(".py"):
+                    self.assertLess(len(wheel.read(f"spooler/{name}")), 150_000, name)
 
     def test_files_are_readable_when_unpacked(self):
         with zipfile.ZipFile(self.path) as wheel:
@@ -328,18 +334,21 @@ class WheelTest(unittest.TestCase):
                 self.assertEqual((digest, int(size)), (f"sha256={expected}", len(data)), name)
 
     def test_the_package_imports_and_marks_the_plugin_class(self):
+        for name in [n for n in sys.modules if n == "spooler" or n.startswith("spooler.")]:
+            del sys.modules[name]
         sys.path.insert(0, str(self.path))
         host = sys.modules["orca"]  # the stub the package will import: the last one any test made
         decorated = list(host.decorated)
         try:
             module = importlib.import_module("spooler")
             self.assertEqual(Path(module.__file__).name, "__init__.py")
-            self.assertEqual(module.ui_page(), (ROOT / "plugin" / "spooler" / "app.html").read_text(encoding="utf-8"))
+            self.assertEqual(module.tab.ui_page(), (ROOT / "plugin" / "spooler" / "app.html").read_text(encoding="utf-8"))
             new = [cls for cls in host.decorated if cls not in decorated]
             self.assertEqual([cls.__name__ for cls in new], ["SpoolerPlugin"])
         finally:
             sys.path.remove(str(self.path))
-            sys.modules.pop("spooler", None)
+            for name in [n for n in sys.modules if n == "spooler" or n.startswith("spooler.")]:
+                del sys.modules[name]
 
 
 if __name__ == "__main__":
