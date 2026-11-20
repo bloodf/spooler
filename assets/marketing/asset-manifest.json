@@ -145,7 +145,7 @@
       "height": 512,
       "bytes": 203458,
       "sha256": "119d83e23e4ca9c19153bf99aada0c6797a34b360e76dacceb37b464af55abc3",
-      "date": "2026-11-18"
+      "date": "2026-11-19"
     },
     {
       "file": "assets/orca-cloud/spooler-main-en.png",
@@ -169,9 +169,9 @@
       "operation": "scaled; page screenshot (left, dark, en, 681x655 at 2x) placed in the empty square, corners rounded 13.4 px",
       "width": 1600,
       "height": 900,
-      "bytes": 1335312,
-      "sha256": "08e5fc2026741ba83244d0bbdb973693a1e27e9ff5c352a2a5d46845db86afc7",
-      "date": "2026-11-18"
+      "bytes": 1298776,
+      "sha256": "a75d22a81e1f981b8a4741ab5a69e544da361a3f39c86129f3ee8c23ba46daf8",
+      "date": "2026-11-19"
     },
     {
       "file": "assets/orca-cloud/spooler-main-square-en.png",
@@ -195,9 +195,9 @@
       "operation": "scaled; page screenshot (left, dark, en, 677x668 at 2x) placed in the empty square, corners rounded 10.0 px",
       "width": 900,
       "height": 900,
-      "bytes": 866896,
-      "sha256": "f024e505c54ac4a0987718cc541b049718da6fa682493f7da0c3bea1baa88f65",
-      "date": "2026-11-18"
+      "bytes": 848407,
+      "sha256": "2288d743a59facae633812619f914a0544782f2848948a78b8cf3065837e9480",
+      "date": "2026-11-19"
     },
     {
       "file": "assets/orca-cloud/spooler-feature-01-stock-en.png",
@@ -221,9 +221,9 @@
       "operation": "scaled; page screenshot (stock, dark, en, 758x731 at 2x) placed in the empty square, corners rounded 9.6 px",
       "width": 1600,
       "height": 900,
-      "bytes": 1342099,
-      "sha256": "b160268c82edd305dc9ca4d6375dd1aa6ac57571d65e74b0050feae256573f90",
-      "date": "2026-11-18"
+      "bytes": 1336140,
+      "sha256": "f2e463d8a54b305215dedf02f78cf267f88a69bb6d80a4b0dac7d19c9d9ebc54",
+      "date": "2026-11-19"
     },
     {
       "file": "assets/orca-cloud/spooler-feature-02-presets-en.png",
@@ -247,9 +247,9 @@
       "operation": "scaled; page screenshot (presets, dark, en, 682x655 at 2x) placed in the empty square, corners rounded 13.4 px",
       "width": 1600,
       "height": 900,
-      "bytes": 1329219,
-      "sha256": "fbb6051a09647afc399b40fa5332fcb3e96b10f90cc16e7563560596db8a6715",
-      "date": "2026-11-18"
+      "bytes": 1322638,
+      "sha256": "5e6f074251273e3b86c43b03fb72f21a4aab999ac849d399cc68f55102f29aae",
+      "date": "2026-11-19"
     },
     {
       "file": "assets/orca-cloud/spooler-feature-03-slots-en.png",
@@ -273,9 +273,9 @@
       "operation": "scaled; page screenshot (slots, dark, en, 681x654 at 2x) placed in the empty square, corners rounded 9.6 px",
       "width": 1600,
       "height": 900,
-      "bytes": 1336878,
-      "sha256": "3264d6a4bc98d99b249c8a5417a2189a59fcb19f338cd56f8bdccdd38e83ae03",
-      "date": "2026-11-18"
+      "bytes": 1322717,
+      "sha256": "8ef872233ca39a97b3ec103d5b207ec530e740d8e1e9b83cb2f5f01a4429187d",
+      "date": "2026-11-19"
     },
     {
       "file": "assets/orca-cloud/spooler-feature-04-check-en.png",
@@ -299,9 +299,9 @@
       "operation": "scaled; page screenshot (check, dark, en, 681x656 at 2x) placed in the empty square, corners rounded 13.4 px",
       "width": 1600,
       "height": 900,
-      "bytes": 1350079,
-      "sha256": "dc900ec2941d62cbf3bf32aa4f834fa695a8c3f21f31eb01bc61f6ec3be6f69a",
-      "date": "2026-11-18"
+      "bytes": 1341236,
+      "sha256": "a85987460440699b182d77e4958c2bceba13134e02e77d447ae209904f0675a7",
+      "date": "2026-11-19"
     },
     {
       "file": "assets/social/spooler-social-preview-en.png",
@@ -325,9 +325,9 @@
       "operation": "scaled; page screenshot (left, dark, en, 755x712 at 2x) placed in the empty square, corners rounded 7.2 px",
       "width": 1280,
       "height": 640,
-      "bytes": 851672,
-      "sha256": "50e7fe90625863064fcba1230c705d67dcf9c8d9c5d420718479c3b64980287c",
-      "date": "2026-11-18"
+      "bytes": 831356,
+      "sha256": "d6a1fe45066cf5c50129ff9b553e2e8469621fecea5a4ebc5c0bf3012a4e5dc9",
+      "date": "2026-11-19"
     },
     {
       "file": "assets/readme/spooler-hero-dark-en.png",
@@ -351,9 +351,9 @@
       "operation": "scaled; page screenshot (left, dark, en, 679x655 at 2x) placed in the empty square, corners rounded 13.4 px",
       "width": 1600,
       "height": 900,
-      "bytes": 1356863,
-      "sha256": "5a1b1263f352645c62d9773512cee046fd44b7d8f92f7f823600d8c724071b07",
-      "date": "2026-11-18"
+      "bytes": 1320926,
+      "sha256": "e86cdff803b1b44fa9413e19772a72cad0c5ce4a9115f187f11bb36cfabf96e1",
+      "date": "2026-11-19"
     },
     {
       "file": "assets/readme/spooler-hero-light-en.png",
@@ -377,9 +377,9 @@
       "operation": "scaled; page screenshot (left, light, en, 684x656 at 2x) placed in the empty square, corners rounded 13.4 px",
       "width": 1600,
       "height": 900,
-      "bytes": 1357804,
-      "sha256": "b890877fd3c8f9464adf1358dfd40432b51ecde0ece27783c25bfa23c27799a5",
-      "date": "2026-11-18"
+      "bytes": 1320725,
+      "sha256": "e530fb58b85ba039e8539fdff41e0e63ad07cede0c33e07d9a5971721f14151f",
+      "date": "2026-11-19"
     },
     {
       "file": "assets/orca-cloud/spooler-main-pt-BR.png",
@@ -403,9 +403,9 @@
       "operation": "scaled; page screenshot (left, dark, pt-BR, 681x655 at 2x) placed in the empty square, corners rounded 9.6 px",
       "width": 1600,
       "height": 900,
-      "bytes": 1328140,
-      "sha256": "2b130118a0b9fa6678434eafecad96539e40d9c6f2da99e51c9249509ff1411f",
-      "date": "2026-11-18"
+      "bytes": 1289530,
+      "sha256": "39dd9771e3b214a6a9a0e7a2020927bec875b7cb6a12424393580c348f4af3f7",
+      "date": "2026-11-19"
     },
     {
       "file": "assets/orca-cloud/spooler-main-square-pt-BR.png",
@@ -429,9 +429,9 @@
       "operation": "scaled; page screenshot (left, dark, pt-BR, 691x675 at 2x) placed in the empty square, corners rounded 7.2 px",
       "width": 900,
       "height": 900,
-      "bytes": 879387,
-      "sha256": "6bf4fa0944edf3cfc8cb3c8e4fed2e6bf916cbfe5ea13348a30266d06ff37f7d",
-      "date": "2026-11-18"
+      "bytes": 856262,
+      "sha256": "4524fcd9684b55ff17de5da96876150585aa4a49f2da650f6eedea586a7f4d64",
+      "date": "2026-11-19"
     },
     {
       "file": "assets/orca-cloud/spooler-feature-01-stock-pt-BR.png",
@@ -455,9 +455,9 @@
       "operation": "scaled; page screenshot (stock, dark, pt-BR, 758x729 at 2x) placed in the empty square, corners rounded 9.6 px",
       "width": 1600,
       "height": 900,
-      "bytes": 1369127,
-      "sha256": "6001b5c39199cc9ed6da706a2626b502755ec226a8d62f82a04ce0ea39c4e8cf",
-      "date": "2026-11-18"
+      "bytes": 1352419,
+      "sha256": "35839ead283189e73bd26e931d078d8b132fcad2a81697e55b6a5fca734c2cf2",
+      "date": "2026-11-19"
     },
     {
       "file": "assets/orca-cloud/spooler-feature-02-presets-pt-BR.png",
@@ -481,9 +481,9 @@
       "operation": "scaled; page screenshot (presets, dark, pt-BR, 681x656 at 2x) placed in the empty square, corners rounded 13.4 px",
       "width": 1600,
       "height": 900,
-      "bytes": 1317528,
-      "sha256": "8212ef50406fafeb5957b24b7ef127373fa55747e498e8ce86052bf4436e48fe",
-      "date": "2026-11-18"
+      "bytes": 1309909,
+      "sha256": "d076635271abde7d21818b1cb0ce20c6662b30c49febcef74c40952f0680595e",
+      "date": "2026-11-19"
     },
     {
       "file": "assets/orca-cloud/spooler-feature-03-slots-pt-BR.png",
@@ -507,9 +507,9 @@
       "operation": "scaled; page screenshot (slots, dark, pt-BR, 680x655 at 2x) placed in the empty square, corners rounded 9.6 px",
       "width": 1600,
       "height": 900,
-      "bytes": 1344354,
-      "sha256": "a55bf6f4dc4cd63ca070f1a50768213dde9a3aeb3bffe818b5d6ce9411f01b36",
-      "date": "2026-11-18"
+      "bytes": 1331212,
+      "sha256": "a96c083eef9e08b6354bda0eb89c4ced6b3b62a2ee976b59835d1364c92f3eaa",
+      "date": "2026-11-19"
     },
     {
       "file": "assets/orca-cloud/spooler-feature-04-check-pt-BR.png",
@@ -533,9 +533,9 @@
       "operation": "scaled; page screenshot (check, dark, pt-BR, 681x656 at 2x) placed in the empty square, corners rounded 13.4 px",
       "width": 1600,
       "height": 900,
-      "bytes": 1346221,
-      "sha256": "cffc83d18e30cc5bf6c4de248aa599a3fb0e2b5c2cfffb403fc13e2b3a5e8f79",
-      "date": "2026-11-18"
+      "bytes": 1332542,
+      "sha256": "3fb88aa1864e19aef206cf14a6e2dcda236a23cfa275c4b56082644243d1cf47",
+      "date": "2026-11-19"
     },
     {
       "file": "assets/social/spooler-social-preview-pt-BR.png",
@@ -559,9 +559,9 @@
       "operation": "scaled; page screenshot (left, dark, pt-BR, 750x706 at 2x) placed in the empty square, corners rounded 7.2 px",
       "width": 1280,
       "height": 640,
-      "bytes": 834531,
-      "sha256": "e7729825775f0324ac51f8da79a3040083526e3cd21465034e6a0bfacec610d5",
-      "date": "2026-11-18"
+      "bytes": 811242,
+      "sha256": "3f1b83c25e006e4f17a32c4fc9a2582a147b33c64a6782f768e3b47476c0aac8",
+      "date": "2026-11-19"
     },
     {
       "file": "assets/readme/spooler-hero-dark-pt-BR.png",
@@ -585,9 +585,9 @@
       "operation": "scaled; page screenshot (left, dark, pt-BR, 681x656 at 2x) placed in the empty square, corners rounded 13.4 px",
       "width": 1600,
       "height": 900,
-      "bytes": 1320382,
-      "sha256": "ad2ddca13f4f5851533c83912279fd054d5ab9108393e648da0cf6410e58871d",
-      "date": "2026-11-18"
+      "bytes": 1281756,
+      "sha256": "2ed5f0142187838a51917d93e0ee9ced828349cf652c8cbb6e0de7430f6a5918",
+      "date": "2026-11-19"
     },
     {
       "file": "assets/readme/spooler-hero-light-pt-BR.png",
@@ -611,9 +611,9 @@
       "operation": "scaled; page screenshot (left, light, pt-BR, 684x658 at 2x) placed in the empty square, corners rounded 13.4 px",
       "width": 1600,
       "height": 900,
-      "bytes": 1354204,
-      "sha256": "218cff6e096008d2531254f88280d0d42d5a8a88a26b7d1739babb2b3d7330f6",
-      "date": "2026-11-18"
+      "bytes": 1316887,
+      "sha256": "b693d75b3c37b54e95b62064ea43564b3cc7b3a775670c1dd70d47c1d9a3399a",
+      "date": "2026-11-19"
     },
     {
       "file": "assets/readme/spooler-screen-spools-dark-en.png",
@@ -624,9 +624,9 @@
       "operation": "page screenshot (wide, dark, en, 1280x720 at 2x)",
       "width": 2560,
       "height": 1440,
-      "bytes": 567127,
-      "sha256": "1fc3f3fee34d7754ad3fc15d1b21062ffbadb98f75239302548d397417f1ec36",
-      "date": "2026-11-18"
+      "bytes": 513582,
+      "sha256": "190cda1d1e590047ce6d5e178693c8fd06645805376e810596b24d7e45cf0a08",
+      "date": "2026-11-19"
     },
     {
       "file": "assets/readme/spooler-screen-setup-dark-en.png",
@@ -637,9 +637,9 @@
       "operation": "page screenshot (setup, dark, en, 1280x720 at 2x)",
       "width": 2560,
       "height": 1440,
-      "bytes": 244549,
-      "sha256": "0048b64f4ca6ed6007fdf0a245bdca2d50a16aadc4d6177274d0efc08c40fa2f",
-      "date": "2026-11-18"
+      "bytes": 250535,
+      "sha256": "11b16e08870d5c6117c136036a3638ffa631c15e878ed66407cd5e6ece724467",
+      "date": "2026-11-19"
     },
     {
       "file": "assets/readme/spooler-screen-spools-light-en.png",
@@ -650,9 +650,9 @@
       "operation": "page screenshot (wide, light, en, 1280x720 at 2x)",
       "width": 2560,
       "height": 1440,
-      "bytes": 544673,
-      "sha256": "3dcbe75ece87393fc5410509a0b49c5db6dc5e5623c39985e5e28cdf20171dac",
-      "date": "2026-11-18"
+      "bytes": 498745,
+      "sha256": "f88b245f396ea933badff060eacf2cb67d932b661f2d585eccbe5b874e5d0011",
+      "date": "2026-11-19"
     },
     {
       "file": "assets/readme/spooler-screen-setup-light-en.png",
@@ -663,9 +663,9 @@
       "operation": "page screenshot (setup, light, en, 1280x720 at 2x)",
       "width": 2560,
       "height": 1440,
-      "bytes": 258617,
-      "sha256": "c8ffcd51e9bf397eec3c9ab871588e9f706ebcc9131c6f2d1f3c8b28af42cf3a",
-      "date": "2026-11-18"
+      "bytes": 266655,
+      "sha256": "54298f803bea4fefd4a0a5682b28867a0bbe60897a39d915a63a11c3b72faf41",
+      "date": "2026-11-19"
     },
     {
       "file": "assets/readme/spooler-screen-spools-dark-pt-BR.png",
@@ -676,9 +676,9 @@
       "operation": "page screenshot (wide, dark, pt-BR, 1280x720 at 2x)",
       "width": 2560,
       "height": 1440,
-      "bytes": 566463,
-      "sha256": "06d31254998921c0452c2c7fbb897d1059d83086004561f59bc60ca10500a279",
-      "date": "2026-11-18"
+      "bytes": 517818,
+      "sha256": "077e2238824a4bb49f51ea6c994b2320e607a4216a7a52e5dbdc245259336f76",
+      "date": "2026-11-19"
     },
     {
       "file": "assets/readme/spooler-screen-setup-dark-pt-BR.png",
@@ -689,9 +689,9 @@
       "operation": "page screenshot (setup, dark, pt-BR, 1280x720 at 2x)",
       "width": 2560,
       "height": 1440,
-      "bytes": 257401,
-      "sha256": "c8a189cabc1df791e544d6d39689fc78eabde9da127c35fef837198e7e315c23",
-      "date": "2026-11-18"
+      "bytes": 261530,
+      "sha256": "60bed5858953707272f784f4d7ce0b1d0dc14d1646c1534f4e3e564bf77b3f44",
+      "date": "2026-11-19"
     },
     {
       "file": "assets/readme/spooler-screen-spools-light-pt-BR.png",
@@ -702,9 +702,9 @@
       "operation": "page screenshot (wide, light, pt-BR, 1280x720 at 2x)",
       "width": 2560,
       "height": 1440,
-      "bytes": 543274,
-      "sha256": "e2492ae3b91c0a3463fd71fe56f91c3dd702a34bc2510a50dd2f68115d046e1d",
-      "date": "2026-11-18"
+      "bytes": 503496,
+      "sha256": "fbb8c9cafc5f3927da7416695ce4a8d54c99719e50023f2e8ebb773c0208c33e",
+      "date": "2026-11-19"
     },
     {
       "file": "assets/readme/spooler-screen-setup-light-pt-BR.png",
@@ -715,9 +715,9 @@
       "operation": "page screenshot (setup, light, pt-BR, 1280x720 at 2x)",
       "width": 2560,
       "height": 1440,
-      "bytes": 273760,
-      "sha256": "1fa4b296f2b4b2333e20ec51905382ef07eea06ace75cb2589ce2c51b018b2be",
-      "date": "2026-11-18"
+      "bytes": 280935,
+      "sha256": "4aabc10ad38eeda1af53f22a3859f6e6a0153c063518399b75b5e10d14b578b6",
+      "date": "2026-11-19"
     }
   ]
 }

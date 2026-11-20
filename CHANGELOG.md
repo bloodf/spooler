@@ -4,6 +4,8 @@ Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); 
 0.9.0 are Spoolio's.
 
 ## [Unreleased]
+
+## [0.32.0] - 2026-11-19
 ### Changed
 - New look, on the shared Orca UI foundation 5.0.5: every page uses OrcaSlicer's own greys and its teal, so Spooler reads as a part of OrcaSlicer. Spooler's magenta stays on its mark and under the open tab. Colour elsewhere says something: a state, a level (green, amber when low, red when almost empty) or a filament's own colour.
 - Each tab starts with one header line. **Spools** shows how many spools there are, the filament left, how many are low and the preset count, with **Sync Presets** (moved here from the top bar) and **Add Spool** on the right; **Printer** has **Add printer**; **Stats** has the period.
@@ -13,6 +15,7 @@ Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); 
 - Stats: the totals are one block, and each material keeps one colour across the charts.
 - Printer tab: the panels pack into columns, each one directly under the one above it, so a short panel such as an empty Filament usage no longer leaves a tall empty block beside a tall printer.
 - A finished or failed print is one line on the Printer tab (name, printer, when it finished) with a button to dismiss it, instead of the big progress block.
+- The README and Orca Cloud pictures show the new look, in English and Brazilian Portuguese.
 ### Fixed
 - In the narrow dock, a printer whose link failed no longer makes the Printer tab wider than the window (its long "Can't reach…" state is cut with an ellipsis, with the full text in its tooltip), its chip ("Set by hand", "Booked by U1 Control") goes under the state instead of out of sight, and a booked print's grams stay on one line.
 - An Anycubic ACE slot no longer shows "100 % on the printer". The ACE reports 100 for every spool it can't measure, so 100 is now treated as no reading. A slot linked to a Spoolman spool shows Spoolman's amount only, as Kobra Control does.
