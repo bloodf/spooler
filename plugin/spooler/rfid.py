@@ -403,7 +403,7 @@ def parse_slice(data: bytes, file: str = "") -> list[dict] | None:
             except ValueError:
                 grams = 0.0
             n = _live_updates._int(item.get("id"), 0)
-            if n > 0 and grams > 0:
+            if n > 0 and math.isfinite(grams) and grams > 0:  # "inf" or "nan" from a printer's file books nothing
                 rows.append({"n": n, "grams": round(grams, 2), "preset": str(item.get("tray_info_idx") or ""),
                              "colour": _sources._hex6(item.get("color")), "material": str(item.get("type") or "")})
         if rows:

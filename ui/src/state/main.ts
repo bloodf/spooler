@@ -1,4 +1,4 @@
-import { computed, reactive, ref, watch } from 'vue';
+import { computed, reactive, ref } from 'vue';
 import * as bridge from '../core/bridge';
 import { boot } from '../core/boot';
 import { t } from '../core/i18n';
@@ -149,12 +149,15 @@ function render(p: any): void {
   if (!p.ok) {
     m.loadError = p.error || t('common.unknownError');
     m.errorCode = p.error_code || 'read_failed';
+    // Settled here, not by watching loadError: the same error twice in a row would never settle the toast.
+    if (pending('refresh')) note('error', t('list.readFailedAt', { error: m.loadError }), 'refresh');
     // The last list stays, marked as old, only when it came from the same spool source (F10).
     if (typeof p.origin !== 'number' || p.origin !== m.origin) { m.spools = []; m.origin = null; }
     return;
   }
   m.loadError = ''; m.errorCode = '';
   m.loadedAt = Date.now();
+  if (pending('refresh')) note('success', t('list.refreshed'), 'refresh');
   m.spools = p.spools || [];
   m.origin = typeof p.origin === 'number' ? p.origin : null;
   if (typeof p.source === 'string') m.source = p.source;
@@ -235,8 +238,6 @@ function onMessage(d: any): void {
 
 // ------------------------------------------------------------------ page actions (app bar and list toolbar)
 export function refresh(): void { bridge.postMain({ type: 'refresh' }); note('pending', t('list.refreshing'), 'refresh'); }
-watch(() => m.loadedAt, () => { if (pending('refresh')) note('success', t('list.refreshed'), 'refresh'); });
-watch(() => m.loadError, e => { if (e && pending('refresh')) note('error', t('list.readFailedAt', { error: e }), 'refresh'); });
 export function syncPresets(): void { note('pending', t('list.syncing'), 'send'); bridge.postMain({ type: 'sync_presets' }); }
 /** Send to Spoolman for one of a spool's OrcaSlicer presets (picked in its detail), never the one last opened in OrcaSlicer. */
 export function sendEdits(spool: number, preset: string): void { note('pending', t('list.sending'), 'send'); bridge.postMain({ type: 'send', spool, preset }); }

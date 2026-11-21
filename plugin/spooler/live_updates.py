@@ -189,7 +189,7 @@ def _ws_handshake(sock, url: str) -> None:
     parts = urllib.parse.urlsplit(url)
     key = base64.b64encode(os.urandom(16)).decode("ascii")
     auth = "".join(f"{k}: {v}\r\n" for k, v in _core.split_auth(url)[1].items())
-    sock.sendall((f"GET {parts.path or '/'} HTTP/1.1\r\nHost: {parts.netloc.rpartition('@')[2]}\r\n"
+    sock.sendall((f"GET {parts.path or '/'} HTTP/1.1\r\nHost: {parts.netloc.rpartition('@')[2].encode('idna').decode('ascii')}\r\n"
                   f"{auth}Upgrade: websocket\r\nConnection: Upgrade\r\n"
                   f"Sec-WebSocket-Key: {key}\r\nSec-WebSocket-Version: 13\r\n"
                   f"User-Agent: {_core.PLUGIN_NAME}/{_core.PLUGIN_VERSION}\r\n\r\n").encode("ascii"))

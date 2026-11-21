@@ -252,3 +252,15 @@ class RefreshRecoversTest(PeerCase):
         self.assertEqual(boom.call_count, 4)
         msgs = [m for m in posted + page.posted if m.get("type") == "spools"]
         self.assertTrue(all(m["ok"] is False and "Spoolman said 500" in m["error"] for m in msgs))
+
+    def test_a_failure_before_the_read_starts_does_not_stop_later_refreshes(self):
+        self.settings["spoolman_url"] = "http://spoolman.test:7912"
+        window = sp.SpoolerWindow()
+        window._panel = mock.Mock(is_open=lambda: True, post=lambda m: None)
+        page = sp.SpoolerPage()
+        with mock.patch.object(sp, "ws_sync", lambda post: None), mock.patch.object(sp, "source", lambda: "spoolman"), \
+             mock.patch.object(sp, "refresh_snapshot", mock.Mock(side_effect=RuntimeError("printer gone"))):
+            for host in (window, page):
+                with self.assertRaises(RuntimeError):
+                    host._push_data()
+                self.assertFalse(host._refreshing, "the next refresh still runs")

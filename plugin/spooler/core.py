@@ -9,6 +9,7 @@ import base64
 import datetime
 import json
 import logging
+import math
 import os
 import re
 import sys
@@ -252,7 +253,7 @@ def parse_low(value: object) -> float:
         grams = float(value)
     except (TypeError, ValueError):
         return LOW_DEFAULT
-    if grams < 0:
+    if not math.isfinite(grams) or grams < 0:  # "nan", "inf", "1e999" would crash int()
         return LOW_DEFAULT
     return int(grams) if grams == int(grams) else grams
 
@@ -557,7 +558,7 @@ def get_spools(spoolman_url: str) -> dict:
             raise ValueError(_i18n.tr("Spoolman sent a spool list Spooler doesn't understand"))
         data = [spool for spool in data if isinstance(spool, dict)]
     except urllib.error.URLError as exc:
-        error = _i18n.tr("Could not reach Spoolman at {url} ({reason})", url=spoolman_url, reason=exc.reason)
+        error = _i18n.tr("Could not reach Spoolman at {url} ({reason})", url=split_auth(spoolman_url)[0], reason=exc.reason)
         _report("Spool list", error)
         _sources.heard(spoolman_url, False, error)
         return {"ok": False, "error": error}

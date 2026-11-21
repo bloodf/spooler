@@ -10,6 +10,7 @@ import json
 import math
 import re
 import urllib.error
+import urllib.parse
 
 from . import core as _core
 from . import filament_profiles as _filament_profiles
@@ -34,6 +35,9 @@ def _action_grams(value: object, zero: bool = False) -> float | None:
         grams = float(value.strip().replace(",", ".") if isinstance(value, str) else value)
     except ValueError:
         return None
+    if not math.isfinite(grams):
+        return None
+    grams = round(grams, 1)  # what Spoolman is sent: 0.04 g is 0.0 g, never a "Used 0.0 g" that changed nothing
     low_ok = grams >= 0 if zero else grams > 0
     return grams if math.isfinite(grams) and low_ok and grams <= MAX_GRAMS else None
 
@@ -187,7 +191,8 @@ def _spool_write(action: str, sid: int, data: dict) -> dict:
             return {"ok": True, "text": _i18n.tr("Added spool {spool} of the same filament.", spool=made[0])}
         return {"ok": True, "text": _i18n.tr("Added {count} spools of the same filament: {spools}.", count=count, spools=_plate_check._join(made))}
     url = getattr(_spoolman_sync._op, "origin", None)[0] if getattr(_spoolman_sync._op, "origin", None) else _sources.clean_url(_core.get_settings().get("spoolman_url"))
-    if _plate_check.open_url(f"{url}/spool/show/{sid}"):
+    # Only a web address: a file:// or other scheme synced in as Spoolman's would launch whatever it names.
+    if urllib.parse.urlsplit(url).scheme in ("http", "https") and _plate_check.open_url(f"{url}/spool/show/{sid}"):
         return {"ok": True, "text": _i18n.tr("Opened spool #{id} in Spoolman.", id=sid)}
     return no(_i18n.tr("Could not open {url}.", url=f"{url}/spool/show/{sid}"))
 

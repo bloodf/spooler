@@ -46,7 +46,7 @@ def ping(spoolman_url: str) -> dict:
         if not isinstance(data, dict):
             raise ValueError("not a JSON object")
     except urllib.error.URLError as exc:
-        error = _i18n.tr("Could not reach Spoolman at {url} ({reason})", url=spoolman_url, reason=exc.reason)
+        error = _i18n.tr("Could not reach Spoolman at {url} ({reason})", url=_core.split_auth(spoolman_url)[0], reason=exc.reason)
         _core.log.warning("Connection test failed: %s", error)
         return {"ok": False, "error": error}
     except ValueError:
@@ -309,12 +309,14 @@ def _bambu_page(auth: dict, offset: int) -> dict:
 
 def fetch_bambu(auth: dict) -> list[dict]:
     hits: list[dict] = []
+    offset = 0  # counts every item the cloud sent, so a skipped non-object never shifts the next page
     for _ in range(BAMBU_PAGES):
-        data = _bambu_page(auth, len(hits))
+        data = _bambu_page(auth, offset)
+        offset += len(data["hits"])
         page = [item for item in data["hits"] if isinstance(item, dict)]
         hits += page
         total = data.get("total")
-        if not page or not isinstance(total, int) or len(hits) >= total:
+        if not data["hits"] or not isinstance(total, int) or offset >= total:
             break
     return hits
 
