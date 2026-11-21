@@ -720,8 +720,8 @@ def usage_book(entry_id: str, chosen: list | None) -> str:
                 spool = _live_updates._int(pick.get("spool")) if pick.get("spool") not in (None, "") else row["spool"]
                 try:
                     grams = float(pick["grams"]) if "grams" in pick else row["grams"]
-                except (TypeError, ValueError):
-                    grams = 0.0
+                except (TypeError, ValueError, OverflowError):
+                    continue  # An unreadable weight books nothing; 0 would mark the row booked.
                 if not (math.isfinite(grams) and 0 <= grams <= 5000):
                     continue
                 if grams == 0:

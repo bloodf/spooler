@@ -82,6 +82,9 @@ def _hist_entry(e: object) -> dict | None:
         return None
     rows = [{"label": "", "colour": "", **r} for r in e["rows"]
             if isinstance(r, dict) and "spool" in r and isinstance(r.get("grams"), (int, float))]
+    # The waste split is a pair of numbers or nothing: support without purge broke the tab too.
+    rows = [r if all(isinstance(r.get(k), (int, float)) for k in ("ws", "wp"))
+            else {k: v for k, v in r.items() if k not in ("ws", "wp")} for r in rows]
     return {**e, "rows": rows}
 
 

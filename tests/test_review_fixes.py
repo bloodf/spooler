@@ -483,6 +483,14 @@ class UsageTest(unittest.TestCase):
         state = {"job": {"gcode_state": "RUNNING"}, "link": "auto-u1", "name": "U1"}
         self.assertEqual(sp.usage_track("auto-u1", state, True), [])
 
+    def test_an_unreadable_weight_is_skipped_not_booked(self):
+        for grams in ("", None, "abc", 10 ** 400):
+            self.entry()
+            with self.use():
+                sp.usage_book("job", [{"slot": 1, "grams": grams}])
+            self.assertEqual(self.stored_entry()["rows"][0]["state"], "open", grams)
+        self.assertEqual(self.ledger, [])
+
 
 # --- F04: Keep Slots Synced stops where it should ---------------------------------------------
 
