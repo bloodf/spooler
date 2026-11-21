@@ -156,9 +156,23 @@ class PresetTest(unittest.TestCase):
         p = sp.profile_preset(f, "x", "Generic PLA @System", U1, 90)
         self.assertEqual(p["filament_cost"], ["20"])
 
-    def test_bed_temperature_on_every_plate(self):
+    def test_bed_temperature_without_parent_values_sets_the_hot_plate(self):
         p = sp.profile_preset(filament(1, "x", "PLA", settings_bed_temp=65), "x", "Generic PLA @System", U1)
-        self.assertEqual({k: v for k, v in p.items() if k in PLATE_KEYS}, {k: ["65"] for k in PLATE_KEYS})
+        self.assertEqual({k: v for k, v in p.items() if k in PLATE_KEYS},
+                         {"hot_plate_temp": ["65"], "hot_plate_temp_initial_layer": ["65"]})
+
+    def test_bed_temperature_keeps_the_parents_other_plates(self):
+        # Snapmaker PLA SnapSpeed @U1, as reported: Spoolman's 70 goes to the PEI plates only.
+        base = {"supertack_plate_temp": "35", "cool_plate_temp": "60", "textured_cool_plate_temp": "40",
+                "eng_plate_temp": "60", "hot_plate_temp": "65", "textured_plate_temp": "65"}
+        config = {**base, **{k + "_initial_layer": v for k, v in base.items()}}
+        p = sp.profile_preset(filament(1, "x", "PLA", settings_bed_temp=70), "x", "Snapmaker PLA SnapSpeed @U1",
+                              U1, parent_config=config)
+        want = {k: ["70"] for k in PLATE_KEYS if k.startswith(("hot_", "textured_plate"))}
+        self.assertEqual({k: v for k, v in p.items() if k in PLATE_KEYS}, want)
+        flat = sp.flat_preset(p, config, (1, U1))
+        self.assertEqual((flat["cool_plate_temp"], flat["supertack_plate_temp_initial_layer"]), ("60", "35"))
+        self.assertEqual(flat["textured_plate_temp"], ["70"])
 
     def test_orca_settings_field(self):
         field = {"*": {"filament_ironing_flow": "15%", "nozzle_temperature": 230},

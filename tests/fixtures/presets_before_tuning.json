@@ -53,40 +53,10 @@
    "nozzle_temperature_initial_layer": [
     "230"
    ],
-   "cool_plate_temp": [
-    "60"
-   ],
-   "cool_plate_temp_initial_layer": [
-    "60"
-   ],
-   "eng_plate_temp": [
-    "60"
-   ],
-   "eng_plate_temp_initial_layer": [
-    "60"
-   ],
    "hot_plate_temp": [
     "60"
    ],
    "hot_plate_temp_initial_layer": [
-    "60"
-   ],
-   "supertack_plate_temp": [
-    "60"
-   ],
-   "supertack_plate_temp_initial_layer": [
-    "60"
-   ],
-   "textured_cool_plate_temp": [
-    "60"
-   ],
-   "textured_cool_plate_temp_initial_layer": [
-    "60"
-   ],
-   "textured_plate_temp": [
-    "60"
-   ],
-   "textured_plate_temp_initial_layer": [
     "60"
    ],
    "filament_density": [
@@ -122,40 +92,10 @@
    "nozzle_temperature_initial_layer": [
     "230"
    ],
-   "cool_plate_temp": [
-    "60"
-   ],
-   "cool_plate_temp_initial_layer": [
-    "60"
-   ],
-   "eng_plate_temp": [
-    "60"
-   ],
-   "eng_plate_temp_initial_layer": [
-    "60"
-   ],
    "hot_plate_temp": [
     "60"
    ],
    "hot_plate_temp_initial_layer": [
-    "60"
-   ],
-   "supertack_plate_temp": [
-    "60"
-   ],
-   "supertack_plate_temp_initial_layer": [
-    "60"
-   ],
-   "textured_cool_plate_temp": [
-    "60"
-   ],
-   "textured_cool_plate_temp_initial_layer": [
-    "60"
-   ],
-   "textured_plate_temp": [
-    "60"
-   ],
-   "textured_plate_temp_initial_layer": [
     "60"
    ],
    "filament_density": [
@@ -191,40 +131,10 @@
    "nozzle_temperature_initial_layer": [
     "230"
    ],
-   "cool_plate_temp": [
-    "60"
-   ],
-   "cool_plate_temp_initial_layer": [
-    "60"
-   ],
-   "eng_plate_temp": [
-    "60"
-   ],
-   "eng_plate_temp_initial_layer": [
-    "60"
-   ],
    "hot_plate_temp": [
     "60"
    ],
    "hot_plate_temp_initial_layer": [
-    "60"
-   ],
-   "supertack_plate_temp": [
-    "60"
-   ],
-   "supertack_plate_temp_initial_layer": [
-    "60"
-   ],
-   "textured_cool_plate_temp": [
-    "60"
-   ],
-   "textured_cool_plate_temp_initial_layer": [
-    "60"
-   ],
-   "textured_plate_temp": [
-    "60"
-   ],
-   "textured_plate_temp_initial_layer": [
     "60"
    ],
    "filament_density": [
@@ -260,40 +170,10 @@
    "nozzle_temperature_initial_layer": [
     "230"
    ],
-   "cool_plate_temp": [
-    "60"
-   ],
-   "cool_plate_temp_initial_layer": [
-    "60"
-   ],
-   "eng_plate_temp": [
-    "60"
-   ],
-   "eng_plate_temp_initial_layer": [
-    "60"
-   ],
    "hot_plate_temp": [
     "60"
    ],
    "hot_plate_temp_initial_layer": [
-    "60"
-   ],
-   "supertack_plate_temp": [
-    "60"
-   ],
-   "supertack_plate_temp_initial_layer": [
-    "60"
-   ],
-   "textured_cool_plate_temp": [
-    "60"
-   ],
-   "textured_cool_plate_temp_initial_layer": [
-    "60"
-   ],
-   "textured_plate_temp": [
-    "60"
-   ],
-   "textured_plate_temp_initial_layer": [
     "60"
    ],
    "filament_density": [
@@ -329,40 +209,10 @@
    "nozzle_temperature_initial_layer": [
     "205"
    ],
-   "cool_plate_temp": [
-    "65"
-   ],
-   "cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "eng_plate_temp": [
-    "65"
-   ],
-   "eng_plate_temp_initial_layer": [
-    "65"
-   ],
    "hot_plate_temp": [
     "65"
    ],
    "hot_plate_temp_initial_layer": [
-    "65"
-   ],
-   "supertack_plate_temp": [
-    "65"
-   ],
-   "supertack_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_cool_plate_temp": [
-    "65"
-   ],
-   "textured_cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_plate_temp": [
-    "65"
-   ],
-   "textured_plate_temp_initial_layer": [
     "65"
    ],
    "filament_density": [
@@ -398,40 +248,10 @@
    "nozzle_temperature_initial_layer": [
     "205"
    ],
-   "cool_plate_temp": [
-    "65"
-   ],
-   "cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "eng_plate_temp": [
-    "65"
-   ],
-   "eng_plate_temp_initial_layer": [
-    "65"
-   ],
    "hot_plate_temp": [
     "65"
    ],
    "hot_plate_temp_initial_layer": [
-    "65"
-   ],
-   "supertack_plate_temp": [
-    "65"
-   ],
-   "supertack_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_cool_plate_temp": [
-    "65"
-   ],
-   "textured_cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_plate_temp": [
-    "65"
-   ],
-   "textured_plate_temp_initial_layer": [
     "65"
    ],
    "filament_density": [
@@ -467,40 +287,10 @@
    "nozzle_temperature_initial_layer": [
     "205"
    ],
-   "cool_plate_temp": [
-    "65"
-   ],
-   "cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "eng_plate_temp": [
-    "65"
-   ],
-   "eng_plate_temp_initial_layer": [
-    "65"
-   ],
    "hot_plate_temp": [
     "65"
    ],
    "hot_plate_temp_initial_layer": [
-    "65"
-   ],
-   "supertack_plate_temp": [
-    "65"
-   ],
-   "supertack_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_cool_plate_temp": [
-    "65"
-   ],
-   "textured_cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_plate_temp": [
-    "65"
-   ],
-   "textured_plate_temp_initial_layer": [
     "65"
    ],
    "filament_density": [
@@ -536,40 +326,10 @@
    "nozzle_temperature_initial_layer": [
     "205"
    ],
-   "cool_plate_temp": [
-    "65"
-   ],
-   "cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "eng_plate_temp": [
-    "65"
-   ],
-   "eng_plate_temp_initial_layer": [
-    "65"
-   ],
    "hot_plate_temp": [
     "65"
    ],
    "hot_plate_temp_initial_layer": [
-    "65"
-   ],
-   "supertack_plate_temp": [
-    "65"
-   ],
-   "supertack_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_cool_plate_temp": [
-    "65"
-   ],
-   "textured_cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_plate_temp": [
-    "65"
-   ],
-   "textured_plate_temp_initial_layer": [
     "65"
    ],
    "filament_density": [
@@ -605,40 +365,10 @@
    "nozzle_temperature_initial_layer": [
     "205"
    ],
-   "cool_plate_temp": [
-    "65"
-   ],
-   "cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "eng_plate_temp": [
-    "65"
-   ],
-   "eng_plate_temp_initial_layer": [
-    "65"
-   ],
    "hot_plate_temp": [
     "65"
    ],
    "hot_plate_temp_initial_layer": [
-    "65"
-   ],
-   "supertack_plate_temp": [
-    "65"
-   ],
-   "supertack_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_cool_plate_temp": [
-    "65"
-   ],
-   "textured_cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_plate_temp": [
-    "65"
-   ],
-   "textured_plate_temp_initial_layer": [
     "65"
    ],
    "filament_density": [
@@ -674,40 +404,10 @@
    "nozzle_temperature_initial_layer": [
     "205"
    ],
-   "cool_plate_temp": [
-    "65"
-   ],
-   "cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "eng_plate_temp": [
-    "65"
-   ],
-   "eng_plate_temp_initial_layer": [
-    "65"
-   ],
    "hot_plate_temp": [
     "65"
    ],
    "hot_plate_temp_initial_layer": [
-    "65"
-   ],
-   "supertack_plate_temp": [
-    "65"
-   ],
-   "supertack_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_cool_plate_temp": [
-    "65"
-   ],
-   "textured_cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_plate_temp": [
-    "65"
-   ],
-   "textured_plate_temp_initial_layer": [
     "65"
    ],
    "filament_density": [
@@ -743,40 +443,10 @@
    "nozzle_temperature_initial_layer": [
     "205"
    ],
-   "cool_plate_temp": [
-    "65"
-   ],
-   "cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "eng_plate_temp": [
-    "65"
-   ],
-   "eng_plate_temp_initial_layer": [
-    "65"
-   ],
    "hot_plate_temp": [
     "65"
    ],
    "hot_plate_temp_initial_layer": [
-    "65"
-   ],
-   "supertack_plate_temp": [
-    "65"
-   ],
-   "supertack_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_cool_plate_temp": [
-    "65"
-   ],
-   "textured_cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_plate_temp": [
-    "65"
-   ],
-   "textured_plate_temp_initial_layer": [
     "65"
    ],
    "filament_density": [
@@ -812,40 +482,10 @@
    "nozzle_temperature_initial_layer": [
     "205"
    ],
-   "cool_plate_temp": [
-    "65"
-   ],
-   "cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "eng_plate_temp": [
-    "65"
-   ],
-   "eng_plate_temp_initial_layer": [
-    "65"
-   ],
    "hot_plate_temp": [
     "65"
    ],
    "hot_plate_temp_initial_layer": [
-    "65"
-   ],
-   "supertack_plate_temp": [
-    "65"
-   ],
-   "supertack_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_cool_plate_temp": [
-    "65"
-   ],
-   "textured_cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_plate_temp": [
-    "65"
-   ],
-   "textured_plate_temp_initial_layer": [
     "65"
    ],
    "filament_density": [
@@ -881,40 +521,10 @@
    "nozzle_temperature_initial_layer": [
     "205"
    ],
-   "cool_plate_temp": [
-    "65"
-   ],
-   "cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "eng_plate_temp": [
-    "65"
-   ],
-   "eng_plate_temp_initial_layer": [
-    "65"
-   ],
    "hot_plate_temp": [
     "65"
    ],
    "hot_plate_temp_initial_layer": [
-    "65"
-   ],
-   "supertack_plate_temp": [
-    "65"
-   ],
-   "supertack_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_cool_plate_temp": [
-    "65"
-   ],
-   "textured_cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_plate_temp": [
-    "65"
-   ],
-   "textured_plate_temp_initial_layer": [
     "65"
    ],
    "filament_density": [
@@ -950,40 +560,10 @@
    "nozzle_temperature_initial_layer": [
     "205"
    ],
-   "cool_plate_temp": [
-    "65"
-   ],
-   "cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "eng_plate_temp": [
-    "65"
-   ],
-   "eng_plate_temp_initial_layer": [
-    "65"
-   ],
    "hot_plate_temp": [
     "65"
    ],
    "hot_plate_temp_initial_layer": [
-    "65"
-   ],
-   "supertack_plate_temp": [
-    "65"
-   ],
-   "supertack_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_cool_plate_temp": [
-    "65"
-   ],
-   "textured_cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_plate_temp": [
-    "65"
-   ],
-   "textured_plate_temp_initial_layer": [
     "65"
    ],
    "filament_density": [
@@ -1019,40 +599,10 @@
    "nozzle_temperature_initial_layer": [
     "205"
    ],
-   "cool_plate_temp": [
-    "65"
-   ],
-   "cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "eng_plate_temp": [
-    "65"
-   ],
-   "eng_plate_temp_initial_layer": [
-    "65"
-   ],
    "hot_plate_temp": [
     "65"
    ],
    "hot_plate_temp_initial_layer": [
-    "65"
-   ],
-   "supertack_plate_temp": [
-    "65"
-   ],
-   "supertack_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_cool_plate_temp": [
-    "65"
-   ],
-   "textured_cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_plate_temp": [
-    "65"
-   ],
-   "textured_plate_temp_initial_layer": [
     "65"
    ],
    "filament_density": [
@@ -1088,40 +638,10 @@
    "nozzle_temperature_initial_layer": [
     "205"
    ],
-   "cool_plate_temp": [
-    "65"
-   ],
-   "cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "eng_plate_temp": [
-    "65"
-   ],
-   "eng_plate_temp_initial_layer": [
-    "65"
-   ],
    "hot_plate_temp": [
     "65"
    ],
    "hot_plate_temp_initial_layer": [
-    "65"
-   ],
-   "supertack_plate_temp": [
-    "65"
-   ],
-   "supertack_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_cool_plate_temp": [
-    "65"
-   ],
-   "textured_cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_plate_temp": [
-    "65"
-   ],
-   "textured_plate_temp_initial_layer": [
     "65"
    ],
    "filament_density": [
@@ -1157,40 +677,10 @@
    "nozzle_temperature_initial_layer": [
     "205"
    ],
-   "cool_plate_temp": [
-    "65"
-   ],
-   "cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "eng_plate_temp": [
-    "65"
-   ],
-   "eng_plate_temp_initial_layer": [
-    "65"
-   ],
    "hot_plate_temp": [
     "65"
    ],
    "hot_plate_temp_initial_layer": [
-    "65"
-   ],
-   "supertack_plate_temp": [
-    "65"
-   ],
-   "supertack_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_cool_plate_temp": [
-    "65"
-   ],
-   "textured_cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_plate_temp": [
-    "65"
-   ],
-   "textured_plate_temp_initial_layer": [
     "65"
    ],
    "filament_density": [
@@ -1226,40 +716,10 @@
    "nozzle_temperature_initial_layer": [
     "205"
    ],
-   "cool_plate_temp": [
-    "65"
-   ],
-   "cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "eng_plate_temp": [
-    "65"
-   ],
-   "eng_plate_temp_initial_layer": [
-    "65"
-   ],
    "hot_plate_temp": [
     "65"
    ],
    "hot_plate_temp_initial_layer": [
-    "65"
-   ],
-   "supertack_plate_temp": [
-    "65"
-   ],
-   "supertack_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_cool_plate_temp": [
-    "65"
-   ],
-   "textured_cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_plate_temp": [
-    "65"
-   ],
-   "textured_plate_temp_initial_layer": [
     "65"
    ],
    "filament_density": [
@@ -1295,40 +755,10 @@
    "nozzle_temperature_initial_layer": [
     "205"
    ],
-   "cool_plate_temp": [
-    "65"
-   ],
-   "cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "eng_plate_temp": [
-    "65"
-   ],
-   "eng_plate_temp_initial_layer": [
-    "65"
-   ],
    "hot_plate_temp": [
     "65"
    ],
    "hot_plate_temp_initial_layer": [
-    "65"
-   ],
-   "supertack_plate_temp": [
-    "65"
-   ],
-   "supertack_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_cool_plate_temp": [
-    "65"
-   ],
-   "textured_cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_plate_temp": [
-    "65"
-   ],
-   "textured_plate_temp_initial_layer": [
     "65"
    ],
    "filament_density": [
@@ -1364,40 +794,10 @@
    "nozzle_temperature_initial_layer": [
     "205"
    ],
-   "cool_plate_temp": [
-    "65"
-   ],
-   "cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "eng_plate_temp": [
-    "65"
-   ],
-   "eng_plate_temp_initial_layer": [
-    "65"
-   ],
    "hot_plate_temp": [
     "65"
    ],
    "hot_plate_temp_initial_layer": [
-    "65"
-   ],
-   "supertack_plate_temp": [
-    "65"
-   ],
-   "supertack_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_cool_plate_temp": [
-    "65"
-   ],
-   "textured_cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_plate_temp": [
-    "65"
-   ],
-   "textured_plate_temp_initial_layer": [
     "65"
    ],
    "filament_density": [
@@ -1433,40 +833,10 @@
    "nozzle_temperature_initial_layer": [
     "205"
    ],
-   "cool_plate_temp": [
-    "65"
-   ],
-   "cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "eng_plate_temp": [
-    "65"
-   ],
-   "eng_plate_temp_initial_layer": [
-    "65"
-   ],
    "hot_plate_temp": [
     "65"
    ],
    "hot_plate_temp_initial_layer": [
-    "65"
-   ],
-   "supertack_plate_temp": [
-    "65"
-   ],
-   "supertack_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_cool_plate_temp": [
-    "65"
-   ],
-   "textured_cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_plate_temp": [
-    "65"
-   ],
-   "textured_plate_temp_initial_layer": [
     "65"
    ],
    "filament_density": [
@@ -1502,40 +872,10 @@
    "nozzle_temperature_initial_layer": [
     "205"
    ],
-   "cool_plate_temp": [
-    "65"
-   ],
-   "cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "eng_plate_temp": [
-    "65"
-   ],
-   "eng_plate_temp_initial_layer": [
-    "65"
-   ],
    "hot_plate_temp": [
     "65"
    ],
    "hot_plate_temp_initial_layer": [
-    "65"
-   ],
-   "supertack_plate_temp": [
-    "65"
-   ],
-   "supertack_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_cool_plate_temp": [
-    "65"
-   ],
-   "textured_cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_plate_temp": [
-    "65"
-   ],
-   "textured_plate_temp_initial_layer": [
     "65"
    ],
    "filament_density": [
@@ -1571,40 +911,10 @@
    "nozzle_temperature_initial_layer": [
     "205"
    ],
-   "cool_plate_temp": [
-    "65"
-   ],
-   "cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "eng_plate_temp": [
-    "65"
-   ],
-   "eng_plate_temp_initial_layer": [
-    "65"
-   ],
    "hot_plate_temp": [
     "65"
    ],
    "hot_plate_temp_initial_layer": [
-    "65"
-   ],
-   "supertack_plate_temp": [
-    "65"
-   ],
-   "supertack_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_cool_plate_temp": [
-    "65"
-   ],
-   "textured_cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_plate_temp": [
-    "65"
-   ],
-   "textured_plate_temp_initial_layer": [
     "65"
    ],
    "filament_density": [
@@ -1640,40 +950,10 @@
    "nozzle_temperature_initial_layer": [
     "205"
    ],
-   "cool_plate_temp": [
-    "65"
-   ],
-   "cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "eng_plate_temp": [
-    "65"
-   ],
-   "eng_plate_temp_initial_layer": [
-    "65"
-   ],
    "hot_plate_temp": [
     "65"
    ],
    "hot_plate_temp_initial_layer": [
-    "65"
-   ],
-   "supertack_plate_temp": [
-    "65"
-   ],
-   "supertack_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_cool_plate_temp": [
-    "65"
-   ],
-   "textured_cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_plate_temp": [
-    "65"
-   ],
-   "textured_plate_temp_initial_layer": [
     "65"
    ],
    "filament_density": [
@@ -1709,40 +989,10 @@
    "nozzle_temperature_initial_layer": [
     "205"
    ],
-   "cool_plate_temp": [
-    "65"
-   ],
-   "cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "eng_plate_temp": [
-    "65"
-   ],
-   "eng_plate_temp_initial_layer": [
-    "65"
-   ],
    "hot_plate_temp": [
     "65"
    ],
    "hot_plate_temp_initial_layer": [
-    "65"
-   ],
-   "supertack_plate_temp": [
-    "65"
-   ],
-   "supertack_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_cool_plate_temp": [
-    "65"
-   ],
-   "textured_cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_plate_temp": [
-    "65"
-   ],
-   "textured_plate_temp_initial_layer": [
     "65"
    ],
    "filament_density": [
@@ -1778,40 +1028,10 @@
    "nozzle_temperature_initial_layer": [
     "205"
    ],
-   "cool_plate_temp": [
-    "65"
-   ],
-   "cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "eng_plate_temp": [
-    "65"
-   ],
-   "eng_plate_temp_initial_layer": [
-    "65"
-   ],
    "hot_plate_temp": [
     "65"
    ],
    "hot_plate_temp_initial_layer": [
-    "65"
-   ],
-   "supertack_plate_temp": [
-    "65"
-   ],
-   "supertack_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_cool_plate_temp": [
-    "65"
-   ],
-   "textured_cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_plate_temp": [
-    "65"
-   ],
-   "textured_plate_temp_initial_layer": [
     "65"
    ],
    "filament_density": [
@@ -1847,40 +1067,10 @@
    "nozzle_temperature_initial_layer": [
     "230"
    ],
-   "cool_plate_temp": [
-    "65"
-   ],
-   "cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "eng_plate_temp": [
-    "65"
-   ],
-   "eng_plate_temp_initial_layer": [
-    "65"
-   ],
    "hot_plate_temp": [
     "65"
    ],
    "hot_plate_temp_initial_layer": [
-    "65"
-   ],
-   "supertack_plate_temp": [
-    "65"
-   ],
-   "supertack_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_cool_plate_temp": [
-    "65"
-   ],
-   "textured_cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_plate_temp": [
-    "65"
-   ],
-   "textured_plate_temp_initial_layer": [
     "65"
    ],
    "filament_density": [
@@ -1916,40 +1106,10 @@
    "nozzle_temperature_initial_layer": [
     "230"
    ],
-   "cool_plate_temp": [
-    "65"
-   ],
-   "cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "eng_plate_temp": [
-    "65"
-   ],
-   "eng_plate_temp_initial_layer": [
-    "65"
-   ],
    "hot_plate_temp": [
     "65"
    ],
    "hot_plate_temp_initial_layer": [
-    "65"
-   ],
-   "supertack_plate_temp": [
-    "65"
-   ],
-   "supertack_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_cool_plate_temp": [
-    "65"
-   ],
-   "textured_cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_plate_temp": [
-    "65"
-   ],
-   "textured_plate_temp_initial_layer": [
     "65"
    ],
    "filament_density": [
@@ -1985,40 +1145,10 @@
    "nozzle_temperature_initial_layer": [
     "205"
    ],
-   "cool_plate_temp": [
-    "65"
-   ],
-   "cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "eng_plate_temp": [
-    "65"
-   ],
-   "eng_plate_temp_initial_layer": [
-    "65"
-   ],
    "hot_plate_temp": [
     "65"
    ],
    "hot_plate_temp_initial_layer": [
-    "65"
-   ],
-   "supertack_plate_temp": [
-    "65"
-   ],
-   "supertack_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_cool_plate_temp": [
-    "65"
-   ],
-   "textured_cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_plate_temp": [
-    "65"
-   ],
-   "textured_plate_temp_initial_layer": [
     "65"
    ],
    "filament_density": [
@@ -2054,40 +1184,10 @@
    "nozzle_temperature_initial_layer": [
     "205"
    ],
-   "cool_plate_temp": [
-    "65"
-   ],
-   "cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "eng_plate_temp": [
-    "65"
-   ],
-   "eng_plate_temp_initial_layer": [
-    "65"
-   ],
    "hot_plate_temp": [
     "65"
    ],
    "hot_plate_temp_initial_layer": [
-    "65"
-   ],
-   "supertack_plate_temp": [
-    "65"
-   ],
-   "supertack_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_cool_plate_temp": [
-    "65"
-   ],
-   "textured_cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_plate_temp": [
-    "65"
-   ],
-   "textured_plate_temp_initial_layer": [
     "65"
    ],
    "filament_density": [
@@ -2123,40 +1223,10 @@
    "nozzle_temperature_initial_layer": [
     "205"
    ],
-   "cool_plate_temp": [
-    "65"
-   ],
-   "cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "eng_plate_temp": [
-    "65"
-   ],
-   "eng_plate_temp_initial_layer": [
-    "65"
-   ],
    "hot_plate_temp": [
     "65"
    ],
    "hot_plate_temp_initial_layer": [
-    "65"
-   ],
-   "supertack_plate_temp": [
-    "65"
-   ],
-   "supertack_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_cool_plate_temp": [
-    "65"
-   ],
-   "textured_cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_plate_temp": [
-    "65"
-   ],
-   "textured_plate_temp_initial_layer": [
     "65"
    ],
    "filament_density": [
@@ -2192,40 +1262,10 @@
    "nozzle_temperature_initial_layer": [
     "205"
    ],
-   "cool_plate_temp": [
-    "65"
-   ],
-   "cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "eng_plate_temp": [
-    "65"
-   ],
-   "eng_plate_temp_initial_layer": [
-    "65"
-   ],
    "hot_plate_temp": [
     "65"
    ],
    "hot_plate_temp_initial_layer": [
-    "65"
-   ],
-   "supertack_plate_temp": [
-    "65"
-   ],
-   "supertack_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_cool_plate_temp": [
-    "65"
-   ],
-   "textured_cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_plate_temp": [
-    "65"
-   ],
-   "textured_plate_temp_initial_layer": [
     "65"
    ],
    "filament_density": [
@@ -2261,40 +1301,10 @@
    "nozzle_temperature_initial_layer": [
     "205"
    ],
-   "cool_plate_temp": [
-    "65"
-   ],
-   "cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "eng_plate_temp": [
-    "65"
-   ],
-   "eng_plate_temp_initial_layer": [
-    "65"
-   ],
    "hot_plate_temp": [
     "65"
    ],
    "hot_plate_temp_initial_layer": [
-    "65"
-   ],
-   "supertack_plate_temp": [
-    "65"
-   ],
-   "supertack_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_cool_plate_temp": [
-    "65"
-   ],
-   "textured_cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_plate_temp": [
-    "65"
-   ],
-   "textured_plate_temp_initial_layer": [
     "65"
    ],
    "filament_density": [
@@ -2330,40 +1340,10 @@
    "nozzle_temperature_initial_layer": [
     "205"
    ],
-   "cool_plate_temp": [
-    "65"
-   ],
-   "cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "eng_plate_temp": [
-    "65"
-   ],
-   "eng_plate_temp_initial_layer": [
-    "65"
-   ],
    "hot_plate_temp": [
     "65"
    ],
    "hot_plate_temp_initial_layer": [
-    "65"
-   ],
-   "supertack_plate_temp": [
-    "65"
-   ],
-   "supertack_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_cool_plate_temp": [
-    "65"
-   ],
-   "textured_cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_plate_temp": [
-    "65"
-   ],
-   "textured_plate_temp_initial_layer": [
     "65"
    ],
    "filament_density": [
@@ -2399,40 +1379,10 @@
    "nozzle_temperature_initial_layer": [
     "205"
    ],
-   "cool_plate_temp": [
-    "65"
-   ],
-   "cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "eng_plate_temp": [
-    "65"
-   ],
-   "eng_plate_temp_initial_layer": [
-    "65"
-   ],
    "hot_plate_temp": [
     "65"
    ],
    "hot_plate_temp_initial_layer": [
-    "65"
-   ],
-   "supertack_plate_temp": [
-    "65"
-   ],
-   "supertack_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_cool_plate_temp": [
-    "65"
-   ],
-   "textured_cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_plate_temp": [
-    "65"
-   ],
-   "textured_plate_temp_initial_layer": [
     "65"
    ],
    "filament_density": [
@@ -2468,40 +1418,10 @@
    "nozzle_temperature_initial_layer": [
     "230"
    ],
-   "cool_plate_temp": [
-    "65"
-   ],
-   "cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "eng_plate_temp": [
-    "65"
-   ],
-   "eng_plate_temp_initial_layer": [
-    "65"
-   ],
    "hot_plate_temp": [
     "65"
    ],
    "hot_plate_temp_initial_layer": [
-    "65"
-   ],
-   "supertack_plate_temp": [
-    "65"
-   ],
-   "supertack_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_cool_plate_temp": [
-    "65"
-   ],
-   "textured_cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_plate_temp": [
-    "65"
-   ],
-   "textured_plate_temp_initial_layer": [
     "65"
    ],
    "filament_density": [
@@ -2564,40 +1484,10 @@
    "nozzle_temperature_initial_layer": [
     "230"
    ],
-   "cool_plate_temp": [
-    "60"
-   ],
-   "cool_plate_temp_initial_layer": [
-    "60"
-   ],
-   "eng_plate_temp": [
-    "60"
-   ],
-   "eng_plate_temp_initial_layer": [
-    "60"
-   ],
    "hot_plate_temp": [
     "60"
    ],
    "hot_plate_temp_initial_layer": [
-    "60"
-   ],
-   "supertack_plate_temp": [
-    "60"
-   ],
-   "supertack_plate_temp_initial_layer": [
-    "60"
-   ],
-   "textured_cool_plate_temp": [
-    "60"
-   ],
-   "textured_cool_plate_temp_initial_layer": [
-    "60"
-   ],
-   "textured_plate_temp": [
-    "60"
-   ],
-   "textured_plate_temp_initial_layer": [
     "60"
    ],
    "filament_density": [
@@ -2633,40 +1523,10 @@
    "nozzle_temperature_initial_layer": [
     "230"
    ],
-   "cool_plate_temp": [
-    "60"
-   ],
-   "cool_plate_temp_initial_layer": [
-    "60"
-   ],
-   "eng_plate_temp": [
-    "60"
-   ],
-   "eng_plate_temp_initial_layer": [
-    "60"
-   ],
    "hot_plate_temp": [
     "60"
    ],
    "hot_plate_temp_initial_layer": [
-    "60"
-   ],
-   "supertack_plate_temp": [
-    "60"
-   ],
-   "supertack_plate_temp_initial_layer": [
-    "60"
-   ],
-   "textured_cool_plate_temp": [
-    "60"
-   ],
-   "textured_cool_plate_temp_initial_layer": [
-    "60"
-   ],
-   "textured_plate_temp": [
-    "60"
-   ],
-   "textured_plate_temp_initial_layer": [
     "60"
    ],
    "filament_density": [
@@ -2702,40 +1562,10 @@
    "nozzle_temperature_initial_layer": [
     "230"
    ],
-   "cool_plate_temp": [
-    "60"
-   ],
-   "cool_plate_temp_initial_layer": [
-    "60"
-   ],
-   "eng_plate_temp": [
-    "60"
-   ],
-   "eng_plate_temp_initial_layer": [
-    "60"
-   ],
    "hot_plate_temp": [
     "60"
    ],
    "hot_plate_temp_initial_layer": [
-    "60"
-   ],
-   "supertack_plate_temp": [
-    "60"
-   ],
-   "supertack_plate_temp_initial_layer": [
-    "60"
-   ],
-   "textured_cool_plate_temp": [
-    "60"
-   ],
-   "textured_cool_plate_temp_initial_layer": [
-    "60"
-   ],
-   "textured_plate_temp": [
-    "60"
-   ],
-   "textured_plate_temp_initial_layer": [
     "60"
    ],
    "filament_density": [
@@ -2771,40 +1601,10 @@
    "nozzle_temperature_initial_layer": [
     "230"
    ],
-   "cool_plate_temp": [
-    "60"
-   ],
-   "cool_plate_temp_initial_layer": [
-    "60"
-   ],
-   "eng_plate_temp": [
-    "60"
-   ],
-   "eng_plate_temp_initial_layer": [
-    "60"
-   ],
    "hot_plate_temp": [
     "60"
    ],
    "hot_plate_temp_initial_layer": [
-    "60"
-   ],
-   "supertack_plate_temp": [
-    "60"
-   ],
-   "supertack_plate_temp_initial_layer": [
-    "60"
-   ],
-   "textured_cool_plate_temp": [
-    "60"
-   ],
-   "textured_cool_plate_temp_initial_layer": [
-    "60"
-   ],
-   "textured_plate_temp": [
-    "60"
-   ],
-   "textured_plate_temp_initial_layer": [
     "60"
    ],
    "filament_density": [
@@ -2840,40 +1640,10 @@
    "nozzle_temperature_initial_layer": [
     "205"
    ],
-   "cool_plate_temp": [
-    "65"
-   ],
-   "cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "eng_plate_temp": [
-    "65"
-   ],
-   "eng_plate_temp_initial_layer": [
-    "65"
-   ],
    "hot_plate_temp": [
     "65"
    ],
    "hot_plate_temp_initial_layer": [
-    "65"
-   ],
-   "supertack_plate_temp": [
-    "65"
-   ],
-   "supertack_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_cool_plate_temp": [
-    "65"
-   ],
-   "textured_cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_plate_temp": [
-    "65"
-   ],
-   "textured_plate_temp_initial_layer": [
     "65"
    ],
    "filament_density": [
@@ -2909,40 +1679,10 @@
    "nozzle_temperature_initial_layer": [
     "205"
    ],
-   "cool_plate_temp": [
-    "65"
-   ],
-   "cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "eng_plate_temp": [
-    "65"
-   ],
-   "eng_plate_temp_initial_layer": [
-    "65"
-   ],
    "hot_plate_temp": [
     "65"
    ],
    "hot_plate_temp_initial_layer": [
-    "65"
-   ],
-   "supertack_plate_temp": [
-    "65"
-   ],
-   "supertack_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_cool_plate_temp": [
-    "65"
-   ],
-   "textured_cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_plate_temp": [
-    "65"
-   ],
-   "textured_plate_temp_initial_layer": [
     "65"
    ],
    "filament_density": [
@@ -2978,40 +1718,10 @@
    "nozzle_temperature_initial_layer": [
     "205"
    ],
-   "cool_plate_temp": [
-    "65"
-   ],
-   "cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "eng_plate_temp": [
-    "65"
-   ],
-   "eng_plate_temp_initial_layer": [
-    "65"
-   ],
    "hot_plate_temp": [
     "65"
    ],
    "hot_plate_temp_initial_layer": [
-    "65"
-   ],
-   "supertack_plate_temp": [
-    "65"
-   ],
-   "supertack_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_cool_plate_temp": [
-    "65"
-   ],
-   "textured_cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_plate_temp": [
-    "65"
-   ],
-   "textured_plate_temp_initial_layer": [
     "65"
    ],
    "filament_density": [
@@ -3047,40 +1757,10 @@
    "nozzle_temperature_initial_layer": [
     "205"
    ],
-   "cool_plate_temp": [
-    "65"
-   ],
-   "cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "eng_plate_temp": [
-    "65"
-   ],
-   "eng_plate_temp_initial_layer": [
-    "65"
-   ],
    "hot_plate_temp": [
     "65"
    ],
    "hot_plate_temp_initial_layer": [
-    "65"
-   ],
-   "supertack_plate_temp": [
-    "65"
-   ],
-   "supertack_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_cool_plate_temp": [
-    "65"
-   ],
-   "textured_cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_plate_temp": [
-    "65"
-   ],
-   "textured_plate_temp_initial_layer": [
     "65"
    ],
    "filament_density": [
@@ -3116,40 +1796,10 @@
    "nozzle_temperature_initial_layer": [
     "205"
    ],
-   "cool_plate_temp": [
-    "65"
-   ],
-   "cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "eng_plate_temp": [
-    "65"
-   ],
-   "eng_plate_temp_initial_layer": [
-    "65"
-   ],
    "hot_plate_temp": [
     "65"
    ],
    "hot_plate_temp_initial_layer": [
-    "65"
-   ],
-   "supertack_plate_temp": [
-    "65"
-   ],
-   "supertack_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_cool_plate_temp": [
-    "65"
-   ],
-   "textured_cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_plate_temp": [
-    "65"
-   ],
-   "textured_plate_temp_initial_layer": [
     "65"
    ],
    "filament_density": [
@@ -3185,40 +1835,10 @@
    "nozzle_temperature_initial_layer": [
     "205"
    ],
-   "cool_plate_temp": [
-    "65"
-   ],
-   "cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "eng_plate_temp": [
-    "65"
-   ],
-   "eng_plate_temp_initial_layer": [
-    "65"
-   ],
    "hot_plate_temp": [
     "65"
    ],
    "hot_plate_temp_initial_layer": [
-    "65"
-   ],
-   "supertack_plate_temp": [
-    "65"
-   ],
-   "supertack_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_cool_plate_temp": [
-    "65"
-   ],
-   "textured_cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_plate_temp": [
-    "65"
-   ],
-   "textured_plate_temp_initial_layer": [
     "65"
    ],
    "filament_density": [
@@ -3254,40 +1874,10 @@
    "nozzle_temperature_initial_layer": [
     "205"
    ],
-   "cool_plate_temp": [
-    "65"
-   ],
-   "cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "eng_plate_temp": [
-    "65"
-   ],
-   "eng_plate_temp_initial_layer": [
-    "65"
-   ],
    "hot_plate_temp": [
     "65"
    ],
    "hot_plate_temp_initial_layer": [
-    "65"
-   ],
-   "supertack_plate_temp": [
-    "65"
-   ],
-   "supertack_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_cool_plate_temp": [
-    "65"
-   ],
-   "textured_cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_plate_temp": [
-    "65"
-   ],
-   "textured_plate_temp_initial_layer": [
     "65"
    ],
    "filament_density": [
@@ -3323,40 +1913,10 @@
    "nozzle_temperature_initial_layer": [
     "205"
    ],
-   "cool_plate_temp": [
-    "65"
-   ],
-   "cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "eng_plate_temp": [
-    "65"
-   ],
-   "eng_plate_temp_initial_layer": [
-    "65"
-   ],
    "hot_plate_temp": [
     "65"
    ],
    "hot_plate_temp_initial_layer": [
-    "65"
-   ],
-   "supertack_plate_temp": [
-    "65"
-   ],
-   "supertack_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_cool_plate_temp": [
-    "65"
-   ],
-   "textured_cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_plate_temp": [
-    "65"
-   ],
-   "textured_plate_temp_initial_layer": [
     "65"
    ],
    "filament_density": [
@@ -3392,40 +1952,10 @@
    "nozzle_temperature_initial_layer": [
     "205"
    ],
-   "cool_plate_temp": [
-    "65"
-   ],
-   "cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "eng_plate_temp": [
-    "65"
-   ],
-   "eng_plate_temp_initial_layer": [
-    "65"
-   ],
    "hot_plate_temp": [
     "65"
    ],
    "hot_plate_temp_initial_layer": [
-    "65"
-   ],
-   "supertack_plate_temp": [
-    "65"
-   ],
-   "supertack_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_cool_plate_temp": [
-    "65"
-   ],
-   "textured_cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_plate_temp": [
-    "65"
-   ],
-   "textured_plate_temp_initial_layer": [
     "65"
    ],
    "filament_density": [
@@ -3461,40 +1991,10 @@
    "nozzle_temperature_initial_layer": [
     "205"
    ],
-   "cool_plate_temp": [
-    "65"
-   ],
-   "cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "eng_plate_temp": [
-    "65"
-   ],
-   "eng_plate_temp_initial_layer": [
-    "65"
-   ],
    "hot_plate_temp": [
     "65"
    ],
    "hot_plate_temp_initial_layer": [
-    "65"
-   ],
-   "supertack_plate_temp": [
-    "65"
-   ],
-   "supertack_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_cool_plate_temp": [
-    "65"
-   ],
-   "textured_cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_plate_temp": [
-    "65"
-   ],
-   "textured_plate_temp_initial_layer": [
     "65"
    ],
    "filament_density": [
@@ -3530,40 +2030,10 @@
    "nozzle_temperature_initial_layer": [
     "205"
    ],
-   "cool_plate_temp": [
-    "65"
-   ],
-   "cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "eng_plate_temp": [
-    "65"
-   ],
-   "eng_plate_temp_initial_layer": [
-    "65"
-   ],
    "hot_plate_temp": [
     "65"
    ],
    "hot_plate_temp_initial_layer": [
-    "65"
-   ],
-   "supertack_plate_temp": [
-    "65"
-   ],
-   "supertack_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_cool_plate_temp": [
-    "65"
-   ],
-   "textured_cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_plate_temp": [
-    "65"
-   ],
-   "textured_plate_temp_initial_layer": [
     "65"
    ],
    "filament_density": [
@@ -3599,40 +2069,10 @@
    "nozzle_temperature_initial_layer": [
     "205"
    ],
-   "cool_plate_temp": [
-    "65"
-   ],
-   "cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "eng_plate_temp": [
-    "65"
-   ],
-   "eng_plate_temp_initial_layer": [
-    "65"
-   ],
    "hot_plate_temp": [
     "65"
    ],
    "hot_plate_temp_initial_layer": [
-    "65"
-   ],
-   "supertack_plate_temp": [
-    "65"
-   ],
-   "supertack_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_cool_plate_temp": [
-    "65"
-   ],
-   "textured_cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_plate_temp": [
-    "65"
-   ],
-   "textured_plate_temp_initial_layer": [
     "65"
    ],
    "filament_density": [
@@ -3668,40 +2108,10 @@
    "nozzle_temperature_initial_layer": [
     "205"
    ],
-   "cool_plate_temp": [
-    "65"
-   ],
-   "cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "eng_plate_temp": [
-    "65"
-   ],
-   "eng_plate_temp_initial_layer": [
-    "65"
-   ],
    "hot_plate_temp": [
     "65"
    ],
    "hot_plate_temp_initial_layer": [
-    "65"
-   ],
-   "supertack_plate_temp": [
-    "65"
-   ],
-   "supertack_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_cool_plate_temp": [
-    "65"
-   ],
-   "textured_cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_plate_temp": [
-    "65"
-   ],
-   "textured_plate_temp_initial_layer": [
     "65"
    ],
    "filament_density": [
@@ -3737,40 +2147,10 @@
    "nozzle_temperature_initial_layer": [
     "205"
    ],
-   "cool_plate_temp": [
-    "65"
-   ],
-   "cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "eng_plate_temp": [
-    "65"
-   ],
-   "eng_plate_temp_initial_layer": [
-    "65"
-   ],
    "hot_plate_temp": [
     "65"
    ],
    "hot_plate_temp_initial_layer": [
-    "65"
-   ],
-   "supertack_plate_temp": [
-    "65"
-   ],
-   "supertack_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_cool_plate_temp": [
-    "65"
-   ],
-   "textured_cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_plate_temp": [
-    "65"
-   ],
-   "textured_plate_temp_initial_layer": [
     "65"
    ],
    "filament_density": [
@@ -3806,40 +2186,10 @@
    "nozzle_temperature_initial_layer": [
     "205"
    ],
-   "cool_plate_temp": [
-    "65"
-   ],
-   "cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "eng_plate_temp": [
-    "65"
-   ],
-   "eng_plate_temp_initial_layer": [
-    "65"
-   ],
    "hot_plate_temp": [
     "65"
    ],
    "hot_plate_temp_initial_layer": [
-    "65"
-   ],
-   "supertack_plate_temp": [
-    "65"
-   ],
-   "supertack_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_cool_plate_temp": [
-    "65"
-   ],
-   "textured_cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_plate_temp": [
-    "65"
-   ],
-   "textured_plate_temp_initial_layer": [
     "65"
    ],
    "filament_density": [
@@ -3875,40 +2225,10 @@
    "nozzle_temperature_initial_layer": [
     "205"
    ],
-   "cool_plate_temp": [
-    "65"
-   ],
-   "cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "eng_plate_temp": [
-    "65"
-   ],
-   "eng_plate_temp_initial_layer": [
-    "65"
-   ],
    "hot_plate_temp": [
     "65"
    ],
    "hot_plate_temp_initial_layer": [
-    "65"
-   ],
-   "supertack_plate_temp": [
-    "65"
-   ],
-   "supertack_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_cool_plate_temp": [
-    "65"
-   ],
-   "textured_cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_plate_temp": [
-    "65"
-   ],
-   "textured_plate_temp_initial_layer": [
     "65"
    ],
    "filament_density": [
@@ -3944,40 +2264,10 @@
    "nozzle_temperature_initial_layer": [
     "205"
    ],
-   "cool_plate_temp": [
-    "65"
-   ],
-   "cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "eng_plate_temp": [
-    "65"
-   ],
-   "eng_plate_temp_initial_layer": [
-    "65"
-   ],
    "hot_plate_temp": [
     "65"
    ],
    "hot_plate_temp_initial_layer": [
-    "65"
-   ],
-   "supertack_plate_temp": [
-    "65"
-   ],
-   "supertack_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_cool_plate_temp": [
-    "65"
-   ],
-   "textured_cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_plate_temp": [
-    "65"
-   ],
-   "textured_plate_temp_initial_layer": [
     "65"
    ],
    "filament_density": [
@@ -4013,40 +2303,10 @@
    "nozzle_temperature_initial_layer": [
     "205"
    ],
-   "cool_plate_temp": [
-    "65"
-   ],
-   "cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "eng_plate_temp": [
-    "65"
-   ],
-   "eng_plate_temp_initial_layer": [
-    "65"
-   ],
    "hot_plate_temp": [
     "65"
    ],
    "hot_plate_temp_initial_layer": [
-    "65"
-   ],
-   "supertack_plate_temp": [
-    "65"
-   ],
-   "supertack_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_cool_plate_temp": [
-    "65"
-   ],
-   "textured_cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_plate_temp": [
-    "65"
-   ],
-   "textured_plate_temp_initial_layer": [
     "65"
    ],
    "filament_density": [
@@ -4082,40 +2342,10 @@
    "nozzle_temperature_initial_layer": [
     "205"
    ],
-   "cool_plate_temp": [
-    "65"
-   ],
-   "cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "eng_plate_temp": [
-    "65"
-   ],
-   "eng_plate_temp_initial_layer": [
-    "65"
-   ],
    "hot_plate_temp": [
     "65"
    ],
    "hot_plate_temp_initial_layer": [
-    "65"
-   ],
-   "supertack_plate_temp": [
-    "65"
-   ],
-   "supertack_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_cool_plate_temp": [
-    "65"
-   ],
-   "textured_cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_plate_temp": [
-    "65"
-   ],
-   "textured_plate_temp_initial_layer": [
     "65"
    ],
    "filament_density": [
@@ -4151,40 +2381,10 @@
    "nozzle_temperature_initial_layer": [
     "205"
    ],
-   "cool_plate_temp": [
-    "65"
-   ],
-   "cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "eng_plate_temp": [
-    "65"
-   ],
-   "eng_plate_temp_initial_layer": [
-    "65"
-   ],
    "hot_plate_temp": [
     "65"
    ],
    "hot_plate_temp_initial_layer": [
-    "65"
-   ],
-   "supertack_plate_temp": [
-    "65"
-   ],
-   "supertack_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_cool_plate_temp": [
-    "65"
-   ],
-   "textured_cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_plate_temp": [
-    "65"
-   ],
-   "textured_plate_temp_initial_layer": [
     "65"
    ],
    "filament_density": [
@@ -4220,40 +2420,10 @@
    "nozzle_temperature_initial_layer": [
     "205"
    ],
-   "cool_plate_temp": [
-    "65"
-   ],
-   "cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "eng_plate_temp": [
-    "65"
-   ],
-   "eng_plate_temp_initial_layer": [
-    "65"
-   ],
    "hot_plate_temp": [
     "65"
    ],
    "hot_plate_temp_initial_layer": [
-    "65"
-   ],
-   "supertack_plate_temp": [
-    "65"
-   ],
-   "supertack_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_cool_plate_temp": [
-    "65"
-   ],
-   "textured_cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_plate_temp": [
-    "65"
-   ],
-   "textured_plate_temp_initial_layer": [
     "65"
    ],
    "filament_density": [
@@ -4289,40 +2459,10 @@
    "nozzle_temperature_initial_layer": [
     "205"
    ],
-   "cool_plate_temp": [
-    "65"
-   ],
-   "cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "eng_plate_temp": [
-    "65"
-   ],
-   "eng_plate_temp_initial_layer": [
-    "65"
-   ],
    "hot_plate_temp": [
     "65"
    ],
    "hot_plate_temp_initial_layer": [
-    "65"
-   ],
-   "supertack_plate_temp": [
-    "65"
-   ],
-   "supertack_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_cool_plate_temp": [
-    "65"
-   ],
-   "textured_cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_plate_temp": [
-    "65"
-   ],
-   "textured_plate_temp_initial_layer": [
     "65"
    ],
    "filament_density": [
@@ -4358,40 +2498,10 @@
    "nozzle_temperature_initial_layer": [
     "230"
    ],
-   "cool_plate_temp": [
-    "65"
-   ],
-   "cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "eng_plate_temp": [
-    "65"
-   ],
-   "eng_plate_temp_initial_layer": [
-    "65"
-   ],
    "hot_plate_temp": [
     "65"
    ],
    "hot_plate_temp_initial_layer": [
-    "65"
-   ],
-   "supertack_plate_temp": [
-    "65"
-   ],
-   "supertack_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_cool_plate_temp": [
-    "65"
-   ],
-   "textured_cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_plate_temp": [
-    "65"
-   ],
-   "textured_plate_temp_initial_layer": [
     "65"
    ],
    "filament_density": [
@@ -4427,40 +2537,10 @@
    "nozzle_temperature_initial_layer": [
     "230"
    ],
-   "cool_plate_temp": [
-    "65"
-   ],
-   "cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "eng_plate_temp": [
-    "65"
-   ],
-   "eng_plate_temp_initial_layer": [
-    "65"
-   ],
    "hot_plate_temp": [
     "65"
    ],
    "hot_plate_temp_initial_layer": [
-    "65"
-   ],
-   "supertack_plate_temp": [
-    "65"
-   ],
-   "supertack_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_cool_plate_temp": [
-    "65"
-   ],
-   "textured_cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_plate_temp": [
-    "65"
-   ],
-   "textured_plate_temp_initial_layer": [
     "65"
    ],
    "filament_density": [
@@ -4496,40 +2576,10 @@
    "nozzle_temperature_initial_layer": [
     "205"
    ],
-   "cool_plate_temp": [
-    "65"
-   ],
-   "cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "eng_plate_temp": [
-    "65"
-   ],
-   "eng_plate_temp_initial_layer": [
-    "65"
-   ],
    "hot_plate_temp": [
     "65"
    ],
    "hot_plate_temp_initial_layer": [
-    "65"
-   ],
-   "supertack_plate_temp": [
-    "65"
-   ],
-   "supertack_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_cool_plate_temp": [
-    "65"
-   ],
-   "textured_cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_plate_temp": [
-    "65"
-   ],
-   "textured_plate_temp_initial_layer": [
     "65"
    ],
    "filament_density": [
@@ -4565,40 +2615,10 @@
    "nozzle_temperature_initial_layer": [
     "205"
    ],
-   "cool_plate_temp": [
-    "65"
-   ],
-   "cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "eng_plate_temp": [
-    "65"
-   ],
-   "eng_plate_temp_initial_layer": [
-    "65"
-   ],
    "hot_plate_temp": [
     "65"
    ],
    "hot_plate_temp_initial_layer": [
-    "65"
-   ],
-   "supertack_plate_temp": [
-    "65"
-   ],
-   "supertack_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_cool_plate_temp": [
-    "65"
-   ],
-   "textured_cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_plate_temp": [
-    "65"
-   ],
-   "textured_plate_temp_initial_layer": [
     "65"
    ],
    "filament_density": [
@@ -4634,40 +2654,10 @@
    "nozzle_temperature_initial_layer": [
     "205"
    ],
-   "cool_plate_temp": [
-    "65"
-   ],
-   "cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "eng_plate_temp": [
-    "65"
-   ],
-   "eng_plate_temp_initial_layer": [
-    "65"
-   ],
    "hot_plate_temp": [
     "65"
    ],
    "hot_plate_temp_initial_layer": [
-    "65"
-   ],
-   "supertack_plate_temp": [
-    "65"
-   ],
-   "supertack_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_cool_plate_temp": [
-    "65"
-   ],
-   "textured_cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_plate_temp": [
-    "65"
-   ],
-   "textured_plate_temp_initial_layer": [
     "65"
    ],
    "filament_density": [
@@ -4703,40 +2693,10 @@
    "nozzle_temperature_initial_layer": [
     "205"
    ],
-   "cool_plate_temp": [
-    "65"
-   ],
-   "cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "eng_plate_temp": [
-    "65"
-   ],
-   "eng_plate_temp_initial_layer": [
-    "65"
-   ],
    "hot_plate_temp": [
     "65"
    ],
    "hot_plate_temp_initial_layer": [
-    "65"
-   ],
-   "supertack_plate_temp": [
-    "65"
-   ],
-   "supertack_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_cool_plate_temp": [
-    "65"
-   ],
-   "textured_cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_plate_temp": [
-    "65"
-   ],
-   "textured_plate_temp_initial_layer": [
     "65"
    ],
    "filament_density": [
@@ -4772,40 +2732,10 @@
    "nozzle_temperature_initial_layer": [
     "205"
    ],
-   "cool_plate_temp": [
-    "65"
-   ],
-   "cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "eng_plate_temp": [
-    "65"
-   ],
-   "eng_plate_temp_initial_layer": [
-    "65"
-   ],
    "hot_plate_temp": [
     "65"
    ],
    "hot_plate_temp_initial_layer": [
-    "65"
-   ],
-   "supertack_plate_temp": [
-    "65"
-   ],
-   "supertack_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_cool_plate_temp": [
-    "65"
-   ],
-   "textured_cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_plate_temp": [
-    "65"
-   ],
-   "textured_plate_temp_initial_layer": [
     "65"
    ],
    "filament_density": [
@@ -4841,40 +2771,10 @@
    "nozzle_temperature_initial_layer": [
     "205"
    ],
-   "cool_plate_temp": [
-    "65"
-   ],
-   "cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "eng_plate_temp": [
-    "65"
-   ],
-   "eng_plate_temp_initial_layer": [
-    "65"
-   ],
    "hot_plate_temp": [
     "65"
    ],
    "hot_plate_temp_initial_layer": [
-    "65"
-   ],
-   "supertack_plate_temp": [
-    "65"
-   ],
-   "supertack_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_cool_plate_temp": [
-    "65"
-   ],
-   "textured_cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_plate_temp": [
-    "65"
-   ],
-   "textured_plate_temp_initial_layer": [
     "65"
    ],
    "filament_density": [
@@ -4910,40 +2810,10 @@
    "nozzle_temperature_initial_layer": [
     "205"
    ],
-   "cool_plate_temp": [
-    "65"
-   ],
-   "cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "eng_plate_temp": [
-    "65"
-   ],
-   "eng_plate_temp_initial_layer": [
-    "65"
-   ],
    "hot_plate_temp": [
     "65"
    ],
    "hot_plate_temp_initial_layer": [
-    "65"
-   ],
-   "supertack_plate_temp": [
-    "65"
-   ],
-   "supertack_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_cool_plate_temp": [
-    "65"
-   ],
-   "textured_cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_plate_temp": [
-    "65"
-   ],
-   "textured_plate_temp_initial_layer": [
     "65"
    ],
    "filament_density": [
@@ -4979,40 +2849,10 @@
    "nozzle_temperature_initial_layer": [
     "230"
    ],
-   "cool_plate_temp": [
-    "65"
-   ],
-   "cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "eng_plate_temp": [
-    "65"
-   ],
-   "eng_plate_temp_initial_layer": [
-    "65"
-   ],
    "hot_plate_temp": [
     "65"
    ],
    "hot_plate_temp_initial_layer": [
-    "65"
-   ],
-   "supertack_plate_temp": [
-    "65"
-   ],
-   "supertack_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_cool_plate_temp": [
-    "65"
-   ],
-   "textured_cool_plate_temp_initial_layer": [
-    "65"
-   ],
-   "textured_plate_temp": [
-    "65"
-   ],
-   "textured_plate_temp_initial_layer": [
     "65"
    ],
    "filament_density": [

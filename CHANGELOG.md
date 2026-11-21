@@ -3,6 +3,12 @@
 Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); entries before
 0.9.0 are Spoolio's.
 
+## [0.32.6] - 2026-11-21
+
+### Fixed
+- Spooler presets keep each build plate's own bed temperature. Spoolman's bed temperature used to replace every plate's, so a PLA preset made from "Snapmaker PLA SnapSpeed @U1" printed at 65 °C on the Cool Plate SuperTack (35 °C in the base preset). Now Spoolman's value goes to the plates that use the base preset's Smooth PEI / High Temp Plate temperature (usually Smooth and Textured PEI), and every other plate keeps the base preset's temperature, including 0 for a plate the filament can't print on. A plate temperature in the filament's `orca_settings` field still wins. Reported on Orca Cloud.
+- The install steps say where OrcaSlicer's **Plugins** item is: on Windows and Linux in the small ▾ arrow next to **File** at the top left of the window, on macOS under **File** in the menu bar.
+
 ## [0.32.5] - 2026-11-21
 
 ### Fixed

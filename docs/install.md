@@ -10,7 +10,7 @@ is the real one. Regenerate them with `python scripts/store_images/install_guide
 
    <img src="../assets/orca-cloud/install/01-plugin-hub.png" alt="Orca Cloud Plugin Hub card for Spooler with the Subscribe button highlighted" width="700">
 
-2. In OrcaSlicer open **File > Plugins**, click **Refresh**, then tick **Activate** for Spooler.
+2. In OrcaSlicer open **Plugins** (Windows and Linux: the small ▾ arrow next to **File** at the top left of OrcaSlicer's window; macOS: **File > Plugins** in the menu bar at the top of the screen), click **Refresh**, then tick **Activate** for Spooler.
 
    <img src="../assets/orca-cloud/install/02-plugins-dialog.png" alt="The Plugins dialog with Refresh and Activate highlighted" width="700">
 
@@ -30,7 +30,7 @@ is the real one. Regenerate them with `python scripts/store_images/install_guide
 
 1. Download `spooler_any.whl` from the [latest release](https://github.com/bloodf/spooler/releases/latest).
    It is the same file on Windows, macOS and Linux.
-2. In OrcaSlicer, open **File > Plugins > Install local plugin** and pick the file. If you installed an older
+2. In OrcaSlicer, open **Plugins** (as in step 2 above) **> Install local plugin** and pick the file. If you installed an older
    `spooler_any.py` by hand (in an `orca_plugins/spooler` folder), remove it first so the two don't clash.
 3. Tick **Activate** for Spooler.
 

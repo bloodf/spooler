@@ -6,7 +6,7 @@
 # name = "Spooler"
 # description = "Spoolman inventory for OrcaSlicer: auto-synced filament profiles and live printer slots"
 # author = "bloodf (fork of Spoolio by Dan J Moore)"
-# version = "0.32.5"
+# version = "0.32.6"
 # ///
 
 # Spooler - Spoolman inventory for OrcaSlicer, a fork of Spoolio
