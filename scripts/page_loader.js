@@ -84,6 +84,64 @@ function inflate(src) {
   return out.subarray(0, n);
 }
 
+// The page never stays a blank grey panel: an error before the app mounts (window errors, rejections and the app's
+// errorHandler report through window.__spoolerError), or nothing mounted after START_MS, shows what failed with a
+// Copy diagnostics button, and tells the plugin so the errors reach spooler.log.
+const START_MS = window.__spoolerStartMs || 10000;   // tests shorten it
+const startErrors = [];
+const FAIL_TEXT = {
+  en: ['Spooler could not open its page.', 'Copy diagnostics', 'The log is at'],
+  pt: ['O Spooler não conseguiu abrir a página.', 'Copiar diagnóstico', 'O log está em'],
+  es: ['Spooler no pudo abrir su página.', 'Copiar diagnóstico', 'El registro está en'],
+  de: ['Spooler konnte seine Seite nicht öffnen.', 'Diagnose kopieren', 'Das Protokoll liegt unter'],
+  zh: ['Spooler 无法打开页面。', '复制诊断信息', '日志位于'],
+  pl: ['Spooler nie mógł otworzyć swojej strony.', 'Kopiuj diagnostykę', 'Dziennik jest w'],
+};
+
+function showFailure() {
+  const app = document.getElementById('app');
+  if ((app && app.children.length) || document.getElementById('spooler-failed')) return;
+  let boot = {};
+  try { boot = JSON.parse(document.getElementById('spooler-boot').textContent); } catch { /* no boot: defaults */ }
+  const lang = String((boot.pref && boot.pref !== 'auto' ? boot.pref : boot.lang) || navigator.language || 'en').slice(0, 2).toLowerCase();
+  const [title, copy, logAt] = FAIL_TEXT[lang] || FAIL_TEXT.en;
+  const errors = startErrors.length ? startErrors : ['Nothing started within ' + START_MS / 1000 + ' s, and no error was reported.'];
+  const logPath = (boot.settings && boot.settings.log_path) || '';
+  const diag = ['Spooler ' + (boot.version || '?') + ' (' + (boot.mode || '?') + ')', navigator.userAgent,
+    'Language: ' + (boot.lang || navigator.language), ...errors].join('\n');
+  try { window.orca.postMessage({ type: 'page_error', errors, agent: navigator.userAgent }); } catch { /* no bridge: on screen only */ }
+  const box = document.createElement('div');
+  box.id = 'spooler-failed';
+  box.style.cssText = 'font:14px system-ui,sans-serif;margin:24px;color:inherit';
+  const h = document.createElement('h1');
+  h.style.fontSize = '16px';
+  h.textContent = title;
+  const p = document.createElement('p');
+  p.textContent = logPath ? logAt + ' ' + logPath : '';
+  const pre = document.createElement('pre');
+  pre.style.cssText = 'white-space:pre-wrap;user-select:text;padding:8px;border:1px solid #8884';
+  pre.textContent = diag;
+  const button = document.createElement('button');
+  button.textContent = copy;
+  button.onclick = () => {
+    const range = document.createRange();
+    range.selectNodeContents(pre);
+    getSelection().removeAllRanges();
+    getSelection().addRange(range);
+    try { document.execCommand('copy'); } catch { /* the text stays selected to copy by hand */ }
+  };
+  box.append(h, p, pre, button);
+  document.body.append(box);
+}
+
+window.__spoolerError = e => {
+  if (startErrors.length < 20) startErrors.push(String((e && (e.stack || e.message)) || e).slice(0, 2000));
+  setTimeout(showFailure, 0);
+};
+addEventListener('error', e => window.__spoolerError(e.error || e.message));
+addEventListener('unhandledrejection', e => window.__spoolerError(e.reason));
+setTimeout(showFailure, START_MS);
+
 try {
   const packed = Uint8Array.from(atob(document.getElementById('spooler-js').textContent.trim()), c => c.charCodeAt(0));
   const script = document.createElement('script');
@@ -91,5 +149,5 @@ try {
   script.textContent = new TextDecoder().decode(inflate(packed));
   document.head.append(script);
 } catch (e) {
-  document.body.textContent = 'Spooler could not start its page: ' + e;
+  window.__spoolerError(e);
 }

@@ -115,7 +115,9 @@ class SpoolerWindow(orca.script.ScriptPluginCapabilityBase):
 
     def _on_settings(self, data):
         msg_type = data.get("type") if isinstance(data, dict) else None
-        if msg_type in ("ready", "requirements"):  # Check again: the same test, counted at once
+        if msg_type == "page_error":
+            _core.log_page_error(data)
+        elif msg_type in ("ready", "requirements"):  # Check again: the same test, counted at once
             # Only check the connection once the page confirms its message
             # listener is registered, so the result can never arrive too early.
             if self._settings_window is not None:
@@ -216,7 +218,9 @@ class SpoolerWindow(orca.script.ScriptPluginCapabilityBase):
 
     def on_message(self, data):
         msg_type = data.get("type") if isinstance(data, dict) else None
-        if msg_type in ("ready", "refresh"):
+        if msg_type == "page_error":
+            _core.log_page_error(data)
+        elif msg_type in ("ready", "refresh"):
             _core.sync_config(self)
             self._push_data()
         elif msg_type == "settings":
@@ -410,9 +414,9 @@ if _core._PAGES:
                     stats=_core.stats_settings(),
                     wizard=_core.wizard_pending(),
                 )
-            except Exception:
+            except Exception as exc:  # noqa: BLE001 - raising leaves OrcaSlicer's tab an empty grey panel
                 _core.log.exception("get_ui() raised")
-                raise
+                return _i18n.error_page(exc)
 
         def on_message(self, arg0):
             # The base class hints "arg0: str", but a parsed dict arrives (as with
@@ -425,7 +429,9 @@ if _core._PAGES:
                     self._on_settings(data)
                     return
                 msg_type = data.get("type")
-                if msg_type in ("ready", "refresh"):
+                if msg_type == "page_error":
+                    _core.log_page_error(data)
+                elif msg_type in ("ready", "refresh"):
                     _core.sync_config(self)
                     self._push_data()
                     if msg_type == "ready" and _plate_check._plate["payload"]:

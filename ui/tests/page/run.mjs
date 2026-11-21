@@ -2,7 +2,7 @@
 // owned headless Chrome under a host-like CSP with a scripted OrcaSlicer bridge. Ported from the former page-script
 // tests (tests/test_display.py, test_drying, test_notices, test_review_fixes F10-F12, test_printer_control,
 // test_detail_export, test_stats, test_send, test_wizard, test_u1control) and extended for S01-S05, B-20..B-24, X01/X04/X05.
-//   node tests/page/run.mjs [name-filter]        PAGE=<built page> optional (default ui/dist/spooler-ui.html)
+//   node tests/page/run.mjs [name-filter]        PAGE=<page> optional (default plugin/spooler/app.html, the page as served)
 import { readFile, writeFile, mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve, dirname } from 'node:path';
@@ -10,7 +10,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { launch, MOCK_HOST, HELPERS, preparePage } from './cdp.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
-const PAGE = process.env.PAGE || resolve(here, '../../dist/spooler-ui.html');
+const PAGE = process.env.PAGE || resolve(here, '../../../plugin/spooler/app.html');
 const DISPLAY_DEFAULTS = { group_same: true, in_use: true, vendor: true, material: true, colour_code: false, diameter: false, rfid: true, bar: true,
   location: true, spool_id: false, comment: true, lot_nr: false, extra_fields: false, exact_weight: true, archived: false, dried: true, use_first: true,
   low_notice: true, head_vendor: true, head_material: true, head_colour_code: true, head_weight: true, head_bar: true, head_spool: true, head_preset: true, head_rfid: true };
@@ -1729,6 +1729,32 @@ async function bounded(work, stage, ms = 30000) {
   } finally { clearTimeout(timer); }
 }
 
+// ------------------------------------------------------------------ start-up failure (never a blank grey panel)
+test('a page that cannot start shows the error, copies diagnostics and reports it', `
+  await until(() => q('#spooler-failed'), 'failure notice', 3000);
+  const box = q('#spooler-failed');
+  assert(!q('#app > *'), 'nothing mounted');
+  assert(text(box).includes('Spooler konnte seine Seite nicht öffnen.'), 'German title: ' + text(box));
+  assert(text(box).includes('bridge broke'), 'the error: ' + text(box));
+  assert(text(box).includes('/tmp/spooler.log'), 'the log path');
+  const report = lastOf('page_error');
+  assert(report && report.errors.some(e => e.includes('bridge broke')), 'reported to the plugin: ' + JSON.stringify(__t.sent));
+  const button = [...box.querySelectorAll('button')].find(b => text(b) === 'Diagnose kopieren');
+  assert(button, 'copy button');
+  button.click();
+  assert(getSelection().toString().includes('Spooler test (tab)'), 'diagnostics selected for copying');
+`, { lang: 'de_DE', unmounted: true, host: "window.orca.onMessage = () => { throw new Error('bridge broke'); };" });
+test('a page without the OrcaSlicer bridge says so instead of staying blank', `
+  await until(() => q('#spooler-failed'), 'failure notice', 3000);
+  assert(text(q('#spooler-failed')).includes('OrcaSlicer bridge missing'), text(q('#spooler-failed')));
+`, { unmounted: true, host: 'delete window.orca;' });
+test('a page that never starts and reports nothing says so after the wait', `
+  await until(() => q('#spooler-failed'), 'failure notice', 3000);
+  assert(text(q('#spooler-failed')).includes('Nothing started within'), text(q('#spooler-failed')));
+  assert(lastOf('page_error'), 'reported to the plugin');
+`, { unmounted: true, host: "window.__spoolerStartMs = 300; const append = Element.prototype.append; "
+  + "Element.prototype.append = function (...nodes) { return append.apply(this, nodes.filter(n => !(n.tagName === 'SCRIPT' && n.type === 'module'))); };" });
+
 const workers = Number(process.env.WORKERS ?? 4);
 if (!Number.isSafeInteger(workers) || workers < 1) throw new Error('WORKERS must be a positive integer');
 const filter = process.argv[2];
@@ -1756,10 +1782,10 @@ try {
       const started = Date.now();
       try {
         await bounded(p.size(sc.width ?? 1280, 900), 'set viewport');
-        await bounded(p.init(MOCK_HOST + `try { localStorage.clear(); ${seed} } catch {}`), 'install mock host');
+        await bounded(p.init(MOCK_HOST + (sc.host || '') + `try { localStorage.clear(); ${seed} } catch {}`), 'install mock host');
         await bounded(p.goto(pathToFileURL(file).href), 'navigate / load event');
         const body = `(async () => { ${HELPERS} ${PRELUDE}
-          await until(() => document.querySelector('#app > *'), 'app mounted');
+          ${sc.unmounted ? '' : "await until(() => document.querySelector('#app > *'), 'app mounted');"}
           ${sc.body}
           await settle();
           return { violations: __t.violations, rejections: __t.rejections, errors: __t.errors };

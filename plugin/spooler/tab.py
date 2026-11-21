@@ -106,14 +106,31 @@ _LANGUAGE_OF = {"en": "en", "pt": "pt-BR", "es": "es", "de": "de", "zh": "zh-CN"
 _lang: dict = {"value": None}
 
 
-def ui_page() -> str:
-    """The served page: from the package (pkgutil reads it from a folder or a zip alike), else the file next to this one."""
+def _read_page() -> str:
+    """The page file: from the package (pkgutil reads it from a folder or a zip alike), else the file next to this one."""
     if __package__:
         data = pkgutil.get_data(__package__, "app.html")
         if data is None:
             raise FileNotFoundError("app.html is missing from the spooler package")
         return data.decode("utf-8")
     return (_core.PLUGIN_DIR / "app.html").read_text(encoding="utf-8")
+
+
+# Read once, while the package imports, like the page that used to be inside the code. OrcaSlicer's sandbox checks
+# every file a plugin opens during a capability call such as get_ui(), where a refused or failed read leaves the
+# tab blank (0.32.1 to 0.32.3 read it there); a module import is not checked. An error is kept and shown instead.
+try:
+    _PAGE, _PAGE_ERROR = _read_page(), ""
+except Exception as exc:  # noqa: BLE001 - shown on the error page, never raised at import
+    _PAGE, _PAGE_ERROR = "", f"{type(exc).__name__}: {exc}"
+    _core.log.exception("Could not read the page app.html")
+
+
+def ui_page() -> str:
+    """The served page, as read at import."""
+    if _PAGE_ERROR:
+        raise RuntimeError("Could not read the page app.html: " + _PAGE_ERROR)
+    return _PAGE
 
 
 def _json_for_html(data: object) -> str:

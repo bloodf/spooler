@@ -5,7 +5,9 @@
 
 """tr(): the Python-worded texts in the page's languages, and number formatting."""
 
+import html
 import re
+import sys
 
 from . import core as _core
 
@@ -50,6 +52,27 @@ def fmt_money(amount: float, code: str) -> str:
 # Spoolman data (names, vendors, notes) is never translated.
 _TEXT_LANGS = ("pt-BR", "es", "de", "zh-CN", "pl")
 _TEXT_ROWS: dict[str, tuple[str, str, str, str, str]] = {
+    "Spooler could not open its page.": (
+        "O Spooler não conseguiu abrir a página.",
+        "Spooler no pudo abrir su página.",
+        "Spooler konnte seine Seite nicht öffnen.",
+        "Spooler 无法打开页面。",
+        "Spooler nie mógł otworzyć swojej strony.",
+    ),
+    "Copy diagnostics": (
+        "Copiar diagnóstico",
+        "Copiar diagnóstico",
+        "Diagnose kopieren",
+        "复制诊断信息",
+        "Kopiuj diagnostykę",
+    ),
+    "The log is at {path}.": (
+        "O log está em {path}.",
+        "El registro está en {path}.",
+        "Das Protokoll liegt unter {path}.",
+        "日志位于 {path}。",
+        "Dziennik jest w {path}.",
+    ),
     "Spoolman refused to add the Use with field ({error}); nothing was written.": (
         "O Spoolman recusou adicionar o campo Usar com ({error}); nada foi gravado.",
         "Spoolman rechazó añadir el campo Usar con ({error}); no se guardó nada.",
@@ -1731,6 +1754,52 @@ def settings_boot(current_url: str, low_stock_grams: float, plate_check: bool = 
 
 
 def page_html(mode: str, view: str = "main", settings: dict | None = None, page: str = "") -> str:
+    """The page for one surface, or error_page() when building it fails: OrcaSlicer leaves the tab an empty grey
+    panel when get_ui() raises."""
+    try:
+        return _page_html(mode, view, settings, page)
+    except Exception as exc:  # noqa: BLE001 - shown on the page and logged instead
+        _core.log.exception("Could not build the %s page", mode)
+        return error_page(exc)
+
+
+def error_page(error: object) -> str:
+    """A small page that says the real one failed, with the error and a Copy diagnostics button, instead of a
+    blank tab. No settings, no app.html: only what is certain to work. Never raises."""
+    try:
+        return _error_page(error)
+    except Exception:  # noqa: BLE001 - last resort: still not a blank tab
+        _core.log.exception("Could not build the error page")
+        return "<!doctype html><meta charset=utf-8><p>Spooler could not open its page. See spooler.log.</p>"
+
+
+def _error_page(error: object) -> str:
+    detail = f"{type(error).__name__}: {error}" if isinstance(error, BaseException) else str(error)
+    diagnostics = "\n".join((
+        f"{_core.PLUGIN_NAME} {_core.PLUGIN_VERSION} ({_core.BUILD_TARGET} build)",
+        f"Python {sys.version.split()[0]}, {sys.platform}",
+        f"Error: {_core.redact(detail)}",
+        f"Log: {_core.LOG_FILE}",
+    ))
+    try:
+        title, copy = tr("Spooler could not open its page."), tr("Copy diagnostics")
+        log_at = tr("The log is at {path}.", path=_core.LOG_FILE)
+    except Exception:  # noqa: BLE001 - the error page must not fail in turn
+        title, copy, log_at = "Spooler could not open its page.", "Copy diagnostics", f"The log is at {_core.LOG_FILE}."
+    esc = html.escape
+    return f"""<!doctype html><html><head><meta charset="utf-8"><style>
+body{{font:14px system-ui,sans-serif;margin:24px;color:#e6e6e6;background:#2b2b2b}}
+@media (prefers-color-scheme:light){{body{{color:#222;background:#f4f4f4}}}}
+h1{{font-size:16px}}pre{{white-space:pre-wrap;user-select:text;padding:8px;border:1px solid #8884}}
+</style></head><body><h1>{esc(title)}</h1>
+<p>{esc(log_at)}</p>
+<pre id="d">{esc(diagnostics)}</pre><button id="c">{esc(copy)}</button>
+<script>document.getElementById("c").onclick=function(){{var r=document.createRange();
+r.selectNodeContents(document.getElementById("d"));var s=getSelection();s.removeAllRanges();s.addRange(r);
+try{{document.execCommand("copy")}}catch(e){{}}}};</script></body></html>"""
+
+
+def _page_html(mode: str, view: str = "main", settings: dict | None = None, page: str = "") -> str:
     """The page for one surface: "tab" (spool views + Settings), "main" (spool window) or "settings" (window).
 
     ``page`` is the settings page to open first (s-src, ...), as a "Settings" link in the spool window asked."""
