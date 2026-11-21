@@ -32,12 +32,12 @@ O Spooler lê suas bobinas do [Spoolman](https://github.com/Donkie/Spoolman) e a
 
 ## 📦 Instalação
 
-Abra o [Spooler no Orca Cloud](https://cloud.orcaslicer.com/p/50c35dcbd6f3) e assine. Depois, no OrcaSlicer, abra **File > Plugins**, clique em **Refresh** e marque **Activate**. As atualizações chegam do mesmo jeito.
+Abra o [Spooler no Orca Cloud](https://cloud.orcaslicer.com/p/50c35dcbd6f3) e assine. Depois, no OrcaSlicer, abra **Plugins** (Windows e Linux: a setinha ▾ ao lado de **File**, no canto superior esquerdo da janela do OrcaSlicer; macOS: **File > Plugins** na barra de menus no topo da tela), clique em **Refresh** e marque **Activate**. As atualizações chegam do mesmo jeito.
 
 Por arquivo:
 
 1. Baixe `spooler_any.whl` da [última versão](https://github.com/bloodf/spooler/releases/latest). É o mesmo arquivo no Windows, no macOS e no Linux.
-2. No OrcaSlicer, abra **File > Plugins > Install local plugin** e escolha o arquivo. Se você instalou um `spooler_any.py` antigo à mão, remova-o antes.
+2. No OrcaSlicer, abra **Plugins** (como acima) **> Install local plugin** e escolha o arquivo. Se você instalou um `spooler_any.py` antigo à mão, remova-o antes.
 3. Marque **Activate** no Spooler. Uma aba **Spooler** aparece na barra superior.
 
 | Requisito | Detalhe |

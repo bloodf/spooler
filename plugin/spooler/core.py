@@ -31,7 +31,7 @@ except (ImportError, AttributeError):
 _SLICING = hasattr(getattr(orca, "slicing", None), "SlicingPipelineCapabilityBase")
 
 PLUGIN_NAME = "Spooler"
-PLUGIN_VERSION = "0.32.5"
+PLUGIN_VERSION = "0.32.6"
 # The build target the log reports: one wheel for every operating system.
 BUILD_TARGET = "any"
 

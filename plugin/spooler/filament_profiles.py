@@ -41,7 +41,7 @@ MATERIAL_ALIASES = {
     "SILKPLA": "PLA", "PLASILK": "PLA", "MATTEPLA": "PLA", "PLAMATTE": "PLA", "PETG+": "PETG",
     "HSPETG": "PETG", "PETGHS": "PETG", "PETGHF": "PETG", "ABS+": "ABS", "NYLON": "PA",
 }
-# Every bed plate type, so the Spoolman bed temperature holds whichever plate is picked.
+# Every bed plate type's temperature keys (OrcaSlicer's PrintConfig.cpp; 0 means "can't print on it").
 BED_TEMP_KEYS = tuple(f"{plate}_plate_temp{layer}"
                       for plate in ("cool", "eng", "hot", "supertack", "textured_cool", "textured")
                       for layer in ("", "_initial_layer"))
@@ -217,12 +217,28 @@ def spool_cost_per_kg(filament_id: object, spools: list[dict]) -> float | None:
     return sum(rates) / len(rates) if rates else None
 
 
+def bed_temps(bed: float, parent_config: dict | None) -> dict:
+    """Spoolman's bed temperature on the plates where the parent uses its Smooth PEI / High Temp plate
+    temperature (hot_plate_temp, OrcaSlicer's default plate), per layer. A plate the parent sets
+    differently (Cool Plate, SuperTack, or 0 for a plate it can't print on) keeps the parent's value.
+    Without the parent's values, only the hot plate keys are set."""
+    config = parent_config or {}
+    temps = {}
+    for key in BED_TEMP_KEYS:
+        ref = "hot_plate_temp" + ("_initial_layer" if key.endswith("_initial_layer") else "")
+        if key == ref or (config.get(ref) is not None and config.get(key) == config.get(ref)):
+            temps[key] = [_fmt(bed)]
+    return temps
+
+
 def profile_preset(filament: dict, name: str, parent: str, target: str,
-                   spool_cost: float | None = None, tune: dict | None = None) -> dict:
+                   spool_cost: float | None = None, tune: dict | None = None,
+                   parent_config: dict | None = None) -> dict:
     """The preset JSON for one Spoolman filament on one printer. Values are lists of strings,
     as OrcaSlicer stores them; one value applies to every nozzle variant of the parent.
     spool_cost is the price per kg from the filament's spools, used when the filament has none.
-    tune is the material's Advanced tuning row; the filament's own Spoolman values win over it."""
+    tune is the material's Advanced tuning row; the filament's own Spoolman values win over it.
+    parent_config is the parent's settings ({key: serialized text}), when read, for bed_temps."""
     vendor = str((filament.get("vendor") or {}).get("name") or "").strip()
     preset = {
         "type": "filament", "name": name, "from": "User", "instantiation": "true",
@@ -239,8 +255,7 @@ def profile_preset(filament: dict, name: str, parent: str, target: str,
         preset["nozzle_temperature"] = [_fmt(extruder)]
         preset["nozzle_temperature_initial_layer"] = [_fmt(extruder)]
     if bed:
-        for key in BED_TEMP_KEYS:
-            preset[key] = [_fmt(bed)]
+        preset.update(bed_temps(bed, parent_config))
     for key, field in (("filament_density", "density"), ("filament_diameter", "diameter")):
         value = _num(filament.get(field))
         if value:
@@ -717,8 +732,8 @@ def build_preset(filament: dict, name: str, key: tuple, snapshot: dict, opts: di
         best_parent(filament, target, parents)
     if not parent:
         return None
-    preset = profile_preset(filament, name, parent, target, spool_cost_per_kg(filament["id"], spools), tune)
     config = (snapshot.get("configs") or {}).get(parent)
+    preset = profile_preset(filament, name, parent, target, spool_cost_per_kg(filament["id"], spools), tune, config)
     if config:
         return flat_preset(preset, config, key)
     # Its settings weren't read: still a valid preset, but sync from AMS loads its parent.

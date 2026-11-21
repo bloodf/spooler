@@ -28,7 +28,7 @@ Sends changes you make to a Spooler preset back to Spoolman.
 
 ## How to start
 
-1. Subscribe here, then open File > Plugins in OrcaSlicer, click Refresh and tick Activate.
+1. Subscribe here. In OrcaSlicer open Plugins: on Windows and Linux it is in the small ▾ arrow next to File at the top left of the window; on macOS it is File > Plugins in the menu bar at the top of the screen. Click Refresh and tick Activate.
 2. Open the Spooler tab, enter your Spoolman address (for example http://raspberrypi.local:7912) and click Test.
 3. Click Save & finish. Your spools appear in the list.
 
@@ -81,7 +81,7 @@ Envia ao Spoolman as mudanças que você faz num perfil do Spooler.
 
 ## Como começar
 
-1. Assine aqui, depois abra File > Plugins no OrcaSlicer, clique em Refresh e marque Activate.
+1. Assine aqui. No OrcaSlicer, abra Plugins: no Windows e no Linux fica na setinha ▾ ao lado de File, no canto superior esquerdo da janela; no macOS é File > Plugins na barra de menus no topo da tela. Clique em Refresh e marque Activate.
 2. Abra a aba Spooler, digite o endereço do seu Spoolman (por exemplo http://raspberrypi.local:7912) e clique em Testar.
 3. Clique em Salvar e concluir. Suas bobinas aparecem na lista.
 
