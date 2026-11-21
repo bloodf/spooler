@@ -6,8 +6,7 @@ Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); 
 ## [0.32.4] - 2026-11-21
 
 ### Fixed
-- The Spooler tab no longer stays an empty grey panel. Since 0.32.1 Spooler read its page from the separate `app.html` file every time the tab was built, and OrcaSlicer's plugin sandbox checks each file a plugin opens at that moment: when that read failed, OrcaSlicer showed nothing at all. Spooler now reads its page once, while it loads. Reported on Orca Cloud (Windows).
-- If the page still can't be built or can't start, the tab says so in your language, with the error, where `spooler.log` is and a **Copy diagnostics** button, instead of staying grey. The page's own start-up errors are written to `spooler.log` too.
+- The Spooler tab no longer stays an empty grey panel: if building or starting the page fails for any reason, the tab says so in your language, with the error, where `spooler.log` is and a **Copy diagnostics** button. The page's own start-up errors are written to `spooler.log` too, and the page is now read once, while Spooler loads. Reported on Orca Cloud (Windows).
 - Printer tab: a printer found from a printer preset's host stays listed when that host is neither Moonraker nor Anycubic, and its card says Spooler can't read it. It used to vanish after a few seconds, leaving "No printers yet".
 - The Spoolman source settings and the setup guide say which extra fields Spooler adds to Spoolman when it reads it (Flow ratio, Pressure advance, Max volumetric speed, Dried), and that it never removes one.
 
