@@ -611,6 +611,14 @@ test('S02: a failed first read offers retry and Settings', `
   await click(btn('Open Settings', byTest('empty-error')));
   eq(lastOf('settings').type, 'settings', 'settings asked');
 `);
+test('a retry that fails with the same error as before still settles its toast', `
+  await post({type: 'spools', ok: false, error: 'Connection refused', error_code: 'read_failed'});
+  await click(btn('Try again', byTest('empty-error')));
+  assert(toasts().includes('Reading the spool list'), 'pending shown: ' + toasts());
+  await post({type: 'spools', ok: false, error: 'Connection refused', error_code: 'read_failed'});
+  assert(!toasts().includes('Reading the spool list'), 'the same error answers the retry: ' + toasts());
+  assert(alerts().includes('Connection refused'), 'and is shown: ' + alerts());
+`);
 test('B-20: action errors stay until closed and are announced; successes clear', `
   await spools(SPOOLS);
   await click(byTest('sync'));

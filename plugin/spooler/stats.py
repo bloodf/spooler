@@ -72,7 +72,17 @@ def hist_load() -> list[dict]:
     except OSError:
         _core.log.exception("Could not read %s", HISTORY_FILE)
         return []
-    return [e for e in data if isinstance(e, dict)] if isinstance(data, list) else []
+    return [e for e in (_hist_entry(e) for e in data) if e] if isinstance(data, list) else []
+
+
+def _hist_entry(e: object) -> dict | None:
+    """One history entry as the Stats tab reads it, or None: a hand-edited entry without its rows,
+    or a row without its spool and grams, would otherwise break the whole tab (KeyError)."""
+    if not isinstance(e, dict) or not isinstance(e.get("rows"), list):
+        return None
+    rows = [{"label": "", "colour": "", **r} for r in e["rows"]
+            if isinstance(r, dict) and "spool" in r and isinstance(r.get("grams"), (int, float))]
+    return {**e, "rows": rows}
 
 
 def hist_here(hist: list[dict]) -> list[dict]:

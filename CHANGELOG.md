@@ -9,9 +9,21 @@ Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); 
 - The Spooler tab no longer stays an empty grey panel: if building or starting the page fails for any reason, the tab says so in your language, with the error, where `spooler.log` is and a **Copy diagnostics** button. The page's own start-up errors are written to `spooler.log` too, and the page is now read once, while Spooler loads. Reported on Orca Cloud (Windows).
 - Printer tab: a printer found from a printer preset's host stays listed when that host is neither Moonraker nor Anycubic, and its card says Spooler can't read it. It used to vanish after a few seconds, leaving "No printers yet".
 - The Spoolman source settings and the setup guide say which extra fields Spooler adds to Spoolman when it reads it (Flow ratio, Pressure advance, Max volumetric speed, Dried), and that it never removes one.
+- The spool list no longer stops refreshing until OrcaSlicer restarts when reading the printers fails just before a refresh.
+- A low-stock threshold of "inf", "nan" or a number too large to hold no longer breaks the spool list or Settings Save; it falls back to the default.
+- Pressing **Refresh** after a failed read no longer shows "Reading the spool list…" for 30 seconds when the read fails again with the same error.
+- **Open in Spoolman** only opens a web (http or https) address, never a file or other kind of address set as Spoolman's.
+- The Bambu Cloud sign-in file is private from the moment it is written, not made private just after.
+- A damaged entry in the print history no longer breaks the whole Stats tab; it is skipped.
+- "Could not reach Spoolman" no longer shows the user name and password of a Spoolman address that has them.
+- Bambu Cloud spools: a reply item Spooler can't read no longer makes the next page skip or repeat spools.
+- A job file with an endless or invalid gram count no longer books it; that slot is skipped.
+- Live updates from a Spoolman whose address has non-English letters (an internationalised domain name) now connect.
+- A Bambu printer address longer than 64 characters is refused instead of being cut short to a different address.
+- **Use** with a weight that rounds to 0.0 g (0.04 g, say) is refused instead of reporting "Used 0.0 g".
 
 ### Changed
-- Shared Orca UI foundation 5.6.0, taken from its own repository; no visible change.
+- Shared Orca UI foundation 5.6.1, taken from its own repository; no visible change.
 
 ## [0.32.3] - 2026-11-20
 

@@ -22,7 +22,7 @@ def clean_host(value: object, port: bool = False) -> str:
     allowed; '' when it isn't a usable address. http:// is dropped, it is the default."""
     text = str(value or "").strip()[:96]
     if not port:
-        return text[:64] if re.fullmatch(r"[A-Za-z0-9.\-]+", text[:64]) else ""
+        return text if len(text) <= 64 and re.fullmatch(r"[A-Za-z0-9.\-]+", text) else ""  # never a cut-short host
     scheme = ""
     low = text.lower()
     if low.startswith("https://"):

@@ -279,7 +279,6 @@ class SpoolerWindow(orca.script.ScriptPluginCapabilityBase):
             return
         if self._refreshing:
             return
-        self._refreshing = True
         snapshot = _moonraker.refresh_snapshot()
         _live_updates._local_sync()
         panel = self._panel
@@ -302,6 +301,7 @@ class SpoolerWindow(orca.script.ScriptPluginCapabilityBase):
                             "calibration": _spoolman_sync.calibration_asks(),
                             **_peers.spools_message_extras(result), **result})
 
+        self._refreshing = True  # set only once nothing can raise before the worker owns it
         _filament_profiles.spawn(worker, name="spooler-refresh")
 
     def _on_panel_close(self):
@@ -494,7 +494,6 @@ if _core._PAGES:
                 return
             if self._refreshing:
                 return
-            self._refreshing = True
             snapshot = _moonraker.refresh_snapshot()
             _live_updates._local_sync()
             low_stock_grams = _core.parse_low(_core.get_settings().get("low_stock_grams"))
@@ -515,6 +514,7 @@ if _core._PAGES:
                             "calibration": _spoolman_sync.calibration_asks(),
                             **_peers.spools_message_extras(result), **result})
 
+            self._refreshing = True  # set only once nothing can raise before the worker owns it
             _filament_profiles.spawn(worker, name="spooler-refresh")
 
         def _save_settings(self, url, low_stock, plate_check=True,
