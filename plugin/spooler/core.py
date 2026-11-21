@@ -30,7 +30,7 @@ except (ImportError, AttributeError):
 _SLICING = hasattr(getattr(orca, "slicing", None), "SlicingPipelineCapabilityBase")
 
 PLUGIN_NAME = "Spooler"
-PLUGIN_VERSION = "0.32.3"
+PLUGIN_VERSION = "0.32.4"
 # The build target the log reports: one wheel for every operating system.
 BUILD_TARGET = "any"
 
@@ -180,6 +180,13 @@ log.info(
     BUILD_TARGET,
     "available" if _PAGES else "not available",
 )
+
+
+def log_page_error(data: dict) -> None:
+    """The page's own report that it could not start (scripts/page_loader.js): its errors, for the log users attach."""
+    errors = data.get("errors")
+    text = "; ".join(str(e)[:500] for e in errors[:10]) if isinstance(errors, list) else str(errors)[:500]
+    log.error("The page could not start (%s): %s", str(data.get("agent", ""))[:200], text)
 
 
 _reported = {}
