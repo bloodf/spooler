@@ -25,6 +25,7 @@ class SpoolerWindow(orca.script.ScriptPluginCapabilityBase):
         self._release_url = ""
         self._refreshing = False
         self._testing = False
+        self._queued_test = None
         self._checking_update = False
 
     def get_name(self):
@@ -84,6 +85,8 @@ class SpoolerWindow(orca.script.ScriptPluginCapabilityBase):
 
     def _check_connection(self, url, window, src=None):
         if self._testing:
+            # A Test pressed while another check runs goes next, not nowhere: dropped, the page stayed on "Testing…".
+            self._queued_test = (url, window, src)
             return
         self._testing = True
         src = _sources.parse_source(src or _sources.source())
@@ -99,6 +102,9 @@ class SpoolerWindow(orca.script.ScriptPluginCapabilityBase):
                 self._verified_url = _sources.clean_url(url)
             if window.is_open():
                 window.post({"type": "test_result", "source": src, "url": url, **info, "requirements": _sources.requirements()})
+            queued, self._queued_test = self._queued_test, None
+            if queued:
+                self._check_connection(*queued)
 
         _filament_profiles.spawn(worker)
 
@@ -385,6 +391,7 @@ if _core._PAGES:
             self._release_url = ""
             self._refreshing = False
             self._testing = False
+            self._queued_test = None
             self._checking_update = False
             _plate_check._plate["page"] = self
 
@@ -567,6 +574,8 @@ if _core._PAGES:
 
         def _check_connection(self, url, window, src=None):
             if self._testing:
+                # A Test pressed while another check runs goes next, not nowhere: dropped, the page stayed on "Testing…".
+                self._queued_test = (url, window, src)
                 return
             self._testing = True
             src = _sources.parse_source(src or _sources.source())
@@ -582,6 +591,9 @@ if _core._PAGES:
                     self._verified_url = _sources.clean_url(url)
                 if window.is_open():
                     window.post({"type": "test_result", "source": src, "url": url, **info, "requirements": _sources.requirements()})
+                queued, self._queued_test = self._queued_test, None
+                if queued:
+                    self._check_connection(*queued)
 
             _filament_profiles.spawn(worker)
 

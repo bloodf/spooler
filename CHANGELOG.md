@@ -3,6 +3,16 @@
 Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); entries before
 0.9.0 are Spoolio's.
 
+## [0.32.5] - 2026-11-21
+
+### Fixed
+- Settings: pressing **Test** while Spooler is still checking the saved address no longer leaves "Testing…" on screen with Save blocked; the address you typed is tested as soon as the first check ends.
+- Print booking: a slot whose weight is empty or unreadable is skipped instead of being marked booked with nothing sent to Spoolman, and an absurdly large number no longer leaves the booking busy.
+- A print history entry with a support share but no purge share no longer breaks the Stats tab; that split is ignored.
+
+### Changed
+- Shared Orca UI foundation 5.6.2; no visible change.
+
 ## [0.32.4] - 2026-11-21
 
 ### Fixed
