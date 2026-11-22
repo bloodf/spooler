@@ -250,10 +250,10 @@ def usage_track(dev_id: str, state: dict, has_state: bool) -> list[tuple]:
     """
     # Printers found from a preset's host address ("auto-..." ids) are booked only when nothing else
     # does it: the Snapmaker U1's toolheads are booked by u1control, a Moonraker with its Spoolman
-    # integration connected books its own use, and Anycubic printers have no job file to read. _moon_run
-    # sets book_ok for a Klipper printer that is none of these; anything else would count twice.
-    if str(dev_id).startswith("auto-") and not state.get("book_ok"):
-        return []
+    # integration connected books its own use, and Anycubic printers report no print state. _moon_run
+    # sets book_ok for a Klipper printer that is none of these; anything else would count twice, so
+    # its prints are only noted in Spooler's history ("record"), never sent to Spoolman.
+    record = str(dev_id).startswith("auto-") and not state.get("book_ok")
     job = state.get("job") or {}
     gcode = job.get("gcode_state")
     if not gcode or _sources.source() != "spoolman" or not state.get("link") or _netprinters.usage_mode() == "off":
@@ -274,13 +274,13 @@ def usage_track(dev_id: str, state: dict, has_state: bool) -> list[tuple]:
     run = state.get("run")
     if fresh and run and not same_job(run["job"], ident):
         # The tracked print ended while the link was down and another one has run since.
-        events.append(("end", dev_id, _ended(run, state["name"], "unknown", run["pct"])))
+        events.append(("end", dev_id, {**_ended(run, state["name"], "unknown", run["pct"]), "record": record}))
         state["run"] = run = None
     if run is None:
         if fresh and gcode in ("FINISH", "FAILED") and state.get("last") and not same_job(state["last"], ident):
             events.append(("missed", dev_id, {"job": ident, "printer": state["name"],
                                               "result": "finished" if gcode == "FINISH" else "cancelled",
-                                              "pct": pct, "link": state["link"]}))
+                                              "pct": pct, "link": state["link"], "record": record}))
         if gcode in ("IDLE", "FINISH", "FAILED"):
             state["idle_seen"] = True
         elif gcode in ("PREPARE", "RUNNING") and (state.get("idle_seen") or pct <= 2 or fresh):
@@ -309,7 +309,7 @@ def usage_track(dev_id: str, state: dict, has_state: bool) -> list[tuple]:
     state["idle_seen"] = True
     state["last"] = ident if ident["name"] or ident["file"] else state.get("last")
     result = "finished" if gcode == "FINISH" else "cancelled"
-    events.append(("end", dev_id, _ended(run, state["name"], result, max(run["pct"], pct))))
+    events.append(("end", dev_id, {**_ended(run, state["name"], result, max(run["pct"], pct)), "record": record}))
     return events
 
 
@@ -603,7 +603,7 @@ def _missed(dev_id: str, info: dict) -> None:
     with _live_updates._live_lock:
         state = _live_updates._live["printers"].get(dev_id)
         trays = _loaded(state) if state else []
-    run = {"id": run_id, "plan": None, "file": items, "job": ident, "trays": trays, "late": True,
+    run = {"id": run_id, "plan": None, "file": items, "job": ident, "trays": trays, "late": True, "record": info.get("record"),
            "name": (ident["name"] or ident["file"] or "Print")[:80], "pct": info["pct"]}
     usage_finish(_ended(run, info["printer"], info["result"], info["pct"]), dev_id)
 
@@ -646,7 +646,8 @@ def usage_finish(run: dict, dev_id: str = "") -> None:
             return
     items = run.get("file") or (_try_fetch(dev_id, run["job"]) if dev_id and run.get("job") else None)
     src = "file" if items else "slice"
-    items = items or run.get("plan")
+    # A print booked elsewhere is noted from its own job file only: the last slice may be another print.
+    items = items or (None if run.get("record") else run.get("plan"))
     if not items:
         _core.log.info("A print ended but its filament use is unknown")
         return
@@ -669,6 +670,9 @@ def usage_finish(run: dict, dev_id: str = "") -> None:
     entry = {"id": run["id"], "printer": run["printer"], "name": run["name"], "result": run["result"],
              "pct": run["pct"], "time": time.time(), "rows": rows, "late": late, "src": src, "state": "pending",
              "origin": url}  # the Spoolman these spool ids belong to; it is only booked there
+    if run.get("record"):
+        _record(run, entry, by_id)
+        return
     with _netprinters._usage_lock:
         data = _netprinters.usage_load()
         if run["id"] in data["done"]:
@@ -690,6 +694,26 @@ def usage_finish(run: dict, dev_id: str = "") -> None:
         notice = _editor.usage_book(entry["id"], None)
         if notice:
             _core.log.warning("Booking %s: %s", entry["id"], notice)
+
+
+def _record(run: dict, entry: dict, by_id: dict) -> None:
+    """Note a print that u1control, Kobra Control or Moonraker books in Spoolman in Spooler's history
+    only, so the Stats tab shows it; nothing is sent to Spoolman. A print that ended unseen is skipped."""
+    rows = [dict(r, state="booked") for r in entry["rows"] if r["spool"] is not None]
+    with _netprinters._usage_lock:
+        data = _netprinters.usage_load()
+        if run["id"] in data["done"]:
+            return
+        data["done"] = [run["id"]] + data["done"][:USAGE_DONE - 1]
+        try:
+            _netprinters.usage_save(data)
+            if rows and run["result"] != "unknown":
+                _stats.hist_note({**entry, "rows": rows}, by_id)
+        except OSError:
+            _core.log.exception("Could not note a print in Spooler's history")
+            return
+    _core.log.info("A print ended (%s, %d%%), booked by another tool: %d slots noted in the history",
+                   run["result"], run["pct"], len(rows))
 
 
 def spoolman_use(spool_id: int, grams: float) -> None:
@@ -747,3 +771,4 @@ from . import plate_check as _plate_check  # noqa: E402
 from . import printers as _printers  # noqa: E402
 from . import sources as _sources  # noqa: E402
 from . import spoolman_sync as _spoolman_sync  # noqa: E402
+from . import stats as _stats  # noqa: E402

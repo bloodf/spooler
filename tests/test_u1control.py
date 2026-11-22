@@ -337,7 +337,7 @@ class NoU1BookingTest(unittest.TestCase):
         with mock.patch.object(sp, "source", return_value="spoolman"), \
                 mock.patch.object(sp, "usage_mode", return_value="auto"):
             self.assertEqual(sp.usage_track("auto-u1", state, True), [])
-            self.assertNotIn("run", state)
+            self.assertIsNone(state.get("run"))
 
     def test_a_u1_report_books_nothing(self):
         doc, _ = sp.moon_report(U1_STATUS, None, [], U1)
@@ -350,7 +350,10 @@ class NoU1BookingTest(unittest.TestCase):
             doc["print"].update(gcode_state="FINISH", mc_percent=100)
             sp.live_apply("auto-u1", "U1", doc, link="auto-u1")
         sp._live["printers"].clear()
-        self.assertEqual(events, [])
+        # u1control books it: Spooler only notes the print in its history (record), never books it.
+        ends = [e for e in events if e[0] == "end"]
+        self.assertEqual(len(ends), 1)
+        self.assertTrue(ends[0][2]["record"])
 
 
 class NoFlipFlopTest(Snapshot):

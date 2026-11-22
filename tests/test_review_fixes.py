@@ -479,10 +479,6 @@ class UsageTest(unittest.TestCase):
             self.assertEqual(writes, [])
             self.assertEqual(self.stored_entry()["state"], "booked")
 
-    def test_u1_and_other_auto_printers_are_never_booked_here(self):
-        state = {"job": {"gcode_state": "RUNNING"}, "link": "auto-u1", "name": "U1"}
-        self.assertEqual(sp.usage_track("auto-u1", state, True), [])
-
     def test_an_unreadable_weight_is_skipped_not_booked(self):
         for grams in ("", None, "abc", 10 ** 400):
             self.entry()
