@@ -27,7 +27,7 @@ class FilmatchParityTest(unittest.TestCase):
 
     def test_committed_copy_is_the_foundations(self):
         self.assertTrue(SHARED.exists(), "run npm ci in ui/")
-        self.assertEqual((PACKAGE / "filmatch.py").read_bytes(), SHARED.read_bytes(),
+        self.assertEqual((PACKAGE / "filmatch.py").read_bytes(), SHARED.read_bytes().replace(b"\r\n", b"\n"),
                          "plugin/spooler/filmatch.py differs from ui-foundation's; run `npm run build` in ui/")
 
 

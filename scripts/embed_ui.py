@@ -54,6 +54,11 @@ def licenses() -> str:
     return f"# Third-party licences of the embedded page (Vue, PrimeVue, PrimeUIX, Lucide icons, Manrope font).\nUI_LICENSES = (\n{lines})\n"
 
 
+def filmatch() -> bytes:
+    """The foundation's filmatch.py with LF line ends (a git checkout on Windows may give CRLF)."""
+    return FILMATCH.read_bytes().replace(b"\r\n", b"\n")
+
+
 def served(html: str) -> str:
     """The built page with its one module script deflated into #spooler-js and run by the loader."""
     found = list(MODULE.finditer(html))
@@ -112,7 +117,7 @@ def main() -> int:
             print("error: plugin/spooler/app.html or the UI block in ui_build.py doesn't match ui/dist/spooler-ui.html; "
                   "run scripts/embed_ui.py", file=sys.stderr)
             return 1
-        if not FILMATCH_COPY.exists() or FILMATCH_COPY.read_bytes() != FILMATCH.read_bytes():
+        if not FILMATCH_COPY.exists() or FILMATCH_COPY.read_bytes() != filmatch():
             print("error: plugin/spooler/filmatch.py differs from the shared foundation's; run scripts/embed_ui.py",
                   file=sys.stderr)
             return 1
@@ -123,7 +128,7 @@ def main() -> int:
     PLUGIN.write_text(text.replace(have, want), encoding="utf-8", newline="\n")
     SERVED.write_bytes(page.encode("utf-8"))
     BUILD_INFO.write_text(build_info(page), encoding="utf-8", newline="\n")
-    FILMATCH_COPY.write_bytes(FILMATCH.read_bytes())
+    FILMATCH_COPY.write_bytes(filmatch())
     print(f"wrote {SERVED.relative_to(ROOT)} from {PAGE.relative_to(ROOT)} ({PAGE.stat().st_size} bytes, served as {len(page.encode('utf-8'))})")
     return 0
 
