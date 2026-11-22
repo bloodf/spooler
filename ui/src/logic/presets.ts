@@ -4,7 +4,7 @@
 
 /** One material's tuning: the base preset to inherit ("Generic PLA", the part before "@") and values set over it. */
 export type TuneRow = Partial<Record<TuneKey | 'parent', number | string>>;
-export interface PresetSettings { per_spool: boolean; tuning: boolean; materials: Record<string, TuneRow> }
+export interface PresetSettings { per_spool: boolean; tuning: boolean; materials: Record<string, TuneRow>; /** Open Filament Database proposals (off by default). */ ofd?: boolean }
 export interface ParentBase { name: string; type: string }
 export interface UseWithInfo { on: boolean; printers: { target: string; label: string }[]; value: string[] | null }
 
@@ -22,7 +22,7 @@ export type TuneKey = (typeof TUNE_FIELDS)[number]['key'];
 
 /** Materials offered before any is tuned. */
 export const TUNE_MATERIALS = ['PLA', 'PETG', 'ABS', 'ASA', 'TPU', 'PA', 'PC'];
-export const DEFAULT_PRESETS: PresetSettings = { per_spool: false, tuning: false, materials: {} };
+export const DEFAULT_PRESETS: PresetSettings = { per_spool: false, tuning: false, materials: {}, ofd: false };
 
 export const matName = (text: string) => text.trim().replace(/\s+/g, ' ').toUpperCase().slice(0, 24);
 

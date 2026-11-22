@@ -6,8 +6,8 @@ and commits the copy. Edit it here, release a tag, then bump the plugins.
 
 What it holds: colour parsing and distance, material names (Spoolman spellings, OrcaFilamentLibrary
 families and their generic filament_id), Spooler's choice of a parent system preset and U1 Control's
-choice of a filament preset for a toolhead, each also as a ranked list with the reasons for every score, and the
-remembered matches (matches.json) the user confirmed.
+choice of a filament preset for a toolhead, each also as a ranked list with the reasons for every score, the
+remembered matches (matches.json) the user confirmed, and proposals from the Open Filament Database (OFD).
 """
 
 import json
@@ -15,6 +15,8 @@ import os
 import re
 import threading
 import time
+import urllib.error
+import urllib.request
 
 # --- Colours -------------------------------------------------------------------------------------
 
@@ -404,3 +406,154 @@ def remember(path, choices, printer="", now=None):
             pass
         raise
     return store
+
+
+# --- Open Filament Database (read-only proposals) -----------------------------------------------------------------
+# The Open Filament Database (https://openfilamentdatabase.org, data under the MIT licence, (c) OpenFilamentCollective)
+# publishes OrcaSlicer filament presets generated from its data: one index of every preset, fetched only while the user
+# has turned OFD on, kept for a day in <folder>/index.json (with index.meta.json), and used as it is when the network
+# fails. Nothing from OFD ships with a plugin. Its presets are a starting point (temperatures, density, diameter, some
+# speeds and fans), not tuned: flow, retraction and pressure advance are the inherited generic preset's.
+OFD_ORIGIN = "https://api.openfilamentdatabase.org"
+OFD_BASE = OFD_ORIGIN + "/orcaslicer/"
+OFD_INDEX = "index.json"
+OFD_META = "index.meta.json"
+OFD_DIR = "ofd"            # the cache folder's name, under Spooler's data folder (shared) or a plugin's own
+OFD_TTL = 24 * 3600        # seconds an index is used before it is fetched again
+OFD_TIMEOUT = 10           # seconds per request
+OFD_MAX_BYTES = 16 * 1024 * 1024
+OFD_VERSIONS = ("2",)      # the preset_version major versions this code reads
+OFD_LICENSE = "Open Filament Database, (c) OpenFilamentCollective, MIT licence"
+OFD_FIELDS = ("id", "brand", "material", "filament", "profile_name", "inherits", "path")
+_ofd_lock = threading.Lock()
+_ofd_parsed = {}           # index path -> ((mtime, size), profiles)
+
+
+def ofd_profiles(doc):
+    """The usable presets of an OFD index: each a dict with the OFD_FIELDS as text (path relative, no "..")."""
+    if not isinstance(doc, dict) or str(doc.get("preset_version") or "").split(".")[0] not in OFD_VERSIONS:
+        return []
+    out = []
+    for p in doc.get("profiles") if isinstance(doc.get("profiles"), list) else ():
+        if not isinstance(p, dict) or not all(isinstance(p.get(k), str) and p[k].strip() for k in OFD_FIELDS):
+            continue
+        path = p["path"].strip()
+        if path.startswith("/") or ".." in path.split("/") or "\\" in path or not path.endswith(".json"):
+            continue
+        out.append({k: p[k].strip() for k in OFD_FIELDS})
+    return out
+
+
+def _ofd_read(folder):
+    """(profiles, meta) of the index kept in folder; ([], {}) when there is none or it is unreadable."""
+    path = os.path.join(folder, OFD_INDEX)
+    try:
+        st = os.stat(path)
+        with open(os.path.join(folder, OFD_META), encoding="utf-8") as f:
+            meta = json.load(f)
+    except (OSError, ValueError):
+        return [], {}
+    stamp = (st.st_mtime_ns, st.st_size)
+    cached = _ofd_parsed.get(path)
+    if not cached or cached[0] != stamp:
+        try:
+            with open(path, encoding="utf-8") as f:
+                cached = _ofd_parsed[path] = (stamp, ofd_profiles(json.load(f)))
+        except (OSError, ValueError):
+            return [], {}
+    return cached[1], meta if isinstance(meta, dict) else {}
+
+
+def _ofd_get(url, headers=None):
+    """(status, body bytes, response headers) of one GET; raises on a network error."""
+    request = urllib.request.Request(url, headers={"User-Agent": "orca-plugins-filmatch", "Accept": "application/json",
+                                                   **(headers or {})})
+    try:
+        with urllib.request.urlopen(request, timeout=OFD_TIMEOUT) as response:
+            body = response.read(OFD_MAX_BYTES + 1)
+            if len(body) > OFD_MAX_BYTES:
+                raise ValueError("the answer is too large")
+            return response.status, body, dict(response.headers)
+    except urllib.error.HTTPError as e:
+        if e.code == 304:
+            return 304, b"", dict(e.headers or {})
+        raise
+
+
+def _write_bytes(path, data):
+    folder = os.path.dirname(path)
+    os.makedirs(folder, exist_ok=True)
+    tmp = os.path.join(folder, ".%s.%d.tmp" % (os.path.basename(path), threading.get_ident()))
+    try:
+        with open(tmp, "wb") as f:
+            f.write(data)
+        os.replace(tmp, path)
+    except OSError:
+        try:
+            os.remove(tmp)
+        except OSError:
+            pass
+        raise
+
+
+def ofd_index(folder, force=False, now=None, get=None, offline=False):
+    """The OFD index kept in folder, fetched again when it is a day old (or force): {"profiles", "version", "fetched"
+    (unix s, 0 for none), "stale" (older than a day), "error" ("" or why the last fetch failed)}. On a failed fetch
+    the kept index is used as it is. offline: never fetch (only what is kept). Call it from a worker thread."""
+    now = time.time() if now is None else now
+    get = get or _ofd_get
+    with _ofd_lock:
+        profiles, meta = _ofd_read(folder)
+        fetched = meta.get("fetched") if isinstance(meta.get("fetched"), (int, float)) else 0
+        error = ""
+        if not offline and (force or not profiles or now - fetched >= OFD_TTL):
+            headers = {k: v for k, v in (("If-None-Match", meta.get("etag")), ("If-Modified-Since", meta.get("last_modified")))
+                       if profiles and isinstance(v, str) and v}
+            try:
+                status, body, answer = get(OFD_BASE + OFD_INDEX, headers)
+                if status == 304:
+                    meta = {**meta, "fetched": now}
+                else:
+                    doc = json.loads(body.decode("utf-8"))
+                    fresh = ofd_profiles(doc)
+                    if not fresh:
+                        raise ValueError("the index has no presets this version can read")
+                    _write_bytes(os.path.join(folder, OFD_INDEX), body)
+                    meta = {"fetched": now, "version": str(doc.get("version") or ""), "etag": answer.get("ETag") or answer.get("etag") or "",
+                            "last_modified": answer.get("Last-Modified") or answer.get("last-modified") or "", "count": len(fresh)}
+                _write_bytes(os.path.join(folder, OFD_META), json.dumps(meta).encode("utf-8"))
+                profiles, meta = _ofd_read(folder)
+                fetched = meta.get("fetched") or now
+            except Exception as e:   # offline, refused, or not an index: the kept one stays in use
+                error = str(e) or e.__class__.__name__
+        return {"profiles": profiles, "version": str(meta.get("version") or ""), "fetched": fetched,
+                "stale": bool(profiles) and now - fetched >= OFD_TTL, "error": error}
+
+
+def rank_ofd(profiles, vendor="", material="", name="", limit=5):
+    """OFD presets of the same manufacturer and material, best first: [{"name", "score", "reasons", "source": "ofd",
+    "id", "path", "inherits", "brand", "material"}]. Without a manufacturer there is nothing to propose: every brand's
+    PLA would fit equally. A manufacturer matches OFD's brand ignoring case, spaces and punctuation, or as the start of
+    it ("eSUN" is OFD's "eSUN 3D", "Bambu" its "Bambu Lab")."""
+    want = _norm(vendor)
+    if len(want) < 3 or not str(material or "").strip():
+        return []
+    words = _name_words(name) | _name_words(material)
+    out = []
+    for p in profiles:
+        brand = _norm(p["brand"])
+        if not (brand == want or brand.startswith(want) or (len(brand) >= 3 and want.startswith(brand))):
+            continue
+        kind = type_score(p["material"], material)
+        if kind < 0:
+            continue
+        score, reasons = (20, [["material", p["material"]]]) if kind == 6 else (5, [["variant", p["material"]]])
+        score += 30
+        reasons.append(["vendor", p["brand"]])
+        shared = sorted((_name_words(p["filament"]) - _name_words(p["brand"]) - _name_words(p["material"])) & words)
+        score += 4 * len(shared)
+        reasons += [["word", w] for w in shared]
+        out.append({"name": p["profile_name"], "score": score, "reasons": reasons, "source": "ofd", "id": p["id"],
+                    "path": p["path"], "inherits": p["inherits"], "brand": p["brand"], "material": p["material"]})
+    out.sort(key=lambda r: (-r["score"], len(r["name"]), r["name"]))
+    return out[:limit] if limit else out
