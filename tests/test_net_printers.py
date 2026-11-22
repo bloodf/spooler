@@ -219,11 +219,38 @@ class MoonrakerTest(unittest.TestCase):
         store = {"prints": [], "active": {}, "last": {}, "done": []}
         with mock.patch.object(sp, "source", return_value="spoolman"), mock.patch.object(sp, "usage_mode", return_value="auto"), \
              mock.patch.object(sp, "usage_load", return_value=store):
-            self.assertEqual(sp.usage_track("auto-k", state(False), True), [])
             events = sp.usage_track("auto-k", state(True), True)
         start = [e for e in events if e[0] == "start"]
         self.assertEqual(len(start), 1)
         self.assertTrue(start[0][2]["ask"])
+
+    def test_printer_booked_elsewhere_is_noted_in_the_history_only(self):
+        # The U1 (u1control) or a Moonraker with Spoolman books its own use: Spooler never books it,
+        # but notes the finished print in its history so the Stats tab shows it.
+        state = {"name": "U1", "link": "auto-u1", "units": {}, "ext": {}, "book_ok": False, "idle_seen": True,
+                 "job": {"gcode_state": "RUNNING", "mc_percent": 1, "subtask_name": "cube", "gcode_file": "cube.gcode"}}
+        store = {"prints": [], "active": {}, "last": {}, "done": []}
+        with mock.patch.object(sp, "source", return_value="spoolman"), mock.patch.object(sp, "usage_mode", return_value="auto"), \
+             mock.patch.object(sp, "usage_load", return_value=store):
+            self.assertEqual(sp.usage_track("auto-u1", state, True)[0][0], "start")
+            state["run"]["trays"] = [{"id": "0", "spool_id": 5, "key": 0}]
+            state["job"] = dict(state["job"], gcode_state="FINISH", mc_percent=100)
+            end = [e for e in sp.usage_track("auto-u1", state, True) if e[0] == "end"]
+        run = dict(end[0][2], file=[{"n": 1, "grams": 12.5, "preset": "", "material": "PLA", "colour": "FF0000"}])
+        self.assertTrue(run["record"])
+        booked, noted = [], []
+        with mock.patch.object(sp, "usage_load", return_value=store), mock.patch.object(sp, "usage_save"), \
+             mock.patch.object(sp, "current_origin", return_value=("http://sm", 1)), \
+             mock.patch.object(sp, "plate_spools", return_value=SPOOLS), \
+             mock.patch.object(sp, "usage_book", side_effect=lambda *a: booked.append(a) or ""), \
+             mock.patch.object(sp, "spoolman_use", side_effect=lambda *a: booked.append(a)), \
+             mock.patch.object(sp, "hist_note", side_effect=lambda e, by_id: noted.append(e)):
+            sp.usage_finish(run, "auto-u1")
+            sp.usage_finish(run, "auto-u1")  # seen twice: noted once
+        self.assertEqual(booked, [])
+        self.assertEqual(store["prints"], [])  # nothing waits to be booked here
+        self.assertEqual(len(noted), 1)
+        self.assertEqual([(r["spool"], r["grams"], r["state"]) for r in noted[0]["rows"]], [(5, 12.5, "booked")])
 
 
 class NeverAutoBookTest(unittest.TestCase):

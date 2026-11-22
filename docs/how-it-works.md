@@ -111,8 +111,11 @@ Change Spool, so ids picked from an old list are refused.
 
 ## Booking filament use
 
-Only Bambu Live Link prints are booked here (`usage_track()` skips `auto-` printers: u1control
-books the U1 and Moonraker books other Klipper printers). Each booked print records the Spoolman
+Bambu Live Link prints are booked here; PrusaLink, OctoPrint and Klipper printers without their own booking are asked first.
+Prints on `auto-` printers that book themselves (u1control books the U1, Moonraker with its Spoolman
+integration books other Klipper printers) are never sent to Spoolman: `usage_finish()` only notes
+them in `history.json` (`_record()`), from the job file's grams, so the Stats tab shows them.
+Anycubic printers report no print state to Spooler and are not noted. Each booked print records the Spoolman
 it belongs to and is only booked there; prints recorded before that are left for booking by hand.
 Each row is saved as `sending` before its request (`_send_row()`); a request that may have been
 applied (timeout, dropped connection, server error) or a state that couldn't be saved leaves the

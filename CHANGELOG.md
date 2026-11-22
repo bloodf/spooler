@@ -3,6 +3,11 @@
 Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); entries before
 0.9.0 are Spoolio's.
 
+## [Unreleased]
+
+### Fixed
+- Prints on a Snapmaker U1, or on a Klipper printer whose Moonraker books its own filament use in Spoolman, now show up in Spooler's print history and Stats tab. Spooler used to skip them entirely because u1control or Moonraker books them; it still never books them a second time, it only notes each finished print with the grams from its job file and the spool in each toolhead. Anycubic printers are still not noted, since they report no print state to Spooler.
+
 ## [0.32.6] - 2026-11-21
 
 ### Fixed
