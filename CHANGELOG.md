@@ -3,21 +3,18 @@
 Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); entries before
 0.9.0 are Spoolio's.
 
-## [Unreleased]
+## [0.33.0] - 2026-11-22
 
 ### Added
-- **Open Filament Database proposals (off by default).** Settings > Presets has a new **Open Filament Database** option. Turned on and saved, Edit Spool's **Based on** list also shows the presets the [Open Filament Database](https://openfilamentdatabase.org) (a free community list of filaments, MIT licence) has for the filament's manufacturer and material, marked "OFD, untuned"; picking one installs it (see below). Spooler reads OFD's list at most once a day into its folder (`ofd/`, also read by U1 Control and Kobra Control), keeps using the last list when the network is down, and says in Settings which list it has, with **Read again**. While the option is off Spooler never contacts OFD, and OrcaSlicer is asked for access to it only once it is on.
-- Edit Spool shows, for each of your printers, which OrcaSlicer preset Spooler's preset of that filament is based on, with a score and the reasons for it (material, manufacturer, words in the name, made for this printer). A score that is close to the next candidate is marked so you can check it. **Change** lists the other candidates and picks one at once; Spooler remembers it for that filament and printer and rebuilds the preset, and **Automatic** goes back to its own pick. The choice is kept in `matches.json` in Spooler's folder, which U1 Control and Kobra Control also read for the spools they match.
-
-- **Install an Open Filament Database preset.** Picking an OFD proposal in Edit Spool's **Based on** makes Spooler's preset of that filament, on that printer, a copy of the OFD preset's parent with OFD's values (temperatures, density, diameter, fans and speeds where OFD has them) over it and the filament's own Spoolman values and calibration over those. It stays one of Spooler's presets, flattened with Spooler's own filament id, so OrcaSlicer's sync from AMS (Kobra Control, U1 Control's printer agent) loads it and not "Generic PLA". The OFD preset is fetched once, checked (known settings only, numbers only where numbers belong, its name and parent as OFD's list gives them) and kept in Spooler's `ofd/` folder; rebuilding never fetches. **Automatic** goes back to Spooler's own pick. Nothing is written outside Spooler's own bundle.
+- **See and change which OrcaSlicer preset a spool is based on.** Edit Spool shows, for each of your printers, the preset Spooler's preset of that filament is built from, with a score and the reasons (material, manufacturer, words in the name, made for this printer). A close call is marked so you can check it. **Change** picks another candidate and rebuilds the preset; **Automatic** goes back to Spooler's own pick. Your choice is kept in `matches.json` in Spooler's folder and shared with U1 Control and Kobra Control.
+- **Open Filament Database presets (off by default).** Turn on **Open Filament Database** in Settings > Presets and Edit Spool's **Based on** list also offers the community presets from the [Open Filament Database](https://openfilamentdatabase.org) for that filament's manufacturer and material, marked "OFD, untuned". Picking one builds Spooler's preset from it, with your Spoolman values and calibration on top, so OrcaSlicer's sync from AMS (Kobra Control, U1 Control's printer agent) loads it instead of "Generic PLA". The list is read at most once a day and kept for offline use; while the option is off Spooler never contacts OFD. Nothing is written outside Spooler's own presets.
 
 ### Fixed
-- Prints on a Snapmaker U1, or on a Klipper printer whose Moonraker books its own filament use in Spoolman, now show up in Spooler's print history and Stats tab. Spooler used to skip them entirely because u1control or Moonraker books them; it still never books them a second time, it only notes each finished print with the grams from its job file and the spool in each toolhead.
-- Kobra prints now show up in Spooler's print history and Stats tab too. Kobra Control lists each print it books in Spoolman in a file Spooler reads (Kobra Control from the next version on); Spooler notes each one once, with the grams and spool of each slot, and never books it a second time.
+- Prints on a Snapmaker U1, or on a Klipper printer whose Moonraker books its own filament use in Spoolman, now show up in the print history and Stats tab. Spooler still never books them a second time.
+- Kobra prints now show up in the print history and Stats tab too (with Kobra Control 0.12.0 or later), without being booked twice.
 
 ### Changed
-- Internal: the filament matching code (colour distance, material names, generic preset ids and the preset choice) now comes from the shared Orca UI foundation 5.7.0, one copy for Spooler, U1 Control and Kobra Control. Presets are picked exactly as before.
-- Shared Orca UI foundation 5.10.0 (the preset picker, remembered matches and the Open Filament Database).
+- Shared Orca UI foundation 5.10.0. Internal: the filament matching code is now shared with U1 Control and Kobra Control; presets are picked exactly as before.
 
 ## [0.32.6] - 2026-11-21
 
