@@ -955,6 +955,13 @@ _TEXT_ROWS: dict[str, tuple[str, str, str, str, str]] = {
         "该预设不适用于此打印机上的这种耗材丝。",
         "Ten profil nie pasuje do tego filamentu na tej drukarce.",
     ),
+    "The Open Filament Database preset can't be used: {why}": (
+        "O perfil da Open Filament Database não pode ser usado: {why}",
+        "El perfil de la Open Filament Database no se puede usar: {why}",
+        "Das Profil aus der Open Filament Database kann nicht verwendet werden: {why}",
+        "无法使用 Open Filament Database 的预设：{why}",
+        "Profilu z Open Filament Database nie można użyć: {why}",
+    ),
     "No spool chosen.": (
         "Nenhuma bobina escolhida.",
         "No se eligió ningún carrete.",

@@ -30,6 +30,8 @@ from .filmatch import (  # noqa: F401  (MATERIAL_ALIASES, OFD_ORIGIN: used by ot
     confident,
     load_matches,
     ofd_index,
+    ofd_preset,
+    ofd_values,
     parent_score,
     rank_ofd,
     rank_parents,
@@ -702,23 +704,58 @@ def filament_key(filament_id: object) -> str:
     return f"filament:{filament_id}"
 
 
-def remembered_parent(filament: dict, target: str, parents: list[dict], store: dict) -> str:
-    """The parent picked by hand for this filament on this printer, while it still fits; else ''."""
+OFD_PICK = "ofd:"  # a remembered "ofd:<OFD id>": that OFD preset's values, over its parent, under Spoolman's
+OFD_REFUSED = "The Open Filament Database preset can't be used: {why}"
+
+
+def _ofd_layer(name: str, filament: dict, target: str, usable: dict) -> tuple[str, dict] | None:
+    """For a remembered "ofd:<id>": (its parent, the OFD preset) while the preset kept in the OFD folder is still
+    valid and its parent is a system preset this printer has for the filament's material; else None. No network."""
+    if not name.startswith(OFD_PICK):
+        return None
+    folder = str(ofd_folder())
+    profile = next((p for p in ofd_index(folder, offline=True)["profiles"] if p["id"] == name[len(OFD_PICK):]), None)
+    if profile is None or profile["inherits"] not in usable:
+        return None
+    preset, problem = ofd_preset(folder, profile, parents=set(usable), offline=True)
+    if problem or parent_score(usable[profile["inherits"]], filament, target) is None:
+        return None
+    return profile["inherits"], preset
+
+
+def remembered_parent(filament: dict, target: str, parents: list[dict], store: dict) -> tuple[str, dict | None]:
+    """(parent, OFD preset or None) picked by hand for this filament on this printer, while it still fits; else
+    ("", None). An OFD pick is its preset's parent with the preset's values (see build_preset)."""
     usable = {c["name"]: c for c in parents}
     for name in recall([store], [filament_key(filament.get("id"))], target):
+        layer = _ofd_layer(name, filament, target, usable)
+        if layer:
+            return layer
         if name in usable and parent_score(usable[name], filament, target) is not None:
-            return name
-    return ""
+            return name, None
+    return "", None
 
 
-def choose_parent(filament: dict, target: str, parents: list[dict], opts: dict, store: dict | None) -> tuple[str, str]:
-    """(parent, why): picked by hand ("remembered"), Advanced tuning's ("tuned"), else the best score ("auto")."""
-    remembered = remembered_parent(filament, target, parents, store) if store else ""
+def choose_parent(filament: dict, target: str, parents: list[dict], opts: dict, store: dict | None) -> tuple[str, str, dict | None]:
+    """(parent, why, OFD preset or None): picked by hand ("remembered", or "ofd" for an Open Filament Database preset),
+    Advanced tuning's ("tuned"), else the best score ("auto")."""
+    remembered, ofd = remembered_parent(filament, target, parents, store) if store else ("", None)
     if remembered:
-        return remembered, "remembered"
+        return remembered, "ofd" if ofd else "remembered", ofd
     tune = tuning_for(filament, opts)
     tuned = tune.get("parent") and tuned_parent(tune["parent"], target, parents)
-    return (tuned, "tuned") if tuned else (best_parent(filament, target, parents), "auto")
+    return (tuned, "tuned", None) if tuned else (best_parent(filament, target, parents), "auto", None)
+
+
+def with_ofd(preset: dict, ofd: dict | None) -> dict:
+    """profile_preset's preset with an OFD preset's values under it: Spoolman's values and calibration still win."""
+    if not ofd:
+        return preset
+    layered = dict(preset)
+    for key, value in ofd_values(ofd).items():
+        if key in PRESET_KEYS and key not in layered:
+            layered[key] = value
+    return layered
 
 
 # --- Open Filament Database (Settings > Presets, off by default) -------------------------------------------------
@@ -739,13 +776,13 @@ def ofd_status(refresh: bool = False) -> dict:
     return {"on": True, "count": len(found["profiles"]), **{k: found[k] for k in ("fetched", "version", "stale", "error")}}
 
 
-def ofd_proposals(filament: dict, opts: dict) -> list[dict]:
+def ofd_proposals(filament: dict, opts: dict, limit: int = MATCH_CHOICES) -> list[dict]:
     """The OFD presets proposed for a filament, best first; [] while OFD is off or no index could be read."""
     if not opts.get("ofd"):
         return []
     vendor = str((filament.get("vendor") or {}).get("name") or "")
     return rank_ofd(ofd_index(str(ofd_folder()))["profiles"], vendor, str(filament.get("material") or ""),
-                    str(filament.get("name") or ""), MATCH_CHOICES)
+                    str(filament.get("name") or ""), limit)
 
 
 def preset_match(filament: object, snap: dict, store: dict | None = None) -> list[dict]:
@@ -761,8 +798,11 @@ def preset_match(filament: object, snap: dict, store: dict | None = None) -> lis
     for printer in snap.get("printers") or []:
         target = printer["target"]
         ranked = rank_parents(filament, target, parents)
-        name, source = choose_parent(filament, target, parents, opts, store)
+        name, source, picked = choose_parent(filament, target, parents, opts, store)
         row = next((r for r in ranked if r["name"] == name), {})
+        if picked:   # an Open Filament Database preset: shown by its name, with OFD's reasons
+            row = next((r for r in ofd if r["name"] == picked["name"]), {"score": None, "reasons": []})
+            name = picked["name"]
         rows.append({"target": target, "label": printer.get("label") or target, "name": name, "source": source,
                      "score": row.get("score"), "reasons": row.get("reasons") or [],
                      "confident": source != "auto" or confident(ranked, PARENT_MARGIN), "candidates": ranked[:MATCH_CHOICES],
@@ -770,15 +810,27 @@ def preset_match(filament: object, snap: dict, store: dict | None = None) -> lis
     return rows
 
 
-def pick_parent(filament: object, target: object, name: object) -> dict:
+def pick_parent(filament: object, target: object, name: object, ofd: object = None) -> dict:
     """Edit Spool > Preset > Change: remember name as the parent of the filament's presets on printer target ("" or
-    None: forget it, back to the automatic pick). Refused unless it is one of that printer's presets for the material."""
+    None: forget it, back to the automatic pick). Refused unless it is one of that printer's presets for the material.
+    ofd: an Open Filament Database proposal's id instead (OFD on): its preset is fetched once, checked, kept in the OFD
+    folder, and its values go into Spooler's preset over its parent (build_preset)."""
     snap = _ui_snap
     refused = {"ok": False, "text": _i18n.tr(MATCH_REFUSED)}
     if not isinstance(filament, dict) or filament.get("id") is None or \
             target not in {p["target"] for p in snap.get("printers") or []}:
         return refused
-    if name:
+    if ofd is not None:
+        proposal = next((r for r in ofd_proposals(filament, presets_settings(), 0) if r["id"] == ofd), None)
+        usable = {c["name"]: c for c in snap.get("parents") or []}
+        if proposal is None or proposal["inherits"] not in usable or parent_score(usable[proposal["inherits"]], filament, target) is None:
+            return refused
+        profile = next(p for p in ofd_index(str(ofd_folder()), offline=True)["profiles"] if p["id"] == ofd)
+        _preset, problem = ofd_preset(str(ofd_folder()), profile, parents=set(usable))
+        if problem:
+            return {"ok": False, "text": _i18n.tr(OFD_REFUSED, why=problem)}
+        name = OFD_PICK + ofd
+    elif name:
         found = next((c for c in snap.get("parents") or [] if c["name"] == name), None)
         if found is None or parent_score(found, filament, target) is None:
             return refused
@@ -795,13 +847,16 @@ def build_preset(filament: dict, name: str, key: tuple, snapshot: dict, opts: di
     store: the remembered matches (a parent picked by hand wins)."""
     target, parents = key[1], snapshot.get("parents") or []
     tune = tuning_for(filament, opts)
-    parent, _why = choose_parent(filament, target, parents, opts, store)
+    parent, _why, ofd = choose_parent(filament, target, parents, opts, store)
     if not parent:
         return None
     config = (snapshot.get("configs") or {}).get(parent)
-    preset = profile_preset(filament, name, parent, target, spool_cost_per_kg(filament["id"], spools), tune, config)
+    preset = with_ofd(profile_preset(filament, name, parent, target, spool_cost_per_kg(filament["id"], spools), tune, config), ofd)
     if config:
-        return flat_preset(preset, config, key)
+        flat = flat_preset(preset, config, key)
+        if ofd:
+            flat["description"] += f", with the values of {ofd['name']} from the Open Filament Database (untuned)"
+        return flat
     # Its settings weren't read: still a valid preset, but sync from AMS loads its parent.
     _core._report(f"Preset {name} parent", f"settings of {parent} not read; it inherits them")
     return preset
