@@ -431,7 +431,7 @@ _ofd_parsed = {}           # index path -> ((mtime, size), profiles)
 
 def ofd_profiles(doc):
     """The usable presets of an OFD index: each a dict with the OFD_FIELDS as text (path relative, no "..")."""
-    if not isinstance(doc, dict) or not str(doc.get("preset_version") or "").split(".")[0] in OFD_VERSIONS:
+    if not isinstance(doc, dict) or str(doc.get("preset_version") or "").split(".")[0] not in OFD_VERSIONS:
         return []
     out = []
     for p in doc.get("profiles") if isinstance(doc.get("profiles"), list) else ():
