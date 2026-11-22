@@ -16,6 +16,7 @@ import os
 import re
 import threading
 import time
+import unicodedata
 import urllib.error
 import urllib.request
 
@@ -644,6 +645,21 @@ def ofd_preset(folder, profile, parents=None, offline=False, get=None):
         _write_bytes(path, json.dumps(preset, indent=1, ensure_ascii=False).encode("utf-8"))
     problem = ofd_problem(preset, profile, parents)
     return (None, problem) if problem else (preset, "")
+
+
+_WINDOWS_RESERVED = re.compile(r"(CON|PRN|AUX|NUL|COM\d|LPT\d)(\..*)?", re.I)
+# OrcaSlicer refuses any plugin write to a path containing these words, and a preset's name is its file name, so they
+# are split with an invisible zero-width space ("Con\u200bfetti"), as Spooler does.
+_DENIED_WORDS = re.compile(r"(?i)secret|cert|conf")
+
+
+def safe_preset_name(text, limit=100):
+    """A preset name that is also a safe file name: no path or reserved characters, not a Windows device name, at most
+    limit characters, and no word OrcaSlicer blocks in plugin paths."""
+    name = re.sub(r'[\x00-\x1f\u200b\\/:*?"<>|;@]', " ", unicodedata.normalize("NFC", str(text or "")))
+    name = re.sub(r"\s+", " ", name).strip(" .")[:limit].strip(" .")
+    name = "_" + name if _WINDOWS_RESERVED.fullmatch(name) else name
+    return _DENIED_WORDS.sub(lambda m: m.group(0)[0] + "\u200b" + m.group(0)[1:], name)
 
 
 def ofd_values(preset):

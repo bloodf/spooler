@@ -17,7 +17,7 @@ Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); 
 
 ### Changed
 - Internal: the filament matching code (colour distance, material names, generic preset ids and the preset choice) now comes from the shared Orca UI foundation 5.7.0, one copy for Spooler, U1 Control and Kobra Control. Presets are picked exactly as before.
-- Shared Orca UI foundation 5.9.1 (the preset picker, remembered matches and the Open Filament Database index).
+- Shared Orca UI foundation 5.10.0 (the preset picker, remembered matches and the Open Filament Database).
 
 ## [0.32.6] - 2026-11-21
 
