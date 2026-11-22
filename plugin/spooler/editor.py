@@ -378,7 +378,10 @@ def editor_data(sid: int | None) -> dict:
             "spool": _filament_profiles._link_text(spool), "filament": _filament_profiles._link_text((spool or {}).get("filament") if isinstance(spool, dict) else None)}
     return {"fields": _editor_fields(), "filaments": filaments, "vendors": vendors, "spool": spool,
             "use_with": {"on": _filament_profiles.presets_settings()["per_spool"], "printers": printers, "value": chosen},
-            "preset_link": link}
+            "preset_link": link,
+            # Preset: the parent Spooler's presets of this filament copy, per printer, and the other candidates.
+            "preset_match": _filament_profiles.preset_match((spool or {}).get("filament") if isinstance(spool, dict) else None,
+                                                            _filament_profiles._ui_snap)}
 
 
 def _merge_edit(changes: dict, was: dict, now: dict) -> tuple[dict, list, dict]:
@@ -615,12 +618,12 @@ def spool_action(data: object) -> dict:
     if action == "show_archived":
         _core.save_display({**_core.display_settings(), "archived": data.get("on") is True})
         return {"ok": True, "text": ""}
-    if action not in ("locations", "editor", "create", "save") and action not in SPOOL_ACTIONS:
+    if action not in ("locations", "editor", "create", "save", "match_parent") and action not in SPOOL_ACTIONS:
         return {"ok": False, "text": _i18n.tr("Unknown spool action.")}
     if _sources.source() != "spoolman":
         return {"ok": False, "text": _i18n.tr("Spool actions need Spoolman as the source.")}
     sid = _pos_int(data.get("id"))
-    if sid is None and action not in ("locations", "editor", "create"):
+    if sid is None and action not in ("locations", "editor", "create", "match_parent"):
         return {"ok": False, "text": _i18n.tr("No spool chosen.")}
     if action not in ("locations", "editor") and stale_list(data):
         return {"ok": False, "text": _i18n.tr(STALE_LIST)}
@@ -636,6 +639,10 @@ def spool_action(data: object) -> dict:
                 return editor_create(data)
             if action == "save":
                 return editor_save(sid, data)
+            if action == "match_parent":
+                fid = _pos_int(data.get("filament"))
+                filament = _spoolman_sync.spoolman_call("GET", f"filament/{fid}") if fid else None
+                return _filament_profiles.pick_parent(filament, data.get("target"), data.get("name"))
             return _spool_write(action, sid, data)
     except Exception as exc:
         _core.log.warning("Spool action %s on #%s failed: %s", action, sid, exc)

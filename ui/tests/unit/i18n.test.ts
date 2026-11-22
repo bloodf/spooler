@@ -42,7 +42,7 @@ const GATE = ['printer.gateN'];
 // "{n} s": seconds are written the same way.
 const UNIT = ['set.refreshOption'];
 const SAME: Record<string, string[]> = {
-  es: [...NAMES, ...GATE, ...UNIT, 'common.ok', 'status.errorPrefix', 'filters.material', 'disp.material', 'disp.head_material', 'spool.rfid', 'progress.hm', 'progress.m', 'stats.materialsN_one'],
+  es: [...NAMES, ...GATE, ...UNIT, 'common.ok', 'status.errorPrefix', 'filters.material', 'disp.material', 'disp.head_material', 'spool.rfid', 'progress.hm', 'progress.m', 'stats.materialsN_one', 'match.r.material'],
   de: [...NAMES, ...GATE, ...UNIT, 'common.ok', 'filters.material', 'disp.material', 'disp.head_material', 'spool.rfid', 'progress.hm', 'progress.m',
     'colour.orange', 'bambu.region', 'link.live', 'usage.slot', 'printer.extruder'],
   'zh-CN': NAMES,

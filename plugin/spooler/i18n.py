@@ -948,6 +948,13 @@ _TEXT_ROWS: dict[str, tuple[str, str, str, str, str]] = {
         "料盘操作需要以 Spoolman 作为来源。",
         "Akcje na szpulach wymagają Spoolmana jako źródła.",
     ),
+    "That preset can't be used for this filament on this printer.": (
+        "Esse perfil não serve para este filamento nesta impressora.",
+        "Ese perfil no sirve para este filamento en esta impresora.",
+        "Dieses Profil passt nicht zu diesem Filament auf diesem Drucker.",
+        "该预设不适用于此打印机上的这种耗材丝。",
+        "Ten profil nie pasuje do tego filamentu na tej drukarce.",
+    ),
     "No spool chosen.": (
         "Nenhuma bobina escolhida.",
         "No se eligió ningún carrete.",

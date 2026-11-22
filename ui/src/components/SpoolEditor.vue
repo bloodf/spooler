@@ -8,13 +8,13 @@ import Select from 'primevue/select';
 import SelectButton from 'primevue/selectbutton';
 import Textarea from 'primevue/textarea';
 import ToggleSwitch from 'primevue/toggleswitch';
-import { OuiBanner, OuiFormRow, OuiIcon, OuiLevel, OuiSpool, OuiSwatch } from '@orca-plugins/ui-foundation/src/components';
+import { OuiBanner, OuiFormRow, OuiIcon, OuiLevel, OuiPresetMatch, OuiSpool, OuiSwatch } from '@orca-plugins/ui-foundation/src/components';
 import { plus, rfid, x } from '@orca-plugins/ui-foundation/src/icons';
 import EditorNumber from './EditorNumber.vue';
 import EditorExtra from './EditorExtra.vue';
 import { boot } from '../core/boot';
 import { m, note } from '../state/main';
-import { editor, submitEditor } from '../state/menu';
+import { editor, pickParent, submitEditor } from '../state/menu';
 import { ask } from '../core/dialog';
 import { t, tn, locale } from '../core/i18n';
 import { formatWeight, spoolDirection, spoolPaint, swatchHex, type Filament } from '../logic/spools';
@@ -22,6 +22,8 @@ import { matchFilament, rfidPrefill } from '../logic/rfid';
 import { changed, densityFor, editable, filamentForm, filamentPayload, filled, previewFilament, problems, spoolForm, spoolPayload, wasOf,
   type FilamentForm, type Raw, type SpoolForm } from '../logic/editor';
 import { useWithChanged, useWithPayload, type UseWithInfo } from '../logic/presets';
+import { reasonTexts } from '../logic/match';
+import type { MessageKey } from '../core/messages';
 
 // Add Spool (pick a Spoolman filament to restock, or make a new one, then the spool) and Edit Spool (the spool's fields
 // and its filament's, which every spool of that filament shares), with a live preview drawn like the list's reels.
@@ -47,6 +49,14 @@ const linkSpool = ref('');
 const linkFil = ref('');
 const linkOf = (v: unknown) => (typeof v === 'string' ? v.trim() : '');
 let suggested: number | null = null;
+// Based on: per printer, the OrcaSlicer system preset Spooler's preset of this filament copies (filmatch's pick, Advanced
+// tuning's, or one picked here by hand), with its score and reasons; Change picks another at once (remembered by the plugin).
+type MatchRow = { target: string; label: string; name: string; source: 'auto' | 'tuned' | 'remembered'; score: number | null; reasons: unknown;
+  confident: boolean; candidates: { name: string; score: number; reasons: unknown }[] };
+const matches = computed<MatchRow[]>(() => (Array.isArray(data.value?.preset_match) ? data.value.preset_match : []));
+const words = (reasons: unknown) => reasonTexts(reasons, (code, v) => t(`match.r.${code}` as MessageKey, { v }));
+const matchLabels = computed(() => ({ change: t('match.change'), none: t('match.none'), score: t('match.score'), auto: t('match.auto'), autoHint: t('match.autoHint') }));
+const matchBadge = (row: MatchRow) => (row.source === 'remembered' ? t('match.remembered') : row.source === 'tuned' ? t('match.tuned') : undefined);
 
 watch(data, d => {
   if (!d) return;
@@ -213,6 +223,10 @@ async function save() {
             <OuiFormRow :label="t('editor.spoolWeight')" for="se-sw"><EditorNumber id="se-sw" v-model="ff.spool_weight" :min="0" :max="100000" :digits="1" unit="g" /></OuiFormRow>
             <OuiFormRow v-if="!adding && pl" :label="t('editor.presetLink')" for="se-link-fil" :hint="t('editor.presetLinkFilHelp')">
               <Select v-model="linkFil" input-id="se-link-fil" :options="pl.presets" editable show-clear :placeholder="t('editor.presetLinkNone')" fluid data-test="editor-link-fil" /></OuiFormRow>
+            <OuiFormRow v-for="row in (adding ? [] : matches)" :key="row.target" :label="t('match.title')" :hint="t('match.help', { printer: row.label })" stacked data-test="editor-match">
+              <OuiPresetMatch :name="row.name" :score="row.score" :confident="row.confident" :reasons="words(row.reasons)" :badge="matchBadge(row)" :remembered="row.source === 'remembered'"
+                              :candidates="row.candidates.map(c => ({ name: c.name, score: c.score, reasons: words(c.reasons) }))" :labels="matchLabels" :busy="editor.busy"
+                              @pick="name => pickParent(rawFil?.id ?? null, row.target, name)" /></OuiFormRow>
             <OuiFormRow v-for="d in defs.filament" :key="d.key" :label="d.name || d.key" :for="`se-fx-${d.key}`" :error="err('filament.' + d.key)">
               <EditorExtra v-model="ff.extra[d.key]" :def="d" :id="`se-fx-${d.key}`" :invalid="!!err('filament.' + d.key)" /></OuiFormRow>
           </section>
