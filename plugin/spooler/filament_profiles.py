@@ -19,6 +19,10 @@ from pathlib import Path
 
 import orca
 
+# Material names and the parent preset choice (best_parent) are shared with U1 Control and Kobra Control.
+from .filmatch import MATERIAL_ALIASES, best_parent, parent_score  # noqa: F401
+from .filmatch import material_key as _material_key
+
 # --- Filament profiles -------------------------------------------------------------------
 # For each of your printers, one OrcaSlicer filament preset per Spoolman filament, written as a
 # local preset bundle and hot-reloaded. Each one is a standalone copy of the closest preset
@@ -35,12 +39,6 @@ import orca
 PROFILE_BUNDLE = "spooler"
 PROFILE_STATE = ".spooler-profiles.json"
 PROFILE_PREFIX = f"_local/{PROFILE_BUNDLE}/"
-# Spoolman material spellings to the material names OrcaSlicer's presets use.
-MATERIAL_ALIASES = {
-    "PLA+": "PLA", "PLAPLUS": "PLA", "PLAPRO": "PLA", "HSPLA": "PLA", "PLAHS": "PLA",
-    "SILKPLA": "PLA", "PLASILK": "PLA", "MATTEPLA": "PLA", "PLAMATTE": "PLA", "PETG+": "PETG",
-    "HSPETG": "PETG", "PETGHS": "PETG", "PETGHF": "PETG", "ABS+": "ABS", "NYLON": "PA",
-}
 # Every bed plate type's temperature keys (OrcaSlicer's PrintConfig.cpp; 0 means "can't print on it").
 BED_TEMP_KEYS = tuple(f"{plate}_plate_temp{layer}"
                       for plate in ("cool", "eng", "hot", "supertack", "textured_cool", "textured")
@@ -85,14 +83,6 @@ _ui_snap: dict = {}
 _parent_cache: dict = {"key": None, "parents": [], "configs": {}}
 
 
-def _material_key(material: object) -> str:
-    return re.sub(r"[^A-Z0-9+]", "", str(material or "").upper())
-
-
-def _words(text: object) -> set[str]:
-    return {w for w in re.split(r"[^a-z0-9+]+", str(text or "").lower()) if w}
-
-
 def _first(value: object) -> str:
     items = _plate_check.split_list(value)
     return items[0] if items else ""
@@ -118,48 +108,6 @@ def parent_candidates(filaments) -> list[dict]:
         found.append({"name": preset.name, "vendor": _first(preset.config_value("filament_vendor")),
                       "type": _first(preset.config_value("filament_type")), "printers": printers})
     return found
-
-
-def _type_score(candidate: str, material: str) -> int:
-    want = {_material_key(material), _material_key(MATERIAL_ALIASES.get(_material_key(material), material))}
-    have = _material_key(candidate)
-    if have in want:
-        return 6
-    return 1 if have and any(w.startswith(have) or have.startswith(w) for w in want if w) else -1
-
-
-def parent_score(candidate: dict, filament: dict, target: str) -> int | None:
-    """How well a system preset fits a filament on one printer; None when it can't be used."""
-    specific = target in candidate["printers"]
-    if candidate["printers"] and not specific:
-        return None
-    material = str(filament.get("material") or "")
-    score = _type_score(candidate["type"], material)
-    if score < 0:
-        return None
-    vendor = _plate_check._norm((filament.get("vendor") or {}).get("name"))
-    theirs = _plate_check._norm(candidate["vendor"])
-    if vendor and theirs == vendor:
-        score += 5
-    elif theirs == "generic":
-        score += 1
-    elif theirs:
-        score -= 2
-    base = candidate["name"].split("@")[0]
-    extra = _words(base) - _words(candidate["vendor"]) - _words(candidate["type"]) - {"generic"}
-    named = _words(filament.get("name")) | _words(material)
-    score += sum(2 if w in named else -3 for w in extra)
-    return score + (3 if specific else 0)
-
-
-def best_parent(filament: dict, target: str, parents: list[dict]) -> str:
-    """The best-fitting system preset for a filament on one printer, or ''."""
-    best = None
-    for candidate in parents:
-        score = parent_score(candidate, filament, target)
-        if score is not None and (best is None or (score, -len(candidate["name"])) > best[0]):
-            best = ((score, -len(candidate["name"])), candidate["name"])
-    return best[1] if best else ""
 
 
 WINDOWS_RESERVED = re.compile(r"(CON|PRN|AUX|NUL|COM\d|LPT\d)(\..*)?", re.I)

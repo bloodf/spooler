@@ -19,6 +19,7 @@ import webbrowser
 import orca
 
 from . import core as _core
+from .filmatch import colour_diff  # noqa: F401  (shared with U1 Control and Kobra Control)
 
 
 def is_newer(latest: str, current: str) -> bool:
@@ -129,17 +130,6 @@ def plate_slots(ctx, grams: list[float]) -> list[dict]:
          "material": at(materials, i), "vendor": at(vendors, i), "ams": ams}
         for i, used in enumerate(grams)
     ]
-
-
-def colour_diff(first: str, second: str) -> float | None:
-    def rgb(value):
-        digits = (value or "").strip().lstrip("#")[:6]
-        if not re.fullmatch(r"[0-9a-fA-F]{6}", digits):
-            return None
-        return tuple(int(digits[i:i + 2], 16) for i in (0, 2, 4))
-
-    a, b = rgb(first), rgb(second)
-    return None if a is None or b is None else sum((x - y) ** 2 for x, y in zip(a, b)) ** 0.5
 
 
 def _norm(text: object) -> str:
