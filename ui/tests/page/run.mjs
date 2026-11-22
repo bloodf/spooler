@@ -1634,6 +1634,30 @@ test('editor: OrcaSlicer preset links the spool or its filament to one of your p
   eq(lastOf('spool_action').filament, {}, 'the filament link unchanged');
   eq(lastOf('spool_action').was.spool, {preset_link: null}, 'with what Spoolman held');
 `);
+test('editor: Based on shows each printer\'s preset with score and reasons; Change remembers another at once', `
+  await spools(SPOOLS, {display: {...DEFAULTS, group_same: false}});
+  await click(q('[data-edit="1"]'));
+  const choices = [{name: 'Generic PLA @U1', score: 10, reasons: [['material', 'PLA'], ['generic', ''], ['printer', '']]},
+                 {name: 'Generic PLA Silk @U1', score: 5, reasons: [['material', 'PLA'], ['extra_word', 'silk']]}];
+  const match = {target: 'Snapmaker U1 (0.4 nozzle)', label: 'Snapmaker U1', name: 'Generic PLA @U1', source: 'auto', score: 10,
+               reasons: choices[0].reasons, confident: true, candidates: choices};
+  await post({...editorData(RAW1), editor: {...editorData(RAW1).editor, preset_match: [match]}});
+  await until(() => byTest('editor-match'), 'the row');
+  const mbox = byTest('editor-match');
+  assert(text(mbox).includes('Generic PLA @U1') && text(mbox).includes('material PLA') && text(mbox).includes('Score 10'), 'name, reasons, score: ' + text(mbox));
+  assert(text(mbox).includes('Snapmaker U1'), 'names the printer');
+  await click(mbox.querySelector('.oui-match-change'));
+  await until(() => mbox.querySelectorAll('.oui-match-option').length === 2, 'candidates listed, no Automatic while not picked by hand');
+  await click(mbox.querySelectorAll('.oui-match-option')[1]);
+  const picked = lastOf('spool_action');
+  eq([picked.action, picked.target, picked.name, picked.filament], ['match_parent', 'Snapmaker U1 (0.4 nozzle)', 'Generic PLA Silk @U1', RAW1.filament.id], 'remembers it at once');
+  await post({type: 'action_result', action: 'match_parent', ok: true, text: '', ref: editorRef(),
+              match: [{...match, name: 'Generic PLA Silk @U1', source: 'remembered', score: 5, reasons: choices[1].reasons}]});
+  await until(() => text(byTest('editor-match')).includes('Picked by hand'), 'the new pick, marked');
+  assert(dialogOpen(), 'the editor stays open');
+  await click(byTest('editor-match').querySelector('.oui-match-change'));
+  await until(() => text(byTest('editor-match')).includes('Automatic'), 'Automatic offered for a pick made by hand');
+`);
 test('settings: presets per spool and Advanced tuning, off by default, saved with decimals typed with a point', `
   await post({type: 'show_view', view: 'settings', url: 'http://spoolman:7912', source: 'spoolman', low_stock: 100, display: DEFAULTS, drying: {}, progress: {}, stats: {},
     presets: {per_spool: false, tuning: false, materials: {}}, parents: [{name: 'Generic PLA', type: 'PLA'}, {name: 'Generic PLA Silk', type: 'PLA'}, {name: 'Generic PETG', type: 'PETG'}]});

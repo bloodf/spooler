@@ -210,7 +210,7 @@ function onMessage(d: any): void {
     case 'spool_changed': bridge.postMain({ type: 'refresh' }); break;
     case 'action_result':
       if (d.action === 'locations') { m.locations = d.ok ? d.locations || [] : []; return; }
-      if (d.action === 'editor' || d.action === 'create' || d.action === 'save') listeners.editor.forEach(h => h(d));
+      if (d.action === 'editor' || d.action === 'create' || d.action === 'save' || d.action === 'match_parent') listeners.editor.forEach(h => h(d));
       if (d.action === 'editor') return;
       if (d.text) settle('spool-action', !!d.ok, d.text); else quiet('spool-action');
       if (d.ok) listeners.actionOk.forEach(h => h());

@@ -5,12 +5,16 @@ Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); 
 
 ## [Unreleased]
 
+### Added
+- Edit Spool shows, for each of your printers, which OrcaSlicer preset Spooler's preset of that filament is based on, with a score and the reasons for it (material, manufacturer, words in the name, made for this printer). A score that is close to the next candidate is marked so you can check it. **Change** lists the other candidates and picks one at once; Spooler remembers it for that filament and printer and rebuilds the preset, and **Automatic** goes back to its own pick. The choice is kept in `matches.json` in Spooler's folder, which U1 Control and Kobra Control also read for the spools they match.
+
 ### Fixed
 - Prints on a Snapmaker U1, or on a Klipper printer whose Moonraker books its own filament use in Spoolman, now show up in Spooler's print history and Stats tab. Spooler used to skip them entirely because u1control or Moonraker books them; it still never books them a second time, it only notes each finished print with the grams from its job file and the spool in each toolhead.
 - Kobra prints now show up in Spooler's print history and Stats tab too. Kobra Control lists each print it books in Spoolman in a file Spooler reads (Kobra Control from the next version on); Spooler notes each one once, with the grams and spool of each slot, and never books it a second time.
 
 ### Changed
 - Internal: the filament matching code (colour distance, material names, generic preset ids and the preset choice) now comes from the shared Orca UI foundation 5.7.0, one copy for Spooler, U1 Control and Kobra Control. Presets are picked exactly as before.
+- Shared Orca UI foundation 5.8.0 (the preset picker and remembered matches).
 
 ## [0.32.6] - 2026-11-21
 

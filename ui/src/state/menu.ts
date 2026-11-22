@@ -86,8 +86,16 @@ export function submitEditor(message: Record<string, unknown>): void {
   bridge.postMain({ type: 'spool_action', origin: m.origin, ...(editor.id == null ? {} : { id: editor.id }), ...message, ref: editor.ref });
   note('pending', t('action.sending'), 'spool-action');
 }
+// Edit Spool > Based on > Change: the plugin remembers the parent preset for the filament on that printer (null forgets it)
+// and answers with the rows again; the presets are rebuilt on the refresh that follows every spool action.
+export function pickParent(filament: number | null, target: string, name: string | null): void {
+  if (filament == null) return;
+  Object.assign(editor, { busy: true, error: '' });
+  bridge.postMain({ type: 'spool_action', action: 'match_parent', filament, target, name, origin: m.origin, ref: editor.ref });
+}
 on('editor', d => {
   if (!editor.open || d.ref !== editor.ref) return;
+  if (d.action === 'match_parent') { editor.busy = false; if (d.ok && editor.data) editor.data.preset_match = d.match; else if (!d.ok) editor.error = d.text || t('common.unknownError'); return; }
   if (d.action === 'editor') { if (d.ok) editor.data = d.editor; else editor.error = d.text || t('common.unknownError'); return; }
   editor.busy = false;
   if (d.ok) { editor.open = false; return; }

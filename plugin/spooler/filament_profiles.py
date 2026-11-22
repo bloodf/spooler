@@ -20,7 +20,18 @@ from pathlib import Path
 import orca
 
 # Material names and the parent preset choice (best_parent) are shared with U1 Control and Kobra Control.
-from .filmatch import MATERIAL_ALIASES, best_parent, parent_score  # noqa: F401
+from .filmatch import (  # noqa: F401
+    MATCHES_FILE,
+    MATERIAL_ALIASES,
+    PARENT_MARGIN,
+    best_parent,
+    confident,
+    load_matches,
+    parent_score,
+    rank_parents,
+    recall,
+    remember,
+)
 from .filmatch import material_key as _material_key
 
 # --- Filament profiles -------------------------------------------------------------------
@@ -671,13 +682,87 @@ def parent_configs(filaments, parents: list[dict], targets: set, cache: dict) ->
     return dict(cache)
 
 
-def build_preset(filament: dict, name: str, key: tuple, snapshot: dict, opts: dict, spools: list[dict]) -> dict | None:
+# --- Parent picked by hand (Edit Spool > Preset) ---------------------------------------------------
+# The parent a filament's presets copy, picked by hand, is kept per printer in matches.json (filmatch) under
+# "filament:<id>", next to the matches U1 Control and Kobra Control remember. It wins over Advanced tuning's parent and
+# the scored pick while it is still one of the printer's system presets for the filament's material.
+MATCH_CHOICES = 5  # candidates Edit Spool offers per printer
+MATCH_REFUSED = "That preset can't be used for this filament on this printer."
+
+
+def matches_path() -> Path:
+    return _peers.bridge_dir() / MATCHES_FILE
+
+
+def filament_key(filament_id: object) -> str:
+    return f"filament:{filament_id}"
+
+
+def remembered_parent(filament: dict, target: str, parents: list[dict], store: dict) -> str:
+    """The parent picked by hand for this filament on this printer, while it still fits; else ''."""
+    usable = {c["name"]: c for c in parents}
+    for name in recall([store], [filament_key(filament.get("id"))], target):
+        if name in usable and parent_score(usable[name], filament, target) is not None:
+            return name
+    return ""
+
+
+def choose_parent(filament: dict, target: str, parents: list[dict], opts: dict, store: dict | None) -> tuple[str, str]:
+    """(parent, why): picked by hand ("remembered"), Advanced tuning's ("tuned"), else the best score ("auto")."""
+    remembered = remembered_parent(filament, target, parents, store) if store else ""
+    if remembered:
+        return remembered, "remembered"
+    tune = tuning_for(filament, opts)
+    tuned = tune.get("parent") and tuned_parent(tune["parent"], target, parents)
+    return (tuned, "tuned") if tuned else (best_parent(filament, target, parents), "auto")
+
+
+def preset_match(filament: object, snap: dict, store: dict | None = None) -> list[dict]:
+    """Edit Spool's Preset rows, one per printer: the parent this filament's preset copies there, why, its score and
+    reasons (filmatch codes), whether the pick is clear, and the best candidates."""
+    if not isinstance(filament, dict) or filament.get("id") is None:
+        return []
+    parents = snap.get("parents") or []
+    store = load_matches(matches_path()) if store is None else store
+    opts = presets_settings()
+    rows = []
+    for printer in snap.get("printers") or []:
+        target = printer["target"]
+        ranked = rank_parents(filament, target, parents)
+        name, source = choose_parent(filament, target, parents, opts, store)
+        row = next((r for r in ranked if r["name"] == name), {})
+        rows.append({"target": target, "label": printer.get("label") or target, "name": name, "source": source,
+                     "score": row.get("score"), "reasons": row.get("reasons") or [],
+                     "confident": source != "auto" or confident(ranked, PARENT_MARGIN), "candidates": ranked[:MATCH_CHOICES]})
+    return rows
+
+
+def pick_parent(filament: object, target: object, name: object) -> dict:
+    """Edit Spool > Preset > Change: remember name as the parent of the filament's presets on printer target ("" or
+    None: forget it, back to the automatic pick). Refused unless it is one of that printer's presets for the material."""
+    snap = _ui_snap
+    refused = {"ok": False, "text": _i18n.tr(MATCH_REFUSED)}
+    if not isinstance(filament, dict) or filament.get("id") is None or \
+            target not in {p["target"] for p in snap.get("printers") or []}:
+        return refused
+    if name:
+        found = next((c for c in snap.get("parents") or [] if c["name"] == name), None)
+        if found is None or parent_score(found, filament, target) is None:
+            return refused
+    elif name not in (None, ""):
+        return refused
+    store = remember(matches_path(), {filament_key(filament["id"]): name or ""}, target)
+    return {"ok": True, "text": "", "match": preset_match(filament, snap, store)}
+
+
+def build_preset(filament: dict, name: str, key: tuple, snapshot: dict, opts: dict, spools: list[dict],
+                 store: dict | None = None) -> dict | None:
     """Spooler's preset for a filament on the printer key[1] names: a standalone copy of its parent when the
-    parent's settings were read, else one that inherits it; None when the printer has no usable parent."""
+    parent's settings were read, else one that inherits it; None when the printer has no usable parent.
+    store: the remembered matches (a parent picked by hand wins)."""
     target, parents = key[1], snapshot.get("parents") or []
     tune = tuning_for(filament, opts)
-    parent = (tune.get("parent") and tuned_parent(tune["parent"], target, parents)) or \
-        best_parent(filament, target, parents)
+    parent, _why = choose_parent(filament, target, parents, opts, store)
     if not parent:
         return None
     config = (snapshot.get("configs") or {}).get(parent)
@@ -705,11 +790,12 @@ def profile_files(spools: list[dict], snapshot: dict, opts: dict | None = None,
     else:
         names = profile_names(spools, list(printers.values()))
     by_spool = {s.get("id"): s for s in spools or [] if isinstance(s, dict)}
+    store = load_matches(matches_path())
     for key, name in names.items():
         holder = by_spool.get(key[2]) if len(key) > 2 else {"filament": filaments[key[0]]}
         if spool_link(holder, key[1], snapshot):
             continue  # linked to your own preset that fits this printer (orca_filament_preset): Spooler makes none
-        preset = build_preset(filaments[key[0]], name, key, snapshot, opts, spools)
+        preset = build_preset(filaments[key[0]], name, key, snapshot, opts, spools, store)
         if preset is None:
             continue
         problem = preset_problem(preset)
@@ -1025,6 +1111,7 @@ from . import i18n as _i18n  # noqa: E402
 from . import live_updates as _live_updates  # noqa: E402
 from . import moonraker as _moonraker  # noqa: E402
 from . import netprinters as _netprinters  # noqa: E402
+from . import peers as _peers  # noqa: E402
 from . import plate_check as _plate_check  # noqa: E402
 from . import printers as _printers  # noqa: E402
 from . import sources as _sources  # noqa: E402
