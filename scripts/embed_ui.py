@@ -5,6 +5,8 @@ The served page goes to plugin/spooler/app.html, a plain file the wheel ships ne
 ui_page() reads. plugin/spooler/ui_build.py keeps a generated block between the BEGIN/END markers: the page's SHA-256 and size,
 and the licence texts of what the page bundles (ui/node_modules/@orca-plugins/ui-foundation/licenses: Vue, PrimeVue, PrimeUIX, the Lucide icons and the
 Manrope font) as UI_LICENSES, since those licences ask for their notice in every copy. Same input, same bytes.
+It also copies the shared filament matcher (ui/node_modules/@orca-plugins/ui-foundation/python/filmatch.py) to
+plugin/spooler/filmatch.py, committed so the plugin runs from a checkout.
 `--check` fails when the block or app.html is missing or differs from the built page (CI and tests use it).
 
 The page's script goes in deflated and base64-encoded, run by scripts/page_loader.js: OrcaSlicer on Windows shows a page
@@ -32,6 +34,8 @@ SERVED = ROOT / "plugin" / "spooler" / "app.html"
 PAGE = ROOT / "ui" / "dist" / "spooler-ui.html"
 LICENSES = ROOT / "ui" / "node_modules" / "@orca-plugins" / "ui-foundation" / "licenses"
 LOADER = ROOT / "scripts" / "page_loader.js"
+FILMATCH = ROOT / "ui" / "node_modules" / "@orca-plugins" / "ui-foundation" / "python" / "filmatch.py"
+FILMATCH_COPY = ROOT / "plugin" / "spooler" / "filmatch.py"
 BUILD_INFO = ROOT / "ui" / "build.json"
 WEBVIEW_PAGE_LIMIT = 1_572_864   # bytes of UTF-8: WebView2's 2 MiB of base64
 PAGE_BUDGET = WEBVIEW_PAGE_LIMIT * 9 // 10
@@ -48,6 +52,11 @@ def licenses() -> str:
         sys.exit(f"error: no licence texts in {LICENSES.relative_to(ROOT)}")
     lines = "".join(f"    {line!r}\n" for line in "\n".join(texts).splitlines(keepends=True))
     return f"# Third-party licences of the embedded page (Vue, PrimeVue, PrimeUIX, Lucide icons, Manrope font).\nUI_LICENSES = (\n{lines})\n"
+
+
+def filmatch() -> bytes:
+    """The foundation's filmatch.py with LF line ends (a git checkout on Windows may give CRLF)."""
+    return FILMATCH.read_bytes().replace(b"\r\n", b"\n")
 
 
 def served(html: str) -> str:
@@ -108,13 +117,18 @@ def main() -> int:
             print("error: plugin/spooler/app.html or the UI block in ui_build.py doesn't match ui/dist/spooler-ui.html; "
                   "run scripts/embed_ui.py", file=sys.stderr)
             return 1
-        print("UI block matches the built page")
+        if not FILMATCH_COPY.exists() or FILMATCH_COPY.read_bytes() != filmatch():
+            print("error: plugin/spooler/filmatch.py differs from the shared foundation's; run scripts/embed_ui.py",
+                  file=sys.stderr)
+            return 1
+        print("UI block and filmatch.py match the built page and the foundation")
         return 0
     if have is None:
         sys.exit("error: no UI block markers in plugin/spooler/ui_build.py")
     PLUGIN.write_text(text.replace(have, want), encoding="utf-8", newline="\n")
     SERVED.write_bytes(page.encode("utf-8"))
     BUILD_INFO.write_text(build_info(page), encoding="utf-8", newline="\n")
+    FILMATCH_COPY.write_bytes(filmatch())
     print(f"wrote {SERVED.relative_to(ROOT)} from {PAGE.relative_to(ROOT)} ({PAGE.stat().st_size} bytes, served as {len(page.encode('utf-8'))})")
     return 0
 

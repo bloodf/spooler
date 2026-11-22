@@ -28,6 +28,7 @@ from . import (  # noqa: F401
     core,
     editor,
     filament_profiles,
+    filmatch,
     i18n,
     live_updates,
     moonraker,

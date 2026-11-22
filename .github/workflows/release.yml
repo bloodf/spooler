@@ -39,7 +39,7 @@ jobs:
         working-directory: ui
         run: npm ci --ignore-scripts && npm run build
       - name: Committed page matches the build
-        run: git diff --exit-code -- plugin/spooler/ui_build.py plugin/spooler/app.html ui/build.json
+        run: git diff --exit-code -- plugin/spooler/ui_build.py plugin/spooler/app.html plugin/spooler/filmatch.py ui/build.json
 
       - name: Check the tag matches the plugin version
         run: python scripts/check_version.py "$GITHUB_REF_NAME"
