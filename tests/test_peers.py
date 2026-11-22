@@ -264,3 +264,64 @@ class RefreshRecoversTest(PeerCase):
                 with self.assertRaises(RuntimeError):
                     host._push_data()
                 self.assertFalse(host._refreshing, "the next refresh still runs")
+
+
+class KobraPrintsTest(PeerCase):
+    """Kobra Control's prints.json: each finished print is noted in Spooler's history once, never booked."""
+
+    def setUp(self):
+        super().setUp()
+        for patch in (mock.patch.object(sp, "HISTORY_FILE", self.root / "history.json"),
+                      mock.patch.object(sp, "spoolman_use", side_effect=AssertionError("booked")),
+                      mock.patch.object(sp, "usage_book", side_effect=AssertionError("booked"))):
+            patch.start()
+            self.addCleanup(patch.stop)
+        saved = dict(sp._spool_cache)
+        self.addCleanup(sp._spool_cache.update, saved)
+        sp._peer["prints"] = None
+        self.addCleanup(sp._peer.update, prints=None)
+
+    def write_prints(self, prints, mtime):
+        path = self.root / "kobracontrol" / "prints.json"
+        path.parent.mkdir(exist_ok=True)
+        path.write_text(json.dumps({"schema": "kobracontrol-prints", "version": 1, "prints": prints}), encoding="utf-8")
+        os.utime(path, (mtime, mtime))
+
+    def record(self, rid, spoolman="http://box:7912"):
+        return {"id": rid, "finished_at": 1_800_000_000.0, "file": "parts/cube.gcode", "printer": "Workshop",
+                "model": "Kobra X", "spoolman": spoolman,
+                "slots": [{"slot": 0, "grams": 12.34, "spool": 7}, {"slot": 1, "grams": 3.0, "spool": None}]}
+
+    def history(self):
+        return json.loads((self.root / "history.json").read_text(encoding="utf-8"))
+
+    def test_each_print_is_noted_once_with_spoolers_labels(self):
+        own = sp.current_origin()[0]
+        sp._spool_cache.update(url="", spools=[])
+        self.write_prints([self.record("a")], 1000)
+        sp.note_kobra_prints()   # Spooler hasn't read its spools yet: waits, so labels and costs aren't lost
+        self.assertFalse((self.root / "history.json").exists())
+        sp._spool_cache.update(url=own, spools=[dict(s) for s in SPOOLS])
+        sp.note_kobra_prints()
+        self.write_prints([self.record("a"), self.record("b", spoolman="http://other:7912")], 2000)
+        sp.note_kobra_prints()
+        sp.note_kobra_prints()
+        hist = self.history()
+        self.assertEqual([e["id"] for e in hist], ["kobra-a", "kobra-b"])
+        a, b = hist
+        self.assertEqual((a["name"], a["printer"], a["result"], a["origin"]), ("cube.gcode", "Workshop", "finished", own))
+        self.assertEqual([(r["spool"], r["grams"], r["label"]) for r in a["rows"]], [(7, 12.3, "Acme Matte Black")])
+        self.assertEqual(b["origin"], "http://other:7912")   # another Spoolman: kept apart, not labelled from this one
+        self.assertEqual([e["id"] for e in sp.hist_here(hist)], ["kobra-a"])
+        self.assertEqual(self.requests, [])   # nothing asked of Spoolman
+
+    def test_a_foreign_or_broken_file_is_ignored(self):
+        path = self.root / "kobracontrol" / "prints.json"
+        path.parent.mkdir()
+        for n, text in enumerate(("{", json.dumps({"schema": "other", "version": 1, "prints": [self.record("a")]}),
+                     json.dumps({"schema": "kobracontrol-prints", "version": 1,
+                                 "prints": [{"id": "x"}, "y", {**self.record("z"), "slots": [{"spool": True, "grams": 1}]}]}))):
+            path.write_text(text, encoding="utf-8")
+            os.utime(path, (1000 + n, 1000 + n))
+            sp.note_kobra_prints()
+        self.assertFalse((self.root / "history.json").exists())

@@ -120,7 +120,7 @@ KOBRACONTROL = "kobracontrol"
 # move, the open page re-reads Spoolman at once; Spooler's own moves when its Printer tab assigns. Kobra Control's
 # presence also names its printer ({"host", "name"}): its slot links use that name, which the user may have changed.
 _peer: dict = {"session": "", "started": 0.0, "users": 0, "stop": None, "thread": None,
-               "seq": 0, "stock_at": 0.0, "served": None, "links": 0, "seen": {}, "kobra": None}
+               "seq": 0, "stock_at": 0.0, "served": None, "links": 0, "seen": {}, "kobra": None, "prints": None}
 _peer_lock = threading.Lock()
 
 
@@ -305,12 +305,75 @@ def watch_peer_links() -> None:
         _live_updates._ws_notify()
 
 
+# Kobra Control books its own prints in Spoolman and lists each one it booked in <data folder>/kobracontrol/prints.json
+# (the last 200): {"schema": "kobracontrol-prints", "version": 1, "prints": [{"id", "finished_at": <unix s>, "file",
+# "printer", "model", "spoolman": <origin>, "slots": [{"slot", "grams", "spool": <id or null>}]}]}. Spooler notes each
+# one in its print history once (by id), like a U1 print (rfid._record): it never books them in Spoolman.
+KOBRA_PRINTS = "prints.json"
+KOBRA_PRINTS_SCHEMA = "kobracontrol-prints"
+
+
+def kobra_entry(rec: object) -> dict | None:
+    """A history entry for one record of Kobra Control's prints.json, or None when it isn't one."""
+    num = lambda v: isinstance(v, (int, float)) and not isinstance(v, bool) and 0 < v < 1e12  # noqa: E731
+    if not isinstance(rec, dict) or not isinstance(rec.get("id"), str) or not rec["id"] or not num(rec.get("finished_at")):
+        return None
+    slots = rec.get("slots") if isinstance(rec.get("slots"), list) else []
+    rows = [{"spool": s["spool"], "grams": round(s["grams"], 1), "state": "booked", "label": "", "material": "", "colour": ""}
+            for s in slots if isinstance(s, dict) and isinstance(s.get("spool"), int) and not isinstance(s["spool"], bool)
+            and num(s.get("grams"))]
+    text = lambda v: " ".join(str(v).split())[:80] if isinstance(v, str) else ""  # noqa: E731
+    return {"id": "kobra-" + rec["id"][:64], "time": rec["finished_at"], "name": text(rec.get("file")).rsplit("/", 1)[-1],
+            "printer": text(rec.get("printer")) or text(rec.get("model")) or "Anycubic", "result": "finished", "pct": 100,
+            "rows": rows, "origin": text(rec.get("spoolman"))}
+
+
+def note_kobra_prints() -> None:
+    """Note Kobra Control's new finished prints in Spooler's history (history only, never booked). Reads the file
+    again only when it changed; a print whose Spoolman is Spooler's waits until Spooler has read its spools."""
+    root = _filament_profiles._orca_data_dir()
+    path = root / KOBRACONTROL / KOBRA_PRINTS if root else None
+    try:
+        stamp = path.stat().st_mtime_ns if path else None
+        if stamp is None or stamp == _peer["prints"]:
+            return
+        doc = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return
+    if not isinstance(doc, dict) or doc.get("schema") != KOBRA_PRINTS_SCHEMA or doc.get("version") != 1 \
+            or not isinstance(doc.get("prints"), list):
+        _peer["prints"] = stamp
+        return
+    own = _spoolman_sync.current_origin()[0]
+    spools = _core._spool_cache["spools"] if own and _core._spool_cache["url"] == own else None
+    by_id = {sp.get("id"): sp for sp in spools or []}
+    done = True
+    with _netprinters._usage_lock:
+        seen = {e.get("id") for e in _stats.hist_load()}
+        for entry in filter(None, map(kobra_entry, doc["prints"])):
+            if entry["id"] in seen:
+                continue
+            here = bool(own) and public_url(own).lower() == entry["origin"].lower()
+            if here and spools is None:
+                done = False   # labels and costs come from Spooler's spool list: try again once it is read
+                continue
+            try:
+                # Spooler's own address (it may carry a password Kobra Control left out) so the Stats tab shows it.
+                _stats.hist_note({**entry, "origin": own if here else entry["origin"]}, by_id if here else {})
+            except OSError:
+                _core.log.exception("Could not note a Kobra Control print in Spooler's history")
+                done = False
+    if done:
+        _peer["prints"] = stamp
+
+
 def peer_tick() -> None:
     """One heartbeat: say Spooler runs, follow the peers' link changes, and refresh the stock when u1control shows
     it. Never raises."""
     try:
         publish_presence()
         watch_peer_links()
+        note_kobra_prints()
         wants = u1control_wants()
         if wants is None:
             return
@@ -472,6 +535,8 @@ from . import filament_profiles as _filament_profiles  # noqa: E402
 from . import i18n as _i18n  # noqa: E402
 from . import live_updates as _live_updates  # noqa: E402
 from . import moonraker as _moonraker  # noqa: E402
+from . import netprinters as _netprinters  # noqa: E402
 from . import rfid as _rfid  # noqa: E402
 from . import sources as _sources  # noqa: E402
 from . import spoolman_sync as _spoolman_sync  # noqa: E402
+from . import stats as _stats  # noqa: E402
