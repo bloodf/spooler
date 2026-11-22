@@ -83,7 +83,7 @@ def check_bundle(test: unittest.TestCase, files: dict) -> None:
 
 class ParseTest(unittest.TestCase):
     def test_off_by_default(self):
-        self.assertEqual(OFF, {"per_spool": False, "tuning": False, "materials": {}})
+        self.assertEqual(OFF, {"per_spool": False, "tuning": False, "materials": {}, "ofd": False})
 
     def test_rows_are_cleaned(self):
         opts = sp.parse_presets({"per_spool": "on", "tuning": True, "materials": {
@@ -108,7 +108,7 @@ class ParseTest(unittest.TestCase):
             sp.save_presets({"per_spool": True, "materials": {"pla": {"pressure_advance": 0.03}}})
             sp.save_presets("not a dict")
             self.assertEqual(sp.presets_settings(), {"per_spool": True, "tuning": False,
-                                                     "materials": {"PLA": {"pressure_advance": 0.03}}})
+                                                     "materials": {"PLA": {"pressure_advance": 0.03}}, "ofd": False})
             self.assertEqual(sp.get_settings()["spoolman_url"], "http://spoolman:7912")
 
 

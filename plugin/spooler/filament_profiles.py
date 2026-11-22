@@ -20,14 +20,18 @@ from pathlib import Path
 import orca
 
 # Material names and the parent preset choice (best_parent) are shared with U1 Control and Kobra Control.
-from .filmatch import (  # noqa: F401
+from .filmatch import (  # noqa: F401  (MATERIAL_ALIASES, OFD_ORIGIN: used by other modules)
     MATCHES_FILE,
     MATERIAL_ALIASES,
+    OFD_DIR,
+    OFD_ORIGIN,
     PARENT_MARGIN,
     best_parent,
     confident,
     load_matches,
+    ofd_index,
     parent_score,
+    rank_ofd,
     rank_parents,
     recall,
     remember,
@@ -438,7 +442,7 @@ def parse_presets(value: object) -> dict:
         if clean:
             table[name] = clean
     return {"per_spool": _core.parse_flag(value.get("per_spool"), False), "tuning": _core.parse_flag(value.get("tuning"), False),
-            "materials": table}
+            "materials": table, "ofd": _core.parse_flag(value.get("ofd"), False)}
 
 
 def presets_settings() -> dict:
@@ -717,14 +721,42 @@ def choose_parent(filament: dict, target: str, parents: list[dict], opts: dict, 
     return (tuned, "tuned") if tuned else (best_parent(filament, target, parents), "auto")
 
 
+# --- Open Filament Database (Settings > Presets, off by default) -------------------------------------------------
+# While it is on, Edit Spool also lists the OFD presets of the filament's manufacturer and material (filmatch.rank_ofd),
+# from OFD's index kept a day in <data folder>/spooler/ofd/, which U1 Control and Kobra Control read too. While it is
+# off nothing is fetched.
+
+def ofd_folder() -> Path:
+    return _peers.bridge_dir() / OFD_DIR
+
+
+def ofd_status(refresh: bool = False) -> dict:
+    """Settings > Presets' OFD line: {"on"} and, while on, {"fetched", "version", "count", "stale", "error"}. Reads the
+    index again when refresh, or when the kept one is a day old. Worker thread."""
+    if not presets_settings()["ofd"]:
+        return {"on": False}
+    found = ofd_index(str(ofd_folder()), force=refresh)
+    return {"on": True, "count": len(found["profiles"]), **{k: found[k] for k in ("fetched", "version", "stale", "error")}}
+
+
+def ofd_proposals(filament: dict, opts: dict) -> list[dict]:
+    """The OFD presets proposed for a filament, best first; [] while OFD is off or no index could be read."""
+    if not opts.get("ofd"):
+        return []
+    vendor = str((filament.get("vendor") or {}).get("name") or "")
+    return rank_ofd(ofd_index(str(ofd_folder()))["profiles"], vendor, str(filament.get("material") or ""),
+                    str(filament.get("name") or ""), MATCH_CHOICES)
+
+
 def preset_match(filament: object, snap: dict, store: dict | None = None) -> list[dict]:
     """Edit Spool's Preset rows, one per printer: the parent this filament's preset copies there, why, its score and
-    reasons (filmatch codes), whether the pick is clear, and the best candidates."""
+    reasons (filmatch codes), whether the pick is clear, the best candidates, and the OFD proposals ("ofd")."""
     if not isinstance(filament, dict) or filament.get("id") is None:
         return []
     parents = snap.get("parents") or []
     store = load_matches(matches_path()) if store is None else store
     opts = presets_settings()
+    ofd = ofd_proposals(filament, opts)
     rows = []
     for printer in snap.get("printers") or []:
         target = printer["target"]
@@ -733,7 +765,8 @@ def preset_match(filament: object, snap: dict, store: dict | None = None) -> lis
         row = next((r for r in ranked if r["name"] == name), {})
         rows.append({"target": target, "label": printer.get("label") or target, "name": name, "source": source,
                      "score": row.get("score"), "reasons": row.get("reasons") or [],
-                     "confident": source != "auto" or confident(ranked, PARENT_MARGIN), "candidates": ranked[:MATCH_CHOICES]})
+                     "confident": source != "auto" or confident(ranked, PARENT_MARGIN), "candidates": ranked[:MATCH_CHOICES],
+                     "ofd": ofd})
     return rows
 
 

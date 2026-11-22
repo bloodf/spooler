@@ -351,6 +351,8 @@ def permission_targets() -> dict:
     for region in _sources.BAMBU_HOSTS:
         urls += [_sources.BAMBU_HOSTS[region] + _sources.LOGIN_PATH, _sources.BAMBU_HOSTS[region] + _sources.CODE_PATH,
                  _sources.BAMBU_HOSTS[region] + _sources.BAMBU_PATH, _sources.TFA_HOSTS[region] + _sources.TFA_PATH]
+    if _filament_profiles.presets_settings()["ofd"]:   # the Open Filament Database, only while it is turned on
+        urls.append(_filament_profiles.OFD_ORIGIN)
     return {"fs_readwrite": [str(_core.DATA_DIR)], "network_http": urls, "threading": True}
 
 

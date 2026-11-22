@@ -6,6 +6,7 @@ Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); 
 ## [Unreleased]
 
 ### Added
+- **Open Filament Database proposals (off by default).** Settings > Presets has a new **Open Filament Database** option. Turned on and saved, Edit Spool's **Based on** list also shows the presets the [Open Filament Database](https://openfilamentdatabase.org) (a free community list of filaments, MIT licence) has for the filament's manufacturer and material, marked "OFD, untuned"; they can't be installed from there yet. Spooler reads OFD's list at most once a day into its folder (`ofd/`, also read by U1 Control and Kobra Control), keeps using the last list when the network is down, and says in Settings which list it has, with **Read again**. While the option is off Spooler never contacts OFD, and OrcaSlicer is asked for access to it only once it is on.
 - Edit Spool shows, for each of your printers, which OrcaSlicer preset Spooler's preset of that filament is based on, with a score and the reasons for it (material, manufacturer, words in the name, made for this printer). A score that is close to the next candidate is marked so you can check it. **Change** lists the other candidates and picks one at once; Spooler remembers it for that filament and printer and rebuilds the preset, and **Automatic** goes back to its own pick. The choice is kept in `matches.json` in Spooler's folder, which U1 Control and Kobra Control also read for the spools they match.
 
 ### Fixed

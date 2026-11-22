@@ -52,7 +52,7 @@ let suggested: number | null = null;
 // Based on: per printer, the OrcaSlicer system preset Spooler's preset of this filament copies (filmatch's pick, Advanced
 // tuning's, or one picked here by hand), with its score and reasons; Change picks another at once (remembered by the plugin).
 type MatchRow = { target: string; label: string; name: string; source: 'auto' | 'tuned' | 'remembered'; score: number | null; reasons: unknown;
-  confident: boolean; candidates: { name: string; score: number; reasons: unknown }[] };
+  confident: boolean; candidates: { name: string; score: number; reasons: unknown }[]; ofd?: { name: string; score: number; reasons: unknown }[] };
 const matches = computed<MatchRow[]>(() => (Array.isArray(data.value?.preset_match) ? data.value.preset_match : []));
 const words = (reasons: unknown) => reasonTexts(reasons, (code, v) => t(`match.r.${code}` as MessageKey, { v }));
 const matchLabels = computed(() => ({ change: t('match.change'), none: t('match.none'), score: t('match.score'), auto: t('match.auto'), autoHint: t('match.autoHint') }));
@@ -225,7 +225,8 @@ async function save() {
               <Select v-model="linkFil" input-id="se-link-fil" :options="pl.presets" editable show-clear :placeholder="t('editor.presetLinkNone')" fluid data-test="editor-link-fil" /></OuiFormRow>
             <OuiFormRow v-for="row in (adding ? [] : matches)" :key="row.target" :label="t('match.title')" :hint="t('match.help', { printer: row.label })" stacked data-test="editor-match">
               <OuiPresetMatch :name="row.name" :score="row.score" :confident="row.confident" :reasons="words(row.reasons)" :badge="matchBadge(row)" :remembered="row.source === 'remembered'"
-                              :candidates="row.candidates.map(c => ({ name: c.name, score: c.score, reasons: words(c.reasons) }))" :labels="matchLabels" :busy="editor.busy"
+                              :candidates="[...row.candidates.map(c => ({ name: c.name, score: c.score, reasons: words(c.reasons) })),
+                                            ...(row.ofd ?? []).map(c => ({ name: c.name, score: c.score, reasons: words(c.reasons), badge: t('ofd.badge'), note: t('ofd.note'), disabled: true }))]" :labels="matchLabels" :busy="editor.busy"
                               @pick="name => pickParent(rawFil?.id ?? null, row.target, name)" /></OuiFormRow>
             <OuiFormRow v-for="d in defs.filament" :key="d.key" :label="d.name || d.key" :for="`se-fx-${d.key}`" :error="err('filament.' + d.key)">
               <EditorExtra v-model="ff.extra[d.key]" :def="d" :id="`se-fx-${d.key}`" :invalid="!!err('filament.' + d.key)" /></OuiFormRow>

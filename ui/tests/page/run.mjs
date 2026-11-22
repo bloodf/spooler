@@ -1683,6 +1683,44 @@ test('settings: presets per spool and Advanced tuning, off by default, saved wit
     pressure_advance: 0.035, fan_max_speed: 80}}}, 'saved');
 `, { lang: 'de' });
 
+test('settings: Open Filament Database is off by default; on and saved, its list line and Read again', `
+  const show = ofd => post({type: 'show_view', view: 'settings', url: 'http://spoolman:7912', source: 'spoolman', low_stock: 100, display: DEFAULTS, drying: {}, progress: {}, stats: {},
+    presets: {per_spool: false, tuning: false, materials: {}, ofd}, parents: []});
+  await show(false);
+  await until(() => byTest('ofd-on'), 'the OFD row');
+  assert(!q('#ofd-on').checked && !byTest('ofd-state'), 'off by default, nothing more shown');
+  assert(!sent().some(m => m.type === 'ofd'), 'nothing asked while off');
+  await click(q('#ofd-on'));
+  await until(() => byTest('ofd-state'), 'turned on');
+  assert(text(byTest('ofd-state')).includes('Save to turn it on') && !byTest('ofd-refresh'), 'read only once saved: ' + text(byTest('ofd-state')));
+  assert(text(byTest('ofd-state')).includes('MIT'), 'the licence and the source are named');
+  assert(!sent().some(m => m.type === 'ofd'), 'still nothing asked before the save');
+  await post({type: 'test_result', source: 'spoolman', ok: true, url: 'http://spoolman:7912', version: '0.26', view: 'settings'});
+  await click(byTest('save'));
+  eq(lastOf('save').presets.ofd, true, 'saved on');
+  await show(true);
+  await until(() => sent().some(m => m.type === 'ofd' && m.refresh === false), 'once saved on, the line asks for the kept list');
+  await post({type: 'ofd_state', on: true, fetched: 1795371399, version: '2026.11.22', count: 2133, stale: false, error: '', view: 'settings'});
+  await until(() => text(byTest('ofd-state')).includes('2133'), 'the list line: ' + text(byTest('ofd-state')));
+  await click(byTest('ofd-refresh'));
+  eq(lastOf('ofd').refresh, true, 'Read again asks OFD now');
+  await post({type: 'ofd_state', on: true, fetched: 1795371399, version: '2026.11.22', count: 2133, stale: true, error: 'timed out', view: 'settings'});
+  await until(() => text(byTest('ofd-state')).includes('timed out'), 'a failed read keeps the old list and says why');
+`);
+test('editor: Open Filament Database proposals are listed, marked untuned, and not installable yet', `
+  await spools(SPOOLS, {display: {...DEFAULTS, group_same: false}});
+  await click(q('[data-edit="1"]'));
+  const base = {target: 'Snapmaker U1 (0.4 nozzle)', label: 'Snapmaker U1', name: 'Generic PLA @U1', source: 'auto', score: 10, reasons: [['material', 'PLA']], confident: true,
+    candidates: [{name: 'Generic PLA @U1', score: 10, reasons: [['material', 'PLA']]}],
+    ofd: [{name: 'Polymaker Dual Panchroma Matte PLA (OFD)', score: 58, reasons: [['material', 'PLA'], ['vendor', 'Polymaker'], ['word', 'matte']], source: 'ofd'}]};
+  await post({...editorData(RAW1), editor: {...editorData(RAW1).editor, preset_match: [base]}});
+  await until(() => byTest('editor-match'), 'the row');
+  await click(q('.oui-match-change', byTest('editor-match')));
+  await until(() => qa('.oui-match-option', byTest('editor-match')).length === 2, 'the candidate and the OFD proposal');
+  const ofdRow = qa('.oui-match-option', byTest('editor-match'))[1];
+  assert(text(ofdRow).includes('OFD, untuned') && text(ofdRow).includes('Open Filament Database') && ofdRow.disabled, 'marked and not pickable: ' + text(ofdRow));
+`);
+
 // ------------------------------------------------------------------ settings pages (one page per section)
 const PAGES = ['s-src', 's-req', 's-reorder', 's-weights', 's-layout', 's-check', 's-display', 's-dry', 's-presets', 's-printer', 's-stats', 's-lang', 's-about'];
 const PAGES_JS = `
