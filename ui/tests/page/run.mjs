@@ -1707,18 +1707,26 @@ test('settings: Open Filament Database is off by default; on and saved, its list
   await post({type: 'ofd_state', on: true, fetched: 1795371399, version: '2026.11.22', count: 2133, stale: true, error: 'timed out', view: 'settings'});
   await until(() => text(byTest('ofd-state')).includes('timed out'), 'a failed read keeps the old list and says why');
 `);
-test('editor: Open Filament Database proposals are listed, marked untuned, and not installable yet', `
+test('editor: an Open Filament Database proposal is marked untuned; picking it sends its id', `
   await spools(SPOOLS, {display: {...DEFAULTS, group_same: false}});
   await click(q('[data-edit="1"]'));
   const base = {target: 'Snapmaker U1 (0.4 nozzle)', label: 'Snapmaker U1', name: 'Generic PLA @U1', source: 'auto', score: 10, reasons: [['material', 'PLA']], confident: true,
     candidates: [{name: 'Generic PLA @U1', score: 10, reasons: [['material', 'PLA']]}],
-    ofd: [{name: 'Polymaker Dual Panchroma Matte PLA (OFD)', score: 58, reasons: [['material', 'PLA'], ['vendor', 'Polymaker'], ['word', 'matte']], source: 'ofd'}]};
+    ofd: [{id: 'ee9f', name: 'Polymaker Dual Panchroma Matte PLA (OFD)', score: 58, reasons: [['material', 'PLA'], ['vendor', 'Polymaker'], ['word', 'matte']], source: 'ofd'}]};
   await post({...editorData(RAW1), editor: {...editorData(RAW1).editor, preset_match: [base]}});
   await until(() => byTest('editor-match'), 'the row');
   await click(q('.oui-match-change', byTest('editor-match')));
   await until(() => qa('.oui-match-option', byTest('editor-match')).length === 2, 'the candidate and the OFD proposal');
   const ofdRow = qa('.oui-match-option', byTest('editor-match'))[1];
-  assert(text(ofdRow).includes('OFD, untuned') && text(ofdRow).includes('Open Filament Database') && ofdRow.disabled, 'marked and not pickable: ' + text(ofdRow));
+  assert(text(ofdRow).includes('OFD, untuned') && text(ofdRow).includes('Open Filament Database') && !ofdRow.disabled, 'marked and pickable: ' + text(ofdRow));
+  await click(ofdRow);
+  const picked = lastOf('spool_action');
+  eq([picked.action, picked.ofd, picked.name, picked.target], ['match_parent', 'ee9f', null, 'Snapmaker U1 (0.4 nozzle)'], 'picked by its OFD id');
+  await post({type: 'action_result', action: 'match_parent', ok: true, text: '', ref: editorRef(),
+              match: [{...base, name: 'Polymaker Dual Panchroma Matte PLA (OFD)', source: 'ofd', score: 58, reasons: base.ofd[0].reasons}]});
+  await until(() => text(byTest('editor-match')).includes('OFD, untuned') && text(byTest('editor-match')).includes('Polymaker Dual'), 'shown as the OFD preset');
+  await click(q('.oui-match-change', byTest('editor-match')));
+  await until(() => qa('.oui-match-option', byTest('editor-match')).some(b => text(b).includes('Automatic')), 'Automatic goes back to Spooler’s pick');
 `);
 
 // ------------------------------------------------------------------ settings pages (one page per section)

@@ -642,7 +642,8 @@ def spool_action(data: object) -> dict:
             if action == "match_parent":
                 fid = _pos_int(data.get("filament"))
                 filament = _spoolman_sync.spoolman_call("GET", f"filament/{fid}") if fid else None
-                return _filament_profiles.pick_parent(filament, data.get("target"), data.get("name"))
+                ofd = data.get("ofd") if isinstance(data.get("ofd"), str) else None
+                return _filament_profiles.pick_parent(filament, data.get("target"), data.get("name"), ofd)
             return _spool_write(action, sid, data)
     except Exception as exc:
         _core.log.warning("Spool action %s on #%s failed: %s", action, sid, exc)

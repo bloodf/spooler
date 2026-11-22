@@ -10,11 +10,13 @@ choice of a filament preset for a toolhead, each also as a ranked list with the 
 remembered matches (matches.json) the user confirmed, and proposals from the Open Filament Database (OFD).
 """
 
+import hashlib
 import json
 import os
 import re
 import threading
 import time
+import unicodedata
 import urllib.error
 import urllib.request
 
@@ -557,3 +559,195 @@ def rank_ofd(profiles, vendor="", material="", name="", limit=5):
                     "path": p["path"], "inherits": p["inherits"], "brand": p["brand"], "material": p["material"]})
     out.sort(key=lambda r: (-r["score"], len(r["name"]), r["name"]))
     return out[:limit] if limit else out
+
+
+# --- Installing an OFD preset ----------------------------------------------------------------------------------------
+# An OFD preset inherits a generic system preset ("Generic PLA @System"), so OrcaSlicer's sync from AMS, which loads
+# presets by filament_id, would load that generic one again. A plugin therefore installs it flattened: the parent's own
+# settings, OFD's values over them, "inherits" empty and a filament_id of its own. Every OFD preset is checked first:
+# only the keys below, every value a list of text, numbers finite, the name and parent the index gave. Spooler layers
+# OFD's values into its own presets (its preset builder); U1 Control and Kobra Control, without Spooler, write their own
+# local bundle (install_bundle), never a user's preset folder or another plugin's bundle.
+OFD_PRESETS = "presets"   # <OFD cache>/presets/<OFD id>.json: each preset fetched once
+OFD_META_KEYS = frozenset({"name", "inherits", "from", "version", "is_custom_defined", "filament_settings_id", "type",
+                           "instantiation", "setting_id", "filament_id", "compatible_printers",
+                           "compatible_printers_condition"})
+# The settings an OFD preset may set (OrcaSlicer 2.5 PrintConfig.cpp names), and which of them are text.
+OFD_PLATE_KEYS = tuple("%s_plate_temp%s" % (plate, layer) for plate in ("cool", "eng", "hot", "supertack", "textured_cool",
+                                                                       "textured") for layer in ("", "_initial_layer"))
+OFD_VALUE_KEYS = frozenset({
+    *OFD_PLATE_KEYS, "nozzle_temperature", "nozzle_temperature_initial_layer", "nozzle_temperature_range_low",
+    "nozzle_temperature_range_high", "filament_density", "filament_diameter", "filament_max_volumetric_speed",
+    "fan_min_speed", "fan_max_speed", "filament_flow_ratio", "pressure_advance", "enable_pressure_advance",
+    "filament_retraction_length", "filament_retraction_speed", "filament_deretraction_speed", "filament_z_hop",
+    "slow_down_layer_time", "slow_down_min_speed", "temperature_vitrification", "chamber_temperature",
+    "overhang_fan_speed", "close_fan_the_first_x_layers", "full_fan_speed_layer", "additional_cooling_fan_speed",
+    "filament_shrink", "filament_cost", "filament_notes", "filament_type", "filament_vendor", "default_filament_colour",
+})
+OFD_TEXT_KEYS = frozenset({"filament_notes", "filament_type", "filament_vendor", "default_filament_colour"})
+OFD_NAME_SUFFIX = " (OFD)"
+_UNSAFE = re.compile(r'[\x00-\x1f\\/:*?"<>|;@]')
+
+
+def _finite(text):
+    try:
+        number = float(text.rstrip("%"))
+    except ValueError:
+        return False
+    return number == number and number not in (float("inf"), float("-inf"))
+
+
+def ofd_problem(preset, profile, parents=None):
+    """Why an OFD preset can't be installed, "" when it can. profile: its ofd_profiles() entry; parents: the names of
+    the system presets OrcaSlicer has, when known (the preset's parent must be one of them)."""
+    if not isinstance(preset, dict):
+        return "not a preset"
+    name = preset.get("name")
+    if name != profile["profile_name"] or not str(name).endswith(OFD_NAME_SUFFIX) or _UNSAFE.search(name) \
+            or len(name) > 120 or name.strip(" .") != name:
+        return "unexpected name %r" % (name,)
+    if preset.get("inherits") != profile["inherits"]:
+        return "unexpected parent %r" % (preset.get("inherits"),)
+    if parents is not None and preset["inherits"] not in parents:
+        return "its parent %s is not an OrcaSlicer preset here" % preset["inherits"]
+    for key, value in preset.items():
+        if key in OFD_META_KEYS:
+            continue
+        if key not in OFD_VALUE_KEYS:
+            return "unknown setting %s" % key
+        if not isinstance(value, list) or not value or not all(isinstance(v, str) for v in value):
+            return "%s is not a list of text" % key
+        if key not in OFD_TEXT_KEYS and not all(v == "nil" or _finite(v) for v in value):
+            return "%s is not a number" % key
+    return ""
+
+
+def ofd_preset(folder, profile, parents=None, offline=False, get=None):
+    """(preset, problem) of one OFD preset: kept in folder/presets/<id>.json once fetched (it changes only with a new
+    index entry), else fetched now unless offline. problem "" when it can be installed (ofd_problem). Worker thread."""
+    path = os.path.join(folder, OFD_PRESETS, re.sub(r"[^A-Za-z0-9_.-]", "_", profile["id"]) + ".json")
+    try:
+        with open(path, encoding="utf-8") as f:
+            preset = json.load(f)
+    except (OSError, ValueError):
+        preset = None
+    if not isinstance(preset, dict) or preset.get("name") != profile["profile_name"]:
+        if offline:
+            return None, "not fetched yet"
+        try:
+            status, body, _ = (get or _ofd_get)(OFD_BASE + profile["path"], {})
+            preset = json.loads(body.decode("utf-8"))
+        except Exception as e:
+            return None, str(e) or e.__class__.__name__
+        problem = ofd_problem(preset, profile)
+        if problem:
+            return None, problem
+        _write_bytes(path, json.dumps(preset, indent=1, ensure_ascii=False).encode("utf-8"))
+    problem = ofd_problem(preset, profile, parents)
+    return (None, problem) if problem else (preset, "")
+
+
+_WINDOWS_RESERVED = re.compile(r"(CON|PRN|AUX|NUL|COM\d|LPT\d)(\..*)?", re.I)
+# OrcaSlicer refuses any plugin write to a path containing these words, and a preset's name is its file name, so they
+# are split with an invisible zero-width space ("Con\u200bfetti"), as Spooler does.
+_DENIED_WORDS = re.compile(r"(?i)secret|cert|conf")
+
+
+def safe_preset_name(text, limit=100):
+    """A preset name that is also a safe file name: no path or reserved characters, not a Windows device name, at most
+    limit characters, and no word OrcaSlicer blocks in plugin paths."""
+    name = re.sub(r'[\x00-\x1f\u200b\\/:*?"<>|;@]', " ", unicodedata.normalize("NFC", str(text or "")))
+    name = re.sub(r"\s+", " ", name).strip(" .")[:limit].strip(" .")
+    name = "_" + name if _WINDOWS_RESERVED.fullmatch(name) else name
+    return _DENIED_WORDS.sub(lambda m: m.group(0)[0] + "\u200b" + m.group(0)[1:], name)
+
+
+def ofd_values(preset):
+    """{key: [text]}: the settings an OFD preset sets, for a filament preset made from it (no name, parent or ids)."""
+    return {k: list(v) for k, v in preset.items() if k in OFD_VALUE_KEYS}
+
+
+def own_filament_id(prefix, key):
+    """A filament_id of a plugin's own (prefix, three letters no OrcaSlicer system id starts with), stable for key."""
+    return prefix + hashlib.sha256(str(key).encode("utf-8")).hexdigest()[:10].upper()
+
+
+# Settings a flattened copy never takes from its parent: they name the parent, or are set for the copy itself.
+FLAT_SKIP = frozenset({"inherits", "compatible_printers", "compatible_printers_condition", "filament_settings_id",
+                       "filament_id", "name", "version", "from", "instantiation", "type", "setting_id", "description",
+                       "url", "is_custom_defined", "renamed_from", "includes"})
+
+
+def flatten_ofd(preset, parent_config, filament_id, name=None):
+    """A standalone filament preset made from an OFD preset: its parent's settings (parent_config: {key: text as
+    OrcaSlicer serializes it}), then OFD's values (one value repeated for every nozzle variant the parent has), with
+    "inherits" empty, its own filament_id, and every printer it is compatible with left to OrcaSlicer (none listed)."""
+    name = name or preset["name"]
+    flat = {k: v for k, v in parent_config.items() if k not in FLAT_SKIP and isinstance(v, str)}
+    for key, value in ofd_values(preset).items():
+        parent = flat.get(key)
+        if len(value) == 1 and key not in OFD_TEXT_KEYS and isinstance(parent, str):
+            value = value * max(1, len(parent.split(",")))
+        flat[key] = value
+    flat.update({"type": "filament", "name": name, "from": "User", "instantiation": "true", "inherits": "",
+                 "version": str(preset.get("version") or "1.0.0"), "filament_id": filament_id,
+                 "filament_settings_id": [name], "compatible_printers": [], "compatible_printers_condition": "",
+                 "description": "Open Filament Database preset (untuned), a standalone copy of %s with OFD's values"
+                                % preset.get("inherits")})
+    return flat
+
+
+def user_folders(root, preset_files=()):
+    """OrcaSlicer's account preset folders under root/user to try, best first: the one a user preset's file is in, else
+    every one there but "default", then "default"."""
+    user = os.path.join(root, "user")
+    for path in preset_files:
+        rel = os.path.relpath(os.path.abspath(path), user) if path else ".."
+        parts = os.path.normpath(rel).split(os.sep)
+        if not rel.startswith("..") and len(parts) > 1:
+            return [parts[0]]
+    try:
+        found = sorted(n for n in os.listdir(user) if os.path.isdir(os.path.join(user, n)) and n != "default")
+    except OSError:
+        found = []
+    return found + ["default"]
+
+
+def install_bundle(root, folders, bundle_id, bundle_name, version, presets, reload):
+    """Write presets ({file name: preset dict}) into the plugin's own local bundle (root/user/<folder>/_local/
+    <bundle_id>/filament/), next to the presets it already holds, and reload it (reload(bundle_id); OrcaSlicer raises
+    RuntimeError "... does not exist" for a folder that isn't the signed-in account's, and the next one is tried). Each
+    file replaced is kept first and put back, with the bundle's metadata, when OrcaSlicer refuses the bundle or a write
+    fails. Returns the folder that took it; raises the last error when none did."""
+    last = None
+    for folder in folders:
+        target = os.path.join(root, "user", folder, "_local", bundle_id)
+        files = {os.path.join(target, "filament", name): json.dumps(preset, indent=2, ensure_ascii=False).encode("utf-8")
+                 for name, preset in presets.items()}
+        files[os.path.join(target, "bundle_metadata.json")] = json.dumps(
+            {"id": bundle_id, "name": bundle_name, "version": version}).encode("utf-8")
+        saved = {}
+        for path in files:
+            try:
+                with open(path, "rb") as f:
+                    saved[path] = f.read()
+            except OSError:
+                saved[path] = None
+        try:
+            for path, data in files.items():
+                _write_bytes(path, data)
+            reload(bundle_id)
+            return folder
+        except Exception as e:
+            for path, data in saved.items():
+                try:
+                    if data is None:
+                        os.remove(path)
+                    else:
+                        _write_bytes(path, data)
+                except OSError:
+                    pass
+            if not isinstance(e, RuntimeError) or "does not exist" not in str(e):
+                raise
+            last = e
+    raise last or RuntimeError("no OrcaSlicer user folder took the presets")
