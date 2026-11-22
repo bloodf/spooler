@@ -115,7 +115,8 @@ Bambu Live Link prints are booked here; PrusaLink, OctoPrint and Klipper printer
 Prints on `auto-` printers that book themselves (u1control books the U1, Moonraker with its Spoolman
 integration books other Klipper printers) are never sent to Spoolman: `usage_finish()` only notes
 them in `history.json` (`_record()`), from the job file's grams, so the Stats tab shows them.
-Anycubic printers report no print state to Spooler and are not noted. Each booked print records the Spoolman
+Anycubic printers report no print state to Spooler; the Kobra prints Kobra Control books are noted
+from its `prints.json` instead (see Presence). Each booked print records the Spoolman
 it belongs to and is only booked there; prints recorded before that are left for booking by hand.
 Each row is saved as `sending` before its request (`_send_row()`); a request that may have been
 applied (timeout, dropped connection, server error) or a state that couldn't be saved leaves the
@@ -235,6 +236,12 @@ Older plugins without `"links"` still sync on the timed refresh.
 Spooler does not book the filament of Anycubic Kobra prints; Kobra Control does. If Spooler ever
 books them, it must publish `"books": ["anycubic"]` under `provides` in `presence.json` in the same
 change, so Kobra Control stops booking in that Spoolman and no print counts twice.
+Kobra Control lists each print it booked in `<OrcaSlicer data folder>/kobracontrol/prints.json` (the
+last 200: id, finish time, file, printer name and model, its Spoolman, grams and spool per slot). On
+every beat, when that file changed, Spooler notes each print not yet in `history.json` (by id,
+`note_kobra_prints()`), history only, like `_record()`: nothing is sent to Spoolman. Slots without a
+linked spool are left out. A print in Spooler's own Spoolman waits until Spooler has read its spools,
+so its labels and costs are filled in.
 
 u1control does the same in `<OrcaSlicer data folder>/u1control/presence.json`. Only while that
 file is active, fresh (20 s), of this OrcaSlicer process and asks for the stock (its tab shows it)
