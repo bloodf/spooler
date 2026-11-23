@@ -101,9 +101,9 @@ def label_for_target(target: str) -> str:
 #   {"schema": "orca-plugin-presence", "version": 1, "plugin": "spooler", "plugin_version": ...,
 #    "session": <random per load>, "pid": <process>, "started", "ts": <unix s>, "state": "active"|"stopped", ...}
 # A peer counts as running only when its file is "active", fresh (PEER_FRESH s) and of this process.
-# While u1control runs and its tab shows the stock (its presence "wants" it), Spooler writes
-# <data folder>/spooler/stock.json from its Spoolman reads; nothing is written to Spoolman or a
-# printer for it. u1control links spools with its own commands; filament use stays with u1control.
+# While u1control or kobracontrol runs and its tab shows the stock (its presence "wants" it), Spooler
+# writes <data folder>/spooler/stock.json from its Spoolman reads; one file serves both. Nothing is
+# written to Spoolman or a printer for it. Each links spools with its own commands and keeps its filament use.
 PEER_SCHEMA = "orca-plugin-presence"
 PEER_VERSION = 1
 STOCK_SCHEMA = "spooler-stock"
@@ -182,10 +182,10 @@ def publish_presence(state: str = "active") -> bool:
         return False
 
 
-def u1control_wants() -> dict | None:
-    """u1control's stock request while it runs and its tab shows the stock; else None."""
-    doc = _read_peer(U1CONTROL)
-    if not peer_alive(doc, U1CONTROL):
+def peer_wants(plugin: str) -> dict | None:
+    """A peer's stock request while it runs and its tab shows the stock; else None."""
+    doc = _read_peer(plugin)
+    if not peer_alive(doc, plugin):
         return None
     wants = doc.get("wants") if isinstance(doc.get("wants"), dict) else {}
     until = wants.get("stock_until")
@@ -193,6 +193,13 @@ def u1control_wants() -> dict | None:
         return None
     request = wants.get("stock_request")
     return {"request": request if isinstance(request, int) and not isinstance(request, bool) else 0}
+
+
+def stock_wants() -> dict | None:
+    """The stock request of every peer that shows the stock now ("requests"), and the one stock.json
+    echoes ("request": the first peer's, u1control before kobracontrol); None when none asks."""
+    asks = {p: w["request"] for p in STOCK_PEERS if (w := peer_wants(p)) is not None}
+    return {"request": next(iter(asks.values())), "requests": asks} if asks else None
 
 
 def peer_context() -> dict:
@@ -227,9 +234,9 @@ def stock_row(spool: dict, limit: float, first: dict) -> dict:
 
 
 def publish_stock(url: str, spools: list | None, error: str = "", request: int | None = None) -> bool:
-    """Write stock.json for u1control, only while it runs and asks for it. Never raises."""
+    """Write stock.json for u1control and kobracontrol, only while one runs and asks for it. Never raises."""
     origin = _spoolman_sync.current_origin()
-    wants = u1control_wants()
+    wants = stock_wants()
     if wants is None or _filament_profiles._orca_data_dir() is None or not _peer["session"] or origin[0] != _sources.clean_url(url):
         return False
     live = _core.active_spools(spools or [])
@@ -254,11 +261,11 @@ def publish_stock(url: str, spools: list | None, error: str = "", request: int |
 
 
 def refresh_stock(wants: dict) -> None:
-    """Read Spoolman (read only: no fields are created) and publish the list for u1control."""
-    _peer["served"] = wants["request"]
+    """Read Spoolman (read only: no fields are created) and publish the list for the peers."""
+    _peer["served"] = wants["requests"]
     with _spoolman_sync.pinned_origin() as origin:
         if origin[0] in ("", _sources.BAMBU_KEY):
-            # Not Spoolman: say so, so u1control can explain why there is no stock to show.
+            # Not Spoolman: say so, so the peers can explain why there is no stock to show.
             if _filament_profiles._orca_data_dir() is not None and _peer["session"]:
                 try:
                     _filament_profiles._write_json(bridge_dir() / STOCK_FILE, {
@@ -368,20 +375,20 @@ def note_kobra_prints() -> None:
 
 
 def peer_tick() -> None:
-    """One heartbeat: say Spooler runs, follow the peers' link changes, and refresh the stock when u1control shows
+    """One heartbeat: say Spooler runs, follow the peers' link changes, and refresh the stock when a peer shows
     it. Never raises."""
     try:
         publish_presence()
         watch_peer_links()
         note_kobra_prints()
-        wants = u1control_wants()
+        wants = stock_wants()
         if wants is None:
             return
         due = time.monotonic() - _peer["stock_at"] >= STOCK_EVERY
-        if due or wants["request"] != _peer["served"]:
+        if due or wants["requests"] != _peer["served"]:
             refresh_stock(wants)
     except Exception:
-        _core.log.exception("Presence for u1control failed")
+        _core.log.exception("Presence for u1control and kobracontrol failed")
 
 
 def start_presence() -> None:

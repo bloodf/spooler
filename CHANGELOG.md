@@ -3,6 +3,11 @@
 Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); entries before
 0.9.0 are Spoolio's.
 
+## [Unreleased]
+
+### Added
+- Kobra Control (for the Anycubic Kobra X) gets Spooler's stock list too: while its tab shows the stock, Spooler keeps the same `stock.json` fresh that U1 Control reads. Nothing changes for U1 Control, and nothing is written to Spoolman for it.
+
 ## [0.33.0] - 2026-11-22
 
 ### Added

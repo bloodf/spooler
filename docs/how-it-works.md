@@ -243,13 +243,17 @@ every beat, when that file changed, Spooler notes each print not yet in `history
 linked spool are left out. A print in Spooler's own Spoolman waits until Spooler has read its spools,
 so its labels and costs are filled in.
 
-u1control does the same in `<OrcaSlicer data folder>/u1control/presence.json`. Only while that
-file is active, fresh (20 s), of this OrcaSlicer process and asks for the stock (its tab shows it)
-does Spooler write `stock.json` next to its presence: the live spools from its own Spoolman reads,
-with low stock and "use first", at most every 30 s or when u1control asks for a refresh. That read
-creates no fields and writes nothing to Spoolman or a printer. u1control links a spool to a
-toolhead with its own commands and checks; Spooler's role ends at the list. The full contract is
-in u1control's `docs/spooler-contract.md`.
+u1control does the same in `<OrcaSlicer data folder>/u1control/presence.json`, and
+kobracontrol (Anycubic Kobra X) in
+`<OrcaSlicer data folder>/kobracontrol/presence.json`. Only while one of those files is active,
+fresh (20 s), of this OrcaSlicer process and asks for the stock (its tab shows it) does Spooler
+write `stock.json` next to its presence: the live spools from its own Spoolman reads, with low
+stock and "use first", at most every 30 s or when a peer asks for a refresh. One file serves both;
+its `request` echoes u1control's request while u1control asks, else kobracontrol's. That read
+creates no fields and writes nothing to Spoolman or a printer. Each peer links a spool with its own
+commands and checks (kobracontrol as the Spoolman location `<printer name> S<n>`, which Spooler
+never reads as a U1 toolhead); Spooler's role ends at the list. The full contract is in
+u1control's `docs/spooler-contract.md`.
 
 Each `spools` message to Spooler's page also carries `peers.u1control` (true only while U1 Control's
 presence file is active in this OrcaSlicer process) and, when the list could not be read, an
