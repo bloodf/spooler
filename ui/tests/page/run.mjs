@@ -763,6 +763,19 @@ test('F11: assign and picker are keyboard controls; focus returns to the slot', 
   eq(lastOf('printers').printers[0].units[0].slots[2], '7', 'Enter takes the first spool');
   await until(() => document.activeElement === q('[data-focus-key="clear:p1:0:2"]'), 'focus on the slot\\'s remove button');
 `);
+test('picker search: words in any order, accents ignored, an id is exact', `
+  await spools([{id: 7, remaining_weight: 100, filament: {id: 1, name: 'Preto Fosco', vendor: {name: 'Polymaker'}}},
+    {id: 70, remaining_weight: 100, filament: {id: 2, name: 'Café Brown', vendor: {name: 'Acme'}}}],
+    {printers: [{id: 'p1', name: 'P', units: [{kind: 'ams', slots: [null, null, null, null]}]}]});
+  await tab('printer');
+  q('[data-focus-key="assign:p1:0:2"]').focus(); await press('Enter');
+  await until(() => document.activeElement && document.activeElement.matches('[data-test="picker-search"]'), 'search focused');
+  const typeIn = async v => { const i = q('[data-test="picker-search"]'); i.value = v; i.dispatchEvent(new Event('input', {bubbles: true})); await new Promise(r => setTimeout(r, 50)); return qa('[data-pick]').map(b => b.dataset.pick); };
+  eq(await typeIn('polymaker preto'), ['7'], 'vendor and name, any order');
+  eq(await typeIn('cafe'), ['70'], 'accents');
+  eq(await typeIn('7'), ['7'], 'an id is exact: not 70');
+  eq(await typeIn('#70'), ['70'], '#id');
+`);
 test('F12: age alone does not redraw a slot; going stale is shown', `
   await spools(SPOOLS, {printers: [{id: 'p', name: 'X1', auto: true, ip: '10.0.0.9', units: []}], live_ok: true});
   await tab('printer');
@@ -1026,6 +1039,43 @@ test('a finished print is one line with its printer and time, and can be dismiss
   assert(d.getBoundingClientRect().height < 60, 'one line: ' + d.getBoundingClientRect().height);
   await click(q('[data-act="dismiss-job"]', d));
   assert(!byTest('job-done'), 'dismissed');
+`);
+test('a U1 printing on toolhead T3: the job block runs and only T3 is marked in use', OWNER + `
+  await owner();
+  const trays = [0, 1, 2, 3].map(i => ace(i, 1 + (i % 2)));
+  const u1 = {id: 'auto-u', link: 'auto-u', name: 'Snapmaker U1', age: 0, heads: true, bind: 'T', ext: null, units: [{id: 0, kind: 'ams', trays}],
+    job: {state: 'RUNNING', name: 'cube', pct: 50, left: 10, layer: 40, layers: 80, tray: {unit: 0, slot: 2}}};
+  await post({type: 'live', live: {links: {'auto-u': 'live'}, printers: [u1]}});
+  await until(() => q('.pg .oui-job'), 'the running print gets its block');
+  const job = q('.pg .oui-job');
+  assert(text(job).includes('cube') && text(job).includes('Snapmaker U1') && text(job).includes('40 / 80') && job.innerHTML.includes('50'), 'name, printer, layer, 50%: ' + text(job));
+  const unit = qa('.pp').find(p => text(p.querySelector('.pp-name')) === 'Snapmaker U1');
+  const cards = qa('.tc', unit);
+  eq(cards.map(c => c.querySelector('.oui-slot').hasAttribute('data-active')), [false, false, true, false], 'only T3 carries the active mark');
+  assert(text(cards[2]).includes('printing from here'), 'and says so: ' + text(cards[2]));
+`);
+test('a running print stays, marked Not reachable, while its printer is unreachable; it recovers, and a removed link leaves no job', OWNER + `
+  await owner();
+  const trays = [0, 1, 2, 3].map(i => ace(i, 1 + (i % 2)));
+  const u1 = pct => ({id: 'auto-u', link: 'auto-u', name: 'Snapmaker U1', age: 0, heads: true, bind: 'T', ext: null, units: [{id: 0, kind: 'ams', trays}],
+    job: {state: 'RUNNING', name: 'cube', pct, left: 10, layer: 40, layers: 80, tray: {unit: 0, slot: 2}}});
+  const send = (link, printer) => post({type: 'live', live: {links: link ? {'auto-u': link} : {}, printers: printer ? [printer] : []}});
+  await send('live', u1(50));
+  await until(() => q('.pg .oui-job'), 'running print shown');
+  assert(!/Not reachable|Not updated/.test(text(q('.pg .oui-job'))), 'live: not stale');
+  const agedJob = u1(50); agedJob.age = 400;
+  await send('live', agedJob);
+  await until(() => /Not updated for 3 min/.test(text(q('.pg .oui-job'))), 'aged: Not updated for 3 min');
+  await send('live', u1(50));
+  await send('unreachable', u1(50));
+  await until(() => /Not reachable/.test(text(q('.pg .oui-job'))), 'unreachable: the job stays, marked Not reachable: ' + text(q('.pg')));
+  assert(text(q('.pg .oui-job')).includes('cube'), 'same job');
+  await send('live', u1(60));
+  await until(() => q('.pg .oui-job') && !/Not reachable|Not updated/.test(text(q('.pg .oui-job'))) && q('.pg .oui-job').innerHTML.includes('60'), 'recovered: new percent, no stale label');
+  await send(null, u1(60));  // the printer is still in the list, its link is gone
+  await until(() => !q('.pg .oui-job'), 'removed link: no ghost job');
+  await send('auth', u1(60));
+  assert(!q('.pg .oui-job'), 'a link that never worked shows no job');
 `);
 for (const width of [1280, 1900]) {
   test('printer panels pack with no gap over 40 px at ' + width + ' px', OWNER + `

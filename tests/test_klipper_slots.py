@@ -172,6 +172,47 @@ class PollTest(KlipperCase):
         self.assertTrue(heads and doc["u1"])
         self.assertEqual([t.get("spool_id") for t in doc["print"]["ams"]["ams"][0]["tray"]], [4, None])
 
+    def test_config_longer_than_the_extruders_is_not_that_many_toolheads(self):
+        # A config with more slots than the extruders Klipper answered for: one head per extruder.
+        config = {"filament_exist": [True] * 8, "filament_type": ["PLA"] * 8, "filament_color_rgba": ["FF0000FF"] * 8}
+        self.moonraker({"print_task_config": config, **extruders(1)})
+        doc, heads = sp.moon_poll(BASE)
+        self.assertTrue(heads)
+        self.assertEqual(len(doc["print"]["ams"]["ams"][0]["tray"]), 1)
+        # No extruder answered at all: the config is all there is.
+        self.assertEqual(len(sp.moon_report({"print_task_config": config}, None, [], "")[0]["print"]["ams"]["ams"][0]["tray"]), 8)
+
+    def test_absent_extruders_answering_null_temperature_are_not_toolheads(self):
+        # A real Sovol SV06: extruder is hot, extruder1..7 each answer {"temperature": null}, no print_task_config.
+        status = {"extruder": {"temperature": 239.73}, **{f"extruder{n}": {"temperature": None} for n in range(1, 8)}}
+        self.assertEqual(sp.moon_tool_count(status), 1)
+        self.assertEqual(sp.moon_tool_count({**status, "extruder1": {"temperature": True}, "extruder2": {"temperature": float("nan")}}), 1)
+        self.assertEqual(sp.moon_tool_count(extruders(4)), 4)
+        self.assertEqual(sp.moon_tool_count({}), 0)  # an empty answer says nothing: moon_found keeps the last count
+        self.moonraker_without_spoolman({"print_task_config": {}, **status})
+        sp.moon_poll(BASE)
+        self.assertEqual(sp._moon_found[PID]["tools"], 1)
+        self.assertEqual(self.entry()["units"], [{"kind": "tool", "slots": [None]}])  # one Extruder slot, not 8
+
+    def test_active_toolhead_is_reported_while_printing(self):
+        # A U1 printing with its toolhead on T3: the page marks T3 (tray_now), from Klipper's toolhead object.
+        config = {"filament_exist": [True] * 4, "filament_type": ["PLA"] * 4, "filament_color_rgba": ["FF0000FF"] * 4}
+        status = {"print_task_config": config, **extruders(4), "toolhead": {"extruder": "extruder2"},
+                  "print_stats": {"state": "printing", "filename": "cube.gcode", "print_duration": 600},
+                  "virtual_sdcard": {"progress": 0.5}}
+        self.moonraker(status)
+        doc, _ = sp.moon_poll(BASE)
+        self.assertIn("toolhead=extruder", self.paths[0])
+        self.assertEqual(doc["print"]["ams"]["tray_now"], "2")
+        self.assertEqual(doc["print"]["gcode_state"], "RUNNING")
+        sp.live_apply(PID, "U1", doc, link=PID, full=True)
+        self.addCleanup(sp._live["printers"].pop, PID, None)
+        live = next(p for p in sp.live_snapshot()["printers"] if p["id"] == PID)
+        self.assertEqual(live["job"]["tray"], {"unit": 0, "slot": 2})
+        # The job the Progress panel draws: print_stats -> moon_progress -> live_apply "prog" -> live_snapshot "job".
+        job = live["job"]
+        self.assertEqual((job["state"], job["pct"], job["name"], job["left"]), ("RUNNING", 50, "cube", 10))
+
     def test_u1_stays_read_only_after_an_empty_answer(self):
         self.assign(tools=["1", "2", "3", "4"])
         u1 = {"print_task_config": {"filament_exist": [True] * 4, "filament_type": ["PLA"] * 4,

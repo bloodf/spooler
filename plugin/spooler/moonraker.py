@@ -6,6 +6,7 @@
 """Moonraker printers (Klipper, Snapmaker U1)."""
 
 import json
+import math
 import re
 import urllib.error
 import urllib.parse
@@ -250,9 +251,18 @@ def moon_report(status: dict, active_spool: object, spools: list[dict], target: 
     config = status.get("print_task_config")
     if isinstance(config, dict) and isinstance(config.get("filament_exist"), list):
         detect = status.get("filament_detect") if isinstance(status.get("filament_detect"), dict) else {}
+        # A config longer than the extruders Klipper answered for (an SV06 reporting a template of 8 slots) is not
+        # that many toolheads; with no extruder answered at all the config is all there is.
         heads = len(config["filament_exist"])
+        heads = min(heads, moon_tool_count(status)) or heads
         trays = [head_tray(i, config, detect, spools, target) for i in range(heads)]
-        return {"print": {"ams": {"ams": [{"id": "0", "tray": trays}]}}}, True
+        ams: dict = {"ams": [{"id": "0", "tray": trays}]}
+        # The toolhead holding the print: "extruder" is head 0, "extruderN" head N (what the page marks active).
+        toolhead = status.get("toolhead")
+        active = toolhead.get("extruder") if isinstance(toolhead, dict) else None
+        if active in MOON_EXTRUDERS and MOON_EXTRUDERS.index(active) < heads:
+            ams["tray_now"] = str(MOON_EXTRUDERS.index(active))
+        return {"print": {"ams": ams}}, True
     if lanes:
         return {"print": {"ams": {"ams": lane_units(lanes, spools, target)}}}, False
     if mmu_present(status.get("mmu")):
@@ -301,7 +311,12 @@ MOON_EXTRUDERS = ("extruder",) + tuple(f"extruder{n}" for n in range(1, _printer
 
 def moon_tool_count(status: dict) -> int:
     """How many extruders (toolheads) Klipper has: extruder, extruder1 ... extruder7 that answered."""
-    return sum(1 for name in MOON_EXTRUDERS if isinstance(status.get(name), dict) and status[name])
+    # Klipper answers {"temperature": null} for an extruderN it doesn't have (SV06: extruder1..7), so a real extruder is one
+    # reporting a number. An answer with no extruder at all counts 0: moon_found keeps what the last good poll found.
+    def real(obj: object) -> bool:
+        temp = obj.get("temperature") if isinstance(obj, dict) else None
+        return isinstance(temp, (int, float)) and not isinstance(temp, bool) and math.isfinite(temp)
+    return sum(1 for name in MOON_EXTRUDERS if real(status.get(name)))
 
 
 def moon_manual(doc: dict, units: list[dict], spools: list[dict], target: str = "") -> bool:
@@ -347,7 +362,7 @@ def moon_found(base: str, tools: int, managed: bool, u1: bool = False, hh: bool 
 
 
 def moon_poll(base: str) -> tuple[dict, bool]:
-    status = _moon_get(base, "/printer/objects/query?print_task_config&filament_detect&print_stats&virtual_sdcard&"
+    status = _moon_get(base, "/printer/objects/query?print_task_config&filament_detect&print_stats&virtual_sdcard&toolhead=extruder&"
                        + "&".join(f"{name}=temperature" for name in MOON_EXTRUDERS) + "&mmu=" + ",".join(MMU_KEYS)
                        ).get("status")
     status = status if isinstance(status, dict) else {}

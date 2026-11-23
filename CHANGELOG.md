@@ -5,6 +5,15 @@ Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); 
 
 ## [Unreleased]
 
+### Fixed
+- A Kobra slot linked to a spool now shows that spool's colour, matching its name and number. It used to draw the colour the ACE read, so a spool named "Verde escuro" could show orange.
+- A Sovol SV06 no longer shows 8 toolheads. Klipper answers `extruder1` to `extruder7` with a null temperature for extruders the printer doesn't have, and Spooler counted each as one; only an extruder reporting a temperature counts now. A filament config longer than the real extruders is cut to them too.
+- A running print no longer vanishes from Print progress when its printer stops answering (for a Snapmaker U1, the last job stayed in memory but the panel hid it as soon as a poll failed). It stays greyed and marked "Not reachable" until the printer reports again, and "Not updated for 3 min" only when its reports are old. A printer removed from the list still leaves no print behind.
+- A Snapmaker U1 print in progress now shows which toolhead is printing: Spooler asks Klipper for the active extruder.
+
+### Changed
+- Searching spools (Spools tab and the spool picker) finds words in any order, ignoring case and accents, across name, manufacturer, material, location, lot, comment and colour; letters may be missing ("plmk" finds Polymaker). A spool number (`12` or `#12`) finds exactly that spool, never a nearby one. Misspelled letters are not corrected.
+
 ### Added
 - Kobra Control (for the Anycubic Kobra X) gets Spooler's stock list too: while its tab shows the stock, Spooler keeps the same `stock.json` fresh that U1 Control reads. Nothing changes for U1 Control, and nothing is written to Spoolman for it.
 

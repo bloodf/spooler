@@ -9,7 +9,8 @@ import { LIVE_STALE, PROG_LIVE, PROG_STATES, type LivePrinter } from '../logic/p
 
 // Print progress from Live Link printers; idle printers stay as one line unless Settings hides them. Each running print
 // is the shared status block; a printer that stopped reporting keeps its last values, in grey.
-const list = computed(() => (m.liveOn && m.progress.on ? m.live.printers.filter(lv => m.live.links?.[lv.link as string] === 'live' && lv.job) : []));
+const KEPT = ['live', 'unreachable'];
+const list = computed(() => (m.liveOn && m.progress.on ? m.live.printers.filter(lv => KEPT.includes(m.live.links?.[lv.link as string] ?? '') && lv.job) : []));
 const hide = computed(() => m.progress.idle === 'hide');
 const busy = computed(() => list.value.filter(lv => (hide.value ? PROG_LIVE.includes(lv.job!.state) : !!PROG_STATES[lv.job!.state])));
 const idle = computed(() => (hide.value ? [] : list.value.filter(lv => !PROG_STATES[lv.job!.state])));
@@ -22,7 +23,12 @@ function doneLine(lv: LivePrinter) {
   const j = lv.job!;
   return [lv.name, j.end ? `${t('progress.l.finished')} ${clockAt(j.end * 1000)}` : '', j.state === 'FAILED' && j.layer ? t('progress.stoppedAt', { n: j.layer }) : ''].filter(Boolean).join(' · ');
 }
-const stale = (lv: LivePrinter) => (lv.age ?? 0) > LIVE_STALE;
+// A printer whose link is down keeps its last job on screen (greyed, "Not reachable"); one that stopped reporting for a while says
+// "Not updated for 3 min". A removed or never-working link (no entry, auth, serial, none) shows no job.
+const aged = (lv: LivePrinter) => (lv.age ?? 0) > LIVE_STALE;
+const down = (lv: LivePrinter) => m.live.links?.[lv.link as string] === 'unreachable';
+const stale = (lv: LivePrinter) => aged(lv) || down(lv);
+const staleText = (lv: LivePrinter) => (down(lv) ? t('req.unreachable') : t('link.stale'));
 const dur = (min: number) => { const h = Math.floor(min / 60); return h ? t('progress.hm', { h, m: String(min % 60).padStart(2, '0') }) : t('progress.m', { m: min }); };
 const clockAt = (ms: number) => fmt.time(ms / 1000);
 const STATE: Record<string, OuiState> = { RUNNING: 'busy', PREPARE: 'connecting', SLICING: 'connecting', PAUSE: 'warn', FINISH: 'ok', FAILED: 'error' };
@@ -52,12 +58,12 @@ function facts(lv: LivePrinter) {
     <h2 class="oui-sr">{{ t('progress.title') }}</h2>
     <div v-for="lv in running" :key="lv.link" class="pg-job">
       <OuiJob :stale="stale(lv)" :name="lv.job!.name || t('stats.print')" :progress="pct(lv)" :progress-label="t('progress.bar', { name: lv.job!.name || '' })" :detail="line(lv)">
-        <template #status><OuiStatus v-if="stale(lv)" state="stale">{{ t('link.stale') }}</OuiStatus><OuiStatus v-else :state="STATE[lv.job!.state]">{{ t(`progress.state.${lv.job!.state}` as any) }}</OuiStatus></template>
+        <template #status><OuiStatus v-if="stale(lv)" state="stale">{{ staleText(lv) }}</OuiStatus><OuiStatus v-else :state="STATE[lv.job!.state]">{{ t(`progress.state.${lv.job!.state}` as any) }}</OuiStatus></template>
         <OuiReadout v-for="x in facts(lv)" :key="x.label" :icon="x.icon" :label="x.label" :value="x.value" size="sm" :stale="stale(lv)" />
       </OuiJob>
     </div>
     <div v-for="lv in done" :key="'d' + lv.link" class="oui-row pg-idle pg-done" data-test="job-done">
-      <OuiStatus :state="stale(lv) ? 'stale' : STATE[lv.job!.state]">{{ stale(lv) ? t('link.stale') : t(`progress.state.${lv.job!.state}` as any) }}</OuiStatus>
+      <OuiStatus :state="stale(lv) ? 'stale' : STATE[lv.job!.state]">{{ stale(lv) ? staleText(lv) : t(`progress.state.${lv.job!.state}` as any) }}</OuiStatus>
       <span class="oui-truncate pg-done-t" :title="(lv.job!.name || t('stats.print')) + ' · ' + doneLine(lv)"><strong>{{ lv.job!.name || t('stats.print') }}</strong>
         <span class="oui-meta"> · {{ doneLine(lv) }}</span></span>
       <Button severity="secondary" text size="small" :aria-label="t('common.dismiss')" :title="t('common.dismiss')" data-act="dismiss-job" @click="dismissed.add(doneKey(lv))">

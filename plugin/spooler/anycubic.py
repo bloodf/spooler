@@ -232,9 +232,8 @@ def kx_tray(slot: int, item: object, spools: list[dict], target: str, number: in
     percent = item.get("consumables_percent")
     remain = percent if isinstance(percent, (int, float)) and not isinstance(percent, bool) and 0 <= percent < 100 else None
     bound = spool_at_kx_slot(spools, _peers.location_names(target), number) if number > 0 else None
-    if bound is not None:
-        return dict(_moonraker._spool_tray(slot, bound, target, linked="kobracontrol"),
-                    **({"tray_color": colour + "FF"} if colour else {}))
+    if bound is not None:  # the bound spool's own colour: its name, id and swatch agree, whatever the ACE read
+        return _moonraker._spool_tray(slot, bound, target, linked="kobracontrol")
     found = _plate_check.match_spools({"preset": "", "vendor": "", "material": kind, "colour": colour}, spools) if colour else []
     if found:
         return dict(_moonraker._spool_tray(slot, found[0], target), tray_color=colour + "FF")

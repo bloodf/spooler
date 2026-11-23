@@ -71,7 +71,7 @@ class ReportTest(unittest.TestCase):
                            SPOOLS, KOBRA)
         trays = doc["print"]["ams"]["ams"][0]["tray"]
         self.assertEqual(trays[0]["spool_id"], 21)
-        self.assertEqual(trays[0]["tray_color"], "FE0201FF")
+        self.assertEqual(trays[0]["tray_color"], "FE0201FF")  # matched by colour: the printer's reading
         self.assertEqual(trays[0]["profile"], "_local/spooler/Anycubic PLA Red @Anycubic Kobra X")
         self.assertEqual(trays[1]["spool_id"], 22)
         self.assertEqual(trays[2], {"id": "2"})

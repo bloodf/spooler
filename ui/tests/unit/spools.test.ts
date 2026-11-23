@@ -1,7 +1,7 @@
 // Card input rules shared by the spool menu, checked against the limits the plugin enforces (MAX_GRAMS).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { emptyCount, gramsValid, levelTone, lowLevel, spoolFraction, stackLead } from '../../src/logic/spools.ts';
+import { emptyCount, gramsValid, levelTone, lowLevel, spoolFraction, spoolMatches, stackLead } from '../../src/logic/spools.ts';
 
 test('drawn spool fill: Spoolman weight, else printer percent, else unknown', () => {
   assert.equal(spoolFraction({ id: 1, remaining_weight: 250, initial_weight: 1000 }, 90), 0.25);
@@ -44,4 +44,29 @@ test('a stack shows the spool in use, else the one with the most left, never an 
   assert.equal(stackLead([empty, half, full], s => s.id === 2).id, 2);
   assert.equal(stackLead([empty, unknown], () => false).id, 4);
   assert.equal(emptyCount([empty, half, unknown]), 1);
+});
+
+test('spool search: words in any order, case and accents ignored, letters may be missing; ids exact, never fuzzy', () => {
+  const s = [
+    { id: 12, location: 'Prateleira', filament: { name: 'Preto Fosco', material: 'PLA', vendor: { name: 'Polymaker' } } },
+    { id: 13, filament: { name: 'Black', material: 'PETG', vendor: { name: 'Acme' } } },
+    { id: 120, lot_nr: 'L-12', filament: { name: 'Café Brown', material: 'ABS', vendor: { name: 'Acme' } } },
+  ];
+  const f = (q: string) => s.filter(x => spoolMatches(x, q)).map(x => x.id);
+  assert.deepEqual(f('polymaker preto'), [12]);        // vendor + name, either order
+  assert.deepEqual(f('FOSCO pla'), [12]);
+  assert.deepEqual(f('plmk'), [12]);                   // letters missing
+  assert.deepEqual(f('blck'), [13]);
+  assert.deepEqual(f('cafe'), [120]);                  // accents
+  assert.deepEqual(f('#12'), [12]);                    // exact id: not 120, not 13
+  assert.deepEqual(f('12'), [12]);
+  assert.deepEqual(f('13'), [13]);
+  assert.deepEqual(f('#14'), []);
+  assert.deepEqual(f('prate-leira'), [12]);            // separators do not matter
+  assert.deepEqual(f('cafe-brown'), [120]);
+  assert.deepEqual(f('l-12'), [120]);                  // a lot code, whole
+  assert.deepEqual(f('preto 12'), [12]);               // a number among words is an id
+  assert.deepEqual(f('preto 13'), []);
+  assert.deepEqual(f('petg shelf'), []);               // every word must match
+  assert.deepEqual(f('prateleira'), [12]);             // location kept
 });

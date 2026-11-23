@@ -131,7 +131,6 @@ export const closestSpools = (spools: Spool[], hex: string): Spool[] => spools
   .map(s => ({ s, d: spoolDistance(s, hex) })).filter(x => x.d !== null).sort((a, b) => (a.d as number) - (b.d as number))
   .slice(0, MATCH_TOP).map(x => x.s);
 
-/** "#12" finds spool 12 only; other text looks in name, material, manufacturer, location, lot and comment. */
 /** Grams typed on a card (decimal comma allowed) that the plugin accepts: more than 0, up to max. */
 export function gramsValid(text: string, min0 = false, max = 100000): boolean {
   if (!text.trim()) return false;
@@ -139,10 +138,35 @@ export function gramsValid(text: string, min0 = false, max = 100000): boolean {
   return Number.isFinite(n) && (min0 ? n >= 0 : n > 0) && n <= max;
 }
 
+const fold = (v: unknown) => String(v ?? '').normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
+const WORDS = /[\s_\-.,/]+/g;
+/** The typed letters appear in order inside one word, the first at the word's start. */
+const inOrder = (token: string, word: string) => {
+  if (word[0] !== token[0]) return false;
+  let at = 0;
+  for (const c of token) { at = word.indexOf(c, at) + 1; if (!at) return false; }
+  return true;
+};
+
+/** "#12" and a plain number find spool 12 exactly (never fuzzy: 12 is not 13). Other text: every typed word has to be in the
+ * name, material, manufacturer, location, lot, comment or colour, in any order, ignoring case and accents, as typed or, for 3+
+ * letters, with letters missing ("plmk" finds Polymaker, "blck" Black). No typo correction beyond missing letters. */
 export function spoolMatches(s: Spool, query: string): boolean {
-  if (/^#\d+$/.test(query)) return String(s.id) === query.slice(1);
+  const typed = fold(query).trim();
+  if (/^#\d+$/.test(typed)) return String(s.id) === typed.slice(1);
+  if (/^\d+$/.test(typed)) return String(s.id) === typed;  // a bare number is an id, not text in a lot or colour
   const f = s.filament || {};
-  return [f.name, f.material, f.vendor?.name, s.location, s.lot_nr, s.comment].filter(Boolean).join(' ').toLowerCase().includes(query);
+  const text = fold([f.name, f.material, f.vendor?.name, s.location, s.lot_nr, s.comment, f.color_hex].filter(Boolean).join(' '));
+  const words = text.split(WORDS).filter(Boolean);
+  const joined = words.join('');  // separators do not matter: "shelf-a" finds "Shelf A"
+  if (text.includes(typed) || joined.includes(typed.replace(WORDS, ''))) return true;
+  // Word by word, in any order. A number is an id ("red 7" is red AND spool 7, never a 7 inside the text). A word of 1-2 letters
+  // is a whole word ("b" is not the b of "black": "shelf b" stays Shelf B); longer ones are found anywhere, or with letters missing.
+  return typed.split(/\s+/).filter(Boolean).every(t => {
+    if (/^\d+$/.test(t)) return String(s.id) === t;
+    if (t.length < 3) return words.includes(t);
+    return text.includes(t) || joined.includes(t.replace(WORDS, '')) || (/^\p{L}+$/u.test(t) && words.some(w => inOrder(t, w)));
+  });
 }
 
 export type SortKey = 'name' | 'material' | 'vendor' | 'remaining' | 'used' | 'first_used' | 'last_used' | 'plate';

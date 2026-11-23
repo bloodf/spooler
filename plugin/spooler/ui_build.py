@@ -7,8 +7,8 @@
 
 
 # --- BEGIN GENERATED UI: scripts/embed_ui.py from ui/ (npm run build); do not edit ---
-UI_PAGE_SHA256 = "6ac5b8c589f062f64d6ffd34e2fcf518fbe3d1cb2df794d030df5420bd433d38"
-UI_PAGE_BYTES = 705863
+UI_PAGE_SHA256 = "44bdf2268468a7b9d6c0885825efa3b8c279f82e4ac4a222b29d6f88cc5b7e25"
+UI_PAGE_BYTES = 706111
 # Third-party licences of the embedded page (Vue, PrimeVue, PrimeUIX, Lucide icons, Manrope font).
 UI_LICENSES = (
     '===== Lucide.txt =====\n'

@@ -4,7 +4,7 @@ import InputText from 'primevue/inputtext';
 import { OuiHint, OuiSpool } from '@orca-plugins/ui-foundation/src/components';
 import { m } from '../state/main';
 import { t, locale } from '../core/i18n';
-import { formatWeight, shown, spoolDirection, spoolFraction, spoolPaint } from '../logic/spools';
+import { formatWeight, shown, spoolDirection, spoolFraction, spoolMatches, spoolPaint } from '../logic/spools';
 import { takenIds } from '../logic/printers';
 
 // Pick a spool for a slot: search, Enter takes the first, Down moves into the list, Escape closes (F11).
@@ -15,9 +15,8 @@ const input = ref<{ $el: HTMLInputElement } | null>(null);
 const list = ref<HTMLElement | null>(null);
 const items = computed(() => {
   const taken = props.excludeTaken ? takenIds(m.cfg) : new Set<string>();
-  const needle = q.value.trim().toLowerCase();
-  return m.spools.filter(s => !s.archived && !taken.has(String(s.id)) && (!needle || [s.filament?.name, s.filament?.material, s.filament?.vendor?.name, s.location,
-    s.filament?.color_hex].join(' ').toLowerCase().includes(needle)))
+  const needle = q.value.trim();
+  return m.spools.filter(s => !s.archived && !taken.has(String(s.id)) && (!needle || spoolMatches(s, needle)))
     .sort((a, b) => (a.filament?.name || '').localeCompare(b.filament?.name || '')).slice(0, 200);
 });
 onMounted(() => nextTick(() => input.value?.$el.focus()));

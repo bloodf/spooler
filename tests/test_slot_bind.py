@@ -89,6 +89,12 @@ class ReadTest(Base):
         self.assertIsNone(trays[0]["spool_id"])  # blue: no spool of that colour, no binding
         self.assertEqual((trays[1]["spool_id"], trays[1]["linked"], trays[1]["remain"]), (2, "kobracontrol", None))  # Spoolman wins over the ACE's reading
 
+    def test_bound_slot_shows_the_bound_spools_colour_not_the_printers_reading(self):
+        # Spool 2 (red) is bound to S2; the ACE reads orange there. Name, id and swatch must agree: the spool's red.
+        box = [{"id": 0, "slots": [{"type": "PLA", "color": [0, 0, 255], "status": 5}, {"type": "PLA", "color": [253, 187, 39], "status": 5}]}]
+        tray = sp.kx_report(box, None, self.spools, KOBRA)["print"]["ams"]["ams"][0]["tray"][1]
+        self.assertEqual((tray["spool_id"], tray["linked"], tray["tray_color"]), (2, "kobracontrol", "FF0000FF"))
+
     def test_live_snapshot_says_which_slots_take_a_link(self):
         binds = {p["id"]: p["bind"] for p in sp.live_snapshot()["printers"]}
         self.assertEqual((binds["auto-u1"], binds["auto-kx"]), ("T", "S"))
