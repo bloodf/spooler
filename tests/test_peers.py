@@ -211,6 +211,56 @@ class PeerHintTest(PeerCase):
         self.assertEqual(sp.spools_message_extras({"ok": False, "error_code": "other"}).get("error_code"), None)
 
 
+class KobraControlStockTest(PeerCase):
+    """kobracontrol (Anycubic Kobra X) speaks the same presence and stock contract as u1control; one
+    stock.json serves both."""
+
+    def kobracontrol(self, ts=None, state="active", pid=None, until=None, request=0):
+        now = time.time()
+        doc = {"schema": "orca-plugin-presence", "version": 1, "plugin": "kobracontrol", "session": "kxs",
+               "pid": os.getpid() if pid is None else pid, "ts": now if ts is None else ts, "state": state,
+               "wants": {"stock_until": now + 10 if until is None else until, "stock_request": request}}
+        folder = self.root / "kobracontrol"
+        folder.mkdir(exist_ok=True)
+        (folder / "presence.json").write_text(json.dumps(doc), encoding="utf-8")
+
+    def test_running_kobracontrol_that_asks_gets_the_stock(self):
+        self.kobracontrol(request=4)
+        sp.peer_tick()
+        doc = self.stock()
+        self.assertEqual((doc["schema"], doc["session"], doc["request"]), ("spooler-stock", "sess1", 4))
+        self.assertEqual([r["id"] for r in doc["spools"]], [7, 8])
+        self.assertEqual({m for m, _ in self.requests}, {"GET"})
+
+    def test_dead_or_stale_kobracontrol_is_ignored(self):
+        for setup in (lambda: self.kobracontrol(pid=os.getpid() + 1), lambda: self.kobracontrol(state="stopped"),
+                      lambda: self.kobracontrol(ts=time.time() - 120), lambda: self.kobracontrol(until=time.time() - 1)):
+            setup()
+            sp.peer_tick()
+            self.assertIsNone(self.stock())
+        self.assertEqual(self.requests, [])
+
+    def test_both_peers_share_one_stock_file(self):
+        self.u1control(request=1)
+        self.kobracontrol(request=5)
+        sp.peer_tick()
+        self.assertEqual((len(self.requests), self.stock()["request"]), (1, 1))   # u1control's request, as before
+        sp.peer_tick()
+        self.assertEqual(len(self.requests), 1)                                   # not before STOCK_EVERY
+        self.kobracontrol(request=6)                                              # Refresh on the Kobra tab
+        sp.peer_tick()
+        self.assertEqual(len(self.requests), 2)
+        self.u1control(state="stopped")                                           # still served for kobracontrol
+        sp.peer_tick()
+        self.assertEqual((len(self.requests), self.stock()["request"]), (3, 6))
+        self.assertEqual(sorted(p.name for p in (self.root / "spooler").iterdir()), ["presence.json", "stock.json"])
+
+    def test_kobra_slot_location_is_not_a_u1_binding(self):
+        self.assertFalse(sp.u1_bound("Anycubic Kobra X S1"))
+        self.assertFalse(sp.stock_row({"id": 1, "location": "Anycubic Kobra X S2"}, 0, {})["u1_bound"])
+
+
+
 class SpoolsMessageTest(PeerCase):
     def test_no_url_message_has_a_code_and_the_peer_hint_in_both_hosts(self):
         self.settings["spoolman_url"] = ""

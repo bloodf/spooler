@@ -110,12 +110,13 @@ STOCK_SCHEMA = "spooler-stock"
 STOCK_VERSION = 1
 PEER_BEAT = 5.0
 PEER_FRESH = 20.0
-STOCK_EVERY = 30.0      # seconds between stock re-reads while u1control shows the stock
+STOCK_EVERY = 30.0      # seconds between stock re-reads while a peer shows the stock
 STOCK_ROWS = 2000
 PEER_FILE = "presence.json"
 STOCK_FILE = "stock.json"
 U1CONTROL = "u1control"
 KOBRACONTROL = "kobracontrol"
+STOCK_PEERS = (U1CONTROL, KOBRACONTROL)   # plugins that show Spooler's stock; u1control first
 # Each plugin's presence carries "links": the time (unix ms) it last linked or unlinked a spool. Seeing a peer's
 # move, the open page re-reads Spoolman at once; Spooler's own moves when its Printer tab assigns. Kobra Control's
 # presence also names its printer ({"host", "name"}): its slot links use that name, which the user may have changed.
