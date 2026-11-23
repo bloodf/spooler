@@ -169,7 +169,7 @@ class SourceTest(unittest.TestCase):
 
     def test_bad_index_is_not_a_position(self):
         bad = {"id": 0, "slots": [dict(slot(0, "PLA"), index="x"), slot(2, "ABS")]}
-        self.assertEqual([t["type"] for t in self.snap([bad])["units"][0]["trays"]], ["", "", "ABS", ""][:0] or ["", "", "ABS", ""])
+        self.assertEqual([t["type"] for t in self.snap([bad])["units"][0]["trays"]], ["", "", "ABS", ""])
 
     def test_partial_reports_keep_the_rest(self):
         edit = [{"id": -1, "slots": [slot(1, "TPU", (9, 9, 9))]}]
