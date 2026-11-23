@@ -146,6 +146,7 @@ export const de: Record<MessageKey, string> = {
   'plate.recheck': 'Erneut prüfen', 'plate.recheckHelp': 'Erneut mit Ihrer Spulenquelle abgleichen', 'plate.dismiss': 'Ausblenden', 'plate.dismissHelp': 'Bis zum nächsten Slicen ausblenden',
   'plate.sub': 'Slicing um {time} · gestreift = benötigt, gefüllt = übrig · wird beim nächsten Slicen geleert',
 
+  'printer.ace': 'ACE', 'printer.holder': 'Spulenhalter',
   'printer.ams': 'AMS', 'printer.ht': 'AMS HT', 'printer.external': 'Externe Spule', 'printer.externalShort': 'Extern', 'printer.toolheads': 'Werkzeugköpfe',
   'printer.slotOf': '{unit} Slot {n}', 'printer.slotN': 'Slot {n}', 'printer.theExternal': 'die externe Spule',
   'printer.defaultName': 'Drucker', 'printer.defaultNameN': 'Drucker {n}', 'printer.nameLabel': 'Druckername', 'printer.rename': '{name} umbenennen',
@@ -160,7 +161,7 @@ export const de: Record<MessageKey, string> = {
   'printer.waitingHeads': 'Warten, bis der Drucker seine Werkzeugköpfe meldet…', 'printer.waitingSlots': 'Warten, bis der Drucker seine Slots meldet…',
   'printer.extruder': 'Extruder',
   'printer.howTitle': 'Wie gebucht wird',
-  'printer.bindNote': 'Bei einem Werkzeugkopf des Snapmaker U1 oder einem ACE-Slot von Anycubic setzt „Spule zuweisen“ den Spoolman-Lagerort der Spule auf die Verknüpfung, die U1 Control und Kobra Control lesen, zum Beispiel „Snapmaker U1 T1“ oder „Anycubic Kobra X S1“. An den Drucker wird nichts gesendet.',
+  'printer.bindNote': 'Bei einem Werkzeugkopf des Snapmaker U1 oder einem Slot des ACE oder Spulenhalters von Anycubic Kobra setzt „Spule zuweisen“ den Spoolman-Lagerort der Spule auf die Verknüpfung, die U1 Control und Kobra Control lesen, zum Beispiel „Snapmaker U1 T1“ oder „Anycubic Kobra X S1“. An den Drucker wird nichts gesendet.',
   'printer.chipU1': 'Bucht U1 Control',
   'printer.chipKobra': 'Bucht Kobra Control',
   'printer.chipHh': 'Bucht Happy Hare',

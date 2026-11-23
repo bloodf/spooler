@@ -108,7 +108,7 @@ export function settle(key: string, ok: boolean, text: string): void {
 
 // ------------------------------------------------------------------ derived
 export const words = computed<Words>(() => ({
-  ams: t('printer.ams'), ht: t('printer.ht'), ext: t('printer.external'), gate: t('printer.gates'), gateN: n => t('printer.gateN', { n }), externalShort: t('printer.externalShort'),
+  ace: t('printer.ace'), holder: t('printer.holder'), ams: t('printer.ams'), ht: t('printer.ht'), ext: t('printer.external'), gate: t('printer.gates'), gateN: n => t('printer.gateN', { n }), externalShort: t('printer.externalShort'),
   slot: (unit, n) => t('printer.slotOf', { unit, n }), head: n => `T${n}`,
 }));
 export const inUse = computed(() => computeInUse(m.live.printers, m.cfg, words.value));

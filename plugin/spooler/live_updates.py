@@ -323,12 +323,15 @@ def live_apply(dev_id: str, name: str, doc: object, link: str = "", full: bool =
         state = _live["printers"].setdefault(dev_id, {"name": name, "units": {}, "ext": {}, "time": 0.0, "link": link})
         state["time"] = time.time()
         if full:
-            state["units"], state["ext"] = {}, {}
+            state["units"], state["ext"], state["meta"] = {}, {}, {}
         ams = report.get("ams")
         for unit in (ams.get("ams") if isinstance(ams, dict) else None) or []:
             if not isinstance(unit, dict) or _int(unit.get("id")) < 0:
                 continue
             slots = state["units"].setdefault(_int(unit["id"]), {})
+            if unit.get("source"):  # what feeds the unit (Anycubic: ace or holder) and its slot count, per unit
+                state.setdefault("meta", {})[_int(unit["id"])] = {
+                    "source": str(unit["source"]), "box": _int(unit.get("box")), "size": max(1, _int(unit.get("size"), 4))}
             for tray in unit.get("tray") or []:
                 if not isinstance(tray, dict) or _int(tray.get("id")) < 0:
                     continue
@@ -470,7 +473,9 @@ def live_snapshot() -> dict:
                 # Toolheads (U1, network printers) are one unit with as many slots as the printer has.
                 size = 1 if unit_id >= 128 else (state.get("head_count") or max(4, max(slots, default=-1) + 1)
                                                  if state.get("heads") else 4)
-                units.append({"id": unit_id, "kind": "ht" if unit_id >= 128 else "ams",
+                meta = state.get("meta", {}).get(unit_id) or {}
+                size = meta.get("size", size)
+                units.append({"id": unit_id, "kind": "ht" if unit_id >= 128 else "ams", **meta,
                               "trays": [_live_tray(i, slots.get(i, {})) for i in range(size)]})
             ext = _live_tray(0, state["ext"]) if state["ext"] else None
             printers.append({"id": dev_id, "link": state.get("link", ""), "name": state["name"], "age": round(time.time() - state["time"]),

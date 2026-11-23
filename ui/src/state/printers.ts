@@ -60,7 +60,7 @@ export function saveLink(id: string, f: LinkForm, remove: boolean): void {
   window.setTimeout(pollLive, 300);
 }
 
-/** Link a spool to a U1 toolhead or an Anycubic ACE slot (on), or unlink it: the plugin writes the spool's Spoolman location. */
+/** Link a spool to a U1 toolhead or an Anycubic Kobra ACE or spool holder slot (on), or unlink it: the plugin writes the spool's Spoolman location. */
 export function bindSlot(link: string, slot: number, spool: number, on: boolean): void {
   bridge.postMain({ type: 'spool_action', action: on ? 'bind' : 'unbind', id: spool, printer: link, slot, origin: m.origin });
   note('pending', t('action.sending'), 'spool-action');

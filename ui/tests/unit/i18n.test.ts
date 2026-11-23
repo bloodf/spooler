@@ -36,7 +36,7 @@ test('no English text is empty', () => {
 
 // Product, protocol and unit names, and words the language shares with English. Anything else that equals the
 // English text was left untranslated by accident.
-const NAMES = ['lang.en', 'lang.pt-BR', 'lang.es', 'lang.de', 'lang.zh-CN', 'lang.pl', 'printer.ams', 'printer.ht', 'printer.addAms', 'printer.addHt', 'link.button', 'ofd.title'];
+const NAMES = ['lang.en', 'lang.pt-BR', 'lang.es', 'lang.de', 'lang.zh-CN', 'lang.pl', 'printer.ace', 'printer.ams', 'printer.ht', 'printer.addAms', 'printer.addHt', 'link.button', 'ofd.title'];
 // "Gate" is the MMU's own word (Happy Hare, ERCF): Spanish and German keep it.
 const GATE = ['printer.gateN'];
 // "{n} s": seconds are written the same way.

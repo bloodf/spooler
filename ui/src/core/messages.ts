@@ -145,6 +145,7 @@ export const en = {
   'plate.recheck': 'Check again', 'plate.recheckHelp': 'Check again against your spool source', 'plate.dismiss': 'Dismiss', 'plate.dismissHelp': 'Hide until the next slice',
   'plate.sub': 'Sliced {time} · striped = needed, solid = left · clears on the next slice',
 
+  'printer.ace': 'ACE', 'printer.holder': 'Spool holder',
   'printer.ams': 'AMS', 'printer.ht': 'AMS HT', 'printer.external': 'External spool', 'printer.externalShort': 'External', 'printer.toolheads': 'Toolheads',
   'printer.slotOf': '{unit} slot {n}', 'printer.slotN': 'slot {n}', 'printer.theExternal': 'the external spool',
   'printer.defaultName': 'Printer', 'printer.defaultNameN': 'Printer {n}', 'printer.nameLabel': 'Printer name', 'printer.rename': 'Rename {name}',
@@ -159,7 +160,7 @@ export const en = {
   'printer.waitingHeads': 'Waiting for the printer to report its toolheads…', 'printer.waitingSlots': 'Waiting for the printer to report its slots…',
   'printer.extruder': 'Extruder',
   'printer.howTitle': 'How booking works',
-  'printer.bindNote': 'On a Snapmaker U1 toolhead or an Anycubic ACE slot, Assign spool sets the spool’s Spoolman location to the link U1 Control and Kobra Control read, for example “Snapmaker U1 T1” or “Anycubic Kobra X S1”. Nothing is sent to the printer.',
+  'printer.bindNote': 'On a Snapmaker U1 toolhead or an Anycubic Kobra ACE or spool holder slot, Assign spool sets the spool’s Spoolman location to the link U1 Control and Kobra Control read, for example “Snapmaker U1 T1” or “Anycubic Kobra X S1”. Nothing is sent to the printer.',
   'printer.chipU1': 'Booked by U1 Control',
   'printer.chipKobra': 'Booked by Kobra Control',
   'printer.chipHh': 'Booked by Happy Hare',
@@ -522,6 +523,7 @@ export const ptBR: Record<MessageKey, string> = {
   'plate.recheck': 'Conferir de novo', 'plate.recheckHelp': 'Conferir de novo com a origem das bobinas', 'plate.dismiss': 'Dispensar', 'plate.dismissHelp': 'Ocultar até o próximo fatiamento',
   'plate.sub': 'Fatiado {time} · listrado = necessário, sólido = restante · some no próximo fatiamento',
 
+  'printer.ace': 'ACE', 'printer.holder': 'Suporte de carretel',
   'printer.ams': 'AMS', 'printer.ht': 'AMS HT', 'printer.external': 'Bobina externa', 'printer.externalShort': 'Externa', 'printer.toolheads': 'Cabeças',
   'printer.slotOf': '{unit} slot {n}', 'printer.slotN': 'slot {n}', 'printer.theExternal': 'a bobina externa',
   'printer.defaultName': 'Impressora', 'printer.defaultNameN': 'Impressora {n}', 'printer.nameLabel': 'Nome da impressora', 'printer.rename': 'Renomear {name}',
@@ -536,7 +538,7 @@ export const ptBR: Record<MessageKey, string> = {
   'printer.waitingHeads': 'Aguardando a impressora informar as cabeças…', 'printer.waitingSlots': 'Aguardando a impressora informar os slots…',
   'printer.extruder': 'Extrusora',
   'printer.howTitle': 'Como funciona o lançamento',
-  'printer.bindNote': 'Numa cabeça da Snapmaker U1 ou num slot do ACE da Anycubic, Atribuir bobina muda o local da bobina no Spoolman para o vínculo que o U1 Control e o Kobra Control leem, por exemplo “Snapmaker U1 T1” ou “Anycubic Kobra X S1”. Nada é enviado à impressora.',
+  'printer.bindNote': 'Numa cabeça da Snapmaker U1 ou num slot do ACE ou do suporte de carretel da Anycubic Kobra, Atribuir bobina muda o local da bobina no Spoolman para o vínculo que o U1 Control e o Kobra Control leem, por exemplo “Snapmaker U1 T1” ou “Anycubic Kobra X S1”. Nada é enviado à impressora.',
   'printer.chipU1': 'Lançada pelo U1 Control',
   'printer.chipKobra': 'Lançada pelo Kobra Control',
   'printer.chipHh': 'Lançada pelo Happy Hare',

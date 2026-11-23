@@ -82,7 +82,7 @@ class ReportTest(unittest.TestCase):
 
     def test_ace_100_percent_is_no_reading_and_spoolman_wins(self):
         # The ACE answers 100 for every spool it can't measure; Kobra Control draws a linked slot from Spoolman.
-        box = [{"slots": [{"type": "PLA", "color": [254, 2, 1], "status": 5, "consumables_percent": 100},
+        box = [{"id": 0, "slots": [{"type": "PLA", "color": [254, 2, 1], "status": 5, "consumables_percent": 100},
                           {"type": "ABS", "color": [9, 9, 9], "status": 5, "consumables_percent": 100},
                           {"type": "ABS", "color": [9, 9, 9], "status": 5, "consumables_percent": 55},
                           {"type": "PLA", "color": [254, 2, 1], "status": 5, "consumables_percent": 55}]}]
@@ -92,6 +92,93 @@ class ReportTest(unittest.TestCase):
 
     def test_no_box(self):
         self.assertEqual(sp.kx_report([], None, SPOOLS), {"print": {"ams": {"ams": []}}})
+
+
+def slot(i, kind="PLA", rgb=(1, 2, 3)):
+    return {"index": i, "type": kind, "color": list(rgb), "status": 5}
+
+
+HOLDER = {"id": -1, "slots": [slot(0, "PLA", (1, 1, 1)), slot(1, "PETG", (2, 2, 2)), slot(2, "ABS", (3, 3, 3))]}
+ACE0 = {"id": 0, "slots": [slot(i, "PLA", (10 + i, 0, 0)) for i in range(4)]}
+
+
+class SourceTest(unittest.TestCase):
+    """Every filament source reaches the page with its own source, in ace.py's numbering."""
+    PID = "src-test"
+
+    def snap(self, boxes, merged=None):
+        if merged is not None:
+            boxes = sp.kx_merge_boxes(boxes, merged)
+        sp.live_apply(self.PID, "Kobra X", sp.kx_report(boxes, None, []), link=self.PID, full=True)
+        try:
+            return next(p for p in sp.live_snapshot()["printers"] if p["id"] == self.PID)
+        finally:
+            with sp._live_lock:
+                sp._live["printers"].pop(self.PID, None)
+
+    def shape(self, live):
+        return [(u["id"], u["source"], len(u["trays"])) for u in live["units"]]
+
+    def test_holder_and_ace_in_any_order(self):
+        for boxes in ([ACE0, HOLDER], [HOLDER, ACE0]):
+            live = self.snap(boxes)
+            self.assertEqual(self.shape(live), [(0, "ace", 4), (1, "holder", 3)])
+            self.assertEqual(sum(not t["empty"] for u in live["units"] for t in u["trays"]), 7)
+            self.assertNotEqual(live.get("unit_label"), "ACE")
+
+    def test_holder_only_keeps_its_own_slots_and_ace_only_has_no_holder(self):
+        four = {"id": -1, "slots": HOLDER["slots"] + [slot(3, "TPU")]}
+        self.assertEqual(self.shape(self.snap([four])), [(0, "holder", 4)])
+        self.assertEqual(self.shape(self.snap([ACE0])), [(0, "ace", 4)])
+
+    def test_multi_ace_holder_after_the_highest_id_and_gaps_kept(self):
+        ace2 = {"id": 2, "slots": ACE0["slots"]}
+        live = self.snap([HOLDER, ace2, ACE0])
+        self.assertEqual(self.shape(live), [(0, "ace", 4), (2, "ace", 4), (3, "holder", 3)])
+        self.assertEqual([u["box"] for u in live["units"]], [0, 2, -1])
+
+    def test_no_made_up_source_and_unreadable_ids_skipped(self):
+        self.assertEqual(self.shape(self.snap([ACE0])), [(0, "ace", 4)])
+        self.assertEqual(self.snap([{"slots": ACE0["slots"]}, {"id": "x", "slots": []}])["units"], [])
+
+    def test_shuffled_slots_keep_their_index(self):
+        kinds = ["PLA", "PETG", "ABS", "TPU"]
+        shuffled = {"id": 0, "slots": [slot(i, kinds[i]) for i in (3, 1, 0, 2)]}
+        trays = self.snap([shuffled])["units"][0]["trays"]
+        self.assertEqual([t["type"] for t in trays], kinds)
+
+    def test_bind_numbers(self):
+        # The page links unit id * 4 + slot: the holder after ACE 0 is S5-S7, after ACE 0 and 2 it is S13-S15.
+        ids = lambda boxes: [u["id"] for u in self.snap(boxes)["units"]]  # noqa: E731
+        self.assertEqual(ids([HOLDER, ACE0]), [0, 1])
+        self.assertEqual(ids([HOLDER, ACE0, {"id": 2, "slots": ACE0["slots"]}]), [0, 2, 3])
+
+    def test_shuffled_full_then_one_slot_report_keeps_all_seven(self):
+        holder = {"id": -1, "slots": [HOLDER["slots"][i] for i in (2, 0, 1)]}
+        ace = {"id": 0, "slots": [ACE0["slots"][i] for i in (3, 1, 0, 2)]}
+        live = self.snap([holder, ace], [{"id": -1, "slots": [slot(0, "TPU", (9, 9, 9))]}])
+        self.assertEqual(self.shape(live), [(0, "ace", 4), (1, "holder", 3)])
+        self.assertEqual([t["type"] for t in live["units"][1]["trays"]], ["TPU", "PETG", "ABS"])
+        self.assertEqual([t["colour"] for t in live["units"][0]["trays"]], ["0A0000", "0B0000", "0C0000", "0D0000"])
+
+    def test_report_without_slots_keeps_slots_and_a_slotless_ace_still_places_the_holder(self):
+        live = self.snap([ACE0, HOLDER], [{"id": 0, "drying_status": {"status": 1}}])
+        self.assertEqual(sum(not t["empty"] for u in live["units"] for t in u["trays"]), 7)
+        early = self.snap([{"id": 0, "drying_status": {}}, HOLDER])
+        self.assertEqual([(u["id"], u["source"]) for u in early["units"]], [(0, "ace"), (1, "holder")])
+
+    def test_bad_index_is_not_a_position(self):
+        bad = {"id": 0, "slots": [dict(slot(0, "PLA"), index="x"), slot(2, "ABS")]}
+        self.assertEqual([t["type"] for t in self.snap([bad])["units"][0]["trays"]], ["", "", "ABS", ""][:0] or ["", "", "ABS", ""])
+
+    def test_partial_reports_keep_the_rest(self):
+        edit = [{"id": -1, "slots": [slot(1, "TPU", (9, 9, 9))]}]
+        live = self.snap([ACE0, HOLDER], edit)
+        self.assertEqual(self.shape(live), [(0, "ace", 4), (1, "holder", 3)])
+        self.assertEqual([t["type"] for t in live["units"][1]["trays"]], ["PLA", "TPU", "ABS"])
+        only_ace = self.snap([ACE0, HOLDER], [{"id": 0, "slots": [slot(2, "ABS")]}])
+        self.assertEqual([t["type"] for t in only_ace["units"][0]["trays"]], ["PLA", "PLA", "ABS", "PLA"])
+        self.assertEqual(len(only_ace["units"]), 2)
 
 
 class NoKobraBookingTest(unittest.TestCase):
@@ -231,7 +318,7 @@ class SessionTest(unittest.TestCase):
         size = struct.unpack("!H", body[:2])[0]
         self.assertEqual(json.loads(body[2 + size:])["action"], "getInfo")
         live = sp.live_snapshot()["printers"][0]
-        self.assertEqual(live["unit_label"], "ACE")
+        self.assertEqual((live["units"][0]["source"], live["unit_label"]), ("ace", ""))
         self.assertEqual([t["spool"] for t in live["units"][0]["trays"]][:2], [21, 22])
         self.assertEqual(sp._live["links"]["auto-kx"], "live")
         sp._live["printers"].clear()

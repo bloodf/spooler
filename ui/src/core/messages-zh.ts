@@ -146,6 +146,7 @@ export const zhCN: Record<MessageKey, string> = {
   'plate.recheck': '重新检查', 'plate.recheckHelp': '对照料盘来源重新检查', 'plate.dismiss': '忽略', 'plate.dismissHelp': '隐藏，直到下次切片',
   'plate.sub': '{time} 切片 · 条纹 = 所需，实心 = 剩余 · 下次切片时清除',
 
+  'printer.ace': 'ACE', 'printer.holder': '料盘架',
   'printer.ams': 'AMS', 'printer.ht': 'AMS HT', 'printer.external': '外置料盘', 'printer.externalShort': '外置', 'printer.toolheads': '工具头',
   'printer.slotOf': '{unit} 槽位 {n}', 'printer.slotN': '槽位 {n}', 'printer.theExternal': '外置料盘',
   'printer.defaultName': '打印机', 'printer.defaultNameN': '打印机 {n}', 'printer.nameLabel': '打印机名称', 'printer.rename': '重命名 {name}',
@@ -160,7 +161,7 @@ export const zhCN: Record<MessageKey, string> = {
   'printer.waitingHeads': '正在等待打印机报告工具头…', 'printer.waitingSlots': '正在等待打印机报告槽位…',
   'printer.extruder': '挤出机',
   'printer.howTitle': '登记方式说明',
-  'printer.bindNote': '在 Snapmaker U1 的工具头或 Anycubic ACE 的槽位上，“分配料盘”会把料盘在 Spoolman 中的位置设为 U1 Control 和 Kobra Control 读取的关联，例如“Snapmaker U1 T1”或“Anycubic Kobra X S1”。不会向打印机发送任何内容。',
+  'printer.bindNote': '在 Snapmaker U1 的工具头或 Anycubic Kobra 的 ACE 或料盘架槽位上，“分配料盘”会把料盘在 Spoolman 中的位置设为 U1 Control 和 Kobra Control 读取的关联，例如“Snapmaker U1 T1”或“Anycubic Kobra X S1”。不会向打印机发送任何内容。',
   'printer.chipU1': '由 U1 Control 登记',
   'printer.chipKobra': '由 Kobra Control 登记',
   'printer.chipHh': '由 Happy Hare 登记',

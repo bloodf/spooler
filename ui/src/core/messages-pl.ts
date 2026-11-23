@@ -168,6 +168,7 @@ export const pl: Record<MessageKey, string> = {
   'plate.dismissHelp': 'Ukryj do następnego cięcia',
   'plate.sub': 'Pocięto {time} · paski = potrzebne, pełne = zostało · znika przy następnym cięciu',
 
+  'printer.ace': 'ACE', 'printer.holder': 'Uchwyt na szpule',
   'printer.ams': 'AMS', 'printer.ht': 'AMS HT', 'printer.external': 'Szpula zewnętrzna', 'printer.externalShort': 'Zewnętrzna',
   'printer.toolheads': 'Głowice', 'printer.slotOf': '{unit}, slot {n}', 'printer.slotN': 'slot {n}', 'printer.theExternal': 'szpula zewnętrzna',
   'printer.defaultName': 'Drukarka', 'printer.defaultNameN': 'Drukarka {n}', 'printer.nameLabel': 'Nazwa drukarki', 'printer.rename': 'Zmień nazwę: {name}',
@@ -182,7 +183,7 @@ export const pl: Record<MessageKey, string> = {
   'printer.waitingHeads': 'Czekanie, aż drukarka zgłosi swoje głowice…', 'printer.waitingSlots': 'Czekanie, aż drukarka zgłosi swoje sloty…',
   'printer.extruder': 'Ekstruder',
   'printer.howTitle': 'Jak działa księgowanie',
-  'printer.bindNote': 'Na głowicy Snapmaker U1 albo w slocie ACE Anycubic „Przypisz szpulę” ustawia lokalizację szpuli w Spoolmanie na powiązanie, które czytają U1 Control i Kobra Control, na przykład „Snapmaker U1 T1” lub „Anycubic Kobra X S1”. Do drukarki nic nie jest wysyłane.',
+  'printer.bindNote': 'Na głowicy Snapmaker U1 albo w slocie ACE lub uchwytu na szpule Anycubic Kobra „Przypisz szpulę” ustawia lokalizację szpuli w Spoolmanie na powiązanie, które czytają U1 Control i Kobra Control, na przykład „Snapmaker U1 T1” lub „Anycubic Kobra X S1”. Do drukarki nic nie jest wysyłane.',
   'printer.chipU1': 'Księguje U1 Control',
   'printer.chipKobra': 'Księguje Kobra Control',
   'printer.chipHh': 'Księguje Happy Hare',

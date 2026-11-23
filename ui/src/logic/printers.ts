@@ -1,10 +1,11 @@
 // Printer-panel rules ported from the previous page: slot names, where each spool is loaded, manual units.
 export interface Tray { slot?: number; empty?: boolean; type?: string; name?: string; colour?: string; remain?: number | null; rfid?: boolean;
   spool?: number | string | null; profile?: string; linked?: string }
-export interface LiveUnit { id: number | string; kind: string; trays: Tray[] }
+/** source: what feeds an Anycubic unit ('ace' unit of firmware box id `box`, 'holder' the spool holder, box -1); none for other printers. */
+export interface LiveUnit { id: number | string; kind: string; trays: Tray[]; source?: 'ace' | 'holder' | ''; box?: number }
 export interface LivePrinter { id?: string; link?: string; name: string; heads?: boolean; unit_label?: string; units: LiveUnit[]; ext?: Tray | null;
   age?: number; spool_set?: boolean; hh?: boolean; job?: Job | null;
-  /** The slots the page may link a spool to: 'T' U1 toolheads (U1 Control's location), 'S' Anycubic ACE slots (Kobra Control's). */
+  /** The slots the page may link a spool to: 'T' U1 toolheads (U1 Control's location), 'S' Anycubic Kobra ACE and spool holder slots (Kobra Control's). */
   bind?: '' | 'T' | 'S' }
 export interface Job { state: string; name?: string; pct?: number; stage?: string; layer?: number; layers?: number; left?: number | null;
   took?: number; end?: number; tray?: { unit: number | string; slot: number } | null }
@@ -50,7 +51,7 @@ export const PROG_STATES: Record<string, { cls: string; fill: string }> = {
   PAUSE: { cls: 'warn', fill: 'warn' }, FINISH: { cls: 'ok', fill: 'ok' }, FAILED: { cls: 'bad', fill: 'bad' },
 };
 
-export interface Words { ams: string; ht: string; ext: string; gate: string; gateN: (n: number) => string; slot: (unit: string, n: number) => string; head: (n: number) => string; externalShort: string }
+export interface Words { ace: string; holder: string; ams: string; ht: string; ext: string; gate: string; gateN: (n: number) => string; slot: (unit: string, n: number) => string; head: (n: number) => string; externalShort: string }
 
 export function unitLabel(p: ManualPrinter, u: ManualUnit, w: Words): string {
   const same = p.units.filter(x => x.kind === u.kind);
@@ -62,13 +63,22 @@ export function unitLabel(p: ManualPrinter, u: ManualUnit, w: Words): string {
   return w.ext;
 }
 
+/** The heading of a live AMS-like unit: an Anycubic unit by its own source (ACE n by firmware box id, or the spool holder), else by the printer's label. */
+export function liveUnitName(lv: LivePrinter, u: LiveUnit, w: Words): string {
+  if (u.source === 'holder') return w.holder;
+  if (u.source === 'ace') return `${w.ace} ${(u.box ?? Number(u.id)) + 1}`;
+  const ams = lv.units.filter(x => x.kind === 'ams');
+  return lv.unit_label && lv.units.length === 1 ? lv.unit_label : `${lv.unit_label || w.ams} ${ams.indexOf(u) + 1}`;
+}
+
+/** The 0-based slot a spool link names: Kobra Control's unit id * 4 + slot (ACE 0-3, the holder after the last ACE), U1 Control's toolhead number. */
+export const linkSlot = (lv: LivePrinter, u: LiveUnit, i: number) => (lv.bind === 'S' ? Number(u.id) * 4 + i : i);
+
 export function slotName(lv: LivePrinter, u: LiveUnit | null, i: number, ext: boolean, w: Words): string {
   if (ext || !u) return w.externalShort;
   if (lv.heads) return w.head(i + 1);
   if (u.kind === 'ht') return w.ht;
-  const ams = lv.units.filter(x => x.kind === 'ams');
-  const unit = lv.unit_label && lv.units.length === 1 ? lv.unit_label : `${lv.unit_label || w.ams} ${ams.indexOf(u) + 1}`;
-  return w.slot(unit, i + 1);
+  return w.slot(liveUnitName(lv, u, w), i + 1);
 }
 
 /** spool id -> "Printer · slot", from the live printers first, then the manually assigned slots. */

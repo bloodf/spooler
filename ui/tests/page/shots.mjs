@@ -39,7 +39,15 @@ __t.handler({type: 'plate', time: '10:42', rows: [{status: 'short', colour: '285
   {status: 'ok', colour: '1a1a1a', slots: 'Slot 1', name: 'PLA Matte - Black', meta: 'Acme · Shelf A', fill: .64, spool_colour: '1a1a1a', need_pct: .1, headline: 'Enough', detail: 'Needs 96 g, 640 g left', ids: [1], first: 0}]});
 await settle();
 if (SCN === 'error') __t.handler({type: 'sent', ok: false, text: 'Spoolman refused the filament: 422 Unprocessable Entity'});
-if (SCN === 'printer' || SCN === 'stats') { document.querySelector('[data-tab="' + SCN + '"]').click(); await sleep(300); }
+if (SCN === 'kobra') {   // ACE 1 and ACE 3 (box ids 0 and 2) then the spool holder after the last ACE, as the adapter reports them
+  const T = (s, sp, n, c, ty) => TRAY(s, sp, n, c, ty);
+  const ace = [T(0, 1, 'PLA Matte - Black', '1a1a1a', 'PLA'), T(1, 3, 'PETG HF - Cobalt Blue', '2850a8', 'PETG'), T(2, null, '', '', ''), T(3, 5, 'PLA Basic - Bambu Green', '3f8e43', 'PLA')];
+  __t.handler({type: 'live', live: {links: {p1: 'live'}, printers: [{id: 'p1', link: 'p1', name: 'Kobra X', age: 4, heads: false, ext: null, unit_label: '', bind: 'S', job: null, units: [
+    {id: 0, kind: 'ams', source: 'ace', box: 0, trays: ace}, {id: 2, kind: 'ams', source: 'ace', box: 2, trays: ace},
+    {id: 3, kind: 'ams', source: 'holder', box: -1, trays: ace.slice(0, 3)}]}]}});
+}
+if (SCN === 'printer' || SCN === 'stats' || SCN === 'kobra') { document.querySelector('[data-tab="' + (SCN === 'kobra' ? 'printer' : SCN) + '"]').click(); await sleep(300); }
+if (SCN === 'kobra') { const labels = [...document.querySelectorAll('.lu h3')].map(h => h.textContent.trim()); if (labels.join('|') !== 'ACE 1|ACE 3|' + (document.documentElement.lang === 'pt-BR' ? 'Suporte de carretel' : 'Spool holder')) throw new Error('labels: ' + labels); }
 if (SCN === 'printer') { const t = document.querySelector('.us-toggle'); if (t && t.getAttribute('aria-expanded') !== 'true') t.click(); }
 if (SCN === 'stats') { const s = [...__t.sent].reverse().find(m => m.type === 'stats');
   __t.handler({type: 'stats', stats: {period: s.period, since: now - 86400 * 60, sign: '€', grams: 2380, prints: 14, cost: 41.2, low: 2,
@@ -80,6 +88,7 @@ const SCENES = [
   ['empty', 'tab', 'light', 'pt_BR', 1280, 720, 1], ['nourl', 'tab', 'dark', 'en', 1280, 720, 1], ['nourl', 'main', 'light', 'en', 380, 900, 1], ['error', 'tab', 'light', 'en', 1280, 720, 1],
   ['stale', 'tab', 'dark', 'en', 1280, 720, 1], ['toasts', 'tab', 'light', 'en', 1280, 720, 1], ['toasts', 'tab', 'dark', 'en', 1280, 720, 1], ['toasts', 'main', 'dark', 'en', 380, 900, 1],
   ['printer', 'tab', 'light', 'en', 1900, 1000, 1], ['printer', 'tab', 'dark', 'en', 1280, 720, 1], ['printer', 'tab', 'dark', 'pt_BR', 720, 1000, 1], ['printer', 'tab', 'light', 'en', 640, 900, 2],
+  ['kobra', 'tab', 'dark', 'en', 1280, 720, 1], ['kobra', 'tab', 'light', 'pt_BR', 380, 900, 1],
   ['stats', 'tab', 'dark', 'en', 1900, 1000, 1], ['stats', 'tab', 'light', 'en', 1280, 720, 1], ['stats', 'tab', 'light', 'pt_BR', 720, 1000, 1],
   ['tabsettings', 'tab', 'dark', 'en', 1900, 1000, 1], ['settings', 'settings', 'light', 'en', 1280, 720, 1], ['settings', 'settings', 'dark', 'pt_BR', 1280, 720, 1],
   ['settings', 'settings', 'dark', 'en', 720, 1000, 1], ['reqs', 'settings', 'light', 'en', 1280, 720, 1], ['reqs', 'settings', 'dark', 'en', 380, 900, 1], ['settings', 'settings', 'light', 'pt_BR', 640, 900, 2],

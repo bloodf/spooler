@@ -92,7 +92,7 @@ def _binds(location: object, letter: str, names: tuple, number: int) -> bool:
 def slot_bind(sid: int, pid: object, slot: object, on: bool) -> dict:
     """Link spool sid to a live printer's slot, or unlink it, the way the plugin that owns the printer reads
     the link: the spool's Spoolman location "<printer name> T<n>" for a Snapmaker U1 toolhead (U1 Control) and
-    "<printer name> S<n>" for an Anycubic ACE slot (Kobra Control). Linking clears that location from any other
+    "<printer name> S<n>" for an Anycubic Kobra ACE or spool holder slot (Kobra Control; n = unit id * 4 + slot + 1). Linking clears that location from any other
     spool that holds it, so one spool is in each slot. Nothing is sent to the printer. Refused for every other
     printer: their slots are the printer's own (Bambu, Happy Hare, AFC) or set on the printer's card."""
     no = lambda text: {"ok": False, "text": text}  # noqa: E731
@@ -101,7 +101,7 @@ def slot_bind(sid: int, pid: object, slot: object, on: bool) -> dict:
     with _live_updates._live_lock:
         letter = (_live_updates._live["printers"].get(str(pid)) or {}).get("bind") or ""
     if printer is None or letter not in ("T", "S") or not number or (letter == "T" and number > _printers.MOON_TOOLS):
-        return no(_i18n.tr("Spooler can only link a spool to a Snapmaker U1 toolhead or an Anycubic ACE slot."))
+        return no(_i18n.tr("Spooler can only link a spool to a Snapmaker U1 toolhead or an Anycubic Kobra ACE or spool holder slot."))
     names = _peers.location_names(_peers.target_for_host(printer["ip"])) or (printer["name"],)
     location = _moonraker.location_for(names[-1], letter, number)
     spools = _core._spool_cache["spools"] or []

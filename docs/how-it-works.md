@@ -145,8 +145,10 @@ must arrive whole within `PACKET_SECS`.
 
 Each slot is matched to a spool in the same order: the spool id the printer reports, the location
 u1control binds (U1 only), the RFID tag, then vendor, material and colour (`slot_tray()`). An
-Anycubic ACE slot is matched to the spool Kobra Control binds with the location `<printer> S<n>`
-(n = box × 4 + slot + 1, `spool_at_kx_slot()`), else by material and colour (`kx_tray()`). A slot's
+Anycubic slot is matched to the spool Kobra Control binds with the location `<printer> S<n>`
+(n = unit × 4 + slot + 1, `spool_at_kx_slot()`; the unit is the ACE's firmware box id, the spool holder
+(box -1) the unit after the last ACE, so ACE 1 and a holder are S1-S4 and S5-S7; each unit reaches the page
+with its `source`, `ace` or `holder`), else by material and colour (`kx_tray()`). A slot's
 percentage is only ever the printer's own reading; a Spoolman spool's weight is shown as Spoolman's.
 The ACE's `consumables_percent` counts only for a slot with no Spoolman spool, and only below 100:
 the ACE answers 100 for every spool it can't measure.

@@ -242,17 +242,74 @@ def kx_tray(slot: int, item: object, spools: list[dict], target: str, number: in
             "tray_sub_brands": kind, "remain": remain, "spool_id": None, "profile": ""}
 
 
+def _kx_box_id(box: object) -> int | None:
+    """The firmware's box id: -1 the spool holder, >= 0 an ACE. A box without a readable id is neither."""
+    raw = box.get("id") if isinstance(box, dict) else None
+    return raw if isinstance(raw, int) and not isinstance(raw, bool) and raw >= -1 else None
+
+
+def _kx_index(slot: object) -> int | None:
+    raw = slot.get("index") if isinstance(slot, dict) else None
+    return raw if isinstance(raw, int) and not isinstance(raw, bool) else None
+
+
+def _kx_place(slots: list, size: int) -> list:
+    """A box's slots by their own firmware "index" (0..size-1), so a shuffled report keeps each spool in its
+    slot; a box whose slots carry no index at all is positional. With some indexed and some not, only the
+    indexed ones count."""
+    if all(isinstance(s, dict) and "index" not in s for s in slots):  # no index at all; a bad one is never a position
+        return slots[:size]
+    placed = {_kx_index(s): s for s in slots if _kx_index(s) is not None and 0 <= _kx_index(s) < size}
+    return [placed.get(i) for i in range(max(placed, default=-1) + 1)]
+
+
+def kx_merge_boxes(old: object, new: object) -> list:
+    """The boxes after a report: one naming only some boxes updates those by id and keeps the rest, whatever
+    its action (a partial getInfo too); only an empty list, the printer saying it has none, clears them."""
+    new = [b for b in new if isinstance(b, dict)] if isinstance(new, list) else []
+    if not new or not isinstance(old, list):
+        return new
+    keyed = {_kx_box_id(b): b for b in old if isinstance(b, dict)}
+    for box in new:
+        was = keyed.get(_kx_box_id(box), {})
+        merged = {**was, **box}  # a report without slots (drying, feed state) keeps the box's slots
+        a, b = was.get("slots"), box.get("slots")
+        # A report naming only some slots (by their own index) changes those and keeps the box's others.
+        if isinstance(a, list) and isinstance(b, list) and all(_kx_index(s) is not None for s in a + b):
+            merged["slots"] = list({**{_kx_index(s): s for s in a}, **{_kx_index(s): s for s in b}}.values())
+        keyed[_kx_box_id(box)] = merged
+    return [b for k, b in keyed.items() if k is not None]
+
+
 def kx_report(boxes: object, external: object, spools: list[dict], target: str = "") -> dict:
-    """A Bambu-shaped report from multiColorBox and extfilbox replies."""
+    """A Bambu-shaped report from multiColorBox and extfilbox replies, numbered as kobracontrol's ace.py does:
+    an ACE (box id >= 0) is the unit of its id with 4 slots; the spool holder (box id -1) is the unit after the
+    last ACE (0 alone), cut to 3 slots when an ACE is there. Each unit says its "source" ("ace" or "holder"),
+    so none is made up for a box the printer didn't report, and report order doesn't matter."""
     # Slots only: no gcode_state or job keys, so live_apply never books an Anycubic print (Kobra Control
     # books it; tests/test_kobra.py NoKobraBookingTest). If Spooler ever books Anycubic prints, publish
     # "books": ["anycubic"] under "provides" in presence.json in the same change: Kobra Control then stops
     # booking in that Spoolman.
-    units = []
-    for number, box in enumerate(boxes if isinstance(boxes, list) else []):
-        if isinstance(box, dict) and isinstance(box.get("slots"), list):
-            units.append({"id": str(number), "tray": [kx_tray(i, s, spools, target, number * 4 + i + 1)
-                                                      for i, s in enumerate(box["slots"][:4])]})
+    aces: dict[int, list] = {}
+    holder = None
+    for box in boxes if isinstance(boxes, list) else []:
+        if _kx_box_id(box) is None:
+            continue
+        # Every ACE counts for the holder's place, even one that has reported no slots yet.
+        slots = box["slots"] if isinstance(box.get("slots"), list) else []
+        if _kx_box_id(box) == -1:
+            holder = slots
+        else:
+            aces[_kx_box_id(box)] = _kx_place(slots, 4)
+    units = [{"id": str(n), "source": "ace", "box": n, "size": 4,
+              "tray": [kx_tray(i, s, spools, target, n * 4 + i + 1) for i, s in enumerate(aces[n])]}
+             for n in sorted(aces)]
+    if holder is not None:
+        pos, cap = max(aces, default=-1) + 1, 3 if aces else 4
+        held = _kx_place(holder, cap)
+        # With an ACE the holder is always its 3 positions; alone it is as many as the printer reported.
+        units.append({"id": str(pos), "source": "holder", "box": -1, "size": 3 if aces else max(1, len(held)),
+                      "tray": [kx_tray(i, s, spools, target, pos * 4 + i + 1) for i, s in enumerate(held)]})
     report: dict = {"ams": {"ams": units}}
     if isinstance(external, dict):
         report["vt_tray"] = dict(kx_tray(_moonraker.MOON_EXT, external, spools, target), id=str(_moonraker.MOON_EXT))
@@ -340,7 +397,7 @@ def _kx_session(pid: str, link: dict, stop: threading.Event) -> None:
             data = doc.get("data") if isinstance(doc, dict) else None
             kind = str(doc.get("type") or "").lower() if isinstance(doc, dict) else ""
             if kind == "multicolorbox" and isinstance(data, dict) and "multi_color_box" in data:
-                state["boxes"] = data["multi_color_box"]
+                state["boxes"] = kx_merge_boxes(state["boxes"], data["multi_color_box"])
             elif kind == "extfilbox" and isinstance(data, dict):
                 state["external"] = data
             else:
@@ -351,7 +408,6 @@ def _kx_session(pid: str, link: dict, stop: threading.Event) -> None:
             _live_updates.live_apply(pid, link["name"], report, link=pid, full=True)
             with _live_updates._live_lock:
                 if pid in _live_updates._live["printers"]:
-                    _live_updates._live["printers"][pid]["unit_label"] = "ACE"
                     _live_updates._live["printers"][pid]["bind"] = "S"
             _live_updates._live["links"][pid] = "live"
 

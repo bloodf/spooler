@@ -745,12 +745,12 @@ _TEXT_ROWS: dict[str, tuple[str, str, str, str, str]] = {
         "料盘 #{id} 已移至 {location}。",
         "Przeniesiono szpulę #{id} do: {location}.",
     ),
-    "Spooler can only link a spool to a Snapmaker U1 toolhead or an Anycubic ACE slot.": (
-        "O Spooler só vincula uma bobina a uma cabeça da Snapmaker U1 ou a um slot do ACE da Anycubic.",
-        "Spooler solo vincula un carrete a un cabezal de la Snapmaker U1 o a una ranura del ACE de Anycubic.",
-        "Spooler verknüpft eine Spule nur mit einem Werkzeugkopf des Snapmaker U1 oder einem ACE-Slot von Anycubic.",
-        "Spooler 只能将料盘关联到 Snapmaker U1 的工具头或 Anycubic ACE 的槽位。",
-        "Spooler łączy szpulę tylko z głowicą Snapmaker U1 albo ze slotem ACE Anycubic.",
+    "Spooler can only link a spool to a Snapmaker U1 toolhead or an Anycubic Kobra ACE or spool holder slot.": (
+        "O Spooler só vincula uma bobina a uma cabeça da Snapmaker U1 ou a um slot do ACE ou do suporte de carretel da Anycubic Kobra.",
+        "Spooler solo vincula un carrete a un cabezal de la Snapmaker U1 o a una ranura del ACE o del portabobinas de Anycubic Kobra.",
+        "Spooler verknüpft eine Spule nur mit einem Werkzeugkopf des Snapmaker U1 oder einem Slot des ACE oder Spulenhalters von Anycubic Kobra.",
+        "Spooler 只能将料盘关联到 Snapmaker U1 的工具头，或 Anycubic Kobra 的 ACE 或料盘架槽位。",
+        "Spooler łączy szpulę tylko z głowicą Snapmaker U1 albo ze slotem ACE lub uchwytu na szpule Anycubic Kobra.",
     ),
     "Spool #{id} isn't linked to {slot}.": (
         "A bobina #{id} não está vinculada a {slot}.",

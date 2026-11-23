@@ -4,11 +4,11 @@ import Button from 'primevue/button';
 import { OuiHint, OuiStatus } from '@orca-plugins/ui-foundation/src/components';
 import TrayCard from './TrayCard.vue';
 import SpoolPicker from './SpoolPicker.vue';
-import { m } from '../state/main';
+import { m, words } from '../state/main';
 import { ui, moonSet, bindSlot } from '../state/printers';
 import { ask } from '../core/dialog';
 import { t } from '../core/i18n';
-import { PROG_LIVE, WAIT_SLOTS_MS, type LivePrinter, type LiveUnit, type Tray } from '../logic/printers';
+import { linkSlot, liveUnitName, PROG_LIVE, WAIT_SLOTS_MS, type LivePrinter, type LiveUnit, type Tray } from '../logic/printers';
 
 // What a live printer reports: toolheads, AMS units, external spool — or, for a single-extruder Klipper printer
 // with Spoolman, the active spool Moonraker books usage to (Change Spool / Clear). A U1 toolhead or an Anycubic
@@ -20,13 +20,10 @@ const act = computed(() => {
 });
 const moon = computed(() => props.lv.spool_set && m.source === 'spoolman');
 const units = computed(() => {
-  let ams = 0;
   return props.lv.units.map((u: LiveUnit) => {
     if (props.lv.heads) return { u, label: t('printer.toolheads') };
     if (u.kind === 'ht') return { u, label: t('printer.ht') };
-    ams += 1;
-    const name = props.lv.unit_label || t('printer.ams');
-    return { u, label: props.lv.unit_label && props.lv.units.length === 1 ? name : `${name} ${ams}` };
+    return { u, label: liveUnitName(props.lv, u, words.value) };
   });
 });
 const picking = computed(() => ui.picking?.moon && ui.picking.p === props.link);
@@ -39,7 +36,7 @@ function pick(id: number) { ui.picking = null; moonSet(props.link, id); }
 
 // Linking a slot: the 0-based slot U1 Control (toolhead) or Kobra Control (box * 4 + slot) counts.
 const bindable = computed(() => (props.lv.bind === 'T' || props.lv.bind === 'S') && m.source === 'spoolman');
-const slotOf = (u: LiveUnit, i: number) => (props.lv.bind === 'S' ? Number(u.id) * 4 + i : i);
+const slotOf = (u: LiveUnit, i: number) => linkSlot(props.lv, u, i);
 const canBind = (tr: Tray) => bindable.value && !tr.empty && tr.linked !== 'printer';
 const bound = (tr: Tray) => tr.spool != null && (tr.linked === 'u1control' || tr.linked === 'kobracontrol');
 const isBinding = (slot: number) => !!ui.picking?.bind && ui.picking.p === props.link && ui.picking.s === slot;

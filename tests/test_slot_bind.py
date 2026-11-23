@@ -81,7 +81,7 @@ class BindTest(Base):
 
 
 class ReadTest(Base):
-    BOX = [{"slots": [{"type": "PLA", "color": [0, 0, 255], "status": 5},
+    BOX = [{"id": 0, "slots": [{"type": "PLA", "color": [0, 0, 255], "status": 5},
                       {"type": "PLA", "color": [255, 0, 0], "status": 5, "consumables_percent": 70}]}]
 
     def test_kobra_reads_kobra_controls_binding_before_the_colour(self):
