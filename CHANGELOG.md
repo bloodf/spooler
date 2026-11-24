@@ -5,6 +5,11 @@ Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); 
 
 ## [Unreleased]
 
+## [0.33.4] - 2026-11-24
+
+### Fixed
+- An Anycubic Kobra printer that Kobra Control is also connected to no longer drops Spooler's link ("Can't reach the printer") during prints. Kobra 3 and S1 printers accept one LAN connection at a time, and both plugins were opening one. While Kobra Control (0.12.4 or later) is connected to the printer, Spooler now shows the ACE and spool holder slots Kobra Control reports and doesn't connect to the printer itself; the card says "Live via Kobra Control". Without Kobra Control, or when it lets go of the printer, Spooler connects as before. The separate external spool slot isn't shown while Kobra Control holds the printer. Reported on Orca Cloud by @Er_Nando_Blando.
+
 ## [0.33.3] - 2026-11-24
 
 ### Fixed

@@ -482,7 +482,7 @@ def live_snapshot() -> dict:
                              "units": units, "ext": ext, "job": _live_prog(state),
                              "heads": bool(state.get("heads")), "unit_label": state.get("unit_label", ""),
                              "spool_set": bool(state.get("spool_set")), "hh": bool(state.get("hh")),
-                             "bind": state.get("bind") or ""})
+                             "bind": state.get("bind") or "", "via": state.get("via") or ""})
         return {"links": dict(_live["links"]), "printers": printers}
 
 

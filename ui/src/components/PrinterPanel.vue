@@ -43,7 +43,9 @@ const byId = computed(() => new Map(m.spools.filter(s => !s.archived).map(s => [
 // The link's state, as a chip; a printer with no link says how many of its slots are assigned instead.
 const status = computed<{ state: OuiState; text: string } | null>(() => {
   if (!p.value.ip || (!p.value.has_code && !p.value.auto)) return null;
-  if (live.value) return (lv.value?.age ?? 0) > LIVE_STALE ? { state: 'stale', text: t('link.stale') } : { state: 'ok', text: t('link.live') };
+  if (live.value) return (lv.value?.age ?? 0) > LIVE_STALE ? { state: 'stale', text: t('link.stale') }
+    : { state: 'ok', text: lv.value?.via === 'kobracontrol' ? t('link.kobra') : t('link.live') };
+  if (link.value === 'kobra_wait') return { state: 'connecting', text: t('link.kobraWait') };
   const failed: Record<string, string> = { auth: net.value ? t('link.authNet') : t('link.auth'), serial: t('link.serial'),
     unreachable: net.value ? t('link.unreachableNet', { ip: p.value.ip }) : t('link.unreachable', { ip: p.value.ip }),
     none: t(/^(https?:\/\/)?(127\.|localhost\b|\[?::1\]?)/i.test(p.value.ip) ? 'link.local' : 'link.none', { ip: p.value.ip }) };
