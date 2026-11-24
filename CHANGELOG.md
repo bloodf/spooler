@@ -5,6 +5,8 @@ Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); 
 
 ## [Unreleased]
 
+## [0.33.1] - 2026-11-23
+
 ### Fixed
 - A Kobra slot linked to a spool now shows that spool's colour, matching its name and number. It used to draw the colour the ACE read, so a spool named "Verde escuro" could show orange.
 - A Sovol SV06 no longer shows 8 toolheads. Klipper answers `extruder1` to `extruder7` with a null temperature for extruders the printer doesn't have, and Spooler counted each as one; only an extruder reporting a temperature counts now. A filament config longer than the real extruders is cut to them too.
