@@ -209,6 +209,7 @@ export const es: Record<MessageKey, string> = {
   'link.button': 'Live Link', 'link.live': 'En vivo', 'link.stale': 'Sin actualizar desde hace 3 min',
   'link.auth': 'Código de acceso incorrecto', 'link.serial': 'La impresora necesita su número de serie: añádelo en Live Link',
   'link.none': '{ip} responde, pero no como una impresora Moonraker ni Anycubic en modo LAN, así que Spooler no la lee',
+  'link.local': '{ip} es este ordenador, no una impresora (por ejemplo, el puente de envío de Kobra Control): añada la impresora con su propia dirección',
   'link.unreachable': 'No se puede conectar con {ip}: ¿está la impresora encendida y en modo LAN?', 'link.waiting': 'Conectado; esperando el informe de la impresora',
   'link.connecting': 'Conectando con {ip}…', 'link.ip': 'Dirección IP', 'link.serialLabel': 'Número de serie', 'link.serialPh': 'Opcional: se detecta automáticamente',
   'link.code': 'Código de acceso', 'link.codeSaved': 'Guardado: déjalo vacío para conservarlo', 'link.codePh': 'Se muestra en la impresora', 'link.remove': 'Quitar enlace',

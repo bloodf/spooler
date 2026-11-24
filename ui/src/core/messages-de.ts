@@ -209,6 +209,7 @@ export const de: Record<MessageKey, string> = {
   'link.button': 'Live Link', 'link.live': 'Live', 'link.stale': 'Seit 3 min nicht aktualisiert',
   'link.auth': 'Falscher Zugangscode', 'link.serial': 'Der Drucker benötigt seine Seriennummer: Tragen Sie sie unter Live Link ein',
   'link.none': '{ip} antwortet, aber nicht als Moonraker- oder Anycubic-Drucker im LAN-Modus, daher liest Spooler ihn nicht',
+  'link.local': '{ip} ist dieser Computer, kein Drucker (etwa die Upload-Bridge von Kobra Control): fügen Sie den Drucker mit seiner eigenen Adresse hinzu',
   'link.unreachable': '{ip} ist nicht erreichbar: Ist der Drucker eingeschaltet und im LAN-Modus?', 'link.waiting': 'Verbunden; warten auf die Meldung des Druckers',
   'link.connecting': 'Verbindung mit {ip} wird hergestellt…', 'link.ip': 'IP-Adresse', 'link.serialLabel': 'Seriennummer', 'link.serialPh': 'Optional: wird automatisch ermittelt',
   'link.code': 'Zugangscode', 'link.codeSaved': 'Gespeichert: leer lassen, um ihn zu behalten', 'link.codePh': 'Wird am Drucker angezeigt', 'link.remove': 'Verknüpfung entfernen',

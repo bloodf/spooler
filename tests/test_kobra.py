@@ -5,6 +5,7 @@ import socket
 import struct
 import threading
 import unittest
+from unittest import mock
 
 from plugin_loader import load
 
@@ -60,6 +61,40 @@ class CredentialsTest(unittest.TestCase):
     def test_refused(self):
         with self.assertRaises(ValueError):
             sp.kx_decrypt_bundle({"code": 401}, TOKEN)
+
+
+class LanHttpTest(unittest.TestCase):
+    """/info and the signed credentials request go through http.client: OrcaSlicer's audit matches urllib.Request
+    against the full URL, and the fresh ts/nonce/sign query made it ask the user again on every connection."""
+
+    def test_credentials_without_urllib_request(self):
+        from test_audit_fixes import FakeServer
+
+        reply = json.dumps({"code": 200, "data": {"info": OPENSSL_INFO, "token": "0123456789ABCDEF"}}).encode()
+        class Routes(dict):  # /ctrl answers whatever its signed query
+            def get(self, path, default=None):
+                return (200, {}, reply) if path.startswith("/ctrl?") else super().get(path, default)
+
+        with FakeServer(Routes()) as server:
+            info = json.dumps({"token": TOKEN, "ctrlInfoUrl": f"http://127.0.0.1:{server.port}/ctrl"}).encode()
+            server.routes["/info"] = (200, {}, info)
+            with mock.patch.object(sp, "KX_INFO_PORT", server.port), \
+                    mock.patch.object(sp.urllib.request, "urlopen", side_effect=AssertionError("urllib.request")):
+                bundle = sp.kx_credentials("http://127.0.0.1")
+        self.assertEqual((bundle["deviceId"], bundle["modelId"]), ("X1", 20030))
+        ctrl = server.requests[-1]
+        self.assertEqual(ctrl["method"], "POST")
+        self.assertRegex(ctrl["path"], r"^/ctrl\?ts=\d+&nonce=\w{6}&sign=[0-9a-f]{32}&did=")
+
+    def test_not_a_printer(self):
+        from test_audit_fixes import FakeServer
+
+        with FakeServer({"/info": (200, {}, b"<html>")}) as server, mock.patch.object(sp, "KX_INFO_PORT", server.port):
+            with self.assertRaises(ValueError):
+                sp.kx_info("http://127.0.0.1")
+        with FakeServer({}) as server, mock.patch.object(sp, "KX_INFO_PORT", server.port):
+            with self.assertRaises(sp.urllib.error.HTTPError):
+                sp.kx_info("http://127.0.0.1")
 
 
 class ReportTest(unittest.TestCase):

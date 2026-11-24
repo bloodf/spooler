@@ -5,6 +5,12 @@ Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); 
 
 ## [Unreleased]
 
+## [0.33.3] - 2026-11-24
+
+### Fixed
+- An Anycubic Kobra X (or Kobra S1) in LAN mode no longer floods OrcaSlicer with "Plugin permission request" windows. The printer's sign-in address carries a new signature every time, and OrcaSlicer asked again for each one; Spooler now asks once for the printer's address, as Kobra Control does. Reported on Orca Cloud by @Er_Nando_Blando.
+- A printer whose address is this computer (127.0.0.1 or localhost, such as Kobra Control's upload bridge at 127.0.0.1:8765) now says so on its card and asks for the printer's own address, instead of "answers, but not as a Moonraker or Anycubic LAN-mode printer". Reported on Orca Cloud by @Er_Nando_Blando.
+
 ## [0.33.2] - 2026-11-23
 
 ### Fixed

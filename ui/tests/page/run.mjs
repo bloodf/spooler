@@ -893,15 +893,21 @@ test('network printer: PrusaLink link form, toolheads, and a slice-filled toolhe
   assert(vis(q('.pp')).includes('T1'), 'toolheads are named T1, T2');
 `);
 test('a printer found from a preset stays listed when its host is not one Spooler reads, and says why', `
-  const fake = {id: 'auto-127-0-0-1-7125', name: 'Snapmaker U1', auto: true, kind: 'moonraker', ip: 'http://127.0.0.1:7125', units: [], has_code: true};
+  const fake = {id: 'auto-10-0-0-7-7125', name: 'Snapmaker U1', auto: true, kind: 'moonraker', ip: 'http://10.0.0.7:7125', units: [], has_code: true};
   await spools(SPOOLS, {printers: [fake], live_ok: true});
   await tab('printer');
-  assert(text(q('.pp .oui-status')).includes('Connecting to http://127.0.0.1:7125'), 'connecting first');
+  assert(text(q('.pp .oui-status')).includes('Connecting to http://10.0.0.7:7125'), 'connecting first');
   await post({type: 'live', live: {links: {[fake.id]: 'none'}, printers: []}});
   await spools(SPOOLS, {printers: [fake], live_ok: true});
   await settle();
   assert(!text(q('.pv')).includes('No printers yet'), 'not the empty state');
   assert(text(q('.pp .oui-status')).includes('not as a Moonraker or Anycubic'), 'the card says why it is not read: ' + text(q('.pp .oui-status')));
+  // A host on this computer (Kobra Control's upload bridge) is no printer: the card asks for the printer's address.
+  const bridge = {...fake, id: 'auto-127-0-0-1-8765', ip: 'http://127.0.0.1:8765'};
+  await post({type: 'live', live: {links: {[bridge.id]: 'none'}, printers: []}});
+  await spools(SPOOLS, {printers: [bridge], live_ok: true});
+  await settle();
+  assert(text(q('.pp .oui-status')).includes('is this computer'), 'a loopback host is said to be this computer: ' + text(q('.pp .oui-status')));
 `);
 test('Klipper printer: hand-set gates, toolheads, slice fill switch and presets per printer', `
   const voron = {id: 'auto-v', name: 'Voron', auto: true, kind: 'moonraker', ip: 'http://10.0.0.9', units: [], has_code: true};
