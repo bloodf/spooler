@@ -28,6 +28,7 @@ KX_INFO_PORT = 18910
 KX_MQTT_PORT = 9883
 KX_TOPIC = "anycubic/anycubicCloud/v1"
 KX_REQUEST_SECS = 20.0
+KX_KOBRA_SECS = 3.0  # how often a session checks whether Kobra Control took the printer, and its slots are re-read
 
 
 def _xtime(a: int) -> int:
@@ -393,8 +394,16 @@ def _kx_session(pid: str, link: dict, stop: threading.Event) -> None:
         heard = time.monotonic()
         _live_updates._live["links"][pid] = "waiting"
         alive = lambda: _live_updates._live_active() and not stop.is_set()  # noqa: E731
+        checked = time.monotonic()
         while alive():
             now = time.monotonic()
+            if now - checked > KX_KOBRA_SECS:
+                checked = now
+                if _peers.kobra_holds(base) is not None:
+                    # Kobra Control took the printer: leave it now (the printer takes one client), read it from there.
+                    sock.sendall(b"\xe0\x00")  # MQTT DISCONNECT
+                    _core.log.info("%s: Kobra Control holds this printer; Spooler reads its slots from there", link["name"])
+                    return
             if now - asked > KX_REQUEST_SECS:
                 sock.sendall(_live_updates._mqtt_publish(f"{command}/multiColorBox", kx_request("multiColorBox")))
                 sock.sendall(_live_updates._mqtt_publish(f"{command}/extfilbox", kx_request("extfilbox")))
@@ -435,8 +444,22 @@ def _kx_session(pid: str, link: dict, stop: threading.Event) -> None:
             _live_updates.live_apply(pid, link["name"], report, link=pid, full=True)
             with _live_updates._live_lock:
                 if pid in _live_updates._live["printers"]:
-                    _live_updates._live["printers"][pid]["bind"] = "S"
+                    _live_updates._live["printers"][pid].update(bind="S", via="")
             _live_updates._live["links"][pid] = "live"
+
+
+def _kx_from_kobra(pid: str, link: dict, held: dict) -> None:
+    """Show the slots Kobra Control reports for a printer it holds (peers.kobra_holds), numbered and matched to
+    Spoolman as Spooler's own session does; no connection to the printer. "kobra_wait" while it is not connected."""
+    if not held["connected"]:
+        _live_updates._live["links"][pid] = "kobra_wait"
+        return
+    report = kx_report(held["boxes"], None, _core._spool_cache["spools"] or [], _peers.target_for_host(link["ip"]))
+    _live_updates.live_apply(pid, link["name"], report, link=pid, full=True)
+    with _live_updates._live_lock:
+        if pid in _live_updates._live["printers"]:
+            _live_updates._live["printers"][pid].update(bind="S", via="kobracontrol")
+    _live_updates._live["links"][pid] = "live"
 
 
 def printer_kind(base: str) -> str:
@@ -467,13 +490,20 @@ def _moon_run(pid: str, link: dict, stop: threading.Event) -> None:
         busy = False
         try:
             if kind is None:
-                kind = printer_kind(link["ip"])
+                # A printer Kobra Control holds is an Anycubic one: not even asked.
+                kind = "anycubic" if _peers.kobra_holds(link["ip"]) is not None else printer_kind(link["ip"])
                 if kind == "none":
                     _live_updates._live["links"][pid] = "none"
                     _core.log.info("%s is neither a Moonraker nor an Anycubic printer, not reading it", link["name"])
                     return
             if kind == "anycubic":
                 _moonraker.moon_found(link["ip"], 1, True)  # its ACE units report their own spools
+                held = _peers.kobra_holds(link["ip"])
+                if held is not None:
+                    _kx_from_kobra(pid, link, held)
+                    fails = 0
+                    stop.wait(KX_KOBRA_SECS)
+                    continue
                 _kx_session(pid, link, stop)
                 continue
             # Every slot is reported each time (empty ones as {"id": n}), so nothing goes stale.

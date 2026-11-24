@@ -206,7 +206,7 @@ export const zhCN: Record<MessageKey, string> = {
   'pick.label': '匹配第 {n} 种耗材丝的料盘',
   'printer.netNote': '这台打印机的打印在登记前总会先询问，不会自动登记：它不会报告是哪个工具头打印的。为它切片后，如果某种耗材丝匹配到一卷料盘，就会把该料盘放到对应的工具头上；匹配到多卷时，Spooler 会询问是哪一卷。如果 OctoPrint 的 Spoolman 插件已经为这台打印机登记用量，请不要在这里重复登记，否则耗材丝会被计算两次。',
   'printer.klipperNote': '只有在 Moonraker 自带的 Spoolman 集成关闭时，Klipper 的打印才会在这里登记（总会先询问），否则耗材丝会被计算两次。Snapmaker U1 由 U1 Control 登记。',
-  'link.button': 'Live Link', 'link.live': '实时', 'link.stale': '已 3 分钟未更新',
+  'link.button': 'Live Link', 'link.live': '实时', 'link.kobra': '通过 Kobra Control 实时显示', 'link.kobraWait': 'Kobra Control 正在连接这台打印机；连接后其料槽会显示在这里', 'link.stale': '已 3 分钟未更新',
   'link.auth': '访问码错误', 'link.serial': '打印机需要序列号：请在 Live Link 中填写',
   'link.none': '{ip} 有响应，但不是 Moonraker 或 Anycubic 局域网模式打印机，因此 Spooler 不读取它',
   'link.local': '{ip} 是这台电脑，不是打印机（例如 Kobra Control 的上传桥接）：请用打印机自己的地址添加它',
