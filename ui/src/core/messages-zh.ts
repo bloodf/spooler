@@ -209,6 +209,7 @@ export const zhCN: Record<MessageKey, string> = {
   'link.button': 'Live Link', 'link.live': '实时', 'link.stale': '已 3 分钟未更新',
   'link.auth': '访问码错误', 'link.serial': '打印机需要序列号：请在 Live Link 中填写',
   'link.none': '{ip} 有响应，但不是 Moonraker 或 Anycubic 局域网模式打印机，因此 Spooler 不读取它',
+  'link.local': '{ip} 是这台电脑，不是打印机（例如 Kobra Control 的上传桥接）：请用打印机自己的地址添加它',
   'link.unreachable': '无法连接 {ip}：打印机是否已开机并处于局域网模式？', 'link.waiting': '已连接，正在等待打印机报告',
   'link.connecting': '正在连接 {ip}…', 'link.ip': 'IP 地址', 'link.serialLabel': '序列号', 'link.serialPh': '可选：会自动查找',
   'link.code': '访问码', 'link.codeSaved': '已保存：留空则保持不变', 'link.codePh': '显示在打印机上', 'link.remove': '移除连接',

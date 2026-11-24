@@ -7,6 +7,7 @@
 
 import base64
 import hashlib
+import http.client
 import json
 import os
 import re
@@ -16,7 +17,6 @@ import threading
 import time
 import urllib.error
 import urllib.parse
-import urllib.request
 from pathlib import Path
 
 # --- Anycubic printers (Kobra X, Kobra S1) -----------------------------------------------
@@ -120,10 +120,40 @@ def _host(base: str) -> str:
     return urllib.parse.urlsplit(base).hostname or ""
 
 
+KX_MAX_BODY = 1024 * 1024  # /info and /ctrl answer a few hundred bytes
+
+
+def _kx_http(url: str, post: bool = False) -> object:
+    """The JSON a printer answers at url, through http.client, not urllib.request: OrcaSlicer's plugin audit
+    matches urllib.Request against the full URL, and the credentials request carries a fresh ts/nonce/sign query
+    each time, so every call asked the user again. http.client's network events are matched by host, so one
+    grant of the printer's address covers /info, the credentials and MQTT. Raises OSError (HTTPError for a
+    non-200 answer) when the printer can't be read, ValueError when the answer isn't JSON."""
+    parts = urllib.parse.urlsplit(url)
+    if parts.scheme not in ("http", "https") or not parts.hostname:
+        raise ValueError("The printer's LAN address isn't http")
+    kind = http.client.HTTPSConnection if parts.scheme == "https" else http.client.HTTPConnection
+    conn = kind(parts.hostname, parts.port, timeout=_core.TIMEOUT)
+    try:
+        conn.request("POST" if post else "GET", (parts.path or "/") + (f"?{parts.query}" if parts.query else ""),
+                     body=b"" if post else None, headers={"Connection": "close"})
+        resp = conn.getresponse()
+        if resp.status != 200:
+            raise urllib.error.HTTPError(f"{parts.scheme}://{parts.netloc}{parts.path}", resp.status, resp.reason,
+                                         resp.headers, None)
+        body = resp.read(KX_MAX_BODY + 1)
+    except http.client.HTTPException as exc:  # garbled HTTP: something else answers there
+        raise ValueError(f"not an Anycubic LAN-mode printer ({type(exc).__name__})") from None
+    finally:
+        conn.close()
+    if len(body) > KX_MAX_BODY:
+        raise ValueError("The printer's answer is too large")
+    return json.loads(body.decode("utf-8"))
+
+
 def kx_info(base: str) -> dict:
     """The printer's LAN-mode details, or raises."""
-    with urllib.request.urlopen(f"http://{_host(base)}:{KX_INFO_PORT}/info", timeout=_core.TIMEOUT) as resp:
-        info = json.loads(resp.read().decode("utf-8"))
+    info = _kx_http(f"http://{_host(base)}:{KX_INFO_PORT}/info")
     if not isinstance(info, dict) or len(str(info.get("token") or "")) < 32 or not info.get("ctrlInfoUrl"):
         raise ValueError("not an Anycubic LAN-mode printer")
     return info
@@ -160,10 +190,8 @@ def kx_credentials(base: str) -> dict:
     url = str(info["ctrlInfoUrl"])
     if urllib.parse.urlsplit(url).scheme not in ("http", "https"):
         raise ValueError("The printer's LAN credentials address isn't http")
-    url +=("&" if "?" in url else "?") + urllib.parse.urlencode(params)
-    with urllib.request.urlopen(urllib.request.Request(url, method="POST"), timeout=_core.TIMEOUT) as resp:
-        reply = json.loads(resp.read().decode("utf-8"))
-    return kx_decrypt_bundle(reply, info["token"])
+    url += ("&" if "?" in url else "?") + urllib.parse.urlencode(params)
+    return kx_decrypt_bundle(_kx_http(url, post=True), info["token"])
 
 
 def kx_request(kind: str, action: str = "getInfo") -> str:
