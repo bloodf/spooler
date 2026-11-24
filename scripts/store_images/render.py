@@ -117,13 +117,14 @@ SCENES = {
 }
 
 LANGS = {"en": "en", "pt-BR": "pt_BR"}     # file suffix -> what OrcaSlicer reports as its language
+EXPORT_LANGS = ("en",)    # the listing and README.md are English; README.pt-BR.md keeps its earlier images
 
 
 def exports() -> list[dict]:
     """Every export: its source in assets/marketing/source/, where it goes, its size and what its square shows."""
     rows = [{"source": "spooler-workshop-tile.png", "file": "assets/orca-cloud/spooler-tile.png", "size": (512, 512),
              "use": "Orca Cloud store tile"}]
-    for lang in LANGS:
+    for lang in EXPORT_LANGS:
         main = "cover-en" if lang == "en" else f"main-{lang}"
         rows.append({"source": f"spooler-workshop-{main}.png", "file": f"assets/orca-cloud/spooler-main-{lang}.png",
                      "size": (1600, 900), "scene": "left", "theme": "dark", "lang": lang, "use": "Orca Cloud main image"})
@@ -145,7 +146,7 @@ def exports() -> list[dict]:
             rows.append({"source": f"spooler-workshop-hero-{theme}-{lang}.png", "file": f"assets/readme/spooler-hero-{theme}-{lang}.png",
                          "size": (1600, 900), "scene": "left", "theme": theme, "lang": lang, "use": "README hero"})
     # Plain screenshots for the README: the Spools tab and the setup guide's address step.
-    for lang in LANGS:
+    for lang in EXPORT_LANGS:
         for theme in ("dark", "light"):
             for name, scene in (("spools", "wide"), ("setup", "setup")):
                 rows.append({"file": f"assets/readme/spooler-screen-{name}-{theme}-{lang}.png", "size": (1280, 720),
