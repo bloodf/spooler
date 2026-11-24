@@ -1051,7 +1051,8 @@ test('a U1 printing on toolhead T3: the job block runs and only T3 is marked in 
   assert(text(job).includes('cube') && text(job).includes('Snapmaker U1') && text(job).includes('40 / 80') && job.innerHTML.includes('50'), 'name, printer, layer, 50%: ' + text(job));
   const unit = qa('.pp').find(p => text(p.querySelector('.pp-name')) === 'Snapmaker U1');
   const cards = qa('.tc', unit);
-  eq(cards.map(c => c.querySelector('.oui-slot').hasAttribute('data-active')), [false, false, true, false], 'only T3 carries the active mark');
+  assert(cards.every(c => c.classList.contains('oui-slot')), '.tc is the OuiSlot article itself');
+  eq(cards.map(c => c.hasAttribute('data-active')), [false, false, true, false], 'only T3 carries the active mark');
   assert(text(cards[2]).includes('printing from here'), 'and says so: ' + text(cards[2]));
 `);
 test('a running print stays, marked Not reachable, while its printer is unreachable; it recovers, and a removed link leaves no job', OWNER + `

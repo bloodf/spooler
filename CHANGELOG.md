@@ -5,6 +5,13 @@ Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); 
 
 ## [Unreleased]
 
+## [0.33.2] - 2026-11-23
+
+### Fixed
+- Correct the active-toolhead browser regression to inspect the slot card itself; keep checking that only the printing head is marked active. Browser-suite failures now include the failed scenario's diagnostics.
+
+Version 0.33.1 did not pass its release gates and was not published to Orca Cloud. This release includes its fixes below.
+
 ## [0.33.1] - 2026-11-23
 
 ### Fixed
