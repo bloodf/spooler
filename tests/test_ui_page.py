@@ -251,7 +251,8 @@ class BuiltPage(unittest.TestCase):
                 def output(value):
                     return value.decode("utf-8", errors="replace") if isinstance(value, bytes) else (value or "")
                 self.fail(f"Page runner timed out after {exc.timeout}s\n{output(exc.stdout)}\n{output(exc.stderr)}")
-            self.assertEqual(proc.returncode, 0, proc.stdout[-6000:] + proc.stderr)
+            failed = [r for r in json.loads(results.read_text(encoding="utf-8")) if not r.get("ok")] if results.exists() else []
+            self.assertEqual(proc.returncode, 0, "FAILED RESULTS: " + json.dumps(failed, indent=1)[-4000:] + "\n" + proc.stdout[-6000:] + proc.stderr)
             done = json.loads(results.read_text(encoding="utf-8"))
             self.assertGreaterEqual(len(done), 37)
             self.assertTrue(all(r["ok"] for r in done))

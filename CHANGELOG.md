@@ -5,6 +5,26 @@ Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); 
 
 ## [Unreleased]
 
+## [0.33.4] - 2026-11-24
+
+### Fixed
+- An Anycubic Kobra printer that Kobra Control is also connected to no longer drops Spooler's link ("Can't reach the printer") during prints. Kobra 3 and S1 printers accept one LAN connection at a time, and both plugins were opening one. While Kobra Control (0.12.4 or later) is connected to the printer, Spooler now shows the ACE and spool holder slots Kobra Control reports and doesn't connect to the printer itself; the card says "Live via Kobra Control". Without Kobra Control, or when it lets go of the printer, Spooler connects as before. The separate external spool slot isn't shown while Kobra Control holds the printer. Reported on Orca Cloud by @Er_Nando_Blando.
+
+## [0.33.3] - 2026-11-24
+
+### Fixed
+- An Anycubic Kobra X (or Kobra S1) in LAN mode no longer floods OrcaSlicer with "Plugin permission request" windows. The printer's sign-in address carries a new signature every time, and OrcaSlicer asked again for each one; Spooler now asks once for the printer's address, as Kobra Control does. Reported on Orca Cloud by @Er_Nando_Blando.
+- A printer whose address is this computer (127.0.0.1 or localhost, such as Kobra Control's upload bridge at 127.0.0.1:8765) now says so on its card and asks for the printer's own address, instead of "answers, but not as a Moonraker or Anycubic LAN-mode printer". Reported on Orca Cloud by @Er_Nando_Blando.
+
+## [0.33.2] - 2026-11-23
+
+### Fixed
+- Correct the active-toolhead browser regression to inspect the slot card itself; keep checking that only the printing head is marked active. Browser-suite failures now include the failed scenario's diagnostics.
+
+Version 0.33.1 did not pass its release gates and was not published to Orca Cloud. This release includes its fixes below.
+
+## [0.33.1] - 2026-11-23
+
 ### Fixed
 - A Kobra slot linked to a spool now shows that spool's colour, matching its name and number. It used to draw the colour the ACE read, so a spool named "Verde escuro" could show orange.
 - A Sovol SV06 no longer shows 8 toolheads. Klipper answers `extruder1` to `extruder7` with a null temperature for extruders the printer doesn't have, and Spooler counted each as one; only an extruder reporting a temperature counts now. A filament config longer than the real extruders is cut to them too.

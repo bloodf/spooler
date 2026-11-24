@@ -6,7 +6,9 @@ export interface LiveUnit { id: number | string; kind: string; trays: Tray[]; so
 export interface LivePrinter { id?: string; link?: string; name: string; heads?: boolean; unit_label?: string; units: LiveUnit[]; ext?: Tray | null;
   age?: number; spool_set?: boolean; hh?: boolean; job?: Job | null;
   /** The slots the page may link a spool to: 'T' U1 toolheads (U1 Control's location), 'S' Anycubic Kobra ACE and spool holder slots (Kobra Control's). */
-  bind?: '' | 'T' | 'S' }
+  bind?: '' | 'T' | 'S';
+  /** 'kobracontrol': the slots come from Kobra Control, which holds the printer (Spooler doesn't connect to it). */
+  via?: '' | 'kobracontrol' }
 export interface Job { state: string; name?: string; pct?: number; stage?: string; layer?: number; layers?: number; left?: number | null;
   took?: number; end?: number; tray?: { unit: number | string; slot: number } | null }
 export type UnitKind = 'ams' | 'ht' | 'ext' | 'tool' | 'gate';

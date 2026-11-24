@@ -297,6 +297,36 @@ def kobra_printer(doc: object) -> dict | None:
     return {"host": host.strip(), "name": name} if isinstance(host, str) and host.strip() and name else None
 
 
+# Kobra 3/S1 printers take one MQTT client. While Kobra Control holds a printer (its presence lists it under
+# "printers": [{"host", "device", "connected", "boxes"}], "boxes" being the printer's multiColorBox report), Spooler
+# never logs in to it: it shows the slots Kobra Control reports (anycubic._kx_from_kobra). One connection per printer.
+KOBRA_BOXES = 16
+
+
+def _hostname(address: object) -> str:
+    text = address.strip() if isinstance(address, str) else ""
+    try:
+        return (urllib.parse.urlsplit(text if "://" in text else "http://" + text).hostname or "") if text else ""
+    except ValueError:
+        return ""
+
+
+def kobra_holds(address: str) -> dict | None:
+    """{"connected", "device", "boxes"} of the printer at this address while a running Kobra Control holds it
+    (connected or still connecting); None when Kobra Control isn't running in this OrcaSlicer, its presence is not
+    fresh, or it doesn't hold that printer. Never raises."""
+    doc = _read_peer(KOBRACONTROL)
+    host = _hostname(address)
+    if not host or not peer_alive(doc, KOBRACONTROL) or not isinstance(doc.get("printers"), list):
+        return None
+    for held in doc["printers"]:
+        if isinstance(held, dict) and _hostname(held.get("host")) == host:
+            boxes = held.get("boxes") if held.get("connected") is True and isinstance(held.get("boxes"), list) else []
+            return {"connected": held.get("connected") is True, "device": str(held.get("device") or "")[:64],
+                    "boxes": boxes[:KOBRA_BOXES]}
+    return None
+
+
 def watch_peer_links() -> None:
     """Re-read Spoolman when a peer says it changed a link (its presence "links" moved since the last beat)."""
     moved = False

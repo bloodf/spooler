@@ -7,6 +7,7 @@
 
 import base64
 import hashlib
+import http.client
 import json
 import os
 import re
@@ -16,7 +17,6 @@ import threading
 import time
 import urllib.error
 import urllib.parse
-import urllib.request
 from pathlib import Path
 
 # --- Anycubic printers (Kobra X, Kobra S1) -----------------------------------------------
@@ -28,6 +28,7 @@ KX_INFO_PORT = 18910
 KX_MQTT_PORT = 9883
 KX_TOPIC = "anycubic/anycubicCloud/v1"
 KX_REQUEST_SECS = 20.0
+KX_KOBRA_SECS = 3.0  # how often a session checks whether Kobra Control took the printer, and its slots are re-read
 
 
 def _xtime(a: int) -> int:
@@ -120,10 +121,40 @@ def _host(base: str) -> str:
     return urllib.parse.urlsplit(base).hostname or ""
 
 
+KX_MAX_BODY = 1024 * 1024  # /info and /ctrl answer a few hundred bytes
+
+
+def _kx_http(url: str, post: bool = False) -> object:
+    """The JSON a printer answers at url, through http.client, not urllib.request: OrcaSlicer's plugin audit
+    matches urllib.Request against the full URL, and the credentials request carries a fresh ts/nonce/sign query
+    each time, so every call asked the user again. http.client's network events are matched by host, so one
+    grant of the printer's address covers /info, the credentials and MQTT. Raises OSError (HTTPError for a
+    non-200 answer) when the printer can't be read, ValueError when the answer isn't JSON."""
+    parts = urllib.parse.urlsplit(url)
+    if parts.scheme not in ("http", "https") or not parts.hostname:
+        raise ValueError("The printer's LAN address isn't http")
+    kind = http.client.HTTPSConnection if parts.scheme == "https" else http.client.HTTPConnection
+    conn = kind(parts.hostname, parts.port, timeout=_core.TIMEOUT)
+    try:
+        conn.request("POST" if post else "GET", (parts.path or "/") + (f"?{parts.query}" if parts.query else ""),
+                     body=b"" if post else None, headers={"Connection": "close"})
+        resp = conn.getresponse()
+        if resp.status != 200:
+            raise urllib.error.HTTPError(f"{parts.scheme}://{parts.netloc}{parts.path}", resp.status, resp.reason,
+                                         resp.headers, None)
+        body = resp.read(KX_MAX_BODY + 1)
+    except http.client.HTTPException as exc:  # garbled HTTP: something else answers there
+        raise ValueError(f"not an Anycubic LAN-mode printer ({type(exc).__name__})") from None
+    finally:
+        conn.close()
+    if len(body) > KX_MAX_BODY:
+        raise ValueError("The printer's answer is too large")
+    return json.loads(body.decode("utf-8"))
+
+
 def kx_info(base: str) -> dict:
     """The printer's LAN-mode details, or raises."""
-    with urllib.request.urlopen(f"http://{_host(base)}:{KX_INFO_PORT}/info", timeout=_core.TIMEOUT) as resp:
-        info = json.loads(resp.read().decode("utf-8"))
+    info = _kx_http(f"http://{_host(base)}:{KX_INFO_PORT}/info")
     if not isinstance(info, dict) or len(str(info.get("token") or "")) < 32 or not info.get("ctrlInfoUrl"):
         raise ValueError("not an Anycubic LAN-mode printer")
     return info
@@ -160,10 +191,8 @@ def kx_credentials(base: str) -> dict:
     url = str(info["ctrlInfoUrl"])
     if urllib.parse.urlsplit(url).scheme not in ("http", "https"):
         raise ValueError("The printer's LAN credentials address isn't http")
-    url +=("&" if "?" in url else "?") + urllib.parse.urlencode(params)
-    with urllib.request.urlopen(urllib.request.Request(url, method="POST"), timeout=_core.TIMEOUT) as resp:
-        reply = json.loads(resp.read().decode("utf-8"))
-    return kx_decrypt_bundle(reply, info["token"])
+    url += ("&" if "?" in url else "?") + urllib.parse.urlencode(params)
+    return kx_decrypt_bundle(_kx_http(url, post=True), info["token"])
 
 
 def kx_request(kind: str, action: str = "getInfo") -> str:
@@ -365,8 +394,16 @@ def _kx_session(pid: str, link: dict, stop: threading.Event) -> None:
         heard = time.monotonic()
         _live_updates._live["links"][pid] = "waiting"
         alive = lambda: _live_updates._live_active() and not stop.is_set()  # noqa: E731
+        checked = time.monotonic()
         while alive():
             now = time.monotonic()
+            if now - checked > KX_KOBRA_SECS:
+                checked = now
+                if _peers.kobra_holds(base) is not None:
+                    # Kobra Control took the printer: leave it now (the printer takes one client), read it from there.
+                    sock.sendall(b"\xe0\x00")  # MQTT DISCONNECT
+                    _core.log.info("%s: Kobra Control holds this printer; Spooler reads its slots from there", link["name"])
+                    return
             if now - asked > KX_REQUEST_SECS:
                 sock.sendall(_live_updates._mqtt_publish(f"{command}/multiColorBox", kx_request("multiColorBox")))
                 sock.sendall(_live_updates._mqtt_publish(f"{command}/extfilbox", kx_request("extfilbox")))
@@ -407,8 +444,22 @@ def _kx_session(pid: str, link: dict, stop: threading.Event) -> None:
             _live_updates.live_apply(pid, link["name"], report, link=pid, full=True)
             with _live_updates._live_lock:
                 if pid in _live_updates._live["printers"]:
-                    _live_updates._live["printers"][pid]["bind"] = "S"
+                    _live_updates._live["printers"][pid].update(bind="S", via="")
             _live_updates._live["links"][pid] = "live"
+
+
+def _kx_from_kobra(pid: str, link: dict, held: dict) -> None:
+    """Show the slots Kobra Control reports for a printer it holds (peers.kobra_holds), numbered and matched to
+    Spoolman as Spooler's own session does; no connection to the printer. "kobra_wait" while it is not connected."""
+    if not held["connected"]:
+        _live_updates._live["links"][pid] = "kobra_wait"
+        return
+    report = kx_report(held["boxes"], None, _core._spool_cache["spools"] or [], _peers.target_for_host(link["ip"]))
+    _live_updates.live_apply(pid, link["name"], report, link=pid, full=True)
+    with _live_updates._live_lock:
+        if pid in _live_updates._live["printers"]:
+            _live_updates._live["printers"][pid].update(bind="S", via="kobracontrol")
+    _live_updates._live["links"][pid] = "live"
 
 
 def printer_kind(base: str) -> str:
@@ -439,13 +490,20 @@ def _moon_run(pid: str, link: dict, stop: threading.Event) -> None:
         busy = False
         try:
             if kind is None:
-                kind = printer_kind(link["ip"])
+                # A printer Kobra Control holds is an Anycubic one: not even asked.
+                kind = "anycubic" if _peers.kobra_holds(link["ip"]) is not None else printer_kind(link["ip"])
                 if kind == "none":
                     _live_updates._live["links"][pid] = "none"
                     _core.log.info("%s is neither a Moonraker nor an Anycubic printer, not reading it", link["name"])
                     return
             if kind == "anycubic":
                 _moonraker.moon_found(link["ip"], 1, True)  # its ACE units report their own spools
+                held = _peers.kobra_holds(link["ip"])
+                if held is not None:
+                    _kx_from_kobra(pid, link, held)
+                    fails = 0
+                    stop.wait(KX_KOBRA_SECS)
+                    continue
                 _kx_session(pid, link, stop)
                 continue
             # Every slot is reported each time (empty ones as {"id": n}), so nothing goes stale.

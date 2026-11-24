@@ -228,9 +228,10 @@ export const pl: Record<MessageKey, string> = {
   'printer.netNote': 'Wydruki na tej drukarce są zawsze księgowane po pytaniu, nigdy automatycznie: drukarka nie zgłasza, która głowica drukowała. Po cięciu dla niej filament pasujący do jednej szpuli trafia na tę głowicę; gdy pasuje kilka, Spooler pyta, którą wybrać. Jeśli wtyczka Spoolman w OctoPrint już księguje tę drukarkę, nie księguj jej także tutaj, bo filament zostanie policzony dwa razy.',
   'printer.klipperNote': 'Wydruki z Klippera są księgowane tutaj (zawsze po pytaniu) tylko wtedy, gdy własna integracja Moonrakera ze Spoolmanem jest wyłączona; inaczej filament zostałby policzony dwa razy. Snapmakera U1 księguje U1 Control.',
 
-  'link.button': 'Live Link', 'link.live': 'Na żywo', 'link.stale': 'Brak aktualizacji od 3 min', 'link.auth': 'Błędny kod dostępu',
+  'link.button': 'Live Link', 'link.live': 'Na żywo', 'link.kobra': 'Na żywo przez Kobra Control', 'link.kobraWait': 'Kobra Control łączy się z tą drukarką; jej sloty pojawią się tutaj po połączeniu', 'link.stale': 'Brak aktualizacji od 3 min', 'link.auth': 'Błędny kod dostępu',
   'link.serial': 'Drukarka potrzebuje numeru seryjnego: dodaj go w Live Link',
   'link.none': '{ip} odpowiada, ale nie jako drukarka Moonraker ani Anycubic w trybie LAN, więc Spooler jej nie odczytuje',
+  'link.local': '{ip} to ten komputer, a nie drukarka (na przykład most wysyłania Kobra Control): dodaj drukarkę pod jej własnym adresem',
   'link.unreachable': 'Nie można połączyć z {ip}: czy drukarka jest włączona i w trybie LAN?',
   'link.waiting': 'Połączono, czekanie na dane z drukarki', 'link.connecting': 'Łączenie z {ip}…', 'link.ip': 'Adres IP',
   'link.serialLabel': 'Numer seryjny', 'link.serialPh': 'Opcjonalnie: wykrywany automatycznie', 'link.code': 'Kod dostępu',
