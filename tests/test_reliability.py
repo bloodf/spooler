@@ -82,13 +82,13 @@ class NetworkGuardTest(unittest.TestCase):
     """The guard plugin_loader installs refuses every non-loopback connection, in every test module."""
 
     def test_lan_and_internet_are_refused(self):
-        for host in ("10.25.7.41", "192.168.1.2", "spoolman.invalid", "api.github.com"):
+        for host in ("192.0.2.41", "192.168.1.2", "spoolman.invalid", "api.github.com"):
             with self.assertRaises(AssertionError):
                 sp.socket.create_connection((host, 80), timeout=1)
 
     def test_urllib_goes_through_the_guard(self):
         with self.assertRaises(AssertionError):
-            sp.urllib.request.urlopen("http://10.25.16.41:7125/server/info", timeout=1)
+            sp.urllib.request.urlopen("http://192.0.2.41:7125/server/info", timeout=1)
 
     def test_loopback_is_allowed(self):
         # A real listener, so the result doesn't depend on how an OS answers a closed port (Windows

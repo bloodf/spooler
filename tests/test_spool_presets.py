@@ -256,8 +256,8 @@ class SpoolNameTest(unittest.TestCase):
 
 
 class UseWithTest(unittest.TestCase):
-    PRINTERS = [{"target": U1, "label": "Snapmaker U1", "hosts": ["http://10.25.1.83"]},
-                {"target": SV06, "label": "Sovol SV06", "hosts": ["http://10.25.1.234:7125"]}]
+    PRINTERS = [{"target": U1, "label": "Snapmaker U1", "hosts": ["http://192.0.2.83"]},
+                {"target": SV06, "label": "Sovol SV06", "hosts": ["http://192.0.2.234:7125"]}]
 
     def targets(self, s, loaded=None):
         return sp.spool_targets(s, self.PRINTERS, loaded or {})
@@ -279,8 +279,8 @@ class UseWithTest(unittest.TestCase):
             self.assertEqual(self.targets({**spool(5, filament(1, "x", "PLA")), "extra": extra}, {"5": {SV06}}), [SV06], extra)
 
     def test_loaded_from_printer_tab_slots_and_live_link(self):
-        cfg = [{"id": "p1", "ip": "10.25.1.234", "units": [{"kind": "ams", "slots": ["5", None, "6", None]}]},
-               {"id": "auto-u1", "ip": "http://10.25.1.83", "units": []},
+        cfg = [{"id": "p1", "ip": "192.0.2.234", "units": [{"kind": "ams", "slots": ["5", None, "6", None]}]},
+               {"id": "auto-u1", "ip": "http://192.0.2.83", "units": []},
                {"id": "p3", "ip": "10.9.9.9", "units": [{"kind": "ams", "slots": ["9", None, None, None]}]}]
         live = {"printers": [{"id": "auto-u1", "units": [{"trays": [{"spool": 7}, {"spool": None}]}], "ext": {"spool": 8}},
                              {"id": "p1", "units": [], "ext": None}]}

@@ -12,7 +12,7 @@ const DISPLAY = { group_same: true, in_use: true, vendor: true, material: true, 
   head_vendor: true, head_material: true, head_colour_code: true, head_weight: true, head_bar: true, head_spool: true, head_preset: true, head_rfid: true };
 const SETTINGS = { url: 'http://192.168.1.10:7912', verified_url: '', default_url: 'http://localhost:7912', source: 'spoolman', low_stock: 100, plate_check: true,
   plate_margin: 10, weight_display: 'both', show_cart: true, spool_columns: 1, progress: { on: true, finish: true, slot: true, idle: 'line' },
-  stats: { on: true, cur: 'spoolman' }, display: DISPLAY, drying: { PETG: 30, TPU: 14, PLA: 0 }, cur_code: 'EUR', wizard: false, log_path: '/Users/me/Library/Application Support/OrcaSlicer/spooler/spooler.log' };
+  stats: { on: true, cur: 'spoolman' }, display: DISPLAY, drying: { PETG: 30, TPU: 14, PLA: 0 }, cur_code: 'EUR', wizard: false, log_path: '/example/user/Library/Application Support/OrcaSlicer/spooler/spooler.log' };
 const STATE = `
 const now = Date.now() / 1000;
 const f = (id, name, mat, hex, vendor, fid) => ({id: fid, name, material: mat, color_hex: hex, vendor: {name: vendor}});

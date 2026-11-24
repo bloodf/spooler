@@ -19,12 +19,12 @@ class DataDirTest(unittest.TestCase):
     def test_the_folder_above_orca_plugins_is_the_data_folder(self):
         plugin = Path("/work/orca-test-data/orca_plugins/cloud/u1/__whl_extracted__/spooler")
         self.assertEqual(sp._data_dir(plugin), Path("/work/orca-test-data/spooler"))
-        default = Path("/Users/x/Library/Application Support/OrcaSlicer/orca_plugins/__whl_extracted__/spooler")
-        self.assertEqual(sp._data_dir(default), Path("/Users/x/Library/Application Support/OrcaSlicer/spooler"))
+        default = Path("/example/user/Library/Application Support/OrcaSlicer/orca_plugins/__whl_extracted__/spooler")
+        self.assertEqual(sp._data_dir(default), Path("/example/user/Library/Application Support/OrcaSlicer/spooler"))
 
     def test_the_default_location_is_only_a_fallback(self):
-        with mock.patch.object(sp, "_config_root", lambda: Path("/home/x/.config")):
-            self.assertEqual(sp._data_dir(Path("/src/plugin/spooler")), Path("/home/x/.config/OrcaSlicer/spooler"))
+        with mock.patch.object(sp, "_config_root", lambda: Path("/example/user/.config")):
+            self.assertEqual(sp._data_dir(Path("/src/plugin/spooler")), Path("/example/user/.config/OrcaSlicer/spooler"))
 
     def test_a_settings_file_the_sandbox_refuses_is_read_once(self):
         reads = []
