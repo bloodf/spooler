@@ -8,7 +8,7 @@ import Select from 'primevue/select';
 import SelectButton from 'primevue/selectbutton';
 import Textarea from 'primevue/textarea';
 import ToggleSwitch from 'primevue/toggleswitch';
-import { OuiBanner, OuiFormRow, OuiIcon, OuiLevel, OuiPresetMatch, OuiSpool, OuiSwatch } from '@orca-plugins/ui-foundation/src/components';
+import { longList, OuiBanner, OuiFormRow, OuiIcon, OuiLevel, OuiPresetMatch, OuiSpool, OuiSwatch } from '@orca-plugins/ui-foundation/src/components';
 import { plus, rfid, x } from '@orca-plugins/ui-foundation/src/icons';
 import EditorNumber from './EditorNumber.vue';
 import EditorExtra from './EditorExtra.vue';
@@ -168,7 +168,7 @@ async function save() {
             <SelectButton v-model="source" :options="sources" option-label="label" option-value="value" :allow-empty="false" :aria-label="t('editor.sourceLabel')" data-test="editor-source" />
             <div v-if="source === 'existing'" class="oui-field se-pick">
               <label for="se-pick">{{ t('editor.pick') }}</label>
-              <Select v-model="pickId" input-id="se-pick" :options="filaments" option-label="label" option-value="value" filter :placeholder="t('editor.pickPh')"
+              <Select v-model="pickId" input-id="se-pick" :options="filaments" option-label="label" option-value="value" :virtual-scroller-options="longList(filaments.length, 32)" filter :placeholder="t('editor.pickPh')"
                       :invalid="tried && pickId === null" :empty-message="t('editor.noFilaments')" aria-describedby="se-pick-h" data-test="editor-pick">
                 <template #option="{ option }"><span class="se-opt"><OuiSwatch v-bind="spoolPaint(option.f)" />{{ option.label }}</span></template>
               </Select>
@@ -194,7 +194,7 @@ async function save() {
                            :placeholder="t('presets.useWithAuto')" :show-toggle-all="false" fluid aria-describedby="se-usewith-h" data-test="editor-usewith" />
               <span id="se-usewith-h" class="oui-sr">{{ t('presets.useWithHelp') }}</span></OuiFormRow>
             <OuiFormRow v-if="!adding && pl" :label="t('editor.presetLink')" for="se-link" :hint="t('editor.presetLinkHelp')">
-              <Select v-model="linkSpool" input-id="se-link" :options="pl.presets" editable show-clear :placeholder="t('editor.presetLinkNone')" fluid data-test="editor-link" /></OuiFormRow>
+              <Select v-model="linkSpool" input-id="se-link" :options="pl.presets" :virtual-scroller-options="longList(pl.presets.length, 32)" editable show-clear :placeholder="t('editor.presetLinkNone')" fluid data-test="editor-link" /></OuiFormRow>
             <OuiFormRow v-for="d in defs.spool" :key="d.key" :label="d.name || d.key" :for="`se-sx-${d.key}`" :error="err('spool.' + d.key)">
               <EditorExtra v-model="sf.extra[d.key]" :def="d" :id="`se-sx-${d.key}`" :invalid="!!err('spool.' + d.key)" /></OuiFormRow>
           </section>
@@ -227,7 +227,7 @@ async function save() {
             <OuiFormRow :label="t('editor.weight')" for="se-fw"><EditorNumber id="se-fw" v-model="ff.weight" :min="0" :max="100000" :digits="1" unit="g" /></OuiFormRow>
             <OuiFormRow :label="t('editor.spoolWeight')" for="se-sw"><EditorNumber id="se-sw" v-model="ff.spool_weight" :min="0" :max="100000" :digits="1" unit="g" /></OuiFormRow>
             <OuiFormRow v-if="!adding && pl" :label="t('editor.presetLink')" for="se-link-fil" :hint="t('editor.presetLinkFilHelp')">
-              <Select v-model="linkFil" input-id="se-link-fil" :options="pl.presets" editable show-clear :placeholder="t('editor.presetLinkNone')" fluid data-test="editor-link-fil" /></OuiFormRow>
+              <Select v-model="linkFil" input-id="se-link-fil" :options="pl.presets" :virtual-scroller-options="longList(pl.presets.length, 32)" editable show-clear :placeholder="t('editor.presetLinkNone')" fluid data-test="editor-link-fil" /></OuiFormRow>
             <OuiFormRow v-for="row in (adding ? [] : matches)" :key="row.target" :label="t('match.title')" :hint="t('match.help', { printer: row.label })" stacked data-test="editor-match">
               <OuiPresetMatch :name="row.name" :score="row.score" :confident="row.confident" :reasons="words(row.reasons)" :badge="matchBadge(row)" :remembered="row.source === 'remembered' || row.source === 'ofd'"
                               :candidates="[...row.candidates.map(c => ({ name: c.name, score: c.score, reasons: words(c.reasons) })),

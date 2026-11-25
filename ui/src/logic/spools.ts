@@ -148,6 +148,20 @@ const inOrder = (token: string, word: string) => {
   return true;
 };
 
+// A search box asks about every spool on each keystroke: fold a spool's text once (per spool object; a refresh brings new ones).
+const searched = new WeakMap<Spool, { text: string; words: string[]; joined: string }>();
+function searchText(s: Spool) {
+  let known = searched.get(s);
+  if (!known) {
+    const f = s.filament || {};
+    const text = fold([f.name, f.material, f.vendor?.name, s.location, s.lot_nr, s.comment, f.color_hex].filter(Boolean).join(' '));
+    const words = text.split(WORDS).filter(Boolean);
+    known = { text, words, joined: words.join('') };  // joined: separators do not matter, "shelf-a" finds "Shelf A"
+    searched.set(s, known);
+  }
+  return known;
+}
+
 /** "#12" and a plain number find spool 12 exactly (never fuzzy: 12 is not 13). Other text: every typed word has to be in the
  * name, material, manufacturer, location, lot, comment or colour, in any order, ignoring case and accents, as typed or, for 3+
  * letters, with letters missing ("plmk" finds Polymaker, "blck" Black). No typo correction beyond missing letters. */
@@ -155,10 +169,7 @@ export function spoolMatches(s: Spool, query: string): boolean {
   const typed = fold(query).trim();
   if (/^#\d+$/.test(typed)) return String(s.id) === typed.slice(1);
   if (/^\d+$/.test(typed)) return String(s.id) === typed;  // a bare number is an id, not text in a lot or colour
-  const f = s.filament || {};
-  const text = fold([f.name, f.material, f.vendor?.name, s.location, s.lot_nr, s.comment, f.color_hex].filter(Boolean).join(' '));
-  const words = text.split(WORDS).filter(Boolean);
-  const joined = words.join('');  // separators do not matter: "shelf-a" finds "Shelf A"
+  const { text, words, joined } = searchText(s);
   if (text.includes(typed) || joined.includes(typed.replace(WORDS, ''))) return true;
   // Word by word, in any order. A number is an id ("red 7" is red AND spool 7, never a 7 inside the text). A word of 1-2 letters
   // is a whole word ("b" is not the b of "black": "shelf b" stays Shelf B); longer ones are found anywhere, or with letters missing.

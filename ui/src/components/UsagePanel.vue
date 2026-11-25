@@ -4,7 +4,7 @@ import Button from 'primevue/button';
 import Select from 'primevue/select';
 import Dialog from 'primevue/dialog';
 import InputNumber from 'primevue/inputnumber';
-import { OuiIcon, OuiPanel, OuiStatus, OuiSwatch } from '@orca-plugins/ui-foundation/src/components';
+import { longList, OuiIcon, OuiPanel, OuiStatus, OuiSwatch } from '@orca-plugins/ui-foundation/src/components';
 import { chevronDown, chevronRight, clipboard, undo as undoIcon } from '@orca-plugins/ui-foundation/src/icons';
 import * as bridge from '../core/bridge';
 import { m, usageState, type UsagePrint } from '../state/main';
@@ -41,12 +41,21 @@ const edit = (p: UsagePrint, slot: number) => ((edits[p.id] ??= {})[slot] ??= {}
 // "2.5" typed or pasted is 2.5 g in every language, not 25 (see core/decimal).
 const gramKeys = decimalKeys(() => locale.value);
 const gramsOf = (p: UsagePrint, r: { slot: number; grams: number }) => (edits[p.id]?.[r.slot]?.grams !== undefined ? edits[p.id][r.slot].grams : r.grams);
+// Every spool, the print's material first, then by name. Built once per spool list (and kept per material), not on every
+// render: the template asks for each pending slot, and thousands of spools sorted and labelled each time held the page.
+const byName = new Intl.Collator().compare;
+const named = computed(() => m.spools.filter(s => !s.archived).sort((x, y) => byName(x.filament?.name || '', y.filament?.name || ''))
+  .map(s => ({ mat: String(s.filament?.material || '').toLowerCase(), value: s.id, label: [s.filament?.vendor?.name,
+    s.filament?.name || t('spool.numbered', { id: s.id }), '#' + s.id, formatWeight(s.remaining_weight, shown(m.disp, 'exact_weight'), locale.value)].filter(Boolean).join(' · ') })));
+const byMaterial = computed(() => { void named.value; return new Map<string, { value: number; label: string }[]>(); });
 const spoolOptions = (material?: string) => {
   const mat = String(material || '').toLowerCase();
-  return m.spools.filter(s => !s.archived).sort((x, y) => (String(x.filament?.material || '').toLowerCase() === mat ? 0 : 1) - (String(y.filament?.material || '').toLowerCase() === mat ? 0 : 1)
-    || (x.filament?.name || '').localeCompare(y.filament?.name || '')).slice(0, 300)
-    .map(s => ({ value: s.id, label: [s.filament?.vendor?.name, s.filament?.name || t('spool.numbered', { id: s.id }), '#' + s.id,
-      formatWeight(s.remaining_weight, shown(m.disp, 'exact_weight'), locale.value)].filter(Boolean).join(' · ') }));
+  let list = byMaterial.value.get(mat);
+  if (!list) {
+    list = [...named.value.filter(o => o.mat === mat), ...named.value.filter(o => o.mat !== mat)].map(({ value, label }) => ({ value, label }));
+    byMaterial.value.set(mat, list);
+  }
+  return list;
 };
 // The plugin books 0 to 5,000 g per slot (0: nothing used from it); anything else would stay unbooked silently.
 const bookable = (p: UsagePrint) => p.rows.filter(r => r.state !== 'booked').every(r => { const v = gramsOf(p, r); return typeof v === 'number' && v >= 0 && v <= 5000; });
@@ -102,7 +111,8 @@ const left = (id?: number | null) => m.spools.find(s => s.id === id)?.remaining_
             <span class="us-spool">
               <template v-if="r.state === 'booked'">{{ r.label }} <OuiStatus state="ok" variant="plain">{{ t('usage.booked', { g: g(r.grams) }) }}</OuiStatus></template>
               <template v-else-if="r.spool">{{ r.label }} <span v-if="r.how === 'rfid'" class="oui-chip">{{ t('usage.rfid') }}</span></template>
-              <template v-else><Select :model-value="edit(p, r.slot).spool ?? null" size="small" :options="spoolOptions(r.material)" option-label="label" option-value="value" filter
+              <template v-else><Select :model-value="edit(p, r.slot).spool ?? null" size="small" :options="spoolOptions(r.material)" option-label="label" option-value="value"
+                :virtual-scroller-options="longList(spoolOptions(r.material).length, 32)" filter
                 :placeholder="t('usage.choose')" :aria-label="t('usage.chooseFor', { n: r.slot })" class="us-sel" @update:model-value="v => (edit(p, r.slot).spool = v)" />
                 <OuiStatus state="warn" variant="plain">{{ t('usage.notIdentified') }}</OuiStatus></template>
             </span>

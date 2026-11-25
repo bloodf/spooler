@@ -4,7 +4,7 @@ import Button from 'primevue/button';
 import Checkbox from 'primevue/checkbox';
 import RadioButton from 'primevue/radiobutton';
 import Select from 'primevue/select';
-import { OuiBanner, OuiFormRow, OuiFormSection, OuiStatus } from '@orca-plugins/ui-foundation/src/components';
+import { longList, OuiBanner, OuiFormRow, OuiFormSection, OuiStatus } from '@orca-plugins/ui-foundation/src/components';
 import { files } from '@orca-plugins/ui-foundation/src/icons';
 import EditorNumber from '../components/EditorNumber.vue';
 import { form, saved } from './state';
@@ -80,7 +80,7 @@ function set(key: TuneKey | 'parent', v: number | string | null): void {
         <Select :model-value="mat" input-id="tune-mat" :options="mats" option-label="label" option-value="name" editable data-test="tune-mat"
                 @update:model-value="pickMat" @blur="e => pickMat((e.target as HTMLInputElement | null)?.value)" /></OuiFormRow>
       <OuiFormRow :label="t('presets.base')" for="tune-base" :hint="t('presets.baseHelp')">
-        <Select :model-value="(row.parent as string) ?? ''" input-id="tune-base" :options="bases" option-label="label" option-value="name" filter data-test="tune-base"
+        <Select :model-value="(row.parent as string) ?? ''" input-id="tune-base" :options="bases" option-label="label" option-value="name" :virtual-scroller-options="longList(bases.length, 32)" filter data-test="tune-base"
                 @update:model-value="v => set('parent', v || null)" /></OuiFormRow>
       <OuiFormRow v-for="f in TUNE_FIELDS" :key="f.key" :label="t(`presets.key.${f.key}`)" :for="`tune-${f.key}`">
         <EditorNumber :id="`tune-${f.key}`" :model-value="value(f.key)" :min="f.min" :max="f.max" :digits="f.digits" :unit="f.unit" :data-test="`tune-${f.key}`"
