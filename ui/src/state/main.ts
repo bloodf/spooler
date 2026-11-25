@@ -140,6 +140,7 @@ export const on = <K extends keyof typeof listeners>(k: K, h: Parameters<(typeof
   (listeners[k] as Set<any>).add(h); return () => (listeners[k] as Set<any>).delete(h);
 };
 
+let spoolsSig = '';
 function render(p: any): void {
   m.received = true;
   if (p.refresh_s !== undefined && cleanEvery(p.refresh_s) !== m.refreshS) { m.refreshS = cleanEvery(p.refresh_s); auto?.restart(); }
@@ -158,13 +159,19 @@ function render(p: any): void {
   m.loadError = ''; m.errorCode = '';
   m.loadedAt = Date.now();
   if (pending('refresh')) note('success', t('list.refreshed'), 'refresh');
-  m.spools = p.spools || [];
+  // A refresh that brings the same spools keeps the list it has: a new array of new objects re-derives and redraws the whole
+  // inventory (seconds with thousands of spools) for nothing.
+  const next = p.spools || [], sig = JSON.stringify(next);
+  if (sig !== spoolsSig || !m.spools.length) { m.spools = next; spoolsSig = sig; }
   m.origin = typeof p.origin === 'number' ? p.origin : null;
   if (typeof p.source === 'string') m.source = p.source;
   if (p.profiles) m.profiles = p.profiles;
   if (typeof p.low_stock_grams === 'number') m.low = p.low_stock_grams;
   if (typeof p.weight_display === 'string') m.wMode = p.weight_display;
-  if (p.display && typeof p.display === 'object') m.disp = { ...boot.display_defaults, ...p.display };
+  if (p.display && typeof p.display === 'object') {
+    const disp = { ...boot.display_defaults, ...p.display };
+    if (JSON.stringify(disp) !== JSON.stringify(m.disp)) m.disp = disp;
+  }
   if (typeof p.show_cart === 'boolean') m.cart = p.show_cart;
   if (p.spool_columns) m.columns = p.spool_columns === 2 ? 2 : 1;
   if (p.spool_view) {

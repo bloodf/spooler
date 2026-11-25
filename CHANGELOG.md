@@ -5,6 +5,9 @@ Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); 
 
 ## [Unreleased]
 
+### Fixed
+- The Spools page no longer freezes on each Spoolman refresh with a large inventory. The list drew every spool, in the table and in the cards, and redrew them all on every refresh even when nothing had changed (about 3 seconds each with 2000 spools). It now draws only the rows and cards near the view, a refresh that brings the same spools changes nothing, and one that changes a spool redraws only what is in view. Scrolling, search, filters, sort, groups and the detail reach every spool as before.
+
 ## [0.33.5] - 2026-11-25
 
 ### Fixed

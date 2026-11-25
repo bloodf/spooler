@@ -1886,6 +1886,37 @@ test('2000 spools: the slot picker and the usage spool list open at once, draw o
   eq(qa('.p-select-overlay [role=option]').map(text), ['Acme · Spool 1999 · #1999 · 400 g'], 'every spool can be found, not only the first 300');
   await press('Escape'); await settle();
 `);
+test('2000 spools: the inventory draws only the rows in view, a refresh redraws little, and every spool stays reachable', `
+  const N = 2000;
+  const mk = w => Array.from({length: N}, (_, k) => ({id: k + 1, remaining_weight: k === 5 ? w : 400 + (k % 500), initial_weight: 1000, location: 'Shelf ' + (k % 9),
+    filament: {id: k + 1, name: 'Spool ' + String(k + 1).padStart(4, '0'), material: k % 3 ? 'PLA' : 'PETG', color_hex: ['336699', 'cc0000', '22aa44'][k % 3], vendor: {name: 'Acme'}}}));
+  await spools(mk(400)); await settle();
+  const drawn = () => qa('[data-spool]').length;
+  assert(drawn() > 0 && drawn() < 200, 'table: only the rows near the view are drawn, not all ' + N + ': ' + drawn());
+  let t0 = performance.now(); await spools(mk(400)); await settle();
+  const same = performance.now() - t0;
+  t0 = performance.now(); await spools(mk(123)); await settle();
+  const changed = performance.now() - t0;
+  assert(drawn() < 200, 'a refresh does not draw every row: ' + drawn());
+  assert(same < 1000 && changed < 1000, 'refreshes are quick: same ' + Math.round(same) + ' ms, changed ' + Math.round(changed) + ' ms');
+  // The end of the list scrolls into view and its rows are drawn; the scroll height holds every row.
+  const box = q('.sp-scroll');
+  assert(box.scrollHeight > 20 * box.clientHeight, 'the scroll height stands for every row: ' + box.scrollHeight);
+  box.scrollTop = box.scrollHeight; await settle(); await sleep(100); await settle();
+  const ends = qa('[data-spool]').map(e => Number(e.dataset.spool));
+  assert(ends.length < 200 && ends.some(id => id > N - 40), 'scrolled to the end, the last spools are drawn: ' + ends.slice(-3));
+  await click(q('[data-spool="' + Math.max(...ends) + '"]'));
+  assert(q('#sp-detail') && text(q('#sp-detail')).includes('Spool'), 'a far row opens its detail');
+  box.scrollTop = 0; await settle(); await sleep(100); await settle();
+  assert(q('[data-spool="1"]') || q('[data-spool]'), 'back at the top, its rows are drawn again');
+  await click(byTest('view-cards')); await settle();
+  assert(drawn() > 0 && drawn() < 200, 'cards: only the cards near the view are drawn: ' + drawn());
+  t0 = performance.now(); await spools(mk(321)); await settle();
+  assert(performance.now() - t0 < 1000 && drawn() < 200, 'cards: a refresh is quick and draws little');
+  const i = q('[data-test="search"]'); i.value = '#1999'; i.dispatchEvent(new Event('input', {bubbles: true})); await settle();
+  eq(qa('[data-spool]').map(e => e.dataset.spool), ['1999'], 'search reaches a spool far down');
+  await click(byTest('view-table'));
+`);
 // ------------------------------------------------------------------ runner
 async function bounded(work, stage, ms = 30000) {
   let timer;
