@@ -5,7 +5,7 @@ import Column from 'primevue/column';
 import DataTable from 'primevue/datatable';
 import InputText from 'primevue/inputtext';
 import Select from 'primevue/select';
-import { OuiHint, OuiIcon, OuiKeyValue, OuiLevel, OuiPanel, OuiSpark, OuiSpool, OuiSwatch, type OuiFact } from '@orca-plugins/ui-foundation/src/components';
+import { longList, OuiHint, OuiIcon, OuiKeyValue, OuiLevel, OuiPanel, OuiSpark, OuiSpool, OuiSwatch, type OuiFact } from '@orca-plugins/ui-foundation/src/components';
 import { archive as archiveIcon, edit, external, scale, spool as spoolIcon, upload, x } from '@orca-plugins/ui-foundation/src/icons';
 import SpoolChips from './SpoolChips.vue';
 import { boot } from '../core/boot';
@@ -185,7 +185,7 @@ async function save() {
     <div v-if="canAct && detail" class="sd-preset" data-test="detail-preset">
       <template v-if="presets.length">
         <div class="oui-field"><label :for="`sd-preset-${s.id}`">{{ t('detail.preset') }}</label>
-          <Select v-model="presetPick" :input-id="`sd-preset-${s.id}`" :options="presets" option-label="label" option-value="value" size="small" aria-describedby="sd-send-h" data-test="preset-pick" /></div>
+          <Select v-model="presetPick" :input-id="`sd-preset-${s.id}`" :options="presets" option-label="label" option-value="value" :virtual-scroller-options="longList(presets.length, 32)" size="small" aria-describedby="sd-send-h" data-test="preset-pick" /></div>
         <Button severity="secondary" size="small" :label="t('list.send')" :disabled="!!sourceOff || pending('send') || !presetPick || ownLink" aria-describedby="sd-send-h" data-test="send"
                 @click="sendEdits(s.id, presetPick)"><template #icon><OuiIcon :icon="upload" :size="14" /></template></Button>
         <OuiHint :label="t('list.send')" :text="ownLink ? t('detail.ownLink') : t('list.sendHelp')" data-test="send-help" />

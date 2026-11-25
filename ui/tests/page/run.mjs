@@ -1854,6 +1854,38 @@ test('settings pages: a failed test marks the source page in the list', PAGES_JS
   assert(link('s-src').querySelector('.oui-settings-flag'), 'with the flag icon');
   assert((link('s-src').getAttribute('aria-label') || '').includes('has a value to fix'), 'and in its name');
 `, { mode: 'settings' });
+test('2000 spools: the slot picker and the usage spool list open at once, draw only the rows in view, and still reach every spool', `
+  const N = 2000;
+  const BIG = Array.from({length: N}, (_, k) => ({id: k + 1, remaining_weight: 400, initial_weight: 1000,
+    filament: {id: k + 1, name: 'Spool ' + String(k + 1).padStart(4, '0'), material: k % 3 ? 'PLA' : 'PETG', color_hex: '336699', vendor: {name: 'Acme'}}}));
+  const usage = {enabled: true, mode: 'ask', prints: [{id: 'a', name: 'Benchy', printer: 'X1', result: 'finished', time: Date.now() / 1000, state: 'pending',
+    rows: [{slot: 1, grams: 12.3, label: '', spool: null, material: 'PLA'}]}]};
+  await spools(BIG, {usage, printers: [{id: 'p1', name: 'P', units: [{kind: 'ams', slots: [null, null, null, null]}]}]});
+  await tab('printer');
+  let t0 = performance.now();
+  q('[data-focus-key="assign:p1:0:2"]').focus(); await press('Enter');
+  await until(() => qa('[data-pick]').length, 'the picker opens');
+  const opened = performance.now() - t0;
+  assert(qa('[data-pick]').length < 40, 'only the rows in view are drawn, not all ' + N + ': ' + qa('[data-pick]').length);
+  assert(opened < 750, 'the picker opens at once: ' + Math.round(opened) + ' ms');
+  await press('ArrowDown');
+  for (let k = 0; k < 30; k++) await press('ArrowDown');
+  eq(document.activeElement.dataset.pick, '31', 'Down walks past the drawn rows (sorted by name: Spool 0031)');
+  for (let k = 0; k < 31; k++) await press('ArrowUp');
+  assert(document.activeElement.matches('[data-test="picker-search"]'), 'Up from the first row returns to the search');
+  const i = q('[data-test="picker-search"]'); i.value = '#1999'; i.dispatchEvent(new Event('input', {bubbles: true})); await settle();
+  eq(qa('[data-pick]').map(b => b.dataset.pick), ['1999'], 'search reaches a spool far down the list');
+  await press('Escape'); await settle();
+  if (!q('#us-list')) await click(q('.us-toggle'));
+  t0 = performance.now();
+  q('[data-run="a"] .us-sel').click();
+  await until(() => qa('.p-select-overlay [role=option]').length, 'the usage list opens');
+  assert(qa('.p-select-overlay [role=option]').length < 60, 'usage list: only the rows in view are drawn: ' + qa('.p-select-overlay [role=option]').length);
+  assert(performance.now() - t0 < 750, 'the usage list opens at once');
+  await type(q('.p-select-overlay .p-select-filter'), '#1999'); await settle();
+  eq(qa('.p-select-overlay [role=option]').map(text), ['Acme · Spool 1999 · #1999 · 400 g'], 'every spool can be found, not only the first 300');
+  await press('Escape'); await settle();
+`);
 // ------------------------------------------------------------------ runner
 async function bounded(work, stage, ms = 30000) {
   let timer;
