@@ -5,6 +5,8 @@ Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); 
 
 ## [Unreleased]
 
+## [0.33.5] - 2026-11-25
+
 ### Fixed
 - Spool lists no longer hold the page with a large Spoolman inventory. The slot spool picker drew up to 200 spools inside the printer card, which the page laid out again on every keystroke (most of a second each with 2000 spools); it now draws only the rows in view, reaches every spool by scrolling or the arrow keys, and sorts the spools once instead of on each key. The spool list of a print waiting to be booked was sorted and labelled again on every refresh and stopped at 300 spools; it is now built once per spool list, draws only the rows in view and lists every spool. The filament, preset and base preset lists of the editor and Settings draw only the rows in view once they are long. Shared UI foundation 5.12.0.
 
