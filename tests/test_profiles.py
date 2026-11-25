@@ -181,7 +181,7 @@ class PresetTest(unittest.TestCase):
                  "sneaky": {"machine_start_gcode": "G28"}}
         # Spoolman returns a text extra field as a JSON string of the text.
         f = filament(1, "x", "PLA", settings_extruder_temp=205, extra={"orca_settings": json.dumps(json.dumps(field))})
-        u1 = sp.profile_preset(f, "x", "Generic PLA @System", "_local/cortexos-u1/Snapmaker U1 (0.4 nozzle) Balanced")
+        u1 = sp.profile_preset(f, "x", "Generic PLA @System", "_local/host-1-u1/Snapmaker U1 (0.4 nozzle) Balanced")
         self.assertEqual(u1["filament_ironing_flow"], ["15%"])
         self.assertEqual(u1["nozzle_temperature"], ["230"])  # the field wins over settings_extruder_temp
         self.assertEqual(u1["filament_max_volumetric_speed"], ["20"])
@@ -295,18 +295,18 @@ class SnapshotTest(unittest.TestCase):
         orca.host.preset_bundle = lambda: Bundle(self.root, selected=2)
         snap = sp.profile_snapshot()
         self.assertEqual(snap["folder"], "4242")
-        self.assertEqual(snap["host"], "http://10.25.1.83")
+        self.assertEqual(snap["host"], "http://192.0.2.83")
         self.assertEqual(snap["selected"], U1)
         self.assertEqual(snap["slots"], 4)
         printers = {p["target"]: p for p in snap["printers"]}
         self.assertEqual(set(printers), {U1, SV06})
         self.assertEqual(printers[U1]["label"], "Snapmaker U1")
-        self.assertEqual(printers[U1]["hosts"], ["http://10.25.1.83"])
-        self.assertEqual(printers[SV06]["hosts"], ["http://10.25.1.234"])
+        self.assertEqual(printers[U1]["hosts"], ["http://192.0.2.83"])
+        self.assertEqual(printers[SV06]["hosts"], ["http://192.0.2.234"])
         parent = next(p for p in snap["parents"] if p["name"] == "Snapmaker PLA SnapSpeed @U1")
         self.assertEqual((parent["vendor"], parent["type"], parent["printers"]), ("Snapmaker", "PLA", [U1]))
         self.assertFalse(any(re.search(r"@base| base$", p["name"]) for p in snap["parents"]))
-        self.assertEqual(sp._ui_snap["host"], "http://10.25.1.83")
+        self.assertEqual(sp._ui_snap["host"], "http://192.0.2.83")
         self.assertEqual(snap["current"], [("Generic PLA @System", True)] * 4)
         self.assertEqual(sp.profile_snapshot()["gen"], snap["gen"] + 1)
 
@@ -320,8 +320,8 @@ class SnapshotTest(unittest.TestCase):
         orca.host.preset_bundle = lambda: Bundle(self.root, selected=2)
         sp.refresh_snapshot()
         found = {p["ip"]: p["name"] for p in sp._auto_printers}
-        self.assertEqual(found, {"http://10.25.1.83": "Snapmaker U1", "http://10.25.1.234": "Sovol SV06"})
-        self.assertEqual(sp.target_for_host("http://10.25.1.234"), SV06)
+        self.assertEqual(found, {"http://192.0.2.83": "Snapmaker U1", "http://192.0.2.234": "Sovol SV06"})
+        self.assertEqual(sp.target_for_host("http://192.0.2.234"), SV06)
         sp._auto_printers.clear()
 
 

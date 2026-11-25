@@ -35,7 +35,7 @@ def names():
 
 class BaseTest(unittest.TestCase):
     def test_moon_base(self):
-        self.assertEqual(sp.moon_base("10.25.1.83"), "http://10.25.1.83")
+        self.assertEqual(sp.moon_base("192.0.2.83"), "http://192.0.2.83")
         self.assertEqual(sp.moon_base("u1.lan:7125/"), "http://u1.lan:7125")
         self.assertEqual(sp.moon_base("https://p.example/path"), "https://p.example")
         self.assertEqual(sp.moon_base(""), "")

@@ -80,11 +80,11 @@ class Bundle:
         self.printers = Collection([
             Preset(U1, {"printer_model": "Snapmaker U1", "nozzle_diameter": "0.4,0.4,0.4,0.4"}, system=True),
             Preset(SV06, {"printer_model": "Sovol SV06", "nozzle_diameter": "0.4"}, system=True),
-            Preset("Snapmaker U1 (0.4 nozzle) Balanced", {"inherits": U1, "print_host": "http://10.25.1.83"},
+            Preset("Snapmaker U1 (0.4 nozzle) Balanced", {"inherits": U1, "print_host": "http://192.0.2.83"},
                    file=str(user / "a.json")),
-            Preset("Snapmaker U1 (0.4 nozzle) - Copy", {"inherits": U1, "print_host": "10.25.1.83"},
+            Preset("Snapmaker U1 (0.4 nozzle) - Copy", {"inherits": U1, "print_host": "192.0.2.83"},
                    file=str(user / "b.json")),
-            Preset("Sovol SV06 0.4 nozzle - Klipper", {"inherits": SV06, "print_host": "http://10.25.1.234"},
+            Preset("Sovol SV06 0.4 nozzle - Klipper", {"inherits": SV06, "print_host": "http://192.0.2.234"},
                    file=str(user / "c.json")),
             Preset("Bambu Lab X1 Carbon 0.4 nozzle", {"printer_model": "Bambu Lab X1 Carbon"}, system=True),
         ], selected)
