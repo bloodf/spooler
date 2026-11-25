@@ -1,6 +1,6 @@
 // Owned headless Chrome over the DevTools protocol (no Puppeteer/Playwright, no npm dependency). Real time, real
 // input events (Input.insertText / dispatchKeyEvent) and a CSP meta like the host's. Chrome always gets
-// --use-mock-keychain --password-store=basic (Heitor's rule for every headless Chrome).
+// --use-mock-keychain --password-store=basic (required for every headless Chrome).
 import { spawn, execFileSync } from 'node:child_process';
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
