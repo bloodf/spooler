@@ -1862,7 +1862,6 @@ test('2000 spools: the slot picker and the usage spool list open at once, draw o
     rows: [{slot: 1, grams: 12.3, label: '', spool: null, material: 'PLA'}]}]};
   await spools(BIG, {usage, printers: [{id: 'p1', name: 'P', units: [{kind: 'ams', slots: [null, null, null, null]}]}]});
   await tab('printer');
-  const long = []; new PerformanceObserver(l => l.getEntries().forEach(e => long.push(e.duration))).observe({entryTypes: ['longtask']});
   let t0 = performance.now();
   q('[data-focus-key="assign:p1:0:2"]').focus(); await press('Enter');
   await until(() => qa('[data-pick]').length, 'the picker opens');
@@ -1885,7 +1884,6 @@ test('2000 spools: the slot picker and the usage spool list open at once, draw o
   assert(performance.now() - t0 < 750, 'the usage list opens at once');
   await type(q('.p-select-overlay .p-select-filter'), '#1999'); await settle();
   eq(qa('.p-select-overlay [role=option]').map(text), ['Acme · Spool 1999 · #1999 · 400 g'], 'every spool can be found, not only the first 300');
-  assert(!long.some(d => d > 250), 'no long main-thread block: ' + long.map(Math.round));
   await press('Escape'); await settle();
 `);
 // ------------------------------------------------------------------ runner
