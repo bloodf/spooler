@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 import Column from 'primevue/column';
 import DataTable from 'primevue/datatable';
 import { OuiIcon, OuiLevel, OuiSpool, OuiSwatch } from '@orca-plugins/ui-foundation/src/components';
@@ -50,12 +50,81 @@ const colourOf = (r: Row) => { const f = fil(r), fam = colorFamily(f);
 const isSel = (r: Row) => r === selectedRow.value;
 // A stack opens its list in the detail; its ×n chevron opens it in place.
 function onRow(r: Row) { if (r.kind === 'stack') pickStack(r.items.map(s => s.id)); else pickSpool(r.spool.id); }
+
+// Only the parts of the list near the view are drawn. The rows go in parts of PART; a part out of view is an empty box as
+// tall as it was when drawn (or as tall as its rows are on average), so the scroll bar, scroll position and every row
+// stay reachable. Thousands of spools drew every row on each Spoolman refresh and held the page for seconds.
+// ponytail: parts are whole tables or card grids, so the table's Up/Down keys stop at a part's edge (Tab still moves on).
+const PART = 48;   // a multiple of 1 to 4 (and 6) card columns: no half-filled card row at a part's end
+const parts = computed(() => { const out: { start: number; rows: Row[] }[] = [];
+  for (let i = 0; i < props.rows.length; i += PART) out.push({ start: i, rows: props.rows.slice(i, i + PART) }); return out; });
+const near = ref(new Set([0, 1]));
+const tall = new Map<number, number>();   // drawn height of a part, by its index
+const perRow = ref(0);                    // average drawn row height
+const boxHeight = (i: number) => `${tall.get(i) ?? parts.value[i].rows.length * (perRow.value || (props.cards ? 60 : 56))}px`;
+const index = computed(() => new Map(props.rows.map((r, i) => [r.key, i])));
+// A group's header shows once, at its first row, also where that row starts a part.
+const groupStart = (r: Row) => { const i = index.value.get(r.key) ?? 0; return i === 0 || props.rows[i - 1].group !== r.group; };
+let seen: IntersectionObserver | undefined;
+let sizes: ResizeObserver | undefined;
+const boxes = new Map<number, HTMLElement>();
+function box(el: unknown, i: number) {
+  const old = boxes.get(i);
+  if (old === el) return;
+  if (old) { seen?.unobserve(old); sizes?.unobserve(old); boxes.delete(i); }
+  if (!(el instanceof HTMLElement)) return;
+  boxes.set(i, el);
+  if (typeof IntersectionObserver !== 'undefined' && !seen) {
+    seen = new IntersectionObserver(entries => {
+      const next = new Set(near.value);
+      // A hidden list (another tab) reports nothing in view: keep what was drawn, so it is there when the tab comes back.
+      for (const e of entries) { const k = Number((e.target as HTMLElement).dataset.part);
+        if (e.isIntersecting) next.add(k); else if (e.boundingClientRect.height > 0) next.delete(k); }
+      near.value = next;
+    }, { root: el.closest('.sp-scroll'), rootMargin: '600px 0px' });
+  }
+  if (typeof ResizeObserver !== 'undefined' && !sizes) {
+    sizes = new ResizeObserver(entries => {
+      for (const e of entries) {
+        const t = e.target as HTMLElement, k = Number(t.dataset.part);
+        if (t.dataset.drawn !== '1' || !e.contentRect.height) continue;
+        tall.set(k, e.contentRect.height);
+        // Next frame: a size change made inside this callback would be a ResizeObserver loop.
+        if (!perRow.value) { const h = e.contentRect.height / Math.max(1, parts.value[k]?.rows.length ?? 1); requestAnimationFrame(() => { perRow.value ||= h; }); }
+      }
+    });
+  }
+  seen?.observe(el); sizes?.observe(el);
+}
+// Other rows (filter, sort, group, a refresh that changed them): the old heights no longer fit.
+watch(() => props.rows, () => tall.clear());
+watch(() => props.cards, () => { tall.clear(); perRow.value = 0; });
+onBeforeUnmount(() => { seen?.disconnect(); sizes?.disconnect(); });
+// Up/Down on the last (first) row of a table part go on to the next (previous) part's row.
+async function partKeys(e: KeyboardEvent, i: number) {
+  if (props.cards || (e.key !== 'ArrowDown' && e.key !== 'ArrowUp')) return;
+  const row = (e.target as HTMLElement).closest('tr');
+  const down = e.key === 'ArrowDown';
+  if (!row || (down ? row.nextElementSibling : row.previousElementSibling)) return;
+  const j = i + (down ? 1 : -1);
+  if (j < 0 || j >= parts.value.length) return;
+  e.preventDefault();
+  boxes.get(j)?.scrollIntoView({ block: 'nearest' });
+  near.value = new Set([...near.value, j]);
+  await nextTick();
+  const rows = boxes.get(j)?.querySelectorAll<HTMLElement>('tbody tr[data-spool], tbody tr[data-stack]');
+  (down ? rows?.[0] : rows?.[rows.length - 1])?.focus();
+}
 </script>
 
 <template>
-  <div v-if="cards" class="sc-grid" data-test="cards">
-    <template v-for="(r, i) in rows" :key="r.key">
-      <button v-if="groups && r.group !== rows[i - 1]?.group" type="button" class="sv-ghead sc-ghead" :aria-expanded="groups[r.group!].open" @click="emit('group', r.group!)">
+  <div class="sp-parts">
+  <div v-for="(part, pi) in parts" :key="pi" :ref="el => box(el, pi)" class="sp-part" :class="{ 'sp-cont': pi > 0 }" :data-part="pi"
+       :data-drawn="near.has(pi) ? '1' : undefined" @keydown="e => partKeys(e, pi)">
+  <div v-if="!near.has(pi)" class="sp-part-box" :style="{ height: boxHeight(pi) }" />
+  <div v-else-if="cards" class="sc-grid" data-test="cards">
+    <template v-for="r in part.rows" :key="r.key">
+      <button v-if="groups && groupStart(r)" type="button" class="sv-ghead sc-ghead" :aria-expanded="groups[r.group!].open" @click="emit('group', r.group!)">
         <OuiIcon :icon="groups[r.group!].open ? chevronDown : chevronRight" :size="14" />
         <span class="sv-gname"><strong>{{ groups[r.group!].label }}</strong> <span class="oui-meta">{{ tn('group.count', groups[r.group!].count) }}</span></span>
         <span class="sv-gbar"><span class="oui-meta oui-num">{{ left(groups[r.group!].totals) }} {{ leftOf(groups[r.group!].totals) }}</span><OuiLevel :fraction="frac(groups[r.group!].totals)" /></span>
@@ -79,11 +148,12 @@ function onRow(r: Row) { if (r.kind === 'stack') pickStack(r.items.map(s => s.id
       </button>
     </template>
   </div>
-  <DataTable v-else :value="rows" data-key="key" size="small" selection-mode="single" :selection="selectedRow" :row-class="rowClass" class="sp-table"
+  <DataTable v-else :value="part.rows" data-key="key" size="small" selection-mode="single" :selection="selectedRow" :row-class="rowClass" class="sp-table"
              :row-group-mode="groups ? 'subheader' : undefined" group-rows-by="group"
-             :pt="{ bodyRow: ({ context }: { context: { index: number } }) => rowAttrs(rows[context.index]) }" @row-click="e => onRow(e.data)">
+             :pt="{ bodyRow: ({ context }: { context: { index: number } }) => rowAttrs(part.rows[context.index]) }" @row-click="e => onRow(e.data)">
     <template v-if="groups" #groupheader="{ data }">
-      <button type="button" class="sv-ghead" :aria-expanded="groups[data.group].open" @click="emit('group', data.group)">
+      <span v-if="!groupStart(data)" class="sp-gcont" />
+      <button v-else type="button" class="sv-ghead" :aria-expanded="groups[data.group].open" @click="emit('group', data.group)">
         <OuiIcon :icon="groups[data.group].open ? chevronDown : chevronRight" :size="14" />
         <span class="sv-gname"><strong>{{ groups[data.group].label }}</strong> <span class="oui-meta">{{ tn('group.count', groups[data.group].count) }}</span></span>
         <span class="sv-gbar"><span class="oui-meta oui-num">{{ left(groups[data.group].totals) }} {{ leftOf(groups[data.group].totals) }}<template v-if="pctSide(groups[data.group].totals)"> · {{ pctSide(groups[data.group].totals) }}</template></span>
@@ -126,9 +196,15 @@ function onRow(r: Row) { if (r.kind === 'stack') pickStack(r.items.map(s => s.id
       </template>
     </Column>
   </DataTable>
+  </div>
+  </div>
 </template>
 
 <style>
+/* A part of the list after the first: one table under the other, its header row not repeated. */
+.orca-ui .sp-cont thead { display: none; }
+.sp-cont > .sc-grid { padding-top: 0; } .sp-part:not(:last-child) > .sc-grid { padding-bottom: var(--oui-s2); }
+.orca-ui tr:has(> td > .sp-gcont) { display: none; }
 /* Cards: neutral, as many 248 px columns as fit (three beside the open detail at 1280 px), one in a narrow window. The
    drawn spool is the colour on the card. The cards of a row share its height, with the state chips at the bottom; chips
    and names wrap rather than cut. The open one has the teal frame. */
