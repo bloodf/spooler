@@ -5,6 +5,11 @@ Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); 
 
 ## [Unreleased]
 
+## [0.33.7] - 2026-11-26
+
+### Fixed
+- A spool with several RFID chips in one field (the U1 stores both chips of a spool as `0463120E350289,048389EF360289`) was read as one invalid tag, so the spool showed no tags. The chip IDs are now split on commas, semicolons, pipes and new lines, and JSON lists are accepted, so any chip matches the spool.
+
 ## [0.33.6] - 2026-11-25
 
 ### Fixed
