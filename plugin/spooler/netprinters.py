@@ -583,14 +583,21 @@ def _tag_ids(value: object) -> set[str]:
         if isinstance(item, dict):
             item = item.get("uid") or item.get("id")
         text = str(item or "").strip()
-        if text.startswith('"'):
+        if text.startswith(('"', "[")):
             try:
-                text = str(json.loads(text))
+                loaded = json.loads(text)
             except ValueError:
                 pass
-        text = re.sub(r"[\s:\-\"]", "", text).upper()
-        if len(text) >= 8 and re.fullmatch(r"[0-9A-F]+", text) and text.strip("0"):
-            out.add(text)
+            else:
+                if isinstance(loaded, list):
+                    out |= _tag_ids(loaded)
+                    continue
+                text = str(loaded)
+        # One field may hold several chips of one spool, e.g. U1's card_uids "0463120E350289,048389EF360289".
+        for part in re.split(r"[,;|\n]", text):
+            part = re.sub(r"[\s:\-\"]", "", part).upper()
+            if len(part) >= 8 and re.fullmatch(r"[0-9A-F]+", part) and part.strip("0"):
+                out.add(part)
     return out
 
 

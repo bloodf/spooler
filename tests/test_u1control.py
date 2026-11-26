@@ -154,6 +154,24 @@ class SubTypeTest(unittest.TestCase):
         self.assertEqual([s["id"] for s in sp.match_spools(slot, SPOOLS + [long])], [107])
 
 
+class TwoChipSpool(unittest.TestCase):
+    """A spool with two RFID chips: U1 stores both in card_uids, comma separated."""
+    SPOOL = {"id": 300, "extra": {"card_uids": json.dumps("0463120E350289,048389EF360289")},
+             "filament": {"id": 1, "extra": {}}}
+
+    def test_both_chips_are_the_spools_tags(self):
+        self.assertEqual(sp.spool_tags(self.SPOOL), {"0463120E350289", "048389EF360289"})
+
+    def test_either_chip_matches_the_spool(self):
+        for uid in ("0463120E350289", "048389EF360289"):
+            self.assertEqual(sp.match_spool({"tag_uid": uid}, [self.SPOOL]), self.SPOOL)
+
+    def test_other_separators_and_json_lists(self):
+        self.assertEqual(sp._tag_ids("60827A6A; 3011826A"), {"60827A6A", "3011826A"})
+        self.assertEqual(sp._tag_ids('["60827A6A", "3011826A"]'), {"60827A6A", "3011826A"})
+        self.assertEqual(sp._tag_ids("60:82:7A:6A"), {"60827A6A"})
+
+
 class BridgeFolder(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
