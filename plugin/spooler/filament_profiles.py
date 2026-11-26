@@ -1071,14 +1071,14 @@ def spawn(fn, *args, name: str = "") -> threading.Thread:
     return thread
 
 
-def _write_json(path: Path, value: object, mode: int | None = None) -> None:
+def _write_json(path: Path, value: object, mode: int | None = None, indent: int | None = 2) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_name(f".{path.name}.{threading.get_ident()}.tmp")
     try:
         # Created with its mode, not chmod-ed after the write: a token is never readable by others, even briefly.
         fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o666 if mode is None else mode)
         with os.fdopen(fd, "w", encoding="utf-8") as handle:
-            handle.write(json.dumps(value, indent=2, ensure_ascii=False))
+            handle.write(json.dumps(value, indent=indent, ensure_ascii=False, **({} if indent else {"separators": (",", ":")})))
         if mode is not None:
             os.chmod(tmp, mode)  # a leftover temp file from a crash keeps its old mode through O_CREAT
         os.replace(tmp, path)

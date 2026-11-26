@@ -3,7 +3,7 @@ import * as bridge from '../core/bridge';
 import { m, note, on, pollLive } from './main';
 import { t } from '../core/i18n';
 import { ask } from '../core/dialog';
-import { addUnit, mapPresets, newPrinterId, withGates, type ManualPrinter, type PrinterType, type SlicePick, type UnitKind } from '../logic/printers';
+import { addUnit, linkSlot, mapPresets, newPrinterId, withGates, type LivePrinter, type ManualPrinter, type PrinterType, type SlicePick, type Tray, type UnitKind } from '../logic/printers';
 
 // Manual printers are edited as new arrays (never in place) and saved whole, as the previous page did.
 export const ui = reactive({ picking: null as null | { p: string; u?: number; s?: number; moon?: boolean; bind?: boolean }, renaming: '', linkOpen: '' });
@@ -62,9 +62,32 @@ export function saveLink(id: string, f: LinkForm, remove: boolean): void {
 
 /** Link a spool to a U1 toolhead or an Anycubic Kobra ACE or spool holder slot (on), or unlink it: the plugin writes the spool's Spoolman location. */
 export function bindSlot(link: string, slot: number, spool: number, on: boolean): void {
+  showBound(link, slot, spool, on);
   bridge.postMain({ type: 'spool_action', action: on ? 'bind' : 'unbind', id: spool, printer: link, slot, origin: m.origin });
   note('pending', t('action.sending'), 'spool-action');
 }
+
+// Optimistic: the slot shows the spool the moment it is picked; the plugin's answer keeps it or, when the write failed, puts back
+// what the slot showed. A live message that carries the new link replaces it as before.
+let undoBind: LivePrinter[] | null = null;
+function showBound(link: string, slot: number, spool: number, on: boolean): void {
+  const found = on ? m.spools.find(s => s.id === spool) : null;
+  if (on && !found) return;
+  const before = m.live.printers;
+  const tray = (lv: LivePrinter, tr: Tray): Tray => (on && found
+    ? { ...tr, empty: false, spool, linked: lv.bind === 'S' ? 'kobracontrol' : 'u1control', name: found.filament?.name || tr.name, type: found.filament?.material || tr.type,
+        colour: found.filament?.color_hex || tr.colour }
+    : { ...tr, spool: null, linked: '' });
+  const next = before.map(lv => (lv.link !== link ? lv : { ...lv, units: lv.units.map(u => ({ ...u, trays: u.trays.map((tr, i) => (linkSlot(lv, u, i) === slot ? tray(lv, tr) : tr)) })) }));
+  undoBind = before;
+  m.live = { ...m.live, printers: next };
+}
+on('actionDone', d => {
+  if ((d.action === 'bind' || d.action === 'unbind') && undoBind) {
+    if (!d.ok) { m.live = { ...m.live, printers: undoBind }; m.liveKey = ''; }
+    undoBind = null;
+  }
+});
 
 export function moonSet(link: string, spool: number | null, confirm = false): void {
   const msg: Record<string, unknown> = spool === null ? { type: 'moon_spool', id: link, spool: null } : { type: 'moon_spool', id: link, spool, origin: m.origin };

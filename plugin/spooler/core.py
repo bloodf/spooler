@@ -192,6 +192,8 @@ def log_page_error(data: dict) -> None:
 
 _reported = {}
 _spool_cache = {"url": "", "time": 0.0, "spools": []}
+_own_write = {"at": float("-inf")}   # when Spooler last wrote to Spoolman: its WebSocket echo of that is not news
+ECHO_SECS = 3
 
 
 def _report(key: str, error: str | None, exc_info: bool = False) -> None:

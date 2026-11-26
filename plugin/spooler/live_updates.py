@@ -258,7 +258,8 @@ def _ws_listen(sock, stop: threading.Event) -> None:
                 raise ConnectionError("Spoolman sent a message too large")
             if final:
                 text, parts = b"".join(parts), []
-                if _ws_change(text):
+                # Spooler's own write comes back as an event: the page already has its result (and reads again after it).
+                if _ws_change(text) and time.monotonic() - _core._own_write["at"] > _core.ECHO_SECS:
                     _core._spool_cache["time"] = 0.0
                     due = due or time.monotonic() + WS_DEBOUNCE
 

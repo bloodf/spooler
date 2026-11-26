@@ -134,14 +134,25 @@ export const sourceOff = computed(() => {
 });
 
 // ------------------------------------------------------------------ messages
-const listeners = { actionOk: new Set<() => void>(), plate: new Set<() => void>(), detail: new Set<(d: any) => void>(), stats: new Set<(d: any) => void>(),
+const listeners = { actionOk: new Set<() => void>(), actionDone: new Set<(d: any) => void>(), plate: new Set<() => void>(), detail: new Set<(d: any) => void>(), stats: new Set<(d: any) => void>(),
   statsExport: new Set<(d: any) => void>(), moonConfirm: new Set<(d: any) => void>(), editor: new Set<(d: any) => void>() };
 export const on = <K extends keyof typeof listeners>(k: K, h: Parameters<(typeof listeners)[K]['add']>[0]) => {
   (listeners[k] as Set<any>).add(h); return () => (listeners[k] as Set<any>).delete(h);
 };
 
 let spoolsSig = '';
+/** The last list the plugin kept (it reads Spoolman again right after): shown at once so a spool can be picked now. Only the
+ *  list changes: no read has happened, so no toast, no read time and no pending read are settled by it. */
+function renderCached(p: any): void {
+  const next = p.spools || [], sig = JSON.stringify(next);
+  if (sig !== spoolsSig || !m.spools.length) { m.spools = next; spoolsSig = sig; }
+  if (!m.received) { m.received = true; m.loadedAt = typeof p.read_at === 'number' ? p.read_at * 1000 : Date.now(); }
+  m.origin = typeof p.origin === 'number' ? p.origin : null;
+  if (typeof p.source === 'string') m.source = p.source;
+}
+
 function render(p: any): void {
+  if (p.cached) { renderCached(p); return; }
   m.received = true;
   if (p.refresh_s !== undefined && cleanEvery(p.refresh_s) !== m.refreshS) { m.refreshS = cleanEvery(p.refresh_s); auto?.restart(); }
   answered?.(!!p.ok || p.error_code === 'no_url');   // no address yet is not Spoolman being unreachable
@@ -221,7 +232,9 @@ function onMessage(d: any): void {
       if (d.action === 'editor') return;
       if (d.text) settle('spool-action', !!d.ok, d.text); else quiet('spool-action');
       if (d.ok) listeners.actionOk.forEach(h => h());
-      bridge.postMain({ type: 'refresh' });
+      listeners.actionDone.forEach(h => h(d));
+      // A write the plugin already applied to its list (a slot link, a move) shows that list at once; the read follows.
+      bridge.postMain({ type: 'refresh', ...(d.ok && d.patched ? { cached: true } : {}) });
       break;
     case 'moon_spool':
       // The printer is printing: the plugin changed nothing and asks first (state/printers.ts).

@@ -6,6 +6,7 @@
 """Spool sources: the Spoolman server and the Bambu Cloud account (read-only)."""
 
 import base64
+import hashlib
 import json
 import math
 import re
@@ -26,8 +27,12 @@ def _spoolman_open(base: str, path: str, method: str = "GET", body: object = Non
     data = None if body is None else json.dumps(body).encode("utf-8")
     request = urllib.request.Request(url, data=data, method=method,
                                      headers={"Content-Type": "application/json", **auth})
-    with urllib.request.urlopen(request, timeout=_core.TIMEOUT) as resp:
-        return json.loads(resp.read().decode("utf-8") or "null")
+    try:
+        with urllib.request.urlopen(request, timeout=_core.TIMEOUT) as resp:
+            return json.loads(resp.read().decode("utf-8") or "null")
+    finally:
+        if method != "GET":
+            _core._own_write["at"] = time.monotonic()
 
 
 def clean_url(url: str | None) -> str:
@@ -458,6 +463,45 @@ def load_spools() -> dict:
     for sp in result.get("spools") or []:
         sp["dry_days"] = _core.drying_days((sp.get("filament") or {}).get("material"), table)
     return result
+
+
+LIST_FILE = "spool-list.json"
+# The last good spool list: served at once while Spoolman is read again (stale-while-revalidate), also after a restart.
+# Memory first, <data folder>/spool-list.json after a restart. Keyed by a hash of the source and the archived setting,
+# so a list never reaches another source (the address may hold a password: it is never written).
+_listed: dict = {"key": "", "spools": None, "sig": "", "at": 0.0}  # at: when it was read (epoch s)
+
+
+def list_key(origin_key: str) -> str:
+    return hashlib.sha256(f"{origin_key}\n{_core.display_settings()['archived']}".encode("utf-8")).hexdigest()[:16]
+
+
+def listed_put(origin_key: str, spools: list[dict]) -> None:
+    """Keep a list just read, and write it down when it differs from the last one written. Never raises."""
+    key = list_key(origin_key)
+    sig = hashlib.sha256(json.dumps(spools, separators=(",", ":"), sort_keys=True).encode("utf-8")).hexdigest()
+    changed = (_listed["key"], _listed["sig"]) != (key, sig)
+    _listed.update(key=key, spools=spools, sig=sig, at=time.time())
+    if changed:
+        try:
+            _filament_profiles._write_json(_core.DATA_DIR / LIST_FILE, {"key": key, "spools": spools}, indent=None)
+        except OSError as exc:
+            _core.log.warning("Could not write %s: %s", LIST_FILE, exc)
+
+
+def listed_get(origin_key: str) -> list[dict] | None:
+    """The last good list of this source, or None."""
+    key = list_key(origin_key)
+    if _listed["key"] != key or _listed["spools"] is None:
+        path = _core.DATA_DIR / LIST_FILE
+        try:
+            doc, at = json.loads(path.read_text(encoding="utf-8")), path.stat().st_mtime
+        except (OSError, ValueError):
+            return None
+        if not isinstance(doc, dict) or doc.get("key") != key or not isinstance(doc.get("spools"), list):
+            return None
+        _listed.update(key=key, spools=[s for s in doc["spools"] if isinstance(s, dict)], sig="", at=at)
+    return _listed["spools"]
 
 
 # Modules used only when a function runs, imported last: they may import this one in turn.

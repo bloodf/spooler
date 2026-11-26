@@ -24,6 +24,7 @@ class SpoolerWindow(orca.script.ScriptPluginCapabilityBase):
         self._verified_bambu = False
         self._release_url = ""
         self._refreshing = False
+        self._again = False   # a write finished while a read ran: that read is older than it
         self._testing = False
         self._queued_test = None
         self._checking_update = False
@@ -232,7 +233,7 @@ class SpoolerWindow(orca.script.ScriptPluginCapabilityBase):
             _core.log_page_error(data)
         elif msg_type in ("ready", "refresh"):
             _core.sync_config(self)
-            self._push_data()
+            self._push_data(fast=msg_type == "ready" or data.get("cached") is True)
         elif msg_type == "settings":
             self._open_settings(data.get("page"))
         elif msg_type == "order":
@@ -274,7 +275,9 @@ class SpoolerWindow(orca.script.ScriptPluginCapabilityBase):
         elif msg_type == "ui_language":
             _tab.save_ui_language(data.get("value"))
 
-    def _push_data(self):
+    def _push_data(self, fast=False):
+        """Read the spool list and post it. fast: show the last list first (the page just opened, or a card action
+        patched it), then replace it with the read."""
         if self._panel is None or not self._panel.is_open():
             return
         _live_updates.ws_sync(self._panel.post)
@@ -288,6 +291,7 @@ class SpoolerWindow(orca.script.ScriptPluginCapabilityBase):
             })
             return
         if self._refreshing:
+            self._again = self._again or fast   # the read under way began before the write: read once more after it
             return
         snapshot = _moonraker.refresh_snapshot()
         _live_updates._local_sync()
@@ -298,7 +302,13 @@ class SpoolerWindow(orca.script.ScriptPluginCapabilityBase):
 
         def worker():
             try:
+                cached = _peers.cached_spools() if fast else None
+                if cached and panel.is_open():
+                    panel.post(cached)
                 result = _peers.fresh_spools(snapshot)
+                while self._again:
+                    self._again = False
+                    result = _peers.fresh_spools(snapshot)
             except Exception as exc:  # never leave _refreshing set: the list would stop refreshing for good
                 _core.log.exception("Reading the spool list failed")
                 result = {"ok": False, "error": _i18n.tr("Could not read the spool list: {error}", error=exc)}
@@ -394,6 +404,7 @@ if _core._PAGES:
             self._verified_bambu = False
             self._release_url = ""
             self._refreshing = False
+            self._again = False
             self._testing = False
             self._queued_test = None
             self._checking_update = False
@@ -444,7 +455,7 @@ if _core._PAGES:
                     _core.log_page_error(data)
                 elif msg_type in ("ready", "refresh"):
                     _core.sync_config(self)
-                    self._push_data()
+                    self._push_data(fast=msg_type == "ready" or data.get("cached") is True)
                     if msg_type == "ready" and _plate_check._plate["payload"]:
                         _plate_check.send_plate(_plate_check._plate["payload"])
                 elif msg_type == "settings":
@@ -492,7 +503,8 @@ if _core._PAGES:
         def _spoolman_url(self):
             return _core.get_settings().get("spoolman_url", "")
 
-        def _push_data(self):
+        def _push_data(self, fast=False):
+            """As SpoolerWindow._push_data."""
             _live_updates.ws_sync(self.post_message)
             url = self._spoolman_url()
             if _sources.source() == "spoolman" and not url:
@@ -504,6 +516,7 @@ if _core._PAGES:
                 })
                 return
             if self._refreshing:
+                self._again = self._again or fast
                 return
             snapshot = _moonraker.refresh_snapshot()
             _live_updates._local_sync()
@@ -513,7 +526,13 @@ if _core._PAGES:
 
             def worker():
                 try:
+                    cached = _peers.cached_spools() if fast else None
+                    if cached:
+                        self.post_message(cached)
                     result = _peers.fresh_spools(snapshot)
+                    while self._again:
+                        self._again = False
+                        result = _peers.fresh_spools(snapshot)
                 except Exception as exc:  # never leave _refreshing set: the list would stop refreshing for good
                     _core.log.exception("Reading the spool list failed")
                     result = {"ok": False, "error": _i18n.tr("Could not read the spool list: {error}", error=exc)}
