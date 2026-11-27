@@ -43,3 +43,10 @@ watch([pick, spools], () => { if (pick.value && m.spools.length && !spools.value
     <template #footer><Button severity="secondary" :label="t('pick.leave')" data-test="pick-leave" @click="answer(null)" /></template>
   </Dialog>
 </template>
+<style>
+.pk-list { display: grid; max-height: 240px; overflow: auto; }
+.orca-ui .pk-item { display: flex; align-items: center; gap: var(--oui-s2); padding: 6px var(--oui-s2); border: 0; border-radius: var(--oui-radius-sm); background: none; color: var(--oui-text);
+  font: inherit; text-align: start; cursor: pointer; min-width: 0; height: 44px; box-sizing: border-box; }
+.orca-ui .pk-item:hover, .orca-ui .pk-item:focus-visible { background: var(--oui-control); }
+.pk-t { display: grid; flex: 1; min-width: 0; }
+</style>

@@ -1,7 +1,7 @@
 // Card input rules shared by the spool menu, checked against the limits the plugin enforces (MAX_GRAMS).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { emptyCount, gramsValid, levelTone, lowLevel, spoolFraction, spoolMatches, stackLead } from '../../src/logic/spools.ts';
+import { emptyCount, gramsValid, levelTone, lowLevel, pickSpools, spoolFraction, spoolMatches, stackLead } from '../../src/logic/spools.ts';
 
 test('drawn spool fill: Spoolman weight, else printer percent, else unknown', () => {
   assert.equal(spoolFraction({ id: 1, remaining_weight: 250, initial_weight: 1000 }, 90), 0.25);
@@ -69,4 +69,20 @@ test('spool search: words in any order, case and accents ignored, letters may be
   assert.deepEqual(f('preto 13'), []);
   assert.deepEqual(f('petg shelf'), []);               // every word must match
   assert.deepEqual(f('prateleira'), [12]);             // location kept
+});
+
+test('slot picker spools: archived and taken left out; colour, weights and low as the colour-first picker takes them', () => {
+  const spools = [
+    { id: 1, remaining_weight: 400, initial_weight: 1000, location: 'Shelf A', filament: { name: 'Black', material: 'PLA', color_hex: '111111', vendor: { name: 'Acme' } } },
+    { id: 2, remaining_weight: 50, filament: { weight: 750, name: 'Rainbow', material: 'PLA', multi_color_hexes: 'ff0000,00ff00', vendor: { name: 'Acme' } } },
+    { id: 3, remaining_weight: 900, archived: true, filament: { name: 'Old' } },
+    { id: 4, remaining_weight: 900, filament: { name: 'Taken', color_hex: '222222' } },
+    { id: 5, remaining_weight: null, filament: {} },
+  ];
+  const out = pickSpools(spools, new Set(['4']), 100);
+  assert.deepEqual(out.map(s => s.id), [1, 2, 5]);
+  assert.deepEqual(out[0], { id: 1, name: 'Black', vendor: 'Acme', material: 'PLA', colour: '#111111', colours: null, remaining: 400, initial: 1000, location: 'Shelf A', low: false });
+  assert.deepEqual([out[1].colours, out[1].initial, out[1].low], [['#ff0000', '#00ff00'], 750, true]);
+  assert.deepEqual([out[2].name, out[2].colour, out[2].remaining, out[2].initial, out[2].low], [null, null, null, null, false]);
+  assert.deepEqual(pickSpools(spools).map(s => s.id), [1, 2, 4, 5], 'nothing taken: every spool not archived');
 });

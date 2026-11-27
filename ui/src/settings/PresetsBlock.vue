@@ -20,13 +20,15 @@ const mode = computed({ get: () => (form.presets.per_spool ? 'spool' : 'filament
 const switching = computed(() => form.presets.per_spool !== !!saved.value.presets?.per_spool);
 const tuning = computed({ get: () => form.presets.tuning, set: v => { form.presets = { ...form.presets, tuning: !!v }; } });
 
-// Open Filament Database (off by default): proposals in Edit Spool. Nothing is read until it is on and saved; the line
-// says which index is kept (the plugin answers "ofd" with "ofd_state"), Read again asks OFD now.
-const ofd = computed({ get: () => !!form.presets.ofd, set: v => { form.presets = { ...form.presets, ofd: !!v }; } });
-const ofdSaved = computed(() => !!saved.value.presets?.ofd);
+// Open Filament Database: contacted only once the user agreed, with Look up in OFD in Add Spool (the old toggle, when it
+// was on, counts as that). Here the consent is shown and can be revoked; the line says which index is kept (the plugin
+// answers "ofd" with "ofd_state"), Read again asks OFD now. The consent is not part of the form: Save never changes it.
+const ofdSaved = ref(!!saved.value.presets?.ofd);
+watch(() => saved.value.presets?.ofd, v => { ofdSaved.value = !!v; });
 const ofdState = ref<{ on: boolean; fetched?: number; version?: string; count?: number; stale?: boolean; error?: string } | null>(null);
 const ofdBusy = ref(false);
 const askOfd = (refresh: boolean) => { ofdBusy.value = refresh; bridge.postSettings({ type: 'ofd', refresh }); };
+const revokeOfd = () => { bridge.postSettings({ type: 'ofd', revoke: true }); ofdSaved.value = false; };
 const ofdLine = computed(() => {
   const st = ofdState.value;
   if (!st?.on) return '';
@@ -36,7 +38,7 @@ const ofdLine = computed(() => {
 });
 let offOfd: (() => void) | null = null;
 onMounted(() => {
-  offOfd = bridge.onMessage((d: any) => { if (d?.type === 'ofd_state') { ofdState.value = d; ofdBusy.value = false; } });
+  offOfd = bridge.onMessage((d: any) => { if (d?.type === 'ofd_state') { ofdState.value = d; ofdBusy.value = false; ofdSaved.value = !!d.on; } });
   if (ofdSaved.value) askOfd(false);
 });
 onBeforeUnmount(() => offOfd?.());
@@ -65,12 +67,12 @@ function set(key: TuneKey | 'parent', v: number | string | null): void {
                  dismissible :dismiss-key="`preset-switch:${form.presets.per_spool ? 'spool' : 'filament'}`" :close-label="t('common.close')" />
     </div>
 
-    <OuiFormRow :label="t('ofd.title')" for="ofd-on" :hint="t('ofd.help')">
-      <Checkbox v-model="ofd" input-id="ofd-on" binary aria-describedby="ofd-help" data-test="ofd-on" /><span id="ofd-help" class="oui-sr">{{ t('ofd.help') }}</span></OuiFormRow>
-    <div v-if="ofd" class="set-pad oui-row" data-test="ofd-state">
-      <OuiStatus v-if="!ofdSaved" state="idle" variant="plain">{{ t('ofd.saveFirst') }}</OuiStatus>
-      <OuiStatus v-else-if="ofdLine" :state="ofdState?.error || ofdState?.stale ? 'warn' : ofdState?.count ? 'ok' : 'idle'" variant="plain">{{ ofdLine }}</OuiStatus>
-      <Button v-if="ofdSaved" severity="secondary" size="small" :label="t('ofd.refresh')" :loading="ofdBusy" data-test="ofd-refresh" @click="askOfd(true)" />
+    <OuiFormRow :label="t('ofd.title')" :hint="t('ofd.help')" data-test="ofd-consent">
+      <OuiStatus :state="ofdSaved ? 'ok' : 'idle'" variant="plain">{{ ofdSaved ? t('ofd.consentOn') : t('ofd.consentOff') }}</OuiStatus></OuiFormRow>
+    <div v-if="ofdSaved" class="set-pad oui-row" data-test="ofd-state">
+      <OuiStatus v-if="ofdLine" :state="ofdState?.error || ofdState?.stale ? 'warn' : ofdState?.count ? 'ok' : 'idle'" variant="plain">{{ ofdLine }}</OuiStatus>
+      <Button severity="secondary" size="small" :label="t('ofd.refresh')" :loading="ofdBusy" data-test="ofd-refresh" @click="askOfd(true)" />
+      <Button severity="secondary" text size="small" :label="t('ofd.revoke')" data-test="ofd-revoke" @click="revokeOfd" />
       <p class="oui-meta">{{ t('ofd.credit') }}</p>
     </div>
     <OuiFormRow :label="t('presets.tuning')" for="tune-on" :hint="t('presets.tuningHelp')">

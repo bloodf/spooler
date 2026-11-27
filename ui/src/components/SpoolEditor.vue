@@ -14,7 +14,7 @@ import EditorNumber from './EditorNumber.vue';
 import EditorExtra from './EditorExtra.vue';
 import { boot } from '../core/boot';
 import { m, note } from '../state/main';
-import { editor, pickParent, submitEditor } from '../state/menu';
+import { editor, ofdSuggest, pickParent, submitEditor } from '../state/menu';
 import { ask } from '../core/dialog';
 import { t, tn, locale } from '../core/i18n';
 import { formatWeight, spoolDirection, spoolPaint, swatchHex, type Filament } from '../logic/spools';
@@ -42,6 +42,8 @@ const tried = ref(false);
 const uw = computed<UseWithInfo | undefined>(() => data.value?.use_with);
 const showUseWith = computed(() => !adding.value && !!uw.value?.printers?.length && (uw.value.on || uw.value.value !== null));
 const useWith = ref<string[]>([]);
+// Add Spool: the Open Filament Database proposal picked for the new spool (its OFD id), see Look up in OFD below.
+const ofdPick = ref<string | null>(null);
 // OrcaSlicer preset (orca_filament_preset): one of your own filament presets for the spool, or for every spool of the filament.
 // Typed names are taken too (a preset of a printer not selected now is not listed by OrcaSlicer's compatibility).
 const pl = computed<{ presets: string[]; spool: string; filament: string } | undefined>(() => data.value?.preset_link);
@@ -51,17 +53,15 @@ const linkOf = (v: unknown) => (typeof v === 'string' ? v.trim() : '');
 let suggested: number | null = null;
 // Based on: per printer, the OrcaSlicer system preset Spooler's preset of this filament copies (filmatch's pick, Advanced
 // tuning's, or one picked here by hand), with its score and reasons; Change picks another at once (remembered by the plugin).
+// An Open Filament Database preset is picked in Add Spool only (Look up in OFD); here it shows as the pick, and Change
+// offers the OrcaSlicer candidates and Automatic.
 type MatchRow = { target: string; label: string; name: string; source: 'auto' | 'tuned' | 'remembered' | 'ofd'; score: number | null; reasons: unknown;
-  confident: boolean; candidates: { name: string; score: number; reasons: unknown }[]; ofd?: { id: string; name: string; score: number; reasons: unknown }[] };
+  confident: boolean; candidates: { name: string; score: number; reasons: unknown }[] };
 const matches = computed<MatchRow[]>(() => (Array.isArray(data.value?.preset_match) ? data.value.preset_match : []));
 const words = (reasons: unknown) => reasonTexts(reasons, (code, v) => t(`match.r.${code}` as MessageKey, { v }));
 const matchLabels = computed(() => ({ change: t('match.change'), none: t('match.none'), score: t('match.score'), auto: t('match.auto'), autoHint: t('match.autoHint') }));
 const matchBadge = (row: MatchRow) => (row.source === 'remembered' ? t('match.remembered') : row.source === 'tuned' ? t('match.tuned') : row.source === 'ofd' ? t('ofd.badge') : undefined);
-// A pick from the Open Filament Database goes by its id: Spooler fetches it once and puts its values into the preset.
-const pickMatch = (row: MatchRow, name: string | null) => {
-  const ofd = name ? row.ofd?.find(c => c.name === name) : undefined;
-  pickParent(rawFil.value?.id ?? null, row.target, ofd ? null : name, ofd?.id);
-};
+const pickMatch = (row: MatchRow, name: string | null) => pickParent(rawFil.value?.id ?? null, row.target, name);
 
 watch(data, d => {
   if (!d) return;
@@ -74,6 +74,7 @@ watch(data, d => {
   source.value = (d.filaments ?? []).length && (!pre || pickId.value !== null) ? 'existing' : 'new';
   tried.value = false; suggested = pre?.filament.density ?? null;
   useWith.value = [...(d.use_with?.value ?? [])];
+  ofdPick.value = null;
   linkSpool.value = d.preset_link?.spool ?? ''; linkFil.value = d.preset_link?.filament ?? '';
 }, { immediate: true });
 // The new filament was made but Spoolman refused the spool: it is an existing filament now, picked for the retry.
@@ -110,6 +111,30 @@ const weightLine = computed(() => (left.value === null ? t('spool.unknownLeft')
   : start.value === null ? w(left.value) : `${w(left.value)} ${t('weight.of', { total: w(start.value) })}`));
 const sub = computed(() => [pf.value.vendor?.name, pf.value.material, typeof pf.value.diameter === 'number' ? `${new Intl.NumberFormat(locale.value).format(pf.value.diameter)} mm` : ''].filter(Boolean).join(' · '));
 
+// ------------------------------------------------------------------ Look up in OFD (Add Spool only)
+// The Open Filament Database is contacted only after the user clicks Look up (the plugin keeps that consent; then a later
+// Add Spool looks up by itself). A proposal picked here goes with the create: the plugin fetches that preset once and
+// remembers it for the filament on every printer it fits, as Edit Spool's Change did.
+const ofdFor = computed(() => {
+  const f = source.value === 'existing' ? picked.value : null;
+  const vendor = (f ? f.vendor?.name : ff.value.vendor) ?? '', material = (f ? f.material : ff.value.material) ?? '';
+  return { vendor: vendor.trim(), material: material.trim(), name: ((f ? f.name : ff.value.name) ?? '').trim() };
+});
+const ofdKey = computed(() => `${ofdFor.value.vendor}|${ofdFor.value.material}`.toLowerCase());
+const ofdReady = computed(() => !!ofdFor.value.vendor && !!ofdFor.value.material);
+const ofdNow = computed(() => (editor.ofd?.key === ofdKey.value ? editor.ofd : null));
+const ofdList = computed(() => ofdNow.value?.list ?? []);
+const ofdChosen = computed(() => ofdList.value.find(c => c.id === ofdPick.value) ?? null);
+const ofdLabels = computed(() => ({ ...matchLabels.value, none: t('ofd.notPicked') }));
+function lookUp(consent: boolean) { if (ofdReady.value) ofdSuggest(ofdFor.value.vendor, ofdFor.value.material, ofdFor.value.name, consent); }
+const pickOfd = (name: string | null) => { ofdPick.value = (name && ofdList.value.find(c => c.name === name)?.id) || null; };
+// With consent given, opening the spool step looks up by itself; another manufacturer or material forgets the pick.
+watch([step, ofdKey], () => {
+  if (!adding.value || step.value !== 2) return;
+  if (ofdChosen.value === null) ofdPick.value = null;
+  if (data.value?.ofd_consent && ofdReady.value && !ofdNow.value) lookUp(false);
+});
+
 // ------------------------------------------------------------------ colours
 // A colour left unset becomes grey once there are several: a multi-colour filament names every one.
 const addColour = () => { ff.value.colors = [...ff.value.colors.map(c => c || '#888888'), ff.value.colors.at(-1) || '#888888']; };
@@ -128,8 +153,9 @@ async function save() {
   const spool = spoolPayload(sf.value, defs.value.spool);
   if (adding.value) {
     const tag = editor.rfid ? { tag: editor.rfid.offer.tag } : {};
-    submitEditor(source.value === 'existing' ? { action: 'create', filament_id: pickId.value, spool: filled(spool), ...tag }
-      : { action: 'create', spool: filled(spool), filament: filled(filamentPayload(ff.value, defs.value.filament)), ...tag });
+    const ofd = ofdChosen.value ? { ofd: ofdChosen.value.id } : {};
+    submitEditor(source.value === 'existing' ? { action: 'create', filament_id: pickId.value, spool: filled(spool), ...tag, ...ofd }
+      : { action: 'create', spool: filled(spool), filament: filled(filamentPayload(ff.value, defs.value.filament)), ...tag, ...ofd });
     return;
   }
   const sCh = changed(spool, spoolPayload(spoolForm(raw.value, defs.value.spool), defs.value.spool));
@@ -197,6 +223,20 @@ async function save() {
               <Select v-model="linkSpool" input-id="se-link" :options="pl.presets" :virtual-scroller-options="longList(pl.presets.length, 32)" editable show-clear :placeholder="t('editor.presetLinkNone')" fluid data-test="editor-link" /></OuiFormRow>
             <OuiFormRow v-for="d in defs.spool" :key="d.key" :label="d.name || d.key" :for="`se-sx-${d.key}`" :error="err('spool.' + d.key)">
               <EditorExtra v-model="sf.extra[d.key]" :def="d" :id="`se-sx-${d.key}`" :invalid="!!err('spool.' + d.key)" /></OuiFormRow>
+            <OuiFormRow v-if="adding" :label="t('ofd.title')" :hint="t('ofd.lookupHelp')" stacked data-test="editor-ofd">
+              <p v-if="!ofdReady" class="oui-meta">{{ t('ofd.needVendor') }}</p>
+              <div v-else-if="!ofdNow" class="oui-row">
+                <Button severity="secondary" size="small" :label="t('ofd.lookup')" data-test="ofd-lookup" @click="lookUp(true)" />
+                <span v-if="!data.ofd_consent" class="oui-meta">{{ t('ofd.askFirst') }}</span></div>
+              <p v-else-if="ofdNow.busy" class="oui-meta" role="status">{{ t('ofd.looking') }}</p>
+              <p v-else-if="!ofdList.length" class="oui-meta" role="status" data-test="ofd-none">{{ ofdNow.error ? t('ofd.failed', { error: ofdNow.error })
+                : t('ofd.noneFound', { vendor: ofdFor.vendor, material: ofdFor.material }) }}</p>
+              <OuiPresetMatch v-else :name="ofdChosen?.name ?? null" :score="ofdChosen?.score ?? null" :confident="true" :reasons="ofdChosen ? words(ofdChosen.reasons) : []"
+                              :badge="ofdChosen ? t('ofd.badge') : undefined" :remembered="!!ofdChosen" :labels="ofdLabels"
+                              :candidates="ofdList.map(c => ({ name: c.name, score: c.score, reasons: words(c.reasons), badge: t('ofd.badge'), note: t('ofd.note') }))"
+                              @pick="pickOfd" />
+              <p v-if="ofdNow && !ofdNow.busy" class="oui-meta">{{ t('ofd.credit') }}</p>
+            </OuiFormRow>
           </section>
 
           <section v-if="withFilament && (!adding || step === 1)" class="se-sec" :aria-label="t('editor.filament')" data-test="editor-filament">
@@ -230,8 +270,7 @@ async function save() {
               <Select v-model="linkFil" input-id="se-link-fil" :options="pl.presets" :virtual-scroller-options="longList(pl.presets.length, 32)" editable show-clear :placeholder="t('editor.presetLinkNone')" fluid data-test="editor-link-fil" /></OuiFormRow>
             <OuiFormRow v-for="row in (adding ? [] : matches)" :key="row.target" :label="t('match.title')" :hint="t('match.help', { printer: row.label })" stacked data-test="editor-match">
               <OuiPresetMatch :name="row.name" :score="row.score" :confident="row.confident" :reasons="words(row.reasons)" :badge="matchBadge(row)" :remembered="row.source === 'remembered' || row.source === 'ofd'"
-                              :candidates="[...row.candidates.map(c => ({ name: c.name, score: c.score, reasons: words(c.reasons) })),
-                                            ...(row.ofd ?? []).map(c => ({ name: c.name, score: c.score, reasons: words(c.reasons), badge: t('ofd.badge'), note: t('ofd.note') }))]" :labels="matchLabels" :busy="editor.busy"
+                              :candidates="row.candidates.map(c => ({ name: c.name, score: c.score, reasons: words(c.reasons) }))" :labels="matchLabels" :busy="editor.busy"
                               @pick="name => pickMatch(row, name)" /></OuiFormRow>
             <OuiFormRow v-for="d in defs.filament" :key="d.key" :label="d.name || d.key" :for="`se-fx-${d.key}`" :error="err('filament.' + d.key)">
               <EditorExtra v-model="ff.extra[d.key]" :def="d" :id="`se-fx-${d.key}`" :invalid="!!err('filament.' + d.key)" /></OuiFormRow>

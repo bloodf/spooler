@@ -452,9 +452,16 @@ def presets_settings() -> dict:
 
 
 def save_presets(value: object) -> None:
-    """Save Settings > Presets on its own, like the display flags."""
+    """Save Settings > Presets on its own, like the display flags. The OFD consent ("ofd") is kept as stored: it is
+    given in Add Spool and revoked in Settings by their own messages (set_ofd_consent), never by a form saved later."""
     if isinstance(value, dict):
-        _core.update_settings({"presets": parse_presets(value)})
+        _core.update_settings({"presets": {**parse_presets(value), "ofd": presets_settings()["ofd"]}})
+
+
+def set_ofd_consent(on: bool) -> None:
+    """The user's consent to contact the Open Filament Database (Add Spool > Look up, Settings > Presets > Revoke).
+    Kept as presets["ofd"], the key of the 0.33 Settings toggle, so a toggle that was on counts as consent."""
+    _core.update_settings({"presets": {**presets_settings(), "ofd": bool(on)}})
 
 
 def tuning_for(filament: dict, opts: dict) -> dict:
@@ -758,78 +765,87 @@ def with_ofd(preset: dict, ofd: dict | None) -> dict:
     return layered
 
 
-# --- Open Filament Database (Settings > Presets, off by default) -------------------------------------------------
-# While it is on, Edit Spool also lists the OFD presets of the filament's manufacturer and material (filmatch.rank_ofd),
-# from OFD's index kept a day in <data folder>/spooler/ofd/, which U1 Control and Kobra Control read too. While it is
-# off nothing is fetched.
+# --- Open Filament Database (Add Spool > Look up in OFD; nothing is contacted before the user's consent) ---------
+# Add Spool lists the OFD presets of the new spool's manufacturer and material (filmatch.rank_ofd) once the user asked,
+# from OFD's index kept a day in <data folder>/spooler/ofd/. A preset picked from it keeps resolving from that folder
+# offline (_ofd_layer); listing, refreshing, editing and printing never fetch.
+OFD_RETRY = 15 * 60   # s after a failed index fetch before Spooler asks OFD again (unless the user asks: Read again)
+_ofd_fail: dict = {"at": None, "error": ""}
 
 def ofd_folder() -> Path:
     return _peers.bridge_dir() / OFD_DIR
 
 
+def ofd_lookup(force: bool = False, now: float | None = None) -> dict:
+    """filmatch.ofd_index for a lookup the user asked for (consent given). filmatch fetches again whenever no index is
+    kept, so without network every call would wait for the timeout: after a failed fetch this reads only what is kept
+    for OFD_RETRY, unless force (Read again). Worker thread."""
+    now = time.time() if now is None else now
+    at = _ofd_fail["at"]
+    backoff = not force and isinstance(at, (int, float)) and 0 <= now - at < OFD_RETRY
+    found = ofd_index(str(ofd_folder()), force=force, now=now, offline=backoff)
+    if backoff:
+        return {**found, "error": found["error"] or _ofd_fail["error"]}
+    _ofd_fail.update(at=now if found["error"] else None, error=found["error"])
+    return found
+
+
 def ofd_status(refresh: bool = False) -> dict:
-    """Settings > Presets' OFD line: {"on"} and, while on, {"fetched", "version", "count", "stale", "error"}. Reads the
-    index again when refresh, or when the kept one is a day old. Worker thread."""
+    """Settings > Presets' OFD line: {"on"} (consent) and, with it, {"fetched", "version", "count", "stale", "error"}
+    of the kept index; refresh (Read again) asks OFD now. Worker thread."""
     if not presets_settings()["ofd"]:
         return {"on": False}
-    found = ofd_index(str(ofd_folder()), force=refresh)
+    found = ofd_lookup(force=True) if refresh else ofd_index(str(ofd_folder()), offline=True)
     return {"on": True, "count": len(found["profiles"]), **{k: found[k] for k in ("fetched", "version", "stale", "error")}}
 
 
-def ofd_proposals(filament: dict, opts: dict, limit: int = MATCH_CHOICES) -> list[dict]:
-    """The OFD presets proposed for a filament, best first; [] while OFD is off or no index could be read."""
-    if not opts.get("ofd"):
-        return []
-    vendor = str((filament.get("vendor") or {}).get("name") or "")
-    return rank_ofd(ofd_index(str(ofd_folder()))["profiles"], vendor, str(filament.get("material") or ""),
-                    str(filament.get("name") or ""), limit)
+def ofd_suggest(vendor: object, material: object, name: object = "") -> dict:
+    """Add Spool > Look up in OFD: the OFD presets of this manufacturer and material, best first. Only with the
+    user's consent (the page sends it with the first click). Worker thread."""
+    if not presets_settings()["ofd"]:
+        return {"ok": False, "text": "", "consent": False}
+    found = ofd_lookup()
+    text = lambda v: v.strip() if isinstance(v, str) else ""  # noqa: E731
+    ofd = rank_ofd(found["profiles"], text(vendor), text(material), text(name), MATCH_CHOICES)
+    return {"ok": True, "text": "", "consent": True, "ofd": ofd, "ofd_error": "" if found["profiles"] else found["error"]}
 
 
 def preset_match(filament: object, snap: dict, store: dict | None = None) -> list[dict]:
     """Edit Spool's Preset rows, one per printer: the parent this filament's preset copies there, why, its score and
-    reasons (filmatch codes), whether the pick is clear, the best candidates, and the OFD proposals ("ofd")."""
+    reasons (filmatch codes), whether the pick is clear and the best candidates. Never contacts OFD: an OFD preset
+    picked in Add Spool shows from the kept folder."""
     if not isinstance(filament, dict) or filament.get("id") is None:
         return []
     parents = snap.get("parents") or []
     store = load_matches(matches_path()) if store is None else store
     opts = presets_settings()
-    ofd = ofd_proposals(filament, opts)
     rows = []
     for printer in snap.get("printers") or []:
         target = printer["target"]
         ranked = rank_parents(filament, target, parents)
         name, source, picked = choose_parent(filament, target, parents, opts, store)
         row = next((r for r in ranked if r["name"] == name), {})
-        if picked:   # an Open Filament Database preset: shown by its name, with OFD's reasons
-            row = next((r for r in ofd if r["name"] == picked["name"]), {"score": None, "reasons": []})
-            name = picked["name"]
+        if picked:   # an Open Filament Database preset: shown by its name
+            row, name = {"score": None, "reasons": []}, picked["name"]
         rows.append({"target": target, "label": printer.get("label") or target, "name": name, "source": source,
                      "score": row.get("score"), "reasons": row.get("reasons") or [],
-                     "confident": source != "auto" or confident(ranked, PARENT_MARGIN), "candidates": ranked[:MATCH_CHOICES],
-                     "ofd": ofd})
+                     "confident": source != "auto" or confident(ranked, PARENT_MARGIN), "candidates": ranked[:MATCH_CHOICES]})
     return rows
 
 
 def pick_parent(filament: object, target: object, name: object, ofd: object = None) -> dict:
     """Edit Spool > Preset > Change: remember name as the parent of the filament's presets on printer target ("" or
     None: forget it, back to the automatic pick). Refused unless it is one of that printer's presets for the material.
-    ofd: an Open Filament Database proposal's id instead (OFD on): its preset is fetched once, checked, kept in the OFD
-    folder, and its values go into Spooler's preset over its parent (build_preset)."""
+    ofd: an Open Filament Database proposal's id instead (see ofd_pick_name)."""
     snap = _ui_snap
     refused = {"ok": False, "text": _i18n.tr(MATCH_REFUSED)}
     if not isinstance(filament, dict) or filament.get("id") is None or \
             target not in {p["target"] for p in snap.get("printers") or []}:
         return refused
     if ofd is not None:
-        proposal = next((r for r in ofd_proposals(filament, presets_settings(), 0) if r["id"] == ofd), None)
-        usable = {c["name"]: c for c in snap.get("parents") or []}
-        if proposal is None or proposal["inherits"] not in usable or parent_score(usable[proposal["inherits"]], filament, target) is None:
-            return refused
-        profile = next(p for p in ofd_index(str(ofd_folder()), offline=True)["profiles"] if p["id"] == ofd)
-        _preset, problem = ofd_preset(str(ofd_folder()), profile, parents=set(usable))
-        if problem:
-            return {"ok": False, "text": _i18n.tr(OFD_REFUSED, why=problem)}
-        name = OFD_PICK + ofd
+        name = ofd_pick_name(filament, target, ofd, snap)
+        if isinstance(name, dict):
+            return name
     elif name:
         found = next((c for c in snap.get("parents") or [] if c["name"] == name), None)
         if found is None or parent_score(found, filament, target) is None:
@@ -838,6 +854,41 @@ def pick_parent(filament: object, target: object, name: object, ofd: object = No
         return refused
     store = remember(matches_path(), {filament_key(filament["id"]): name or ""}, target)
     return {"ok": True, "text": "", "match": preset_match(filament, snap, store)}
+
+
+def ofd_pick_name(filament: dict, target: str, ofd: object, snap: dict) -> str | dict:
+    """The remembered name ("ofd:<id>") for an OFD proposal on printer target, or the refusal: consent given, the id in
+    the kept index (Look up in OFD read it), the same manufacturer and material, and a parent this printer has for
+    the material. The preset is fetched once, checked and kept in the OFD folder; its values go into Spooler's preset
+    over its parent (build_preset)."""
+    refused = {"ok": False, "text": _i18n.tr(MATCH_REFUSED)}
+    if not presets_settings()["ofd"] or not isinstance(ofd, str):
+        return refused
+    folder = str(ofd_folder())
+    profiles = ofd_index(folder, offline=True)["profiles"]
+    vendor = str((filament.get("vendor") or {}).get("name") or "")
+    proposal = next((r for r in rank_ofd(profiles, vendor, str(filament.get("material") or ""), "", 0) if r["id"] == ofd), None)
+    usable = {c["name"]: c for c in snap.get("parents") or []}
+    if proposal is None or proposal["inherits"] not in usable or parent_score(usable[proposal["inherits"]], filament, target) is None:
+        return refused
+    profile = next(p for p in profiles if p["id"] == ofd)
+    _preset, problem = ofd_preset(folder, profile, parents=set(usable))
+    if problem:
+        return {"ok": False, "text": _i18n.tr(OFD_REFUSED, why=problem)}
+    return OFD_PICK + ofd
+
+
+def remember_ofd(filament: dict, ofd: object) -> list[str]:
+    """Add Spool: remember an OFD proposal as the parent of the new spool's filament on every printer it fits, as
+    Edit Spool's Change did per printer. Returns the printers' labels it was remembered for."""
+    snap = _ui_snap
+    done = []
+    for printer in snap.get("printers") or []:
+        name = ofd_pick_name(filament, printer["target"], ofd, snap)
+        if isinstance(name, str):
+            remember(matches_path(), {filament_key(filament["id"]): name}, printer["target"])
+            done.append(printer.get("label") or printer["target"])
+    return done
 
 
 def build_preset(filament: dict, name: str, key: tuple, snapshot: dict, opts: dict, spools: list[dict],

@@ -1,4 +1,4 @@
-"""Installing an Open Filament Database preset through Spooler's own presets: picked in Edit Spool, it is fetched once,
+"""Installing an Open Filament Database preset through Spooler's own presets: picked in Add Spool, it is fetched once,
 checked and kept; Spooler's preset of the filament then copies the OFD preset's parent with OFD's values over it and
 Spoolman's over those, flattened with Spooler's own filament_id. The network is never reached here."""
 
@@ -34,7 +34,12 @@ class OfdInstallTest(Settings):
         fetch = mock.patch.object(sp.filmatch, "_ofd_get", self.get)
         fetch.start()
         self.addCleanup(fetch.stop)
-        sp.save_presets({**sp.presets_settings(), "ofd": True})
+        for name in ("SETTINGS_FILE", "OLD_SETTINGS"):   # this file's plugin copy (test_profiles'), not only Settings'
+            patch = mock.patch.object(sp, name, self.dir / (name + ".json"))
+            patch.start()
+            self.addCleanup(patch.stop)
+        sp.set_ofd_consent(True)
+        self.assertTrue(sp.ofd_suggest("Polymaker", "PLA")["ofd"])   # Look up in OFD: the index is kept from here on
         snap = snapshot()
         configs = {name: {"nozzle_temperature": "200,200", "filament_flow_ratio": "0.98,0.98", "fan_max_speed": "100,100",
                           "filament_density": "1.24,1.24", "filament_id": "OFmY0l6t", "inherits": ""}
@@ -90,7 +95,7 @@ class OfdInstallTest(Settings):
         self.assertFalse(result["ok"])
         self.assertIn("post_process", result["text"])
         self.assertFalse((self.dir / "matches.json").exists())
-        sp.save_presets({**sp.presets_settings(), "ofd": False})   # OFD off: nothing proposed, nothing picked
+        sp.set_ofd_consent(False)   # consent revoked: nothing picked
         self.assertFalse(sp.pick_parent(f, U1, None, OFD_ID)["ok"])
 
     def test_a_kept_preset_that_is_gone_falls_back(self):
@@ -99,3 +104,22 @@ class OfdInstallTest(Settings):
         (self.dir / "ofd" / sp.filmatch.OFD_PRESETS / (OFD_ID + ".json")).unlink()
         u1 = next(p for p in sp.profile_files([spool(5, f)], self.snap)[0].values() if p["compatible_printers"] == [U1])
         self.assertNotIn("Open Filament Database", u1.get("description", ""))   # the usual pick, never a fetch while building
+
+    def test_add_spool_remembers_the_pick_for_every_printer_it_fits(self):
+        f = filament(9, "Panchroma Matte Red", "PLA", vendor="Polymaker")
+        calls = []
+
+        def spoolman(method, path, body=None):
+            calls.append((method, path))
+            return {"id": 44} if path == "spool" else f if path == "filament/9" else []
+        with mock.patch.object(sp, "spoolman_call", spoolman):
+            result = sp.editor_create({"filament_id": 9, "spool": {"remaining_weight": 750}, "ofd": OFD_ID})
+        self.assertTrue(result["ok"], result)
+        self.assertIn("Open Filament Database preset on Snapmaker U1", result["text"])
+        self.assertIn(("GET", "filament/9"), calls)
+        u1 = next(p for p in sp.profile_files([spool(44, f)], self.snap)[0].values() if p["compatible_printers"] == [U1])
+        self.assertIn("Open Filament Database", u1["description"])
+        with mock.patch.object(sp, "spoolman_call", spoolman):   # an id OFD does not list: the spool is added all the same
+            result = sp.editor_create({"filament_id": 9, "spool": {}, "ofd": "not-an-id"})
+        self.assertTrue(result["ok"])
+        self.assertIn("fits none of your printers", result["text"])

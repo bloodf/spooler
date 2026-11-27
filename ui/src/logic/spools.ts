@@ -1,5 +1,7 @@
 // Pure rules of the spool list, ported from the previous page script (the plugin's MAIN_PAGE, before the Vue page). No DOM, no Vue:
 // the unit tests import this file directly. Formatting takes the locale explicitly.
+import type { OuiPickSpool } from '@orca-plugins/ui-foundation/src/components/spoolPick';
+
 export interface Vendor { name?: string }
 export interface Filament {
   id?: number; name?: string; material?: string; color_hex?: string; multi_color_hexes?: string; multi_color_direction?: string;
@@ -293,4 +295,17 @@ export function leftLabel(grams: unknown, percent: number | null, mode: 'grams' 
   const w = formatWeight(grams, exact, locale);
   if (typeof grams !== 'number') return percent === null ? '—' : `${percent}%`;
   return mode === 'percent' && percent !== null ? `${percent}%` : w;
+}
+
+/**
+ * The spools a slot picker offers, as the shared colour-first picker (OuiSpoolPick) takes them: not archived and not in
+ * `taken` (spools already in another slot). Its colour or colours as the list draws them; low when below the low-stock
+ * threshold, as the list's level chip says.
+ */
+export function pickSpools(spools: readonly Spool[], taken: ReadonlySet<string> = new Set(), low = 0): OuiPickSpool[] {
+  return spools.filter(s => !s.archived && !taken.has(String(s.id))).map(s => {
+    const f = s.filament || {}, paint = spoolPaint(f), left = typeof s.remaining_weight === 'number' ? s.remaining_weight : null;
+    return { id: s.id, name: f.name || null, vendor: f.vendor?.name || null, material: f.material || null, colour: paint.color, colours: paint.colors,
+      remaining: left, initial: originalWeight(s) ?? null, location: s.location || null, low: lowLevel(left, low) !== '' };
+  });
 }

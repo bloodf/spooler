@@ -66,7 +66,7 @@ const warnLate = computed(() => late.value && (!!props.lv.heads || !!props.lv.hh
       <h3 class="oui-label">{{ t('moon.active') }}</h3>
       <div class="oui-cards">
         <TrayCard :tray="lv.ext" label="E" :empty-label="t('moon.none')" :empty-hint="t('moon.noneHelp')">
-          <SpoolPicker v-if="picking" :label="t('moon.change')" @pick="pick" @close="ui.picking = null" />
+          <SpoolPicker v-if="picking" :label="t('moon.change')" :selected="lv.ext?.spool == null ? null : Number(lv.ext.spool)" @pick="pick" @close="ui.picking = null" />
           <template #actions>
             <Button severity="secondary" size="small" :label="t('moon.change')" :aria-expanded="!!picking" :data-focus-key="`moon-pick:${link}`" data-act="moon-pick"
                     @click="ui.picking = picking ? null : { p: link, moon: true }" />
@@ -80,7 +80,7 @@ const warnLate = computed(() => late.value && (!!props.lv.heads || !!props.lv.hh
         <h3 class="oui-label">{{ x.label }}</h3>
         <div class="oui-cards">
           <TrayCard v-for="(tr, i) in x.u.trays" :key="i" :tray="tr" :label="lv.heads ? 'T' + (i + 1) : String(i + 1)" :tool="tool(i)" :active="!!act && act.unit === x.u.id && act.slot === i">
-            <SpoolPicker v-if="canBind(tr) && isBinding(slotOf(x.u, i))" :label="t(bound(tr) ? 'bind.change' : 'bind.assign')" @pick="id => bindPick(slotOf(x.u, i), id)" @close="ui.picking = null" />
+            <SpoolPicker v-if="canBind(tr) && isBinding(slotOf(x.u, i))" :label="t(bound(tr) ? 'bind.change' : 'bind.assign')" :selected="tr.spool == null ? null : Number(tr.spool)" @pick="id => bindPick(slotOf(x.u, i), id)" @close="ui.picking = null" />
             <template v-if="canBind(tr)" #actions>
               <Button severity="secondary" size="small" :label="t(bound(tr) ? 'bind.change' : 'bind.assign')" :aria-expanded="isBinding(slotOf(x.u, i))"
                       :aria-label="t(bound(tr) ? 'bind.changeLabel' : 'bind.assignLabel', { slot: lv.heads ? 'T' + (i + 1) : x.label + ' ' + (i + 1), printer: lv.name })"
