@@ -977,7 +977,30 @@ test('assign spool: a Kobra ACE slot and a U1 toolhead take a spool from a searc
   await until(dialogOpen, 'unassign asks'); await no();
   eq(sentOf('spool_action').filter(m => m.action === 'unbind').length, 0, 'going back sends nothing');
   await click(q('[data-act="unbind"]', u)); await yes();
-  eq(lastOf('spool_action'), {type: 'spool_action', action: 'unbind', id: 2, printer: 'auto-u', slot: 0, origin: 3}, 'unassign sent');
+  eq(lastOf('spool_action'), {type: 'spool_action', action: 'unbind', id: 1, printer: 'auto-u', slot: 0, origin: 3}, 'unassign sent for the spool the slot shows (the one just picked)');
+`);
+test('a picked spool shows in its slot at once; a refused write puts the slot back; a plugin-applied one asks for the cached list', LIVE_SLOTS + `
+  await three();
+  const k = panelOf('Anycubic Kobra X');
+  const slot2 = () => text(qa('.tc', k)[1]);
+  assert(!slot2().includes('#2'), 'the slot holds no spool: ' + slot2());
+  await click(qa('[data-act="bind"]', k)[1]); await click(q('[data-pick="2"]', k));
+  assert(slot2().includes('#2') && slot2().includes('Kobra Control'), 'shown before any answer: ' + slot2());
+  await post({type: 'action_result', ok: false, action: 'bind', text: 'refused'});
+  assert(!slot2().includes('#2'), 'put back when refused: ' + slot2());
+  eq(lastOf('refresh'), {type: 'refresh'}, 'a refusal reads Spoolman as before');
+  await click(qa('[data-act="bind"]', k)[1]); await click(q('[data-pick="2"]', k));
+  await post({type: 'action_result', ok: true, patched: true, action: 'bind', text: 'linked'});
+  assert(slot2().includes('#2'), 'kept when it worked: ' + slot2());
+  eq(lastOf('refresh'), {type: 'refresh', cached: true}, 'the list the plugin already changed comes first');
+`);
+test('the last list shows at once and the read that follows settles the status', `
+  await post({type: 'spools', ok: true, cached: true, read_at: Date.now() / 1000 - 600, origin: 3, source: 'spoolman', spools: SPOOLS});
+  eq(qa('[data-stack]').length, 1, 'the cached list is drawn');
+  assert(!vis(q('.sp-shell')).includes('Loading the spool list'), 'not waiting for the read: ' + vis(q('.sp-shell')).slice(0, 200));
+  assert(/10 min/.test(vis(q('.sp-shell'))), 'honest about its age');
+  await spools([SPOOLS[0]]);
+  eq(qa('[data-spool], [data-stack]').length, 1, 'the read replaces it');
 `);
 test('assign spool while the printer prints asks first', LIVE_SLOTS + `
   await three({state: 'RUNNING', name: 'plate', pct: 10});

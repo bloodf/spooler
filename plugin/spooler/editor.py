@@ -112,14 +112,17 @@ def slot_bind(sid: int, pid: object, slot: object, on: bool) -> dict:
         if not _binds(spool.get("location"), letter, names, number):
             return no(_i18n.tr("Spool #{id} isn't linked to {slot}.", id=sid, slot=location))
         _spoolman_sync.spoolman_call("PATCH", f"spool/{sid}", {"location": None})
+        spool["location"] = None   # the page's next list is the cached one, already right
         _peers.links_changed()
-        return {"ok": True, "text": _i18n.tr("Spool #{id} is no longer linked to {slot}.", id=sid, slot=location)}
+        return {"ok": True, "patched": True, "text": _i18n.tr("Spool #{id} is no longer linked to {slot}.", id=sid, slot=location)}
     _spoolman_sync.spoolman_call("PATCH", f"spool/{sid}", {"location": location})
+    spool["location"] = location
     for other in spools:
         if other.get("id") != sid and not other.get("archived") and _binds(other.get("location"), letter, names, number):
             _spoolman_sync.spoolman_call("PATCH", f"spool/{other['id']}", {"location": None})
+            other["location"] = None
     _peers.links_changed()
-    return {"ok": True, "text": _i18n.tr("Spool #{id} linked to {slot}.", id=sid, slot=location)}
+    return {"ok": True, "patched": True, "text": _i18n.tr("Spool #{id} linked to {slot}.", id=sid, slot=location)}
 
 
 def _spool_write(action: str, sid: int, data: dict) -> dict:
@@ -142,8 +145,11 @@ def _spool_write(action: str, sid: int, data: dict) -> dict:
             return no(_i18n.tr("A location is text of at most {max} characters.", max=LOCATION_MAX))
         location = " ".join(location.split())
         _spoolman_sync.spoolman_call("PATCH", f"spool/{sid}", {"location": location or None})
+        held = _moonraker._spool_by_id(sid, _core._spool_cache["spools"] or [])
+        if held is not None:
+            held["location"] = location or None   # the page's next list is the cached one, already right
         _peers.links_changed()   # a location typed here may link or unlink a slot of U1 Control or Kobra Control
-        return {"ok": True, "text": _i18n.tr("Spool #{id} moved to {location}.", id=sid, location=location) if location
+        return {"ok": True, "patched": True, "text": _i18n.tr("Spool #{id} moved to {location}.", id=sid, location=location) if location
                 else _i18n.tr("Spool #{id} has no location now.", id=sid)}
     if action in ("bind", "unbind"):
         return slot_bind(sid, data.get("printer"), data.get("slot"), action == "bind")

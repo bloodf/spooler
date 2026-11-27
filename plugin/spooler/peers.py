@@ -5,6 +5,7 @@
 
 """Files shared with u1control and Kobra Control: links, presence and stock."""
 
+import hashlib
 import json
 import os
 import threading
@@ -496,14 +497,41 @@ def profile_sync(spools: list[dict], snapshot: dict | None, force: bool = False)
         return dict(_filament_profiles._profiles)
 
 
+# What the presets read of a spool: a weight, a location or a date moving does not change them.
+PRESET_SPOOL_FIELDS = ("id", "archived", "price", "initial_weight", "extra", "filament")
+_synced: dict = {"sig": None}   # what the presets were last built from, so an unchanged list doesn't build them again
+
+
 def load_spools_synced(snapshot: dict | None, force: bool = False) -> dict:
-    """The spool list, after syncing the filament profiles from it. For worker threads."""
-    with _spoolman_sync.pinned_origin():
+    """The spool list, after syncing the filament profiles from it. For worker threads. A list and
+    snapshot the presets were already built from skip the build (about a second with 2000 spools)."""
+    with _spoolman_sync.pinned_origin() as origin:
         result = _sources.load_spools()
         if result.get("ok") and snapshot:
-            state = profile_sync(_core.active_spools(result["spools"]), snapshot, force)
+            live = _core.active_spools(result["spools"])
+            # Everything profile_files reads (the spools' PRESET_SPOOL_FIELDS). gen and project count reads, not content: the same presets read twice differ in them.
+            seen = {key: value for key, value in snapshot.items() if key not in ("gen", "project")}
+            used = [{key: spool.get(key) for key in PRESET_SPOOL_FIELDS} for spool in live]
+            inputs = [used, seen, _filament_profiles.presets_settings(), _filament_profiles.load_matches(_filament_profiles.matches_path())]
+            sig = (origin[1], hashlib.sha256(json.dumps(inputs, sort_keys=True, default=str).encode("utf-8")).hexdigest())
+            if not force and _synced["sig"] == sig and not _filament_profiles._profiles["error"]:
+                state = dict(_filament_profiles._profiles)
+            else:
+                state = profile_sync(live, snapshot, force)
+                _synced["sig"] = None if state["error"] else sig
             result["profiles"] = {"count": state["count"], "error": state["error"]}
     return result
+
+
+def cached_spools() -> dict | None:
+    """A "spools" message from the last good list of the source in Settings (memory, else the file a
+    restart left), or None. The page shows it at once and the read that follows replaces it."""
+    origin = _spoolman_sync.current_origin()
+    spools = _sources.listed_get(origin[0])
+    if spools is None:
+        return None
+    return {"type": "spools", "ok": True, "cached": True, "spools": spools, "read_at": _sources._listed["at"],
+            "origin": origin[1], "source": _sources.source()}
 
 
 def fresh_spools(snapshot: dict | None, force: bool = False) -> dict:
@@ -513,6 +541,8 @@ def fresh_spools(snapshot: dict | None, force: bool = False) -> dict:
         with _spoolman_sync.pinned_origin() as origin:
             result = load_spools_synced(snapshot, force)
         if _spoolman_sync.origin_live(origin):
+            if result.get("ok"):
+                _sources.listed_put(origin[0], result["spools"])
             # The page sends it back with card actions and bookings: ids picked from this list
             # are only written while this source is still the one in Settings.
             return {**result, "origin": origin[1]}

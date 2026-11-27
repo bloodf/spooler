@@ -5,6 +5,9 @@ Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); 
 
 ## [Unreleased]
 
+### Changed
+- Picking a spool is quick, also with a large Spoolman inventory. Spooler keeps the last spool list (in memory and in `spool-list.json` in its data folder, without the Spoolman address), so the page opens with it at once and reads Spoolman right after, as before. Assigning a spool to a U1 toolhead or an Anycubic Kobra slot, unassigning it, or moving it to a location shows in the slot the moment you pick it (and goes back if Spoolman refuses it), and the list the plugin already changed is shown without waiting for a full read. The presets are no longer built again for a list that changed only in a location, a weight or a date, and Spoolman's echo of Spooler's own write no longer triggers another full read. With 2000 spools and a 50 ms Spoolman, a refresh took 1.4 s and each assignment 3.4 s of reading (two full reads) before the slot updated; the page now opens with the kept list in 5 ms and an assignment shows at once.
+
 ## [0.33.7] - 2026-11-26
 
 ### Fixed
