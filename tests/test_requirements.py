@@ -2,6 +2,7 @@
 connection tests already heard (no probe of its own), Check again, and auto-send held off while
 the source is missing."""
 
+import socket
 import tempfile
 import unittest
 import urllib.error
@@ -70,7 +71,7 @@ class RequirementsTest(unittest.TestCase):
         self.assertFalse(sp.source_failing())
         self.read(False)
         self.assertEqual(self.status()["status"], "missing")
-        self.assertIn("Could not reach Spoolman", self.status()["details"])
+        self.assertIn("couldn't reach Spoolman at http://spoolman:7912", self.status()["details"])
         self.assertTrue(sp.source_failing())
         self.read(True)
         self.assertEqual(self.status()["status"], "ok")
@@ -82,7 +83,7 @@ class RequirementsTest(unittest.TestCase):
         self.assertEqual(self.status(), {"id": "spoolman", "status": "ok", "details": "0.22.1"})
         self.read(False)
         self.assertEqual(self.status()["status"], "unreachable")
-        self.assertIn("Could not reach Spoolman", self.status()["details"])
+        self.assertIn("couldn't reach Spoolman at http://spoolman:7912", self.status()["details"])
         self.read(True)
         self.assertEqual(self.status(), {"id": "spoolman", "status": "ok", "details": "0.22.1"})
 
@@ -154,6 +155,29 @@ class NothingAtImportTest(unittest.TestCase):
             module, _ = load()
             module.SpoolerPage()
         self.assertEqual(module._heard, {})
+
+
+class UnreachableTextTest(unittest.TestCase):
+    """What the page is told when Spoolman, Bambu Cloud or GitHub gives no answer: a sentence, never the system's error."""
+
+    def test_spoolman_is_a_sentence_without_the_system_error_or_the_password(self):
+        url = "http://user:hunter2@spoolman:7912"
+        cases = [(ConnectionRefusedError(61, "Connection refused"), "Spoolman isn't answering at http://spoolman:7912. Is it running?"),
+                 (TimeoutError("timed out"), "Spoolman at http://spoolman:7912 took too long to answer."),
+                 (socket.gaierror(8, "nodename nor servname provided, or not known"), "http://spoolman:7912 wasn't found on your network."),
+                 (OSError(65, "No route to host"), "Spooler couldn't reach Spoolman at http://spoolman:7912.")]
+        for reason, text in cases:
+            self.assertEqual(sp.unreachable(urllib.error.URLError(reason), url), text)
+        self.assertEqual(sp.unreachable(TimeoutError("The read operation timed out"), url), cases[1][1])   # broke off while reading
+        error = urllib.error.HTTPError(url, 500, "Internal Server Error", {}, None)
+        self.addCleanup(error.close)
+        self.assertEqual(sp.unreachable(error, url), "Spoolman at http://spoolman:7912 answered with an error (HTTP 500).")
+        self.assertEqual(sp.ping("ftp://spoolman:7912")["error"], "The Spoolman address must start with http:// or https://.")
+
+    def test_other_services_name_the_cause_in_words(self):
+        refused = urllib.error.URLError(ConnectionRefusedError(61, "Connection refused"))
+        self.assertEqual(sp.no_answer(refused, "GitHub"), "Could not reach GitHub (the connection was refused)")
+        self.assertEqual(sp.no_answer(urllib.error.URLError("weird"), "Bambu Cloud"), "Could not reach Bambu Cloud (no connection)")
 
 
 if __name__ == "__main__":

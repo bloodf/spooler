@@ -5,6 +5,7 @@ import { save as saveIcon, spoolman } from '@orca-plugins/ui-foundation/src/icon
 import { m, answerCalibration, pending } from '../state/main';
 import { t, tMaybe, fmt } from '../core/i18n';
 import type { MessageKey } from '../core/messages';
+import { presetLabel } from '../logic/presets';
 
 // A saved copy of a Spooler preset changed calibrated values: nothing reaches Spoolman until Save here.
 const BED = /^(cool|eng|hot|supertack|textured_cool|textured)_plate_temp(_initial_layer)?$/;
@@ -27,7 +28,7 @@ function value(text: string, unit = '', key = ''): string {
 </script>
 <template>
   <OuiPanel v-for="a in m.calibration" :key="a.name" :title="t('cal.title')" :icon="spoolman" tone="magenta" data-test="calibration" :data-name="a.name">
-    <p class="cal-text">{{ t('cal.text', { name: a.name }) }}</p>
+    <p class="cal-text" :title="a.name">{{ t('cal.text', { name: presetLabel(a.name) }) }}</p>
     <table class="cal-table">
       <thead><tr><th scope="col">{{ t('cal.setting') }}</th><th scope="col">{{ t('cal.old') }}</th><th scope="col">{{ t('cal.new') }}</th></tr></thead>
       <tbody><tr v-for="c in a.changes" :key="c.key" :data-key="c.key">

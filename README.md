@@ -82,7 +82,7 @@ Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer) b
 | | Calibrated settings | A JSON `orca_settings` field on the Spoolman filament, per printer or `*` for all, plus **Flow ratio**, **Pressure advance** and **Max volumetric speed** fields on Spoolman's filament form. |
 | | Edits go back | Change a Spooler preset in OrcaSlicer and it is sent to Spoolman after a few seconds, or at once with **Send to Spoolman** in the spool's detail. |
 | | Search and filters | Search matches name, location, lot number and comment, and `#12` finds spool 12. Material and colour filters, grouping, sorting, and **Closest colour**, which lists the 12 nearest spools. |
-| | Spool actions | **Set weight from scale**, **Use filament**, **Set grams left**, **Add a note**, **Move**, **Mark dried today**, **Add a spool of this filament** (1 to 20), **Archive** and **Open in Spoolman**. |
+| | Spool actions | **Update weight** (from the scale, the grams left or the grams used), **Move**, **Note**, and under **More**: **Mark dried today**, **Add a spool of this filament** (1 to 20) and **Archive**; **Edit** and **Open in Spoolman** in the detail's header. |
 | | Spool detail | What is left, how long it lasts, the prints that used the spool, grams and cost booked, and weekly use over the last 4 weeks. |
 | | Low stock | A notification when a spool crosses your threshold (100 g by default), and a **Use first** chip on the oldest opened spool of a filament. |
 | | Drying reminder | **Dried 12 d ago** on the spool, amber past the days set per material: PETG 30, TPU 14, PA 7, PVA 7, PC 14. |

@@ -745,7 +745,7 @@ def _spoolman_error(exc: Exception) -> str:
     if isinstance(exc, urllib.error.HTTPError):
         return _i18n.tr("Spoolman refused it (HTTP {code})", code=exc.code)
     if isinstance(exc, urllib.error.URLError):
-        return _i18n.tr("Could not reach Spoolman ({reason})", reason=exc.reason)
+        return _sources.unreachable(exc)
     return str(exc)
 
 

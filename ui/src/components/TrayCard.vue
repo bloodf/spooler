@@ -4,15 +4,17 @@ import { OuiIcon, OuiLevel, OuiSlot, OuiStatus } from '@orca-plugins/ui-foundati
 import { rfid } from '@orca-plugins/ui-foundation/src/icons';
 import { m } from '../state/main';
 import { t, locale } from '../core/i18n';
-import { LEVEL_KEY, formatWeight, lowLevel, originalWeight, shown, spoolFraction } from '../logic/spools';
+import { LEVEL_KEY, formatWeight, levelTone, lowLevel, originalWeight, percentLeft, shown, spoolFraction } from '../logic/spools';
+import { presetLabel } from '../logic/presets';
 import type { Tray } from '../logic/printers';
 
-// One live slot (AMS tray, toolhead, external spool) as the printer reports it, with the spool it holds. Two sources,
-// said apart: the percentage, the bar and the colour are the printer's; the grams line is Spoolman's.
+// One live slot (AMS tray, toolhead, external spool) as the printer reports it, with the spool it holds. One amount:
+// Spoolman's grams and level when the slot holds one of its spools (the printer's percentage then is a caption under it,
+// so the two never disagree in one bar), else the printer's percentage.
 const props = defineProps<{ tray?: Tray | null; label: string; tool?: 1 | 2 | 3 | 4; active?: boolean; emptyLabel?: string; emptyHint?: string }>();
 const tr = computed<Tray>(() => props.tray ?? { empty: true });
 const pct = computed(() => (tr.value.remain == null ? null : Math.round(tr.value.remain)));
-const profile = computed(() => (tr.value.profile || '').split('/').pop() || '');
+const profile = computed(() => (tr.value.profile ? presetLabel(tr.value.profile) : ''));
 const spool = computed(() => (tr.value.spool != null ? m.spools.find(s => String(s.id) === String(tr.value.spool) && !s.archived) ?? null : null));
 const d = computed(() => m.disp);
 // The drawn spool: Spoolman's weight, else the printer's percentage; null when neither is known (the full reel in the
@@ -21,7 +23,7 @@ const fill = computed(() => spoolFraction(spool.value, tr.value.remain));
 const ex = computed(() => shown(d.value, 'exact_weight'));
 const level = computed(() => lowLevel(spool.value?.remaining_weight, m.low));
 const sub = computed(() => [shown(d.value, 'head_vendor') ? spool.value?.filament?.vendor?.name || '' : '', shown(d.value, 'head_material') ? tr.value.type || '' : '',
-  shown(d.value, 'head_colour_code') && tr.value.colour ? '#' + tr.value.colour : ''].filter(Boolean).join(' · '));
+  shown(d.value, 'head_colour_code') && tr.value.colour ? '#' + tr.value.colour.toUpperCase() : ''].filter(Boolean).join(' · '));
 const weight = computed(() => {
   const s = spool.value;
   if (!shown(d.value, 'head_weight') || !s || typeof s.remaining_weight !== 'number') return '';
@@ -35,6 +37,7 @@ const where = computed(() => (shown(d.value, 'head_spool') && spool.value
   ? [t('spool.numbered', { id: spool.value.id }), spool.value.location || '', by.value ? t(by.value[0]) : ''].filter(Boolean).join(' · ') : ''));
 const tip = computed(() => [profile.value ? t('tray.preset', { p: profile.value }) : '', by.value ? t(by.value[1]) : ''].filter(Boolean).join(' · '));
 const empty = computed(() => !!tr.value.empty);
+const spoolPct = computed(() => (weight.value && spool.value ? percentLeft(spool.value) : null));
 </script>
 <template>
   <OuiSlot class="tc" :label="label" :tool="tool" :active="active && !empty" :empty-label="emptyLabel ?? t('tray.empty')" :title="(!empty && tip) || undefined"
@@ -46,10 +49,14 @@ const empty = computed(() => !!tr.value.empty);
     </template>
     <template #meta>{{ sub }}</template>
     <template #amount>
-      <div v-if="pct !== null || weight" class="oui-slot-amount" data-test="weight">
-        <p v-if="pct !== null" class="oui-num" data-source="printer"><strong>{{ pct }}%</strong><span class="oui-muted">{{ ' ' + t('tray.fromPrinter') }}</span></p>
-        <OuiLevel v-if="shown(d, 'head_bar') && pct !== null" :fraction="pct / 100" :label="t('spool.pctLeft', { pct }) + ' ' + t('tray.fromPrinter')" />
-        <p v-if="weight" class="oui-num oui-meta" data-source="spoolman">{{ weight }} · Spoolman</p>
+      <div v-if="weight" class="oui-slot-amount" data-test="weight">
+        <p class="oui-num" data-source="spoolman"><strong>{{ weight }}</strong></p>
+        <OuiLevel v-if="shown(d, 'head_bar') && spoolPct !== null" :fraction="spoolPct / 100" :tone="levelTone(level)" :label="t('spool.pctLeft', { pct: spoolPct })" />
+        <p v-if="pct !== null" class="oui-num oui-meta" data-source="printer">{{ t('tray.printerSays', { pct }) }}</p>
+      </div>
+      <div v-else-if="pct !== null" class="oui-slot-amount" data-test="weight">
+        <p class="oui-num" data-source="printer"><strong>{{ pct }}%</strong><span class="oui-muted">{{ ' ' + t('tray.fromPrinter') }}</span></p>
+        <OuiLevel v-if="shown(d, 'head_bar')" :fraction="pct / 100" :label="t('spool.pctLeft', { pct }) + ' ' + t('tray.fromPrinter')" />
       </div>
     </template>
     <template v-if="empty">

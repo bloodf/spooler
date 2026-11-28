@@ -42,13 +42,13 @@ const GATE = ['printer.gateN'];
 // "{n} s": seconds are written the same way.
 const UNIT = ['set.refreshOption'];
 const SAME: Record<string, string[]> = {
-  es: [...NAMES, ...GATE, ...UNIT, 'common.ok', 'status.errorPrefix', 'filters.material', 'disp.material', 'disp.head_material', 'spool.rfid', 'progress.hm', 'progress.m', 'stats.materialsN_one', 'match.r.material'],
+  es: [...NAMES, ...GATE, ...UNIT, 'common.ok', 'status.errorPrefix', 'filters.material', 'disp.material', 'disp.head_material', 'spool.rfid', 'progress.hm', 'progress.m', 'stats.materialsN_one', 'set.page.general'],
   de: [...NAMES, ...GATE, ...UNIT, 'common.ok', 'filters.material', 'disp.material', 'disp.head_material', 'spool.rfid', 'progress.hm', 'progress.m',
-    'colour.orange', 'bambu.region', 'link.live', 'usage.slot', 'printer.extruder'],
+    'colour.orange', 'bambu.region', 'link.live', 'usage.slot', 'printer.extruder', 'editor.tabFilament', 'presets.mode.filament'],
   'zh-CN': NAMES,
   // Pressure advance stays in English, as in OrcaSlicer's Polish translation; Z-hop, Region and Slot are Polish too.
   pl: [...NAMES, ...UNIT, 'common.ok', 'spool.rfid', 'progress.hm', 'progress.m', 'cal.key.filament_z_hop', 'cal.key.pressure_advance',
-    'presets.key.pressure_advance', 'bambu.region', 'usage.slot', 'printer.slotN', 'stats.waste.model'],
+    'presets.key.pressure_advance', 'bambu.region', 'usage.slot', 'printer.slotN', 'stats.waste.model', 'editor.tabFilament'],
 };
 for (const [lang, allowed] of Object.entries(SAME)) {
   test(`${lang}: nothing is left in English`, () => {

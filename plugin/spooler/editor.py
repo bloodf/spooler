@@ -664,7 +664,7 @@ def spool_action(data: object) -> dict:
                 return editor_save(sid, data)
             if action == "ofd_suggest":   # Add Spool > Look up in OFD
                 key = data.get("key") if isinstance(data.get("key"), str) else ""   # the page's lookup, sent back
-                return {**_filament_profiles.ofd_suggest(data.get("vendor"), data.get("material"), data.get("name")), "key": key}
+                return {**_filament_profiles.ofd_suggest(data.get("vendor"), data.get("material"), data.get("name"), retry=data.get("retry") is True), "key": key}
             if action == "match_parent":
                 fid = _pos_int(data.get("filament"))
                 filament = _spoolman_sync.spoolman_call("GET", f"filament/{fid}") if fid else None

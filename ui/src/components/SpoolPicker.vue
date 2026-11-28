@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref } from 'vue';
-import { OuiHint, OuiSpoolPick, type OuiSpoolPickLabels } from '@orca-plugins/ui-foundation/src/components';
+import { OuiSpoolPick, type OuiSpoolPickLabels } from '@orca-plugins/ui-foundation/src/components';
 import { m } from '../state/main';
 import { t, locale } from '../core/i18n';
 import { formatWeight, pickSpools, shown } from '../logic/spools';
@@ -21,12 +21,10 @@ onMounted(() => nextTick(() => root.value?.querySelector<HTMLInputElement>('[dat
 </script>
 <template>
   <div ref="root" class="pk oui-well" data-test="picker">
-    <OuiHint v-if="excludeTaken" class="pk-hint" :label="label" :text="t('picker.takenHint')" />
     <OuiSpoolPick :spools="spools" :labels="labels" :selected="selected ?? null" :grams="grams" @pick="pick" @close="emit('close')" />
+    <p v-if="excludeTaken" class="oui-meta" data-test="picker-note">{{ t('picker.takenHint') }}</p>
   </div>
 </template>
 <style>
-.pk { position: relative; display: grid; padding: var(--oui-s2); box-shadow: inset 0 0 0 1px var(--oui-primary-mark); min-width: 0; }
-.pk-hint { position: absolute; inset-block-start: var(--oui-s2); inset-inline-end: var(--oui-s2); }
-.pk .oui-spick-q { padding-inline-end: 32px; }
+.pk { display: grid; gap: var(--oui-s2); padding: var(--oui-s2); box-shadow: inset 0 0 0 1px var(--oui-primary-mark); min-width: 0; }
 </style>

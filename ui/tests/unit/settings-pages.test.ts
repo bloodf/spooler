@@ -10,11 +10,12 @@ const SRC = fileURLToPath(new URL('../../src/', import.meta.url));
 const files = (dir: string): string[] => readdirSync(dir).flatMap(n => (statSync(join(dir, n)).isDirectory() ? files(join(dir, n)) : [join(dir, n)]));
 const view = readFileSync(join(SRC, 'settings/SettingsView.vue'), 'utf8');
 const pages = [...view.matchAll(/\{ id: '([a-z-]+)', label: t\('([^']+)'\)/g)].map(m => ({ id: m[1], label: m[2] }));
-const sectionIds = new Set([...files(SRC).filter(f => f.endsWith('.vue')).flatMap(f => [...readFileSync(f, 'utf8').matchAll(/<Oui(?:FormSection|Panel)[^>]*\sid="([a-z-]+)"/g)].map(m => m[1]))]);
+const sectionIds = new Set([...files(SRC).filter(f => f.endsWith('.vue')).flatMap(f => [...readFileSync(f, 'utf8').matchAll(/<(?:Oui(?:FormSection|Panel)[^>]*\s|div )id="([a-z-]+)"/g)].map(m => m[1]))]);
 const locales = files(SRC).filter(f => /core[\/\\]messages(-[a-z]+)?\.ts$/.test(f));
 
-test('each settings page is listed once and drawn by one section', () => {
-  assert.ok(pages.length >= 8, 'pages found: ' + pages.length);
+// A page is one section, or a wrapper (<div id class="set-page">) around the few sections that belong together.
+test('each settings page is listed once and drawn by one section or one group of sections', () => {
+  assert.equal(pages.length, 6, 'pages found: ' + pages.map(p => p.id).join(', '));
   assert.equal(new Set(pages.map(p => p.id)).size, pages.length, 'unique ids');
   for (const p of pages) assert.ok(sectionIds.has(p.id), 'a section for ' + p.id);
 });

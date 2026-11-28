@@ -64,5 +64,5 @@ body:
     id: logs
     attributes:
       label: Log output
-      description: The end of spooler.log. Its path is at the bottom of Spooler's Settings page.
+      description: The end of spooler.log. Settings > General > Show log file shows its path.
       render: text

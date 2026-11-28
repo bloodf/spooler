@@ -51,3 +51,13 @@ export const useWithPayload = (picked: string[] | null | undefined): string[] | 
 /** Whether Use with changed from what the editor opened with (order ignored). */
 export const useWithChanged = (now: string[] | null, was: string[] | null): boolean =>
   JSON.stringify([...(now ?? [])].sort()) !== JSON.stringify([...(was ?? [])].sort());
+
+/** A preset's name as people read it: without Spooler's folder and without the " @printer" part OrcaSlicer's names end with. */
+export const presetLabel = (name: string) => name.replace(/^_local\/[^/]+\//, '').replace(/\s@[^@]*$/, '').trim() || name;
+
+/** The label shown for each of these preset names: the short one, or the whole name where two would read the same. */
+export function presetLabels(names: string[]): Map<string, string> {
+  const count = new Map<string, number>();
+  for (const n of new Set(names)) count.set(presetLabel(n), (count.get(presetLabel(n)) ?? 0) + 1);
+  return new Map(names.map(n => [n, count.get(presetLabel(n)) === 1 ? presetLabel(n) : n]));
+}

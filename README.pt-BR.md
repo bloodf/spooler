@@ -82,7 +82,7 @@ O Spooler é um fork do [Spoolio](https://github.com/danm1989/spoolio-orcaslicer
 | | Ajustes calibrados | Um campo JSON `orca_settings` no filamento do Spoolman, por impressora ou `*` para todas, mais os campos **Flow ratio**, **Pressure advance** e **Max volumetric speed** no formulário de filamento do Spoolman. |
 | | As edições voltam | Altere um perfil do Spooler no OrcaSlicer e ele é enviado ao Spoolman em alguns segundos, ou na hora com **Enviar ao Spoolman** nos detalhes da bobina. |
 | | Busca e filtros | A busca encontra nome, local, lote e comentário, e `#12` acha a bobina 12. Filtros de material e cor, agrupamento, ordenação e **Cor mais próxima**, que lista as 12 bobinas mais parecidas. |
-| | Ações da bobina | **Definir peso pela balança**, **Usar filamento**, **Definir gramas restantes**, **Adicionar nota**, **Mover**, **Marcar como secada hoje**, **Adicionar bobina deste filamento** (de 1 a 20), **Arquivar** e **Abrir no Spoolman**. |
+| | Ações da bobina | **Atualizar peso** (pela balança, pelas gramas restantes ou pelas gramas usadas), **Mover**, **Nota** e, em **Mais**: **Marcar como secada hoje**, **Adicionar bobina deste filamento** (de 1 a 20) e **Arquivar**; **Editar** e **Abrir no Spoolman** no cabeçalho do detalhe. |
 | | Detalhe da bobina | O que resta, quanto tempo dura, as impressões que usaram a bobina, gramas e custo lançados e o uso por semana nas últimas 4 semanas. |
 | | Estoque baixo | Um aviso quando a bobina cruza o seu limite (100 g por padrão) e o selo **Usar primeiro** na bobina aberta mais antiga de um filamento. |
 | | Lembrete de secagem | Há quantos dias a bobina foi secada, em âmbar depois dos dias definidos por material: PETG 30, TPU 14, PA 7, PVA 7, PC 14. |

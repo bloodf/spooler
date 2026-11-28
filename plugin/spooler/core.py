@@ -343,7 +343,7 @@ DISPLAY_DEFAULTS = {
     # Printer tab: each slot's card
     "head_vendor": True,
     "head_material": True,
-    "head_colour_code": True,
+    "head_colour_code": False,   # as colour_code: a code is noise on a slot that already shows the colour
     "head_weight": True,    # grams left of the spool's weight
     "head_bar": True,
     "head_spool": True,     # spool id and location
@@ -559,8 +559,8 @@ def get_spools(spoolman_url: str) -> dict:
         if not isinstance(data, list):
             raise ValueError(_i18n.tr("Spoolman sent a spool list Spooler doesn't understand"))
         data = [spool for spool in data if isinstance(spool, dict)]
-    except urllib.error.URLError as exc:
-        error = _i18n.tr("Could not reach Spoolman at {url} ({reason})", url=split_auth(spoolman_url)[0], reason=exc.reason)
+    except OSError as exc:   # no answer (URLError), or one that broke off (a timeout while reading)
+        error = _sources.unreachable(exc, spoolman_url)
         _report("Spool list", error)
         _sources.heard(spoolman_url, False, error)
         return {"ok": False, "error": error}

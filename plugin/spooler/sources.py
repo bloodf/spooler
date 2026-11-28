@@ -10,6 +10,7 @@ import hashlib
 import json
 import math
 import re
+import socket
 import time
 import urllib.error
 import urllib.parse
@@ -18,12 +19,16 @@ import urllib.request
 from . import core as _core
 
 
+class BadAddress(urllib.error.URLError):
+    """An address Spooler won't open as Spoolman's; its reason is already a sentence for the page."""
+
+
 def _spoolman_open(base: str, path: str, method: str = "GET", body: object = None) -> object:
     """One Spoolman API request with a JSON body and answer; raises urllib's errors. Only http(s):
     urllib would also read file:// and ftp:// addresses typed or synced in as Spoolman's."""
     url, auth = _core.split_auth(f"{base.rstrip('/')}/api/v1/{path}")
     if urllib.parse.urlsplit(url).scheme not in ("http", "https"):
-        raise urllib.error.URLError(_i18n.tr("the address must start with http:// or https://"))
+        raise BadAddress(_i18n.tr("The Spoolman address must start with http:// or https://."))
     data = None if body is None else json.dumps(body).encode("utf-8")
     request = urllib.request.Request(url, data=data, method=method,
                                      headers={"Content-Type": "application/json", **auth})
@@ -39,6 +44,44 @@ def clean_url(url: str | None) -> str:
     return (url or "").strip().rstrip("/")
 
 
+def _why(exc: OSError) -> str:
+    """What kept a request from being answered: "refused", "timeout", "unknown" (no such host) or "other". The system's
+    own words for it ("[Errno 61] Connection refused") go to the log: they say nothing to the person reading the page."""
+    reason = getattr(exc, "reason", exc)
+    if isinstance(reason, ConnectionRefusedError):
+        return "refused"
+    if isinstance(reason, TimeoutError) or "timed out" in str(reason):
+        return "timeout"
+    return "unknown" if isinstance(reason, socket.gaierror) else "other"
+
+
+def unreachable(exc: OSError, url: str = "") -> str:
+    """Why Spoolman (at url, else at the saved address) gave no answer, as a sentence for the page."""
+    where = _core.split_auth(url or _core.get_settings().get("spoolman_url") or "")[0]
+    _core.log.warning("Spoolman at %s gave no answer: %s", where, getattr(exc, "reason", exc))
+    if isinstance(exc, BadAddress):
+        return str(exc.reason)
+    if isinstance(exc, urllib.error.HTTPError):
+        return _i18n.tr("Spoolman at {url} answered with an error (HTTP {code}).", url=where, code=exc.code)
+    why = _why(exc)
+    if why == "refused":
+        return _i18n.tr("Spoolman isn't answering at {url}. Is it running?", url=where)
+    if why == "timeout":
+        return _i18n.tr("Spoolman at {url} took too long to answer.", url=where)
+    if why == "unknown":
+        return _i18n.tr("{url} wasn't found on your network.", url=where)
+    return _i18n.tr("Spooler couldn't reach Spoolman at {url}.", url=where)
+
+
+def no_answer(exc: OSError, who: str) -> str:
+    """Why another service (Bambu Cloud, GitHub) gave no answer: the service, then the cause in a few words."""
+    _core.log.warning("%s gave no answer: %s", who, getattr(exc, "reason", exc))
+    why = _why(exc)
+    cause = (_i18n.tr("the connection was refused") if why == "refused" else _i18n.tr("it took too long to answer") if why == "timeout"
+             else _i18n.tr("its address wasn't found") if why == "unknown" else _i18n.tr("no connection"))
+    return _i18n.tr("Could not reach {who} ({reason})", who=who, reason=cause)
+
+
 def ping(spoolman_url: str) -> dict:
     """Ask Spoolman for its version, which doubles as a connection test.
 
@@ -50,10 +93,8 @@ def ping(spoolman_url: str) -> dict:
         data = _spoolman_open(spoolman_url, "info")
         if not isinstance(data, dict):
             raise ValueError("not a JSON object")
-    except urllib.error.URLError as exc:
-        error = _i18n.tr("Could not reach Spoolman at {url} ({reason})", url=_core.split_auth(spoolman_url)[0], reason=exc.reason)
-        _core.log.warning("Connection test failed: %s", error)
-        return {"ok": False, "error": error}
+    except OSError as exc:   # no answer (URLError), or one that broke off (a timeout while reading)
+        return {"ok": False, "error": unreachable(exc, spoolman_url)}
     except ValueError:
         # Not JSON, or not an object: a web page or another service at that address. Raising here
         # would leave the page's Test Connection waiting, and every later test ignored.
@@ -221,7 +262,7 @@ def _bambu_post(region: str, path: str, body: dict, host: str = "") -> tuple[dic
         _core.log.warning("Bambu Cloud %s answered HTTP %s: %s", path, exc.code, raw[:200])
         raise BambuError(_bambu_message(exc.code, raw)) from None
     except urllib.error.URLError as exc:
-        raise BambuError(_i18n.tr("Could not reach Bambu Cloud ({reason})", reason=exc.reason)) from None
+        raise BambuError(no_answer(exc, "Bambu Cloud")) from None
     try:
         data = json.loads(raw) if raw.strip() else {}
     except ValueError:
@@ -406,8 +447,7 @@ def bambu_fetch() -> dict:
         return {"ok": False, "error": _i18n.tr("Bambu Cloud returned an error (HTTP {code})", code=exc.code),
                 "account": auth["account"]}
     except urllib.error.URLError as exc:
-        return {"ok": False, "error": _i18n.tr("Could not reach Bambu Cloud ({reason})", reason=exc.reason),
-                "account": auth["account"]}
+        return {"ok": False, "error": no_answer(exc, "Bambu Cloud"), "account": auth["account"]}
     except Exception as exc:
         _core.log.exception("Bambu Cloud request failed")
         return {"ok": False, "error": str(exc), "account": auth["account"]}

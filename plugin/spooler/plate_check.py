@@ -49,7 +49,7 @@ def get_release() -> dict:
         else:
             error = _i18n.tr("GitHub returned HTTP {code}", code=exc.code)
     except urllib.error.URLError as exc:
-        error = _i18n.tr("Could not reach GitHub ({reason})", reason=exc.reason)
+        error = _sources.no_answer(exc, "GitHub")
     except Exception as exc:
         _core.log.exception("Update check failed")
         return {"ok": False, "error": str(exc)}

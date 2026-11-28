@@ -6,7 +6,7 @@ make a real difference.
 ## Ways to help
 
 - **Report a bug** with the [bug form](../../issues/new?template=bug_report.yml). The end of
-  `spooler.log` (its path is at the bottom of Spooler's Settings page) is the most useful thing
+  `spooler.log` (Settings > **General** > **Show log file** shows its path) is the most useful thing
   you can attach.
 - **Add a printer.** Most printer support starts from what the printer reports. A Moonraker
   `printer/objects/query` answer, an Anycubic MQTT report or a Bambu `pushall`, with serials and
@@ -53,8 +53,8 @@ CI runs the tests on Windows, macOS and Linux (x86_64 and arm64) and the lint on
 ### Trying it in OrcaSlicer
 
 Install OrcaSlicer 2.5 or later and install `dist/spooler_any.whl` from OrcaSlicer's Plugins dialog
-(**File > Plugins > Install local plugin**), the same way as a downloaded plugin. Remove the Orca Cloud copy first so the two don't clash. The log is at the path shown on
-Spooler's Settings page.
+(**File > Plugins > Install local plugin**), the same way as a downloaded plugin. Remove the Orca Cloud copy first so the two don't clash. The log is at the path Settings > **General** >
+**Show log file** shows.
 
 ## Pull requests
 

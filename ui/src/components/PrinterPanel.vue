@@ -6,8 +6,8 @@ import Password from 'primevue/password';
 import Select from 'primevue/select';
 import Checkbox from 'primevue/checkbox';
 import MultiSelect from 'primevue/multiselect';
-import { OuiHint, OuiIcon, OuiPanel, OuiStatus, type OuiState } from '@orca-plugins/ui-foundation/src/components';
-import { edit, link as linkIcon, plus, printer as printerIcon, trash, x } from '@orca-plugins/ui-foundation/src/icons';
+import { OuiHint, OuiIcon, OuiMenu, OuiPanel, OuiStatus, type OuiMenuItem, type OuiState } from '@orca-plugins/ui-foundation/src/components';
+import { chevronDown, edit, link as linkIcon, plus, printer as printerIcon, trash } from '@orca-plugins/ui-foundation/src/icons';
 import LiveUnits from './LiveUnits.vue';
 import SpoolSlot from './SpoolSlot.vue';
 import SpoolPicker from './SpoolPicker.vue';
@@ -96,6 +96,16 @@ async function dropPrinter() {
   if (!await ask({ title: t('printer.remove'), text: t('confirm.removePrinter', { printer: p.value.name }), yes: t('printer.remove'), no: t('common.goBack'), danger: true })) return;
   ui.picking = null; removePrinter(p.value.id);
 }
+// Edit layout: what the printer is made of, in one menu. Adding first, then each unit that can go, the printer itself last.
+const layout = ref<InstanceType<typeof OuiMenu>>();
+const layoutItems = computed<OuiMenuItem[]>(() => {
+  const add = (kind: 'tool' | 'ams' | 'ht' | 'ext', key: 'printer.addTool' | 'printer.addAms' | 'printer.addHt' | 'printer.addExt'): OuiMenuItem =>
+    ({ id: `add-${kind}`, label: t(key), icon: plus, run: () => addUnitTo(p.value.id, kind) });
+  const adds = !editable.value || full.value ? [] : [add('tool', 'printer.addTool'), ...(net.value ? [] : [add('ams', 'printer.addAms'), add('ht', 'printer.addHt')]),
+    ...(hasExt.value ? [] : [add('ext', 'printer.addExt')])];
+  const drops = rows.value.filter(r => r.remove >= 0).map((r, i): OuiMenuItem => ({ id: `remove-unit-${r.remove}`, label: t('printer.removeUnit', { unit: r.label }), separator: i === 0, run: () => void dropUnit(r.remove) }));
+  return [...adds, ...drops, { id: 'remove-printer', label: t('printer.remove'), icon: trash, danger: true, separator: true, run: () => void dropPrinter() }];
+});
 const isPicking = (u: number, s: number) => !!ui.picking && !ui.picking.moon && ui.picking.p === p.value.id && ui.picking.u === u && ui.picking.s === s;
 function pick(u: number, s: number, id: number) {
   ui.picking = null; setSlot(p.value.id, u, s, String(id));
@@ -136,6 +146,8 @@ const toolOf = (u: ManualUnit) => { const n = u.kind === 'tool' ? p.value.units.
       <Button v-if="ui.renaming !== p.id" severity="secondary" text size="small" :aria-label="t('printer.rename', { name: p.name })" :title="t('printer.rename', { name: p.name })" data-act="rename" @click="ui.renaming = p.id">
         <template #icon><OuiIcon :icon="edit" :size="14" /></template></Button>
       <Button v-if="editable" severity="secondary" size="small" :label="t('link.button')" :aria-expanded="ui.linkOpen === p.id" data-act="link" @click="toggleLink"><template #icon><OuiIcon :icon="linkIcon" :size="14" /></template></Button>
+      <Button severity="secondary" text size="small" :label="t('printer.layout')" aria-haspopup="menu" data-act="layout" @click="e => layout?.open(e, layoutItems)"><template #icon><OuiIcon :icon="chevronDown" :size="14" /></template></Button>
+      <OuiMenu ref="layout" />
     </template>
 
     <div class="oui-stack">
@@ -160,23 +172,22 @@ const toolOf = (u: ManualUnit) => { const n = u.kind === 'tool' ? p.value.units.
       <LiveUnits v-if="live && lv && !net && !handSet" :lv="lv" :link="p.id" />
       <template v-else-if="!p.auto || handSet">
         <template v-for="r in rows" :key="r.key">
-          <div class="oui-row pp-unit"><h3 class="oui-label">{{ r.label }}</h3><span class="oui-spacer" />
-            <Button v-if="r.remove >= 0" severity="secondary" text size="small" :label="t('printer.removeUnit', { unit: r.label })" @click="dropUnit(r.remove)" /></div>
+          <h3 class="oui-label">{{ r.label }}</h3>
           <div class="oui-cards">
             <SpoolSlot v-for="c in r.cells" :key="c.u + ':' + c.s" :label="slotLabel(c.unit, c.s)" :tool="toolOf(c.unit)" :spool="c.id ? byId.get(String(c.id)) : null" :missing="!!c.id && !byId.get(String(c.id))">
               <SpoolPicker v-if="isPicking(c.u, c.s)" exclude-taken :label="t('printer.assign')" :selected="c.id == null ? null : Number(c.id)" @pick="id2 => pick(c.u, c.s, id2)" @close="closePicker(c.u, c.s)" />
               <template #actions>
                 <template v-if="c.id">
-                  <Button severity="secondary" size="small" :label="t('bind.change')" :aria-expanded="isPicking(c.u, c.s)" :data-focus-key="`assign:${p.id}:${c.u}:${c.s}`"
+                  <Button severity="secondary" size="small" :label="isPicking(c.u, c.s) ? t('common.cancel') : t('bind.change')" :aria-expanded="isPicking(c.u, c.s)" :data-focus-key="`assign:${p.id}:${c.u}:${c.s}`"
                           :aria-label="t('bind.changeLabel', { slot: slotName(c), printer: p.name })" data-act="change"
                           @click="ui.picking = isPicking(c.u, c.s) ? null : { p: p.id, u: c.u, s: c.s }" />
                   <Button v-if="byId.get(String(c.id))" severity="secondary" text size="small" :label="t('printer.openSpool')" @click="showSpool(Number(c.id))" />
-                  <Button severity="secondary" text size="small" :aria-label="t('printer.clearSlot', { n: c.s + 1 })" :title="t('printer.clearSlot', { n: c.s + 1 })"
-                          :data-focus-key="`clear:${p.id}:${c.u}:${c.s}`" @click="setSlot(p.id, c.u, c.s, null)"><template #icon><OuiIcon :icon="x" :size="14" /></template></Button>
+                  <Button severity="secondary" text size="small" :label="t('printer.clear')" :aria-label="t('printer.clearSlot', { n: c.s + 1 })" :title="t('printer.clearSlot', { n: c.s + 1 })"
+                          :data-focus-key="`clear:${p.id}:${c.u}:${c.s}`" data-act="clear" @click="setSlot(p.id, c.u, c.s, null)" />
                 </template>
-                <Button v-else severity="secondary" size="small" :label="t('printer.assign')" :aria-expanded="isPicking(c.u, c.s)" :data-focus-key="`assign:${p.id}:${c.u}:${c.s}`"
+                <Button v-else severity="secondary" size="small" :label="isPicking(c.u, c.s) ? t('common.cancel') : t('printer.assign')" :aria-expanded="isPicking(c.u, c.s)" :data-focus-key="`assign:${p.id}:${c.u}:${c.s}`"
                         :aria-label="t('printer.assignLabel', { slot: slotName(c), printer: p.name })"
-                        data-act="assign" @click="ui.picking = isPicking(c.u, c.s) ? null : { p: p.id, u: c.u, s: c.s }"><template #icon><OuiIcon :icon="plus" :size="14" /></template></Button>
+                        data-act="assign" @click="ui.picking = isPicking(c.u, c.s) ? null : { p: p.id, u: c.u, s: c.s }"><template v-if="!isPicking(c.u, c.s)" #icon><OuiIcon :icon="plus" :size="14" /></template></Button>
               </template>
             </SpoolSlot>
           </div>
@@ -197,18 +208,6 @@ const toolOf = (u: ManualUnit) => { const n = u.kind === 'tool' ? p.value.units.
       </div>
     </div>
 
-    <template v-if="!p.auto" #footer>
-      <template v-if="editable && !full">
-        <Button severity="secondary" text size="small" :label="t('printer.addTool')" data-act="add-tool" @click="addUnitTo(p.id, 'tool')" />
-        <template v-if="!net">
-          <Button severity="secondary" text size="small" :label="t('printer.addAms')" @click="addUnitTo(p.id, 'ams')" />
-          <Button severity="secondary" text size="small" :label="t('printer.addHt')" @click="addUnitTo(p.id, 'ht')" />
-        </template>
-        <Button v-if="!hasExt" severity="secondary" text size="small" :label="t('printer.addExt')" @click="addUnitTo(p.id, 'ext')" />
-      </template>
-      <span class="oui-spacer" />
-      <Button severity="danger" outlined size="small" :label="t('printer.remove')" @click="dropPrinter"><template #icon><OuiIcon :icon="trash" :size="14" /></template></Button>
-    </template>
   </OuiPanel>
 </template>
 <style>

@@ -70,6 +70,6 @@ export const fmt = {
   ago(unix: number | null | undefined, now = Date.now() / 1000): string {
     if (unix == null) return '';
     const s = Math.max(0, Math.round(now - unix));
-    return s < 60 ? t('age.seconds', { n: s }) : s < 3600 ? t('age.minutes', { n: Math.round(s / 60) }) : t('age.at', { time: fmt.time(unix) });
+    return s < 5 ? t('age.now') : s < 60 ? t('age.seconds', { n: s }) : s < 3600 ? t('age.minutes', { n: Math.round(s / 60) }) : t('age.at', { time: fmt.time(unix) });
   },
 };

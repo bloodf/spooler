@@ -11,6 +11,7 @@ Needs Node.js 22.6+ (`node` on PATH or NODE=...) and Chrome/Chromium (found auto
 import hashlib
 import json
 import os
+import re
 import shutil
 import subprocess
 import tempfile
@@ -106,11 +107,10 @@ class Embedded(unittest.TestCase):
 
     def test_settings_lists_one_switch_per_display_option(self):
         source = (UI / "src" / "settings" / "SettingsView.vue").read_text(encoding="utf-8")
-        keys = []
-        for name in ("SPOOL_KEYS", "HEAD_KEYS"):
-            line = source[source.index("const %s = [" % name):]
-            keys += json.loads(line[line.index("["):line.index("]") + 1].replace("'", '"').replace("\n", ""))
-        self.assertEqual(sorted(keys), sorted(sp.DISPLAY_DEFAULTS))
+        groups = source[source.index("const DISPLAY_GROUPS = ["):]
+        keys = re.findall(r"'([a-z_]+)'", groups[:groups.index("] as const;")])   # the group titles (set.display...) have a dot
+        # Archived spools are shown from the list's own Filters, not from Display.
+        self.assertEqual(sorted(keys), sorted(key for key in sp.DISPLAY_DEFAULTS if key != "archived"))
         messages = (UI / "src" / "core" / "messages.ts").read_text(encoding="utf-8")
         for key in sp.DISPLAY_DEFAULTS:
             self.assertEqual(messages.count("'disp.%s':" % key), 2, key)   # English and Portuguese labels

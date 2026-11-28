@@ -4,7 +4,8 @@ import { decimalKeys } from '../core/decimal';
 import { locale } from '../core/i18n';
 
 // A number box of the spool editor, with its unit. "2.5" typed or pasted is 2.5 in every language (core/decimal).
-const props = defineProps<{ id?: string; label?: string; min?: number; max?: number; digits?: number; unit?: string | null; invalid?: boolean; describedby?: string }>();
+// Empty, it shows what an empty box means (`placeholder`), else its unit, so the unit is there before a number is.
+const props = defineProps<{ id?: string; label?: string; min?: number; max?: number; digits?: number; unit?: string | null; invalid?: boolean; describedby?: string; placeholder?: string }>();
 const model = defineModel<number | null>({ required: true });
 const keys = decimalKeys(() => locale.value);
 // InputNumber writes back its own rounded text on blur (734.5678 becomes 734.6): a value that only differs by that rounding
@@ -19,7 +20,7 @@ function set(v: unknown): void {
 <template>
   <span class="en-num" @keypress.capture="keys.onKeypress" @paste.capture="keys.onPaste">
     <InputNumber :model-value="model" :input-id="id" :aria-label="label" :min="min" :max="max" :max-fraction-digits="digits ?? 0" :use-grouping="false" :locale="locale"
-                 :suffix="unit ? ' ' + unit : undefined" :invalid="invalid" :aria-describedby="describedby" fluid
+                 :suffix="unit ? ' ' + unit : undefined" :placeholder="placeholder ?? unit ?? undefined" :invalid="invalid" :aria-describedby="describedby" fluid
                  @update:model-value="set" @input="e => set(e.value)" />
   </span>
 </template>

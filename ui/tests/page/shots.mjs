@@ -58,14 +58,15 @@ if (SCN === 'stats') { const s = [...__t.sent].reverse().find(m => m.type === 's
     history: [{time: now - 3600, name: 'Desk_Organiser_Plate_1', printer: 'X1C', result: 'finished', rows: [{label: 'Acme PLA', colour: '1a1a1a', material: 'PLA', grams: 96, cost: 1.9, ws: .08, wp: .05}]}]}});
   const h = document.querySelector('.stv-hh'); if (h) h.click(); }
 if (SCN === 'menu') { document.querySelector('[data-stack] .st-head').click(); await settle(); document.querySelector('tr[data-spool="3"]').click(); await settle();
-  document.querySelector('[data-detail] [data-focus-key="act:use"]').click(); }
+  document.querySelector('[data-detail] [data-focus-key="act:weight"]').click(); }
 if (SCN === 'toasts') { __t.handler({type: 'sent', ok: false, text: 'Spoolman refused the filament: 422 Unprocessable Entity'});
   __t.handler({type: 'action_result', ok: true, text: 'Spool #3 moved to Dry box'}); __t.handler({type: 'calibration', asks: []}); }
-if (SCN === 'stale' || SCN === 'toasts') __t.handler({type: 'spools', ok: false, origin: 1, error: 'Connection refused', error_code: 'read_failed'});
+if (SCN === 'stale' || SCN === 'toasts') __t.handler({type: 'spools', ok: false, origin: 1, error: 'Spoolman isn’t answering at http://192.168.1.10:7912. Is it running?', error_code: 'read_failed'});
 if (SCN === 'tabsettings') { __t.handler({type: 'show_view', view: 'settings', ...${JSON.stringify(SETTINGS)}}); }
 await settle();
 // The detail asks for the shown spool's print history: answer it as the plugin would.
-await until(() => SCN === 'nourl' || SCN === 'empty' || __t.sent.some(m => m.type === 'spool_detail'), 'detail asked (after the list settles)');
+// (Narrower than the list-and-detail split, no spool is open until one is picked: nothing is asked.)
+await until(() => SCN === 'nourl' || SCN === 'empty' || document.querySelector('.sv').clientWidth < 900 || __t.sent.some(m => m.type === 'spool_detail'), 'detail asked (after the list settles)');
 const ask = [...__t.sent].reverse().find(m => m.type === 'spool_detail');
 if (ask) __t.handler({type: 'spool_detail', detail: {id: ask.id, sign: '€', grams: 360, cost: 7.2, rate: 45, weeks: 1.6,
   prints: [96, 94.3, 31.5, 12.5, 125.7].map((g, i) => ({time: now - i * 4 * 86400 - 3600, name: ['Desk_Organiser_Plate_1', 'Headphone_Stand', 'Cable_Clip_x12', 'Benchy', 'Drawer_Divider_Set'][i], grams: g, cost: g * .02}))}});

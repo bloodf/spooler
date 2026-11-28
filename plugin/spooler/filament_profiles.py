@@ -769,7 +769,7 @@ def with_ofd(preset: dict, ofd: dict | None) -> dict:
 # Add Spool lists the OFD presets of the new spool's manufacturer and material (filmatch.rank_ofd) once the user asked,
 # from OFD's index kept a day in <data folder>/spooler/ofd/. A preset picked from it keeps resolving from that folder
 # offline (_ofd_layer); listing, refreshing, editing and printing never fetch.
-OFD_RETRY = 15 * 60   # s after a failed index fetch before Spooler asks OFD again (unless the user asks: Read again)
+OFD_RETRY = 15 * 60   # s after a failed index fetch before Spooler asks OFD again (unless the user asks: Try again in Add Spool)
 _ofd_fail: dict = {"at": None, "error": ""}
 
 def ofd_folder() -> Path:
@@ -799,12 +799,13 @@ def ofd_status(refresh: bool = False) -> dict:
     return {"on": True, "count": len(found["profiles"]), **{k: found[k] for k in ("fetched", "version", "stale", "error")}}
 
 
-def ofd_suggest(vendor: object, material: object, name: object = "") -> dict:
+def ofd_suggest(vendor: object, material: object, name: object = "", retry: bool = False) -> dict:
     """Add Spool > Look up in OFD: the OFD presets of this manufacturer and material, best first. Only with the
-    user's consent (the page sends it with the first click). Worker thread."""
+    user's consent (the page sends it with the first click). retry: the user's Try again after a failed lookup, which
+    asks OFD now instead of waiting out OFD_RETRY. Worker thread."""
     if not presets_settings()["ofd"]:
         return {"ok": False, "text": "", "consent": False}
-    found = ofd_lookup()
+    found = ofd_lookup(force=retry)
     text = lambda v: v.strip() if isinstance(v, str) else ""  # noqa: E731
     ofd = rank_ofd(found["profiles"], text(vendor), text(material), text(name), MATCH_CHOICES)
     return {"ok": True, "text": "", "consent": True, "ofd": ofd, "ofd_error": "" if found["profiles"] else found["error"]}

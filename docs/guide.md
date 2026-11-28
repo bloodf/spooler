@@ -56,7 +56,7 @@ else the mean price per kg of its spools in stock).
 
 The presets follow Spoolman: new filaments appear, filaments whose spools are all archived
 disappear, and changes are picked up on each refresh (every 30 seconds while the Spooler tab is
-visible; Settings > Spool source > **Refresh Spoolman every** sets 10 to 300 seconds, or off). **Sync Presets** at the top of the Spools tab does it at once and rebuilds every preset, even when
+visible; Settings > **Source** > **Refresh Spoolman every** sets 10 to 300 seconds, or off). **Sync Presets** at the top of the Spools tab does it at once and rebuilds every preset, even when
 nothing changed.
 
 ### Calibrated settings
@@ -100,7 +100,7 @@ shows that copy's changed calibration settings at the top of the Spooler tab, wi
 and the new one. Save to Spoolman writes them, so the Spooler preset has them after its next rebuild;
 Skip leaves Spoolman alone and isn't asked again for the same values. Flow ratio, pressure advance
 and max volumetric speed in unsaved edits wait in the same prompt; other unsaved edits are sent by
-themselves. Settings > Spool source >
+themselves. Settings > **Source** >
 "Save calibrated values to Spoolman" can make this Automatically or Never instead.
 
 ### Using your own preset for a spool
@@ -147,7 +147,7 @@ dimmed, and still never count for presets, the filament check or the printer slo
 colour**, a picker that lists the 12 nearest spools.
 
 Each row can show the spool's Spoolman comment, lot number and your own extra fields on a muted line
-(hover for the full text). Settings > **Display** switches each part of the spool list and of the
+(hover for the full text). Settings > **Spool list** > **Display** switches each part of the spool list and of the
 printer slots on or off; printer slots can show the loaded spool in full (manufacturer, grams left,
 spool number, location, preset).
 
@@ -165,15 +165,13 @@ source it also holds the actions:
 
 | Action | What it does |
 |---|---|
-| **Set weight from scale** | Weigh the spool and enter the gross weight. Needs the spool's empty weight (or the filament's) in Spoolman. |
-| **Use filament** | Subtract grams by hand. |
-| **Set grams left** | Type the filament left when you have no scale, 0 for an empty spool. Needs the spool's initial weight (or the filament's). |
-| **Add a note** / **Edit note** | The spool's Spoolman comment, say "dry before use"; empty removes it. |
+| **Update weight** | One form for the three ways to say how much is left. **On the scale**: weigh the spool and enter the gross weight (needs the spool's empty weight, or the filament's, in Spoolman). **Grams left**: type the filament left when you have no scale, 0 for an empty spool (needs the spool's initial weight, or the filament's). **Grams used**: subtract grams by hand. |
 | **Move** | Pick one of Spoolman's locations or type a new one. |
-| **Mark dried today** | Stores today's date in a Spoolman field (added on demand). |
-| **Add a spool of this filament** | 1 to 20 at once, for a multi-pack. |
-| **Archive** / **Unarchive** | Takes the spool out of the stock, or brings it back. |
-| **Open in Spoolman** | Opens the spool's page in your browser. |
+| **Note** | The spool's Spoolman comment, say "dry before use"; empty removes it. |
+| **More** > **Mark dried today** | Stores today's date in a Spoolman field (added on demand). **Clear dried date** shows once it is set. |
+| **More** > **Add a spool of this filament** | 1 to 20 at once, for a multi-pack. |
+| **More** > **Archive** / **Unarchive** | Takes the spool out of the stock, or brings it back. |
+| **Edit**, **Open in Spoolman** | In the detail's header: the editor, and the spool's page in your browser. |
 
 Archiving and adding ask for a second click; so does moving a spool off a U1 toolhead's location,
 since that unlinks it in U1 Control.
@@ -183,7 +181,7 @@ since that unlinks it in U1 Control.
 A low-stock notification appears in OrcaSlicer when a spool crosses your threshold (once per
 crossing, none at start-up). Opened spools of a filament with several spools get a **Use first**
 chip on the oldest, to finish it first. Chip and notification each switch off in Settings >
-**Display**.
+**Spool list** > **Display**.
 
 ### Drying reminder
 

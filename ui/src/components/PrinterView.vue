@@ -39,12 +39,15 @@ const how = computed(() => {
       </template>
     </OuiPageHeader>
     <RfidPanel />
-    <ProgressPanel />
-    <!-- The plate check, the bookings and the printers pack into columns (two from 1160 px, three from 1800 px), each
-         panel under the one before it in its column, so a short panel never leaves a gap beside a tall one. -->
-    <div class="pv-grid" data-test="printer-grid">
+    <!-- Two regions. What is happening now (the running print, the plate check, the prints to book), side by side where
+         they fit; then the printers alone, packed into columns (two from 1160 px, three from 1800 px), each panel under
+         the one before it in its column, so a short panel never leaves a gap beside a tall one. -->
+    <div class="pv-now" data-test="printer-now">
+      <ProgressPanel />
       <PlatePanel />
       <UsagePanel />
+    </div>
+    <div class="pv-grid" data-test="printer-grid">
       <PrinterPanel v-for="p in m.cfg" :key="p.id" :p="p" />
       <LinkedPanel v-if="linkedAny" />
     </div>
@@ -54,6 +57,8 @@ const how = computed(() => {
 </template>
 <style>
 /* min-width: a grid item is otherwise as wide as its widest header's unwrapped text (a long link error in the dock). */
+.pv-now { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(460px, 100%), 1fr)); align-items: stretch; gap: var(--oui-s3); min-width: 0; }
+.pv-now:empty { display: none; }
 .pv-grid { columns: 1; column-gap: var(--oui-s3); min-width: 0; }
 .pv-grid > * { break-inside: avoid; margin-block-end: var(--oui-s3); }
 .pv-grid:empty { display: none; }

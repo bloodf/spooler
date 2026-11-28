@@ -13,7 +13,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 const PAGE = process.env.PAGE || resolve(here, '../../../plugin/spooler/app.html');
 const DISPLAY_DEFAULTS = { group_same: true, in_use: true, vendor: true, material: true, colour_code: false, diameter: false, rfid: true, bar: true,
   location: true, spool_id: false, comment: true, lot_nr: false, extra_fields: false, exact_weight: true, archived: false, dried: true, use_first: true,
-  low_notice: true, head_vendor: true, head_material: true, head_colour_code: true, head_weight: true, head_bar: true, head_spool: true, head_preset: true, head_rfid: true };
+  low_notice: true, head_vendor: true, head_material: true, head_colour_code: false, head_weight: true, head_bar: true, head_spool: true, head_preset: true, head_rfid: true };
 const SETTINGS = { url: 'http://spoolman:7912', verified_url: '', default_url: 'http://localhost:7912', source: 'spoolman', low_stock: 100, plate_check: true,
   plate_margin: 10, weight_display: 'both', show_cart: false, spool_columns: 1, progress: { on: true, finish: true, slot: true, idle: 'line' },
   stats: { on: true, cur: 'spoolman' }, display: DISPLAY_DEFAULTS, drying: { PETG: 30, PLA: 0 }, cur_code: 'GBP', wizard: false, log_path: '/tmp/spooler.log' };
@@ -72,6 +72,36 @@ async function pickId(id, root = document) {
   eq(qa('[data-colour]', box).length, 1, 'one colour holds #' + id);
   await click(q('[data-colour]', box));
 }
+// The detail's actions. Update weight opens one form for the three ways to say how much is left (On the scale, Grams left,
+// Grams used); the ones used now and then are under More.
+async function weightForm(id, kind) {
+  await click(q('[data-act="weight"]', panel(id)));
+  const k = qa('[data-test="weight-kind"] button', panel(id)).find(b => text(b) === kind);
+  assert(k, 'kind ' + kind + ' in ' + qa('[data-test="weight-kind"] button', panel(id)).map(text).join('|'));
+  await click(k); await settle();
+}
+async function moreItems(id) { await click(q('[data-act="more"]', panel(id))); await until(() => q('.oui-menu'), 'More opens'); return qa('.oui-menu-item').map(text); }
+async function closeMore() { await press('Escape'); await until(() => !q('.oui-menu'), 'More closes'); }
+async function more(id, label) {
+  const items = await moreItems(id), b = qa('.oui-menu-item').find(x => text(x) === label);
+  assert(b, label + ' under More: ' + items.join('|'));
+  await click(b); await settle();
+}
+// A printer's Edit layout menu: what it is made of (add or remove a unit), Remove printer last.
+async function layoutItems(root = document) { await click(q('[data-act="layout"]', root)); await until(() => q('.oui-menu'), 'Edit layout opens'); return qa('.oui-menu-item').map(text); }
+async function layout(label, root = document) {
+  const items = await layoutItems(root), b = qa('.oui-menu-item').find(x => text(x) === label);
+  assert(b, label + ' under Edit layout: ' + items.join('|'));
+  await click(b); await settle();
+}
+// The editor. The first step of Add Spool is a list of the filaments in Spoolman (a row is named as its text: manufacturer,
+// name, material); Edit Spool is three tabs (spool, filament, presets), and a field takes input only while its tab shows.
+async function pickFilament(label) {
+  const o = qa('[data-test="editor-pick"] [data-label]').find(x => x.dataset.label === label);
+  assert(o, 'filament ' + label + ' in ' + qa('[data-test="editor-pick"] [data-label]').map(x => x.dataset.label).join('|'));
+  await click(o);
+}
+async function edTab(name) { await click(q('[data-test="editor-tabs"] [data-tab="' + name + '"]')); await settle(); }
 const swatchNames = (root = document) => qa('[data-test="picker"] [data-colour]', root).map(b => b.title.split(' · ')[0]);
 `;
 
@@ -90,7 +120,7 @@ test('grouped spools show full totals and the loaded one first', `
   await click(q('[data-stack] .st-head'));
   const items = qa('tr.sp-child');
   eq(items.map(c => c.dataset.spool), ['2', '1'], 'spool 2 is loaded: first');
-  assert(text(items[0]).includes('In use · U1 · T1'), 'where it is loaded');
+  assert(text(items[0]).includes('In use · U1') && q('[data-chip="in-use"]', items[0]).title.includes('U1 · T1'), 'where it is loaded: the printer in the row, the toolhead in its tooltip');
 `);
 test('groups and single spools share one card; stack shows its count', `
   await spools(SPOOLS);
@@ -179,7 +209,8 @@ test('cards: each shows its spool, colour, weight and state; the unknown amount 
   ${CARD_SPOOLS}
   await spools(MIX, {spool_view: 'cards'});
   const c = vis(card(12));
-  for (const s of ['Signal', 'Polymaker', 'PETG', 'Red · #D22020', '80 g of 1,000 g', 'Dry box', 'Low', 'RFID']) assert(c.includes(s), s + ' in ' + c);
+  for (const s of ['Signal', 'Polymaker', 'PETG', 'Red', '80 g of 1,000 g', 'Dry box', 'Low', 'RFID']) assert(c.includes(s), s + ' in ' + c);
+  assert(!c.includes('#D22020'), 'no colour code while its Display switch is off: ' + c);
   assert(card(12).querySelector('.oui-spool .oui-spool-unknown') === null && card(14).querySelector('.oui-spool[data-unknown] .oui-spool-unknown'), '? only for the unknown amount');
   assert(!card(12).querySelector('button'), 'nothing interactive inside a card');
   const cards = qa('.sc-card'), top = cards[0].getBoundingClientRect().top, first = cards.filter(c => c.getBoundingClientRect().top === top);
@@ -331,10 +362,12 @@ test('card actions only for Spoolman; archived spool; move that unlinks a U1 too
   eq(qa('tr[data-spool]').length, 3, 'one row per spool');
   await open(3);
   const actions = vis(panel(3));
-  for (const s of ['Set weight from scale', 'Use filament', 'Move', 'Unarchive', 'Add a spool of this filament', 'Archived'])
+  for (const s of ['Update weight', 'Move', 'Note', 'More', 'Archived'])
     assert(actions.includes(s), 'detail has ' + s);
-  assert(btn('Open in Spoolman', panel(3)), 'Open in Spoolman, an icon button in the detail header');
-  assert(!btn('Archive', panel(3)), 'no Archive on an archived spool');
+  eq(qa('[data-test="spool-actions"] button', panel(3)).map(text), ['Update weight', 'Move', 'Note', 'More'], 'one row of four actions');
+  assert(btn('Open in Spoolman', panel(3)) && text(byTest('detail-edit')) === 'Edit', 'Edit and Open in Spoolman in the detail header');
+  eq(await moreItems(3), ['Mark dried today', 'Add a spool of this filament', 'Unarchive'], 'the rest under More; no Archive on an archived spool');
+  await closeMore();
   eq(row(3).getAttribute('aria-selected'), 'true', 'its row is the selected one');
   await click(btn('Move', panel(3)));
   await until(() => sentOf('spool_action').some(m => m.action === 'locations'), 'locations asked');
@@ -347,12 +380,64 @@ test('card actions only for Spoolman; archived spool; move that unlinks a U1 too
   eq([mv.id, mv.location, mv.origin], [3, 'Shelf', 3], 'moves with the list origin');
   assert(toasts().includes('Sending to Spoolman'), 'pending shown');
   await open(1);
-  await click(btn('Archive', panel(1)));
+  await more(1, 'Archive');
   assert(dialogText().includes('Archive Black'), 'archive asks');
   await no();
   assert(!sentOf('spool_action').some(m => m.action === 'archive'), 'declined: nothing sent');
   await spools(list, {source: 'bambu', display: {...DEFAULTS, group_same: false}});
-  assert(panel(1) && !btn('Set weight from scale', panel(1)) && !btn('Archive', panel(1)) && !btn('Open in Spoolman', panel(1)), 'no actions for Bambu Cloud');
+  assert(panel(1) && !btn('Update weight', panel(1)) && !btn('More', panel(1)) && !btn('Open in Spoolman', panel(1)) && !byTest('detail-edit'), 'no actions for Bambu Cloud');
+`);
+test('list: a header click sorts and the header stays on top; Filters counts only what narrows; Match a colour has no swatch until a colour is picked', `
+  await spools(SPOOLS, {display: {...DEFAULTS, group_same: false}});
+  const head = byTest('list-head'), th = name => qa('th', head).find(h => text(h) === name), order = () => qa('tr[data-spool]').map(r => r.dataset.spool);
+  eq(qa('th', head).map(text), ['Spool', 'Material', 'Location', 'State', 'Left'], 'one header row');
+  eq(getComputedStyle(head).position, 'sticky', 'which stays at the top of the list while it scrolls');
+  eq(qa('.sp-part thead').filter(h => h.getBoundingClientRect().height > 1).length, 0, 'the parts of the list repeat no header');
+  const x = el => Math.round(el.getBoundingClientRect().left);
+  eq(qa('th', head).map(x), qa('td', row(1)).map(x), 'header and rows share their columns');
+  eq([th('Left').getAttribute('aria-sort'), order()], ['ascending', ['1', '2']], 'sorted by what is left, least first');
+  await click(th('Left'));
+  eq([th('Left').getAttribute('aria-sort'), order()], ['descending', ['2', '1']], 'a second click turns the order round');
+  await click(th('Location'));
+  eq([th('Location').getAttribute('aria-sort'), th('Left').getAttribute('aria-sort'), order()], ['ascending', 'none', ['1', '2']], 'another column: Shelf A before Shelf B');
+  await click(byTest('filters-toggle'));
+  eq([text(q('.p-select-label', byTest('sort'))), text(byTest('sort-dir'))], ['Sort: location', '↑ Ascending'], 'the Sort list follows the header, and the direction is said in words');
+  await pick(byTest('group'), 'Group: material');
+  eq(text(byTest('filters-toggle')), 'Filters', 'grouping arranges the list: it is no filter');
+  await pick(byTest('vendor'), 'Acme');
+  eq(text(byTest('filters-toggle')), 'Filters (1)', 'a manufacturer narrows it');
+  assert(text(byTest('match-colour')) === 'Match a colour…' && q('#sv-match').classList.contains('oui-sr') && !btn('Clear colour'), 'no swatch and no Clear until a colour is picked');
+  const c = q('#sv-match'); c.value = '#111111'; c.dispatchEvent(new Event('input', {bubbles: true})); await settle();
+  assert(text(byTest('match-colour')) === 'Closest colour' && !q('#sv-match').classList.contains('oui-sr') && btn('Clear colour'), 'picked: its swatch and Clear');
+  eq(text(byTest('filters-toggle')), 'Filters (2)', 'and it counts');
+`, { shared: true });
+test('list: no toolbar over a list that is not there; the reason is a sentence; the bar says how fresh the list is, not where it is from', `
+  await post({type: 'spools', ok: false, origin: 1, source: 'spoolman', error: 'Spoolman isn’t answering at http://spoolman:7912. Is it running?', error_code: 'read_failed', peers: {u1control: false}});
+  await until(() => byTest('empty-error'), 'the read error');
+  assert(!byTest('search') && !byTest('filters-toggle') && !byTest('view-cards'), 'no search, filters or views over the message');
+  eq(text(q('.oui-empty-text .oui-meta', byTest('empty-error'))), 'Spoolman isn’t answering at http://spoolman:7912. Is it running?', 'the reason, as the plugin words it');
+  assert(!q('.oui-mono, .oui-error-detail', byTest('empty-error')), 'as text of the page, not as a line of code');
+  await spools(SPOOLS);
+  assert(byTest('search') && byTest('filters-toggle') && byTest('view-cards'), 'with a list, its toolbar');
+  eq(text(byTest('source-state')), 'Updated just now', 'how fresh the list is');
+  assert(!text(q('.oui-appbar')).includes('7912') && byTest('source-chip').title === 'spoolman:7912', 'the address is configuration: the tooltip of the chip has it, the bar does not');
+`);
+test('list: the State column is one line (the level, one fact, then +n); the detail has every fact and Reorder', `
+  const busy = {...SPOOLS[0], remaining_weight: 90, use_first: true, rfid_tags: ['04AB'], extra: {dried: '"2020-01-01"'}, dry_days: 30};
+  await spools([busy, {...SPOOLS[1], filament: {...SPOOLS[1].filament, id: 6}}], {display: {...DEFAULTS, group_same: false}, show_cart: true});
+  await post({type: 'live', live: {...LIVE, links: {'auto-u1': 'live'}, printers: [{...LIVE.printers[0], units: [{id: 0, kind: 'ams', trays: [{...TRAY, spool: 1}]}]}]}});
+  const cell = q('[data-col="state"]', row(1)), chips = qa(':scope > *', cell);
+  eq(chips.map(c => text(c).replace(/:.*/, '')), ['Low stock', 'In use · U1', '+3'], 'level, where it is loaded (the printer only), and how many more');
+  for (const fact of ['Use first', 'Dried', 'RFID']) assert(q('[data-chip="more"]', cell).title.includes(fact), fact + ' in the tooltip of +3: ' + q('[data-chip="more"]', cell).title);
+  eq(new Set(chips.map(c => Math.round(c.getBoundingClientRect().top + c.getBoundingClientRect().height / 2))).size, 1, 'on one line');
+  const tall = qa('tr[data-spool]').map(r => r.getBoundingClientRect().height);
+  assert(Math.max(...tall) - Math.min(...tall) < 2, 'so every row is as tall as the next: ' + tall.join(', '));
+  assert(!q('[data-test="cart"]', row(1)), 'no unlabelled reorder icon in the row');
+  await open(1);
+  for (const fact of ['Low stock', 'In use · U1 · T1', 'Use first', 'Dried', 'RFID']) assert(text(q('.sp-chips', panel(1))).includes(fact), 'the detail has ' + fact + ': ' + text(q('.sp-chips', panel(1))));
+  eq(text(q('[data-test="cart"]', panel(1))), 'Reorder', 'and a labelled Reorder beside the level');
+  await click(q('[data-test="cart"]', panel(1)));
+  eq(lastOf('order'), {type: 'order', query: 'Acme Black'}, 'which searches for the filament');
 `);
 test('use first chip follows the payload and its switch', `
   await spools([{...SPOOLS[0], use_first: true}, {...SPOOLS[1], id: 9, filament: {...SPOOLS[1].filament, id: 6}}], {display: {...DEFAULTS, group_same: false}});
@@ -363,15 +448,20 @@ test('use first chip follows the payload and its switch', `
 test('dried chip and menu: mark, then clear only when marked', `
   const marked = {...SPOOLS[0], extra: {dried: '"' + new Date().toISOString().slice(0, 10) + '"', dryer: '"Box 2"'}, dry_days: 30};
   await spools([marked, {...SPOOLS[1], filament: {...SPOOLS[1].filament, id: 6}}], {display: {...DEFAULTS, group_same: false, extra_fields: true}});
-  assert(text(card(1)).includes('Dried today') && byTest('dried'), 'chip');
   assert(!text(card(1)).includes('dried:') && text(card(1)).includes('dryer: Box 2'), 'own field hidden, user field shown');
   await open(1);
-  assert(btn('Mark dried today', panel(1)) && btn('Clear dried date', panel(1)), 'both');
-  await click(btn('Mark dried today', panel(1)));
+  assert(text(panel(1)).includes('Dried today') && q('[data-test="dried"]', panel(1)), 'chip, in the detail');
+  assert(!q('[data-test="dried"]', row(1)), 'a drying date that is not overdue stays out of the row');
+  const both = await moreItems(1);
+  assert(both.includes('Mark dried today') && both.includes('Clear dried date'), 'both: ' + both.join('|'));
+  await closeMore();
+  await more(1, 'Mark dried today');
   await open(2);
-  assert(btn('Mark dried today', panel(2)) && !btn('Clear dried date', panel(2)), 'clear only when marked');
+  const one = await moreItems(2);
+  assert(one.includes('Mark dried today') && !one.includes('Clear dried date'), 'clear only when marked');
+  await closeMore();
   await open(1);
-  await click(btn('Clear dried date', panel(1)));
+  await more(1, 'Clear dried date');
   eq(sentOf('spool_action').map(m => m.action).filter(a => a !== 'locations'), ['dried', 'clear_dried'], 'actions');
   await spools([marked], {display: {...DEFAULTS, dried: false}});
   assert(!byTest('dried'), 'switch hides it');
@@ -382,14 +472,15 @@ test('details panel renders the history as text', `
   eq(lastOf('spool_detail').id, 1, 'asked');
   await post({type: 'spool_detail', detail: {id: 1, sign: '£', grams: 80, cost: 2.5, rate: 20, weeks: 5, prints: [{time: 1700000000, name: '<b>Benchy</b>', grams: 40, cost: 1}]}});
   const d = text(panel(1));
-  for (const s of ['1 print', '20 g a week on average', 'at 20 g per week', '£2.50', '<b>Benchy</b>']) assert(d.includes(s), 'detail has ' + s + ': ' + d);
+  for (const s of ['1 print', '20 g a week on average', '£2.50', '<b>Benchy</b>']) assert(d.includes(s), 'detail has ' + s + ': ' + d);
+  assert(!d.includes('per week at') && !d.includes('at 20 g'), 'the rate is said once, under Used per week');
   assert(/Lasts about\\s*5\\s*weeks/.test(d), 'lasts about 5 weeks: ' + d);
   assert(!panel(1).querySelector('b b, td b'), 'markup is text, not HTML');
 `);
 test('weights and grams fields validate before sending (no blank grams)', `
   await spools(SPOOLS, {display: {...DEFAULTS, group_same: false}});
   await open(1);
-  await click(btn('Use filament', panel(1)));
+  await weightForm(1, 'Grams used');
   assert(q('[data-detail="1"] [data-act="sp-go"]').disabled, 'Save waits for grams');
   await type(q('#sc-in-1'), 'abc');
   assert(q('[data-detail="1"] [data-act="sp-go"]').disabled && text(panel(1)).includes('Enter a number of grams'), 'invalid explained');
@@ -398,7 +489,7 @@ test('weights and grams fields validate before sending (no blank grams)', `
   const use = sentOf('spool_action').find(m => m.action === 'use');
   eq(use.grams, '12.5', 'decimal comma accepted');
   await open(1);
-  await click(btn('Use filament', panel(1)));
+  await weightForm(1, 'Grams used');
   for (const bad of ['0', '-3', '100001']) {
     await type(q('#sc-in-1'), bad);
     assert(q('[data-detail="1"] [data-act="sp-go"]').disabled && text(panel(1)).includes('above 0'), bad + ' refused before sending');
@@ -409,7 +500,7 @@ test('weights and grams fields validate before sending (no blank grams)', `
 test('grams left: set from the card, 0 allowed for an empty spool', `
   await spools(SPOOLS, {display: {...DEFAULTS, group_same: false}});
   await open(1);
-  await click(btn('Set grams left', panel(1)));
+  await weightForm(1, 'Grams left');
   assert(text(panel(1)).includes('0 for an empty spool'), 'explains');
   await type(q('#sc-in-1'), '-2');
   assert(q('[data-detail="1"] [data-act="sp-go"]').disabled && text(panel(1)).includes('from 0 to 100,000'), 'negative refused');
@@ -418,7 +509,7 @@ test('grams left: set from the card, 0 allowed for an empty spool', `
   const left = sentOf('spool_action').find(m => m.action === 'remaining');
   eq([left.id, left.grams, left.origin], [1, '0', 3], 'sent with the list origin');
   await open(1);
-  await click(btn('Set grams left', panel(1)));
+  await weightForm(1, 'Grams left');
   await type(q('#sc-in-1'), '412,5');
   await press('Enter');
   eq(lastOf('spool_action').grams, '412.5', 'decimal comma');
@@ -426,13 +517,13 @@ test('grams left: set from the card, 0 allowed for an empty spool', `
 test('a note is added, edited and removed from the card', `
   await spools([{...SPOOLS[0], comment: ''}, {...SPOOLS[1], comment: 'tangled <b>once</b>'}], {display: {...DEFAULTS, group_same: false}});
   await open(1);
-  assert(btn('Add a note', panel(1)) && !btn('Edit note', panel(1)), 'no note yet: add');
-  await click(btn('Add a note', panel(1)));
+  await click(btn('Note', panel(1)));
+  eq(q('#sc-in-1').value, '', 'no note yet: an empty field');
   await type(q('#sc-in-1'), 'Dry before use');
   await click(q('[data-detail="1"] [data-act="sp-go"]'));
   eq(lastOf('spool_action'), {type: 'spool_action', action: 'comment', id: 1, origin: 3, comment: 'Dry before use'}, 'saved');
   await open(2);
-  await click(btn('Edit note', panel(2)));
+  await click(btn('Note', panel(2)));
   eq(q('#sc-in-2').value, 'tangled <b>once</b>', 'starts from the current note');
   assert(!q('[data-detail="2"] [data-act="sp-go"]').disabled, 'clearing is allowed');
   await type(q('#sc-in-2'), '');
@@ -442,7 +533,7 @@ test('a note is added, edited and removed from the card', `
 test('add several spools of a filament at once', `
   await spools(SPOOLS, {display: {...DEFAULTS, group_same: false}});
   await open(1);
-  await click(btn('Add a spool of this filament', panel(1)));
+  await more(1, 'Add a spool of this filament');
   await until(() => dialogOpen());
   assert(dialogText().includes('Each one starts full'), 'says what is added');
   eq(q('#dlg-input').value, '1', 'one by default');
@@ -450,14 +541,14 @@ test('add several spools of a filament at once', `
   const one = lastOf('spool_action');
   eq([one.action, one.filament, 'count' in one], ['add', SPOOLS[0].filament.id, false], 'one spool: no count sent');
   await open(1);
-  await click(btn('Add a spool of this filament', panel(1)));
+  await more(1, 'Add a spool of this filament');
   await until(() => dialogOpen());
   await type(q('#dlg-input'), '4');
   await yes();
   eq(lastOf('spool_action').count, 4, 'four');
   const before = sentOf('spool_action').length;
   await open(1);
-  await click(btn('Add a spool of this filament', panel(1)));
+  await more(1, 'Add a spool of this filament');
   await until(() => dialogOpen());
   await type(q('#dlg-input'), '25');
   await yes();
@@ -489,7 +580,7 @@ test('N1: the shown spool is asked again when an action settles and when a newer
   await post({type: 'spool_detail', detail: {id: 1, sign: '£', grams: 40, cost: 1, rate: 20, weeks: 20, prints: [{time: 1700000000, name: 'Benchy', grams: 40, cost: 1}]}});
   const asked = () => sentOf('spool_detail').filter(m => m.id === 1).length;
   let n = asked();
-  await click(btn('Mark dried today', panel(1)));
+  await more(1, 'Mark dried today');
   // The result and the list it refreshes, delivered together: they make one request. (Arriving more than the settle
   // time apart, they would make two; the page only coalesces a burst.)
   const result = post({type: 'action_result', ok: true, action: 'dried', text: 'Spool #1 updated'});
@@ -519,16 +610,26 @@ test('N2: the same id from another source is another spool; only Spoolman is ask
   assert(!/Loading/.test(text(panel(1))), 'the answer shows: ' + text(panel(1)));
 `);
 test('detail facts follow the Display switches', `
-  await spools([{...SPOOLS[0], extra: {dried: '"2026-11-01"'}, rfid_tags: ['04AB']}], {display: {...DEFAULTS, group_same: false, location: false, dried: false, rfid: false}});
+  await spools([{...SPOOLS[0], price: 20, extra: {dried: '"2026-11-01"'}, rfid_tags: ['04AB']}], {display: {...DEFAULTS, group_same: false, location: false, dried: false, rfid: false}});
   await open(1);
   const facts = vis(q('.oui-kv', panel(1)) || panel(1));
   for (const k of ['LOCATION', 'DRIED', 'RFID TAG']) assert(!facts.toUpperCase().includes(k), 'hidden: ' + k + ' in ' + facts);
   assert(facts.toUpperCase().includes('PRICE'), 'price has no switch and stays');
+  assert(!facts.toUpperCase().includes('USED SO FAR') && !facts.includes('—'), 'a fact with nothing to say is left out: ' + facts);
+  await spools([{...SPOOLS[0], location: ''}], {display: {...DEFAULTS, group_same: false}});
+  assert(vis(q('.oui-kv', panel(1))).includes('Location —'), 'the location stays, also unset: ' + vis(q('.oui-kv', panel(1))));
 `);
-test('narrow: a pick moves focus to the detail under the list', `
+test('narrow: no spool opens by itself; a pick opens its detail in place of the list, with a way back', `
   await spools(SPOOLS, {display: {...DEFAULTS, group_same: false}});
+  await sleep(400);
+  assert(!q('[data-detail]') && !sentOf('spool_detail').length, 'the list has the page until a spool is picked');
   await open(2);
   await until(() => document.activeElement && document.activeElement.matches('#sp-detail .oui-panel-title'), 'focus on the detail heading');
+  assert(q('.sp-list').offsetParent === null, 'the detail takes the place of the list');
+  eq(text(byTest('detail-back')), '← Spools', 'with a link back');
+  await click(byTest('detail-back'));
+  assert(!q('[data-detail]') && q('.sp-list').offsetParent !== null, 'back on the list');
+  eq(document.activeElement, row(2), 'on the row it was opened from');
 `, { width: 720 });
 test('380 px dock: every tab is reachable, icons only, named', `
   await spools(SPOOLS, {stats: {on: true, cur: 'spoolman'}});
@@ -574,9 +675,11 @@ test('page grammar: each tab opens with a page header and one primary action; th
   await spools([...SPOOLS, {...SPOOLS[0], id: 9, remaining_weight: 40}], {display: {...DEFAULTS, group_same: false}, usage: {enabled: true, mode: 'ask', prints: []}, stats: {on: true, cur: 'spoolman'}});
   const head = q('.sv > .oui-pagehead');
   eq(text(q('.oui-pagehead-title', head)), 'Spools', 'what the page shows');
-  eq(text(q('.oui-pagehead-meta', head)), '3 spools · 1,420 g left · Low stock: 1 · 2 OrcaSlicer filament presets', 'count, what is left, how many are low, presets');
+  eq(vis(q('.oui-pagehead-meta', head)), '3 spools · 1,420 g left Low stock: 1', 'count and what is left, then how many are low as a chip');
+  eq(text(byTest('head-low')), 'Low stock: 1', 'the low count is a warning chip');
   assert(q('[data-test="sync"]', head) && q('[data-test="add-spool"]', head), 'Sync and Add are the page actions');
-  eq(text(byTest('count')), '3 of 3 spools', 'the toolbar counts what the filters show');
+  assert(byTest('sync').title.includes('2 OrcaSlicer filament presets'), 'the presets made are said on Sync Presets: ' + byTest('sync').title);
+  eq(text(byTest('count')), '', 'the toolbar counts only while a search or filter narrows the list');
   await open(1);
   const primary = () => qa('.oui-page .p-button').filter(b => b.offsetParent !== null && !/p-button-(secondary|danger|text)/.test(b.className)).map(text);
   eq(primary(), ['Add Spool'], 'one primary action on the page');
@@ -698,12 +801,14 @@ test('S03: Send acts on the preset picked in the spool detail, and explains itse
   await until(() => byTest('send'), 'Send shown');
   eq(text(byTest('send')), 'Send to Spoolman', 'label');
   assert(text(q('#' + byTest('send').getAttribute('aria-describedby'))).includes('unsaved edits of the preset picked here'), 'description');
-  assert(text(byTest('preset-pick')).includes('PLA #1 @Snapmaker U1') && !text(byTest('preset-pick')).includes('_local'), 'first preset picked, shown by its name');
+  eq(text(q('.p-select-label', byTest('preset-pick'))), 'Snapmaker U1', 'first preset picked, named by its printer');
+  assert(!/@|_local|PLA #1/.test(text(byTest('preset-pick'))), 'never by the raw name of the preset: ' + text(byTest('preset-pick')));
+  eq(text(q('label', byTest('detail-preset'))), 'Send settings from', 'the field says what it is for');
   await click(byTest('send'));
   eq(lastOf('send'), {type: 'send', spool: 1, preset: '_local/spooler/PLA #1 @Snapmaker U1'}, 'sent with the spool and the picked preset');
   await post({type: 'spool_detail', detail: {id: 1, sign: '£', grams: 0, cost: null, rate: null, weeks: null, prints: [],
     presets: [{name: 'My PLA', label: 'Snapmaker U1', linked: true}]}});
-  await until(() => text(byTest('preset-pick')).includes('My PLA (your preset)'), 'a linked preset is named as yours');
+  await until(() => text(byTest('preset-pick')).includes('My PLA · your preset'), 'a linked preset is named as yours');
   await post({type: 'sent', ok: true, text: 'Sent.'});
   await until(() => !byTest('send').disabled, 'a filament link sends');
   await post({type: 'spool_detail', detail: {id: 1, sign: '£', grams: 0, cost: null, rate: null, weeks: null, prints: [],
@@ -740,10 +845,15 @@ test('slot card shows the spool details and says it was linked by U1 Control', `
   await tab('printer');
   await post({type: 'live', live: {...LIVE, links: {'auto-u1': 'live'}}});
   const c = q('.tc');
-  for (const s of ['Acme', 'PLA', '#111111', '980 g of 1,000 g left', 'Spool #2', 'Shelf B', 'linked by U1 Control', 'Acme PLA Black @U1'])
+  for (const s of ['Acme', 'PLA', '980 g of 1,000 g left', 'Spool #2', 'Shelf B', 'linked by U1 Control', 'Acme PLA Black'])
     assert(text(c).includes(s), 'slot card has ' + s + ': ' + text(c));
+  assert(!text(c).includes('@U1') && !text(c).includes('_local') && !c.getAttribute('title').includes('@U1'), 'the preset by its name, without the printer part or the folder Spooler keeps it in');
+  assert(!text(c).includes('#111111'), 'no colour code unless its Display switch is on');
   assert(c.getAttribute('title').includes('Spool linked by U1 Control'), 'tooltip names U1 Control (X05)');
-  assert(text(q('[data-source="printer"]', c)) === '98% on the printer' && text(q('[data-source="spoolman"]', c)).endsWith('· Spoolman'), 'each amount names its source');
+  eq(qa('[data-source]', c).map(e => [e.dataset.source, text(e)]), [['spoolman', '980 g of 1,000 g left'], ['printer', 'printer reports 98%']], 'one amount, from Spoolman, with what the printer reports as a caption');
+  eq(qa('.oui-level', c).length, 1, 'and one bar, from the same amount');
+  await spools(SPOOLS, {printers: [{id: 'auto-u1', name: 'U1', auto: true, ip: '10.0.0.5', units: []}], live_ok: true, display: {...DEFAULTS, head_colour_code: true}});
+  assert(text(q('.tc')).includes('#111111'), 'the colour code with its switch on, in capitals: ' + text(q('.tc')));
 `);
 test('slot spools: the real amount; loaded with no amount the full reel and the unknown badge; empty the bare reel', `
   await spools(SPOOLS, {printers: [{id: 'auto-u1', name: 'U1', auto: true, ip: '10.0.0.5', units: []}], live_ok: true});
@@ -762,10 +872,15 @@ test('F11: assign and picker are keyboard controls; focus returns to the slot', 
   eq(a.getAttribute('aria-label'), 'Assign a spool to slot 3 of P', 'named control');
   a.focus(); await press('Enter');
   await until(() => document.activeElement && document.activeElement.matches('[data-spick="search"]'), 'search focused');
+  eq(text(q('[data-focus-key="assign:p1:0:2"]')), 'Cancel', 'the button that opened the picker now closes it, and says so');
+  eq(text(byTest('picker-note')), 'Spools already in a slot are not listed.', 'the note is a line under the swatches');
+  const note = byTest('picker-note').getBoundingClientRect(), box = q('[data-spick="search"]').getBoundingClientRect();
+  assert(!q('.oui-hint', byTest('picker')) && note.top >= box.bottom, 'nothing sits over the search box');
   await press('ArrowDown');
   assert(document.activeElement.matches('[data-colour]'), 'Down moves to the colours');
   await press('Escape');
   await until(() => document.activeElement === q('[data-focus-key="assign:p1:0:2"]'), 'Escape returns to the slot');
+  eq(text(q('[data-focus-key="assign:p1:0:2"]')), 'Assign spool', 'which offers to assign again');
   await press('Enter');
   await until(() => document.activeElement && document.activeElement.matches('[data-spick="search"]'));
   await press('Enter');
@@ -865,13 +980,14 @@ test('manual printer editing: add, rename, units, remove with confirmation', `
   await type(document.activeElement, 'Bench');
   await press('Enter');
   eq(lastOf('printers').printers[0].name, 'Bench', 'renamed');
-  await click(btn('+ AMS')); await click(btn('+ External spool'));
+  await layout('+ AMS'); await layout('+ External spool');
   eq(lastOf('printers').printers[0].units.map(u => [u.kind, u.slots.length]), [['ams', 4], ['ext', 1]], 'units sorted');
-  assert(!btn('+ External spool'), 'one external spool only');
-  await click(btn('Remove printer'));
+  eq(await layoutItems(), ['+ Toolhead', '+ AMS', '+ AMS HT', 'Remove AMS 1', 'Remove External spool', 'Remove printer'], 'one external spool only; every unit can go; the printer last');
+  await closeMore();
+  await layout('Remove printer');
   await no();
   eq(lastOf('printers').printers.length, 1, 'declined');
-  await click(btn('Remove printer')); await yes();
+  await layout('Remove printer'); await yes();
   eq(lastOf('printers').printers.length, 0, 'removed');
 `);
 test('network printer: PrusaLink link form, toolheads, and a slice-filled toolhead taken from the live poll', `
@@ -880,7 +996,7 @@ test('network printer: PrusaLink link form, toolheads, and a slice-filled toolhe
   await click(byTest('add-printer'));
   await press('Enter');
   const id = lastOf('printers').printers[0].id;
-  await click(btn('+ Toolhead')); await click(btn('+ Toolhead'));
+  await layout('+ Toolhead'); await layout('+ Toolhead');
   eq(lastOf('printers').printers[0].units.map(u => u.kind), ['tool', 'tool'], 'two toolheads');
   await click(q('[data-act="link"]'));
   assert(vis(q('.pp-link')).includes('Serial number'), 'Bambu asks for the serial');
@@ -1077,7 +1193,7 @@ test('a single-extruder Klipper printer with no MMU: one Extruder slot to assign
   assert(text(s).includes('Extruder') && qa('[data-act="assign"]', s).length === 1, 'one Extruder slot to assign: ' + vis(s));
   assert(!q('[data-test="waiting"]') && !vis(q('.pv')).includes('hasn’t reported'), 'no waiting and no warning');
   assert(!vis(q('.pv')).includes('on the printer'), 'the ACE and the U1 show no printer percentage, only Spoolman');
-  assert(vis(q('.pv')).includes('400 g of 1,000 g left · Spoolman'), 'the Spoolman amount is the main amount');
+  assert(vis(q('.pv')).includes('400 g of 1,000 g left') && !vis(q('.pv')).includes('printer reports'), 'the Spoolman amount is the amount');
 `);
 test('a finished print is one line with its printer and time, and can be dismissed', OWNER + `
   await owner();
@@ -1131,12 +1247,18 @@ for (const width of [1280, 1900]) {
     await owner();
     const items = qa('.pv-grid > *').map(e => e.getBoundingClientRect()).filter(r => r.height);
     assert(new Set(items.map(r => Math.round(r.left))).size >= 2, 'two or more columns');
+    assert(qa('.pv-grid > *').every(e => e.matches('.pp') || !e.getBoundingClientRect().height || !e.matches('[data-test="plate"], [data-test="usage"], [data-test="progress"]')), 'the grid of printers holds no job panel');
     const gaps = [];
     for (const r of items) {
       const above = items.filter(o => o !== r && Math.abs(o.left - r.left) < 2 && o.bottom <= r.top + 1);
       if (above.length) gaps.push(Math.round(r.top - Math.max(...above.map(o => o.bottom))));
     }
-    assert(gaps.length && gaps.every(g => g <= 40), 'gaps: ' + gaps.join(', '));
+    assert(gaps.every(g => g <= 40), 'gaps: ' + gaps.join(', '));
+    // What is happening now sits above them: panels of one row share its height, so the printers start right under it.
+    const now = qa('.pv-now > *').map(e => e.getBoundingClientRect()).filter(r => r.height);
+    assert(now.length, 'the running print, the plate check or the prints to book');
+    for (const r of now) eq(now.filter(o => Math.abs(o.top - r.top) < 2).map(o => Math.round(o.height)).filter(h => h !== Math.round(r.height)), [], 'one height per row');
+    assert(Math.min(...items.map(r => r.top)) - Math.max(...now.map(r => r.bottom)) <= 40, 'no gap between the two regions');
   `, { width });
 }
 test('Happy Hare gates are shown read-only with their note', `
@@ -1281,7 +1403,7 @@ test('calibrated values from a saved copy wait for Save or Skip', `
   const box = () => byTest('calibration');
   await until(box, 'prompt shown');
   assert(toasts().includes('calibrated values to review'), 'announced politely');
-  assert(text(box()).includes('Acme PLA Black @U1') && text(box()).includes('Nothing is written to Spoolman until you save'), 'names the filament: ' + text(box()));
+  assert(text(box()).includes('Acme PLA Black has new') && !text(box()).includes('@U1') && text(box()).includes('Nothing is written to Spoolman until you save'), 'names the filament, without the printer part of the preset: ' + text(box()));
   eq(qa('[data-test=calibration] tbody tr').map(r => vis(r)), ['Flow ratio 0.98 0.95', 'Ironing flow — 15%', 'Max volumetric speed 18 mm³/s 21.5 mm³/s'], 'each setting: old and new');
   eq(sentOf('calibration_save').length + sentOf('calibration_skip').length, 0, 'nothing sent before an answer');
   await click(byTest('cal-skip'));
@@ -1317,7 +1439,9 @@ test('settings: one switch per Display option, drying table, save waits for a pa
   eq(lastOf('settings').type, 'settings', 'asked the plugin');
   await post({type: 'show_view', view: 'settings', url: 'http://spoolman:7912', source: 'spoolman', low_stock: 100, plate_check: true, plate_margin: 10,
     weight_display: 'both', show_cart: false, spool_columns: 1, display: DEFAULTS, drying: {HIPS: 9}, progress: {on: true}, stats: {on: true, cur: 'spoolman'}, cur_code: 'GBP', wizard: false});
-  eq(qa('[data-disp]').map(e => e.dataset.disp).sort(), Object.keys(DEFAULTS).sort(), 'one checkbox per Display option');
+  eq(qa('[data-disp]').map(e => e.dataset.disp).sort(), Object.keys(DEFAULTS).filter(k => k !== 'archived').sort(), 'one checkbox per Display option; archived spools are shown from the Filters of the list');
+  eq(qa('#s-display .set-pad > .oui-label').map(text), ['Shown on each spool', 'Badges', 'Behaviour', 'Printer tab: each slot'], 'in groups');
+  eq(qa('.set-checks', q('#s-display'))[2].querySelectorAll('[data-disp]').length, 2, 'what is not about display has its own group');
   assert(q('#dry-HIPS') && q('#dry-HIPS').value === '9 days', 'drying reseeded from show_view: ' + (q('#dry-HIPS') || {}).value);
   assert(byTest('save').disabled && text(q('#save-why')).includes('passing Test'), 'save waits, with the reason');
   await click(byTest('test'));
@@ -1339,6 +1463,14 @@ test('settings: one switch per Display option, drying table, save waits for a pa
   eq([s.view, s.display.diameter, s.drying['NYLON CF'], s.drying.HIPS, s.url, s.auto_keep_slots, s.save_calibration, s.spool_view],
     ['settings', true, 0, 9, 'http://spoolman:7912', true, 'auto', 'cards'], 'saved');
 `);
+test('settings: a saved address not checked yet this session says it is being checked, never an empty confirmation', `
+  await until(() => byTest('settings-btn'));
+  await click(byTest('settings-btn'));
+  await post({type: 'show_view', view: 'settings', url: 'http://spoolman:7912', source: 'spoolman', low_stock: 100, display: DEFAULTS, drying: {}, progress: {}, stats: {}});
+  eq([text(byTest('conn-status')), byTest('conn-status').dataset.tone === 'success'], ['Checking the connection…', false], 'being checked');
+  await post({type: 'test_result', source: 'spoolman', ok: true, url: 'http://spoolman:7912', version: '0.22', view: 'settings'});
+  assert(text(byTest('conn-status')).includes('Spoolman v0.22'), 'confirmed once a test said so: ' + text(byTest('conn-status')));
+`, { settings: { verified_url: 'http://spoolman:7912' } });
 test('settings: leaving with unsaved edits asks; going back keeps them', `
   await post({type: 'show_view', view: 'settings', url: 'http://s:7912', source: 'spoolman', low_stock: 100, display: DEFAULTS, drying: {}, progress: {}, stats: {}});
   await click(q('#show-cart'));
@@ -1511,10 +1643,16 @@ test('editor: add a spool of an existing filament, with typed extra fields and a
   assert(text(dialogEl()).includes('Step 1 of 2'), 'guided: step 1');
   await click(byTest('editor-next'));
   assert(text(dialogEl()).includes('Choose a filament') && byTest('editor-pick'), 'a filament is needed first');
-  await pick(byTest('editor-pick'), 'Acme · Black · PLA');
-  eq(text(byTest('preview-name')), 'Black', 'the preview shows the filament');
+  eq(qa('[data-test="editor-pick"] [role=option]').map(x => vis(x)), ['Black Acme · PLA', 'Blue Acme · PETG'], 'the list is the step: every filament, by name, with its manufacturer and material');
+  assert(!byTest('editor-preview'), 'and no preview of a spool that is not chosen yet');
+  assert(document.activeElement.matches('[data-test="editor-pick"] input'), 'the keyboard starts in the search, not on Close');
+  await pickFilament('Acme · Black · PLA');
   await click(byTest('editor-next'));
   assert(text(dialogEl()).includes('Step 2 of 2') && !byTest('editor-filament'), 'step 2: the spool');
+  eq(text(byTest('preview-name')), 'Black', 'the preview shows the filament');
+  assert(!q('#se-arch'), 'nobody adds an archived spool: no Archived switch');
+  eq([q('#se-initial').placeholder, q('#se-left').placeholder], ['1,000 g', 'same as starting weight'], 'an empty weight says what it means');
+  eq(text(byTest('editor-own-spool')), 'Your Spoolman fields', 'the fields the user added to Spoolman, under their own heading');
   await type(q('#se-left'), '750');
   assert(text(byTest('preview-weight')).includes('750 g of 1,000 g'), 'preview weight: ' + text(byTest('preview-weight')));
   await type(q('#se-loc'), 'Shelf C');
@@ -1538,6 +1676,8 @@ test('editor: a new filament in German, decimals typed with a point, two colours
   await type(q('#se-name'), 'Galaxy');
   await type(q('#se-mat'), 'PETG');
   eq(q('#se-den').value, '1,27 g/cm³', 'the material\\'s usual density');
+  assert(!byTest('editor-more').open, 'diameter, density, temperatures and weights are folded');
+  await click(q('summary', byTest('editor-more')));
   await type(q('#se-dia'), '2.85');
   eq(q('#se-dia').value, '2,85 mm', 'a typed point is the decimal');
   const first = q('.se-col input[type=color]');
@@ -1570,7 +1710,7 @@ test('editor: a new filament in German, decimals typed with a point, two colours
 test('editor: edit sends only changes, says the filament is shared, and keeps a refusal visible', `
   await spools(SPOOLS, {display: {...DEFAULTS, group_same: false}});
   await open(1);
-  assert(byTest('detail-edit'), 'a pencil beside the name in the detail');
+  assert(text(byTest('detail-edit')) === 'Edit', 'Edit in the header of the detail');
   await click(q('[data-edit="1"]'));
   eq(lastOf('spool_action'), {type: 'spool_action', action: 'editor', id: 1, origin: 3, ref: 1}, 'the editor reads the spool again');
   await post(editorData({...RAW1, id: 2}, editorRef() - 1));
@@ -1579,7 +1719,11 @@ test('editor: edit sends only changes, says the filament is shared, and keeps a 
   assert(text(byTest('editor-shared')).includes('1 other spool'), 'shared filament note: ' + text(byTest('editor-shared')));
   eq(q('#se-loc').value, 'Shelf A', 'the form opens with Spoolman\\'s values');
   eq(q('#se-sx-dryer').value, 'Box 1', 'extra text decoded');
+  eq(qa('[data-test="editor-tabs"] button').map(text), ['Spool', 'Filament'], 'tabs; none for presets when the plugin sent nothing about them');
+  assert(document.activeElement === q('#se-initial'), 'the keyboard starts in the first field');
   await type(q('#se-loc'), 'Dry box');
+  await edTab('filament');
+  assert(q('#se-loc').offsetParent === null && q('#se-noz').offsetParent !== null, 'one tab at a time');
   await type(q('#se-noz'), '215');
   await click(byTest('editor-save'));
   eq(lastOf('spool_action'), {type: 'spool_action', origin: 3, id: 1, action: 'save', spool: {location: 'Dry box'}, filament: {settings_extruder_temp: 215},
@@ -1596,6 +1740,18 @@ test('editor: edit sends only changes, says the filament is shared, and keeps a 
   eq(sentOf('spool_action').length, before, 'no change (734.5678 g shown as 734.6 and left) : nothing sent');
   await until(() => !dialogOpen(), 'closed');
   assert(text(document.body).includes('Nothing changed'), 'and it says so');
+`);
+test('editor: Save opens the tab that holds the problem', `
+  await spools(SPOOLS, {display: {...DEFAULTS, group_same: false}});
+  await click(q('[data-edit="1"]'));
+  await loaded(RAW1);
+  await type(q('#se-left'), '');   // Spoolman has a weight for this spool: it can be changed, not emptied
+  await edTab('filament');
+  assert(q('#se-left').offsetParent === null, 'the problem is out of sight');
+  await click(byTest('editor-save'));
+  assert(q('#se-left').offsetParent !== null && q('[data-test="editor-tabs"] [data-tab="spool"] + .se-tabflag'), 'Save opens the Spool tab and marks it');
+  assert(!q('[data-test="editor-tabs"] [data-tab="filament"] + .se-tabflag'), 'and only it');
+  assert(!sentOf('spool_action').some(m => m.action === 'save'), 'nothing sent');
 `);
 test('editor: a new location for a spool linked to a U1 toolhead asks first', `
   const bound = {...SPOOLS[0], id: 3, location: 'Snapmaker U1 T0', u1_bound: true};
@@ -1649,8 +1805,9 @@ test('rfid: a new RFID spool is offered; Add opens the editor on the matching fi
   eq(lastOf('spool_action'), {type: 'spool_action', action: 'editor', origin: 3, ref: 1}, 'Add Spool, as from the list');
   await editorWith([...FILS, MATTE]);
   assert(text(byTest('editor-rfid')).includes('RFID spool in X1C · AMS 1 slot 3'), 'the editor says where the spool is');
-  eq(text(byTest('preview-name')), 'PLA Matte Charcoal', 'the matching Bambu Lab filament is picked');
+  eq(vis(q('[data-test="editor-pick"] [role=option][aria-selected="true"]')), 'PLA Matte Charcoal Bambu Lab', 'the matching Bambu Lab filament is picked');
   await click(byTest('editor-next'));
+  eq(text(byTest('preview-name')), 'PLA Matte Charcoal', 'and previewed with the spool');
   assert(text(byTest('preview-weight')).includes('800 g of 1,000 g'), 'weights from the tray: ' + text(byTest('preview-weight')));
   await click(byTest('editor-save'));
   eq(lastOf('spool_action'), {type: 'spool_action', origin: 3, action: 'create', filament_id: 12,
@@ -1701,6 +1858,7 @@ test('editor: Use with picks the printers of a spool preset, and sends only a ch
   await click(q('[data-edit="1"]'));
   await post({...editorData(RAW1), editor: {...editorData(RAW1).editor, use_with: {on: true, printers: ${PRINTERS}, value: null}}});
   await until(() => byTest('editor-usewith'), 'Use with shows while presets are per spool');
+  await edTab('presets');
   assert(text(q('#se-usewith').closest('.oui-formrow') || q('#se-usewith').parentElement.parentElement).includes('Automatic'), 'empty means automatic');
   await click(byTest('editor-usewith'));
   await until(() => q('.p-multiselect-overlay') && !q('.p-multiselect-overlay[class*="enter-active"]'), 'printer list open');
@@ -1726,6 +1884,8 @@ test('editor: OrcaSlicer preset links the spool or its filament to one of your p
   // As loaded(): typing before the dialog took the focus would lose keys to the list behind it.
   await until(() => dialogEl() && !/enter|leave/.test(dialogEl().className) && dialogEl().contains(document.activeElement), 'editor open and focused');
   eq(q('#se-link-fil').value, 'My PETG', 'the filament link as Spoolman has it');
+  await edTab('presets');
+  eq(qa('[data-test="editor-presets"] .oui-formrow-label').map(text), ['This spool’s preset', 'Preset for every spool of this filament'], 'two rows, each named for what it covers');
   await type(q('#se-link'), 'My PLA');
   await until(() => q('#se-link').value === 'My PLA', 'typed'); await settle();
   await click(byTest('editor-save'));
@@ -1733,7 +1893,7 @@ test('editor: OrcaSlicer preset links the spool or its filament to one of your p
   eq(lastOf('spool_action').filament, {}, 'the filament link unchanged');
   eq(lastOf('spool_action').was.spool, {preset_link: null}, 'with what Spoolman held');
 `);
-test('editor: Based on shows each printer\'s preset with score and reasons; Change remembers another at once', `
+test('editor: Based on shows each printer\'s preset by its name, with no score or reasons; Change remembers another at once', `
   await spools(SPOOLS, {display: {...DEFAULTS, group_same: false}});
   await click(q('[data-edit="1"]'));
   const choices = [{name: 'Generic PLA @U1', score: 10, reasons: [['material', 'PLA'], ['generic', ''], ['printer', '']]},
@@ -1742,17 +1902,23 @@ test('editor: Based on shows each printer\'s preset with score and reasons; Chan
                reasons: choices[0].reasons, confident: true, candidates: choices};
   await post({...editorData(RAW1), editor: {...editorData(RAW1).editor, preset_match: [match]}});
   await until(() => byTest('editor-match'), 'the row');
+  await edTab('presets');
   const mbox = byTest('editor-match');
-  assert(text(mbox).includes('Generic PLA @U1') && text(mbox).includes('material PLA') && text(mbox).includes('Score 10'), 'name, reasons, score: ' + text(mbox));
-  assert(text(mbox).includes('Snapmaker U1'), 'names the printer');
+  eq(vis(mbox), 'Snapmaker U1 Generic PLA Change', 'the printer, the preset by its name and Change: nothing else');
+  const inner = () => text(byTest('editor-presets'));
+  for (const leak of ['Score', 'material PLA', 'Generic preset', 'made for this printer', '@U1', 'not on the spool', 'Picked by hand', 'untuned'])
+    assert(!inner().includes(leak), 'none of the reasons, scores or raw names of the plugin: ' + leak + ' in ' + inner());
   await click(mbox.querySelector('.oui-match-change'));
   await until(() => mbox.querySelectorAll('.oui-match-option').length === 2, 'candidates listed, no Automatic while not picked by hand');
+  eq(qa('.oui-match-option', mbox).map(text), ['Generic PLA', 'Generic PLA Silk'], 'a plain list of names');
+  for (const leak of ['Score', 'material PLA', '@U1', 'not on the spool']) assert(!inner().includes(leak), 'nor in the open list: ' + leak);
   await click(mbox.querySelectorAll('.oui-match-option')[1]);
   const picked = lastOf('spool_action');
   eq([picked.action, picked.target, picked.name, picked.filament], ['match_parent', 'Snapmaker U1 (0.4 nozzle)', 'Generic PLA Silk @U1', RAW1.filament.id], 'remembers it at once');
   await post({type: 'action_result', action: 'match_parent', ok: true, text: '', ref: editorRef(),
               match: [{...match, name: 'Generic PLA Silk @U1', source: 'remembered', score: 5, reasons: choices[1].reasons}]});
-  await until(() => text(byTest('editor-match')).includes('Picked by hand'), 'the new pick, marked');
+  await until(() => text(byTest('editor-match')).includes('Your choice'), 'the new pick, marked');
+  eq(vis(byTest('editor-match')), 'Snapmaker U1 Generic PLA Silk Your choice Change', 'as the choice of the user, with no score');
   assert(dialogOpen(), 'the editor stays open');
   await click(byTest('editor-match').querySelector('.oui-match-change'));
   await until(() => text(byTest('editor-match')).includes('Automatic'), 'Automatic offered for a pick made by hand');
@@ -1782,27 +1948,26 @@ test('settings: presets per spool and Advanced tuning, off by default, saved wit
     pressure_advance: 0.035, fan_max_speed: 80}}}, 'saved');
 `, { lang: 'de' });
 
-test('settings: the Open Filament Database consent is shown, not a toggle; with it, its list line, Read again and Revoke', `
+test('settings: the Open Filament Database consent is shown, not a toggle, with Revoke; nothing about its kept list, and nothing asked of it', `
   const show = ofd => post({type: 'show_view', view: 'settings', url: 'http://spoolman:7912', source: 'spoolman', low_stock: 100, display: DEFAULTS, drying: {}, progress: {}, stats: {},
     presets: {per_spool: false, tuning: false, materials: {}, ofd}, parents: []});
   await show(false);
   await until(() => byTest('ofd-consent'), 'the OFD row');
-  assert(text(byTest('ofd-consent')).includes('Not contacted') && !byTest('ofd-state'), 'no consent: said so, nothing more: ' + text(byTest('ofd-consent')));
+  assert(text(byTest('ofd-consent')).startsWith('Community presets (Open Filament Database)Not asked yet'), 'no consent: said so: ' + text(byTest('ofd-consent')));
+  assert(!byTest('ofd-revoke'), 'nothing to revoke');
   assert(!q('#ofd-on') && !q('input', byTest('ofd-consent')), 'no toggle: consent is given in Add Spool');
-  assert(!sent().some(m => m.type === 'ofd'), 'nothing asked without consent');
   await show(true);
-  await until(() => sent().some(m => m.type === 'ofd' && m.refresh === false), 'with consent (or the old toggle on), the line asks for the kept list');
-  assert(text(byTest('ofd-consent')).includes('Allowed'), 'consent shown: ' + text(byTest('ofd-consent')));
-  assert(text(byTest('ofd-state')).includes('MIT'), 'the licence and the source are named');
-  await post({type: 'ofd_state', on: true, fetched: 1795371399, version: '2026.11.22', count: 2133, stale: false, error: '', view: 'settings'});
-  await until(() => text(byTest('ofd-state')).includes('2133'), 'the list line: ' + text(byTest('ofd-state')));
-  await click(byTest('ofd-refresh'));
-  eq(lastOf('ofd').refresh, true, 'Read again asks OFD now');
+  await until(() => text(byTest('ofd-consent')).includes('Allowed'), 'consent shown (also the old toggle left on): ' + text(byTest('ofd-consent')));
+  assert(text(byTest('ofd-help')).includes('MIT') && text(byTest('ofd-help')).includes('Find a community preset'), 'the source, its licence and where it is asked, behind the (i)');
+  // What the plugin keeps of the list is its own business: no date, no count, no Read again.
   await post({type: 'ofd_state', on: true, fetched: 1795371399, version: '2026.11.22', count: 2133, stale: true, error: 'timed out', view: 'settings'});
-  await until(() => text(byTest('ofd-state')).includes('timed out'), 'a failed read keeps the old list and says why');
+  const page = text(q('#s-presets'));
+  for (const leak of ['2133', 'List of', 'Read again', 'timed out', '2026.11.22']) assert(!page.includes(leak), 'no cache internals: ' + leak);
+  assert(!byTest('ofd-refresh') && !byTest('ofd-state'), 'and no control over the kept list');
   await click(byTest('ofd-revoke'));
-  eq(lastOf('ofd').revoke, true, 'Revoke tells the plugin');
-  await until(() => !byTest('ofd-state') && text(byTest('ofd-consent')).includes('Not contacted'), 'revoked at once');
+  eq(lastOf('ofd'), {type: 'ofd', revoke: true, view: 'settings'}, 'Revoke tells the plugin');
+  await until(() => !byTest('ofd-revoke') && text(byTest('ofd-consent')).includes('Not asked yet'), 'revoked at once');
+  eq(sent().filter(m => m.type === 'ofd').length, 1, 'Settings asks nothing else of the Open Filament Database');
 `);
 test('editor: Edit Spool never looks up the Open Filament Database; an OFD pick still shows', `
   await spools(SPOOLS, {display: {...DEFAULTS, group_same: false}});
@@ -1811,7 +1976,8 @@ test('editor: Edit Spool never looks up the Open Filament Database; an OFD pick 
     candidates: [{name: 'Generic PLA @U1', score: 10, reasons: [['material', 'PLA']]}]};
   await post({...editorData(RAW1), editor: {...editorData(RAW1).editor, preset_match: [base], ofd_consent: true}});
   await until(() => byTest('editor-match'), 'the row');
-  assert(text(byTest('editor-match')).includes('OFD, untuned') && text(byTest('editor-match')).includes('Polymaker Dual'), 'a preset picked from OFD shows as such');
+  await edTab('presets');
+  assert(text(byTest('editor-match')).includes('Community preset') && text(byTest('editor-match')).includes('Polymaker Dual') && !text(byTest('editor-match')).includes('untuned'), 'a preset picked from OFD shows as such');
   assert(!byTest('editor-ofd') && !byTest('ofd-lookup'), 'no lookup when editing');
   await click(q('.oui-match-change', byTest('editor-match')));
   await until(() => qa('.oui-match-option', byTest('editor-match')).length === 2, 'Automatic and the OrcaSlicer candidate');
@@ -1823,23 +1989,27 @@ test('editor: Add Spool looks up the Open Filament Database only after the click
   await click(byTest('add-spool'));
   await loaded();
   await click(byTest('editor-next'));
-  await pick(byTest('editor-pick'), 'Acme · Black · PLA');
+  await pickFilament('Acme · Black · PLA');
   await click(byTest('editor-next'));
-  await until(() => byTest('ofd-lookup'), 'the Look up button');
-  assert(text(byTest('editor-ofd')).includes('only after this click'), 'it says OFD is contacted only after the click: ' + text(byTest('editor-ofd')));
+  await until(() => byTest('ofd-lookup'), 'the lookup button');
+  eq([text(q('.oui-formrow-label', byTest('editor-ofd'))), text(byTest('ofd-lookup'))], ['Starting preset', 'Find a community preset'], 'named for what it gives, with no acronym');
+  assert(text(byTest('editor-ofd')).includes('only when you click') && text(byTest('editor-ofd')).includes('Spooler chooses automatically'), 'it says the database is asked only on a click, and what happens otherwise: ' + text(byTest('editor-ofd')));
+  assert(text(byTest('ofd-credit')).includes('MIT'), 'the credit behind the (i)');
   assert(!sent().some(m => m.action === 'ofd_suggest'), 'nothing asked before the click');
   await click(byTest('ofd-lookup'));
   const ask = lastOf('spool_action');
   eq([ask.action, ask.vendor, ask.material, ask.name, ask.consent, ask.key], ['ofd_suggest', 'Acme', 'PLA', 'Black', true, 'acme|pla'], 'the lookup carries the consent');
-  assert(text(byTest('editor-ofd')).includes('Looking up'), 'busy');
+  assert(byTest('ofd-lookup').disabled && text(byTest('editor-ofd')).includes('Looking up'), 'busy: the button turns, and says so to a screen reader');
   const ofd = [{id: 'ee9f', name: 'Acme Matte PLA (OFD)', score: 58, reasons: [['material', 'PLA'], ['vendor', 'Acme']], source: 'ofd'},
     {id: 'aa01', name: 'Acme PLA (OFD)', score: 50, reasons: [['material', 'PLA']], source: 'ofd'}];
   await post({type: 'action_result', action: 'ofd_suggest', ok: true, text: '', consent: true, key: 'acme|pla', ofd, ofd_error: '', ref: editorRef()});
   await until(() => q('.oui-match-change', byTest('editor-ofd')), 'the proposals');
-  assert(text(byTest('editor-ofd')).includes('None picked'), 'nothing picked by itself');
+  assert(text(byTest('editor-ofd')).includes('Spooler chooses automatically'), 'nothing picked by itself');
   await click(q('.oui-match-change', byTest('editor-ofd')));
+  eq(qa('.oui-match-option', byTest('editor-ofd')).map(text), ['Acme Matte PLA (OFD)', 'Acme PLA (OFD)'], 'a plain list of names');
+  for (const leak of ['Score', 'untuned', 'material PLA', 'manufacturer Acme', 'puts its values']) assert(!text(byTest('editor-ofd')).includes(leak), 'no score, reasons or source sentence: ' + leak);
   await click(qa('.oui-match-option', byTest('editor-ofd')).find(b => text(b).includes('Acme Matte PLA')));
-  assert(text(byTest('editor-ofd')).includes('Acme Matte PLA (OFD)') && text(byTest('editor-ofd')).includes('OFD, untuned'), 'the pick shows');
+  assert(text(byTest('editor-ofd')).includes('Acme Matte PLA (OFD)') && text(byTest('editor-ofd')).includes('Community preset'), 'the pick shows');
   await click(byTest('editor-save'));
   eq([lastOf('spool_action').action, lastOf('spool_action').filament_id, lastOf('spool_action').ofd], ['create', 5, 'ee9f'], 'the create carries the OFD id');
   await post({type: 'action_result', action: 'create', ok: true, text: 'Added spool #44.', ref: editorRef()});
@@ -1850,19 +2020,30 @@ test('editor: Add Spool looks up the Open Filament Database only after the click
   await post({...editorData(null), editor: {...editorData(null).editor, ofd_consent: true}});
   await until(() => dialogEl() && !/enter|leave/.test(dialogEl().className), 'editor open');
   await click(byTest('editor-next'));
-  await pick(byTest('editor-pick'), 'Acme · Blue · PETG');
+  await pickFilament('Acme · Blue · PETG');
   await click(byTest('editor-next'));
   await until(() => sentOf('spool_action').filter(m => m.action === 'ofd_suggest').length === before + 1, 'looked up by itself');
   eq([lastOf('spool_action').material, 'consent' in lastOf('spool_action')], ['PETG', false], 'for the new material, no consent asked again');
   await post({type: 'action_result', action: 'ofd_suggest', ok: true, text: '', consent: true, key: 'acme|petg', ofd: [], ofd_error: '', ref: editorRef()});
   await until(() => byTest('ofd-none'), 'none found');
-  assert(text(byTest('ofd-none')).includes('Acme PETG'), 'says for what: ' + text(byTest('ofd-none')));
+  eq(text(byTest('ofd-none')), 'No community preset for Acme PETG.', 'says for what');
+  // A lookup that failed says so in words, and can be tried again at once.
+  await click(byTest('editor-back')); await pickFilament('Acme · Black · PLA'); await click(byTest('editor-next'));
+  await until(() => lastOf('spool_action').action === 'ofd_suggest' && lastOf('spool_action').material === 'PLA', 'looked up for the other material');
+  await post({type: 'action_result', action: 'ofd_suggest', ok: true, text: '', consent: true, key: 'acme|pla', ofd: [], ofd_error: 'HTTPSConnectionPool(host=api.openfilamentdatabase.org, port=443): Max retries exceeded', ref: editorRef()});
+  await until(() => byTest('ofd-none'), 'the failure');
+  eq(text(byTest('ofd-none')), 'Couldn’t reach the Open Filament Database.', 'in words, without the error of the system');
+  eq(text(byTest('ofd-lookup')), 'Try again', 'with a way to try again');
+  await click(byTest('ofd-lookup'));
+  eq([lastOf('spool_action').action, lastOf('spool_action').retry], ['ofd_suggest', true], 'which asks now');
+  await post({type: 'action_result', action: 'ofd_suggest', ok: true, text: '', consent: true, key: 'acme|pla', ofd: [], ofd_error: '', ref: editorRef()});
+  await until(() => text(byTest('ofd-none')).includes('No community preset'), 'answered');
   await click(byTest('editor-save'));
   assert(!('ofd' in lastOf('spool_action')), 'nothing picked: no OFD id');
 `);
 
 // ------------------------------------------------------------------ settings pages (one page per section)
-const PAGES = ['s-src', 's-req', 's-reorder', 's-weights', 's-layout', 's-check', 's-display', 's-dry', 's-presets', 's-printer', 's-stats', 's-lang', 's-about'];
+const PAGES = ['s-src', 's-list', 's-printer', 's-dry', 's-presets', 's-general'];
 const PAGES_JS = `
 const PAGES = ${JSON.stringify(PAGES)};
 const link = id => q('.oui-settings-link[data-section="' + id + '"]');
@@ -1873,7 +2054,9 @@ const pageShown = () => getComputedStyle(q('.oui-settings-body')).display !== 'n
 `;
 test('settings pages: list beside one page; a page opens with focus on its heading and is remembered', PAGES_JS + `
   await until(() => link('s-src'));
-  eq(qa('.oui-settings-link').map(e => e.dataset.section), PAGES, 'one page per section, About on its own');
+  eq(qa('.oui-settings-link').map(e => [e.dataset.section, text(e)]), [['s-src', 'Source'], ['s-list', 'Spool list'], ['s-printer', 'Printer'], ['s-dry', 'Drying reminders'], ['s-presets', 'Presets'], ['s-general', 'General']], 'six pages');
+  eq(PAGES.map(id => qa('.oui-formsection', q('#' + id)).map(e => e.id).filter(Boolean)), [['s-source', 's-req'], ['s-weights', 's-layout', 's-display', 's-reorder'], ['s-printer-panel', 's-check'], [], [], ['s-stats', 's-lang', 's-about']],
+    'each holds its related sections (Drying and Presets are one section each)');
   eq(shown(), ['s-src'], 'only the first page');
   assert(listShown() && pageShown() && !byTest('settings-back').getClientRects().length, 'wide: list and page side by side, no Back');
   await click(link('s-dry'));
@@ -1885,30 +2068,36 @@ test('settings pages: list beside one page; a page opens with focus on its headi
   eq([shown(), document.activeElement.dataset.section], [['s-presets'], 's-presets'], 'arrow keys move along the list');
   assert(q('#s-about') && text(q('#s-about')).includes('Plugin version'), 'version and updates on About');
   assert(!text(q('#s-lang')).includes('Plugin version'), 'Language holds the language only');
+  assert(!byTest('log-path') && !text(q('#s-about')).includes('/tmp/spooler.log'), 'the path of the log is not a line of the page');
+  await click(byTest('show-log'));
+  eq(text(byTest('log-path')), '/tmp/spooler.log', 'it is shown when asked for');
+  await click(byTest('feedback'));
+  eq(lastOf('feedback').type, 'feedback', 'Send feedback is a labelled button on About');
+  assert(!q('.oui-appbar [aria-label="Send feedback or report a bug"]'), 'and no unlabelled icon in the bar');
 `, { mode: 'settings' });
 test('settings pages: narrow shows the list, then one page with Back', PAGES_JS + `
   await until(() => link('s-src'));
   assert(listShown() && !pageShown(), 'narrow: the list first');
-  await click(link('s-weights'));
+  await click(link('s-list'));
   assert(!listShown() && pageShown(), 'then the page alone');
-  eq(shown(), ['s-weights'], 'Weights only');
-  assert(onHeading('s-weights'), 'focus on its heading');
+  eq(shown(), ['s-list'], 'Spool list only');
+  assert(onHeading('s-list'), 'focus on its heading');
   assert(byTest('settings-back').getClientRects().length, 'Back shown');
   await click(byTest('settings-back'));
   await settle();
   assert(listShown() && !pageShown(), 'Back returns to the list');
-  eq(document.activeElement, link('s-weights'), 'focus back on the page it came from');
+  eq(document.activeElement, link('s-list'), 'focus back on the page it came from');
   assert(byTest('save'), 'save bar stays');
 `, { mode: 'settings', width: 600 });
 test('settings pages: the last page opens again', PAGES_JS + `
   await until(() => link('s-src'));
-  eq(shown(), ['s-stats'], 'remembered page');
-`, { mode: 'settings', lastPage: 's-stats' });
+  eq(shown(), ['s-general'], 'remembered page');
+`, { mode: 'settings', lastPage: 's-general' });
 test('settings pages: a page named by the window boot opens first', PAGES_JS + `
   await until(() => link('s-src'));
-  await until(() => shown()[0] === 's-lang', 'Language opened');
-  assert(onHeading('s-lang'), 'heading focused');
-`, { mode: 'settings', page: 's-lang', lastPage: 's-stats' });
+  await until(() => shown()[0] === 's-printer', 'Printer opened');
+  assert(onHeading('s-printer'), 'heading focused');
+`, { mode: 'settings', page: 's-printer', lastPage: 's-general' });
 test('settings pages: Open Settings from the list opens the source page', PAGES_JS + `
   await post({type: 'spools', ok: false, error: 'No Spoolman URL', error_code: 'no_url'});
   await click(btn('Open Settings', byTest('empty-no-url')));
@@ -1922,9 +2111,9 @@ test('settings pages: Open Settings from the list opens the source page', PAGES_
 `, { lastPage: 's-dry' });
 test('settings pages: a failed test marks the source page in the list', PAGES_JS + `
   await until(() => link('s-src'));
-  await click(link('s-stats'));
+  await click(link('s-general'));
   await post({type: 'test_result', source: 'spoolman', ok: false, url: 'http://spoolman:7912', error: 'connection refused', view: 'settings'});
-  eq(shown(), ['s-stats'], 'stays on the page shown');
+  eq(shown(), ['s-general'], 'stays on the page shown');
   eq(link('s-src').dataset.state, 'error', 'source flagged');
   assert(link('s-src').querySelector('.oui-settings-flag'), 'with the flag icon');
   assert((link('s-src').getAttribute('aria-label') || '').includes('has a value to fix'), 'and in its name');
@@ -1997,12 +2186,13 @@ test('2000 spools: the inventory draws only the rows in view, a refresh redraws 
   assert(drawn() > 0 && drawn() < 200, 'cards: only the cards near the view are drawn: ' + drawn());
   t0 = performance.now(); await spools(mk(321)); await settle();
   assert(performance.now() - t0 < 1000 && drawn() < 200, 'cards: a refresh is quick and draws little');
-  const i = q('[data-test="search"]'); i.value = '#1999'; i.dispatchEvent(new Event('input', {bubbles: true})); await settle();
+  const i = q('[data-test="search"]'); i.value = '#1999'; i.dispatchEvent(new Event('input', {bubbles: true}));
+  await until(() => qa('[data-spool]').length === 1, 'with this many spools the list waits for a pause in the typing, then filters once');
   eq(qa('[data-spool]').map(e => e.dataset.spool), ['1999'], 'search reaches a spool far down');
   await click(byTest('view-table'));
 `);
 // ------------------------------------------------------------------ runner
-async function bounded(work, stage, ms = 30000) {
+async function bounded(work, stage, ms = Number(process.env.PAGE_STALL_MS) || 30000) {   // PAGE_STALL_MS: a longer wait on a slow or busy machine
   let timer;
   try {
     return await Promise.race([work, new Promise((_, reject) => {
@@ -2054,7 +2244,7 @@ try {
       const mode = sc.mode || 'tab';
       const boot = { mode, view: mode === 'settings' ? 'settings' : 'main', version: 'test', lang: sc.lang ?? 'en', pref: sc.pref ?? 'auto',
         low_stock_default: 100, refresh_ms: 600000, display_defaults: DISPLAY_DEFAULTS, own_fields: ['tag', 'orca_settings', 'dried', 'orca_flow_ratio'],
-        settings: { ...SETTINGS, wizard: !!sc.wizard }, ...(sc.page ? { page: sc.page } : {}) };
+        settings: { ...SETTINGS, wizard: !!sc.wizard, ...(sc.settings || {}) }, ...(sc.page ? { page: sc.page } : {}) };
       // seed: the settings page remembered from an earlier visit (OuiSettings' own key: page path and its page ids)
       const seed = (sc.lastPage ? `localStorage.setItem('oui-settings:' + location.pathname + ':' + ${JSON.stringify(PAGES.join(','))}, ${JSON.stringify(sc.lastPage)});` : '')
         + Object.entries(sc.storage || {}).map(([k, v]) => `localStorage.setItem(${JSON.stringify(k)}, ${JSON.stringify(v)});`).join('');
