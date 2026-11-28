@@ -36,8 +36,10 @@ function reset(values: Partial<SettingsBoot>): void {
   saved.value = clone(next);
   Object.assign(form, clone(next));
   update.newer = '';
-  conn.text = conn.verifiedUrl && norm(form.url) === conn.verifiedUrl ? conn.verifiedText : t('settings.checking');
-  conn.kind = conn.verifiedUrl && norm(form.url) === conn.verifiedUrl ? 'ok' : 'pending';
+  // Confirmed only once a test said so this session (verifiedText): until then the saved address is being checked.
+  const confirmed = !!conn.verifiedUrl && norm(form.url) === conn.verifiedUrl && !!conn.verifiedText;
+  conn.text = confirmed ? conn.verifiedText : t('settings.checking');
+  conn.kind = confirmed ? 'ok' : 'pending';
 }
 
 export function onUrlInput(): void {

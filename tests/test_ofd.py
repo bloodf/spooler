@@ -104,11 +104,13 @@ class OfdTest(Settings):
             self.assertEqual(offline.call_count, 1)
             self.assertEqual(sp.ofd_suggest("Polymaker", "PLA")["ofd_error"], "offline")
             self.assertEqual(offline.call_count, 1)
-            sp.ofd_lookup(now=now + 5, force=True)   # Read again asks at once
+            sp.ofd_lookup(now=now + 5, force=True)   # asked for at once
             self.assertEqual(offline.call_count, 2)
-            sp.ofd_lookup(now=now + 5 + sp.OFD_RETRY)   # and after the pause, a lookup asks again
+            self.assertEqual(sp.ofd_suggest("Polymaker", "PLA", retry=True)["ofd_error"], "offline")   # Add Spool's Try again asks at once too
             self.assertEqual(offline.call_count, 3)
-        self.assertTrue(sp.ofd_lookup(now=now + 6 + 2 * sp.OFD_RETRY)["profiles"])
+            sp.ofd_lookup(now=time.time() + 5 + sp.OFD_RETRY)   # and after the pause, a lookup asks again
+            self.assertEqual(offline.call_count, 4)
+        self.assertTrue(sp.ofd_lookup(now=time.time() + 6 + 2 * sp.OFD_RETRY)["profiles"])
         self.assertIsNone(sp._ofd_fail["at"])   # a good read clears the pause
 
     def test_the_page_action_runs_off_the_list_and_gives_consent_on_the_ui_thread(self):

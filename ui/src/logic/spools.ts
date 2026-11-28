@@ -182,13 +182,14 @@ export function spoolMatches(s: Spool, query: string): boolean {
   });
 }
 
-export type SortKey = 'name' | 'material' | 'vendor' | 'remaining' | 'used' | 'first_used' | 'last_used' | 'plate';
+export type SortKey = 'name' | 'material' | 'vendor' | 'location' | 'remaining' | 'used' | 'first_used' | 'last_used' | 'plate';
 export function sortValue(s: Spool, key: SortKey, plateOrder: Map<number, number>): string | number | null {
   const f = s.filament || {};
   switch (key) {
     case 'name': return (f.name || '').toLowerCase() || null;
     case 'material': return (f.material || '').toLowerCase() || null;
     case 'vendor': return (f.vendor?.name || '').toLowerCase() || null;
+    case 'location': return (s.location || '').toLowerCase() || null;
     case 'remaining': return typeof s.remaining_weight === 'number' ? s.remaining_weight : null;
     case 'used': return typeof s.used_weight === 'number' ? s.used_weight : null;
     case 'first_used': return s.first_used ? Date.parse(s.first_used) : null;

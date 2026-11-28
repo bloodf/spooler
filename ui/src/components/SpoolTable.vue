@@ -9,15 +9,16 @@ import { boot } from '../core/boot';
 import { m, dupes } from '../state/main';
 import { menu, pickSpool, pickStack, openEditor } from '../state/menu';
 import { t, tn, locale } from '../core/i18n';
-import { colorFamily, emptyCount, formatWeight, leftLabel, levelTone, lowLevel, noteText, originalWeight, percentLeft, shown, spoolDirection, spoolPaint, totals, type Spool, type Totals } from '../logic/spools';
+import { colorFamily, emptyCount, formatWeight, leftLabel, levelTone, lowLevel, noteText, originalWeight, percentLeft, shown, spoolDirection, spoolPaint, totals, type SortKey, type Spool, type Totals } from '../logic/spools';
 
 // The stock list. One row per spool; spools of one filament fold into a stack row (×n) that opens to its spools,
 // and a group (by location, material or manufacturer) is a header row that closes. Picking a row opens its detail.
 // With `cards` the same rows draw as a grid of cards (Spools toolbar > Cards): a stack card opens to its spools' cards.
 export type Row = { key: string; group?: string; hidden?: boolean } & ({ kind: 'spool'; spool: Spool; child?: boolean } | { kind: 'stack'; items: Spool[]; used: number; open: boolean });
 export interface GroupInfo { label: string; count: number; totals: Totals; open: boolean }
-const props = defineProps<{ rows: Row[]; groups?: Record<string, GroupInfo> | null; selected: number | null; cards?: boolean }>();
-const emit = defineEmits<{ stack: [key: string]; group: [key: string] }>();
+const props = defineProps<{ rows: Row[]; groups?: Record<string, GroupInfo> | null; selected: number | null; cards?: boolean;
+  /** How the rows are sorted, marked on the column that sorts them. */ sort?: { key: SortKey; dir: 'asc' | 'desc' } }>();
+const emit = defineEmits<{ stack: [key: string]; group: [key: string]; /** A column header was clicked. */ sort: [key: SortKey, dir: 'asc' | 'desc'] }>();
 
 const ex = computed(() => shown(m.disp, 'exact_weight'));
 const first = (r: Row) => (r.kind === 'stack' ? r.items[0] : r.spool);
@@ -46,7 +47,7 @@ const selectedRow = computed(() => props.rows.find(r => stackOpen(r) || (r.kind 
 const rowClass = (r: Row) => ({ 'sp-hidden': r.hidden, 'sp-child': r.kind === 'spool' && r.child, 'sp-archived': r.kind === 'spool' && r.spool.archived });
 const rowAttrs = (r?: Row) => (r?.kind === 'spool' ? { 'data-spool': r.spool.id, 'aria-controls': 'sp-detail' } : r ? { 'data-stack': r.key } : {});
 const colourOf = (r: Row) => { const f = fil(r), fam = colorFamily(f);
-  return [fam ? t(`colour.${fam}` as any) : '', f.color_hex ? '#' + f.color_hex.replace(/^#/, '').toUpperCase() : ''].filter(Boolean).join(' · '); };
+  return [fam ? t(`colour.${fam}` as any) : '', f.color_hex && shown(m.disp, 'colour_code') ? '#' + f.color_hex.replace(/^#/, '').toUpperCase() : ''].filter(Boolean).join(' · '); };
 const isSel = (r: Row) => r === selectedRow.value;
 // A stack opens its list in the detail; its ×n chevron opens it in place.
 function onRow(r: Row) { if (r.kind === 'stack') pickStack(r.items.map(s => s.id)); else pickSpool(r.spool.id); }
@@ -119,6 +120,17 @@ async function partKeys(e: KeyboardEvent, i: number) {
 
 <template>
   <div class="sp-parts">
+  <!-- The column header, once for every part and stuck to the top of the list while it scrolls; a click sorts by the column.
+       ponytail: a table of its own with the body tables' column classes, so the widths agree; the parts keep their own
+       header row for the column widths and for screen readers, at no height. -->
+  <DataTable v-if="!cards" :value="[]" size="small" class="sp-table sp-headrow" lazy :sort-field="sort?.key" :sort-order="sort?.dir === 'desc' ? -1 : 1" data-test="list-head"
+             @sort="e => emit('sort', e.sortField as SortKey, e.sortOrder === -1 ? 'desc' : 'asc')">
+    <Column field="name" sortable :header="t('list.col.spool')" class="sp-c-spool" />
+    <Column v-if="shown(m.disp, 'material')" field="material" sortable :header="t('filters.material')" class="sp-wide sp-c-mat" />
+    <Column v-if="shown(m.disp, 'location')" field="location" sortable :header="t('menu.location')" class="sp-wider sp-c-loc" />
+    <Column :header="t('list.col.state')" class="sp-wide sp-c-state" />
+    <Column field="remaining" sortable :header="t('list.col.left')" class="oui-num sp-c-left" />
+  </DataTable>
   <div v-for="(part, pi) in parts" :key="pi" :ref="el => box(el, pi)" class="sp-part" :class="{ 'sp-cont': pi > 0 }" :data-part="pi"
        :data-drawn="near.has(pi) ? '1' : undefined" @keydown="e => partKeys(e, pi)">
   <div v-if="!near.has(pi)" class="sp-part-box" :style="{ height: boxHeight(pi) }" />
@@ -201,7 +213,13 @@ async function partKeys(e: KeyboardEvent, i: number) {
 </template>
 
 <style>
-/* A part of the list after the first: one table under the other, its header row not repeated. */
+/* The one header row of the list stays at the top while the list scrolls. */
+.orca-ui .sp-headrow.p-datatable { position: sticky; top: 0; z-index: 2; background: var(--oui-surface); }
+.orca-ui .sp-headrow tbody { display: none; }
+/* A part's own header row gives its columns their widths (and their names, to a screen reader) at no height. */
+.orca-ui .sp-part .p-datatable .p-datatable-thead > tr > th { height: 0; padding-block: 0; border: 0; line-height: 0; }
+.orca-ui .sp-part .p-datatable .p-datatable-thead > tr > th > * { height: 0; overflow: hidden; }
+/* A part of the list after the first: one table under the other. */
 .orca-ui .sp-cont thead { display: none; }
 .sp-cont > .sc-grid { padding-top: 0; } .sp-part:not(:last-child) > .sc-grid { padding-bottom: var(--oui-s2); }
 .orca-ui tr:has(> td > .sp-gcont) { display: none; }
@@ -227,7 +245,7 @@ async function partKeys(e: KeyboardEvent, i: number) {
 .sp-table table { table-layout: fixed; width: 100%; }
 /* The name column has a share of the width; the state column takes the rest, so its chips sit side by side and wrap
    only when they must instead of stacking one per line. */
-.sp-c-spool { width: 36%; } .sp-c-mat { width: 84px; } .sp-c-loc { width: 116px; } .sp-c-left { width: 148px; }
+.sp-c-spool { width: 32%; } .sp-c-mat { width: 84px; } .sp-c-loc { width: 116px; } .sp-c-left { width: 148px; }
 /* "of 1,000 g" is read out and in the tooltip always; it is written where the list has the room. */
 .sp-of { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 @container sp-col (min-width: 900px) { .sp-c-left { width: 200px; } .sp-of { position: static; width: auto; height: auto; clip-path: none; } }
@@ -240,6 +258,8 @@ async function partKeys(e: KeyboardEvent, i: number) {
 .sp-name { display: flex; align-items: center; gap: var(--oui-s2); min-width: 0; }
 .sp-edit { flex: none; display: inline-grid; place-items: center; width: 24px; height: 24px; padding: 0; border: 0; border-radius: var(--oui-radius); color: var(--oui-muted); background: none; cursor: pointer; }
 .sp-edit:hover { color: var(--oui-text); background: var(--oui-control); }
+/* The pencil shows on the row under the pointer, the row with the keyboard in it and the open row; the detail has Edit too. */
+@media (hover: hover) { .sp-table tr:not(:hover):not(:focus-within):not(.p-datatable-row-selected) .sp-edit:not(:focus-visible) { opacity: 0; } }
 .orca-ui .st-head { flex: none; border: 0; cursor: pointer; font: inherit; font-size: var(--oui-text-xs); font-weight: 600; }
 .sp-left { display: grid; gap: 4px; }
 .sp-loc { display: flex; align-items: center; gap: 5px; min-width: 0; }

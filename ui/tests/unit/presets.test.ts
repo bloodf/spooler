@@ -1,7 +1,7 @@
 // Settings > Presets and the editor's Use with: the tuning table, the base presets offered, and what Use with sends.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { TUNE_FIELDS, TUNE_MATERIALS, basesFor, matName, setTune, tuneMaterials, useWithChanged, useWithPayload } from '../../src/logic/presets.ts';
+import { TUNE_FIELDS, TUNE_MATERIALS, basesFor, matName, presetLabel, presetLabels, setTune, tuneMaterials, useWithChanged, useWithPayload } from '../../src/logic/presets.ts';
 
 test('a tuning value is set, cleared, and an emptied row is dropped', () => {
   const one = setTune({}, 'PLA', 'filament_flow_ratio', 0.98);
@@ -43,4 +43,13 @@ test('Use with sends the printers picked, or null for automatic, and only when i
   assert.equal(useWithChanged([], null), false);
   assert.equal(useWithChanged(['A'], null), true);
   assert.equal(useWithChanged([], ['A']), true);
+});
+
+test('a preset is shown without Spooler\'s folder and without the printer part; two that would read the same keep their names', () => {
+  assert.equal(presetLabel('_local/spooler/Acme PLA Black @Snapmaker U1 (0.4 nozzle)'), 'Acme PLA Black');
+  assert.equal(presetLabel('Generic PLA @BBL X1C'), 'Generic PLA');
+  assert.equal(presetLabel('eSUN PLA+ 1.75/3.00'), 'eSUN PLA+ 1.75/3.00');
+  assert.equal(presetLabel('@odd'), '@odd');
+  const labels = presetLabels(['Generic PLA @BBL X1C', 'Generic PLA', 'Generic PLA Silk @BBL X1C']);
+  assert.deepEqual([...labels.values()], ['Generic PLA @BBL X1C', 'Generic PLA', 'Generic PLA Silk']);
 });

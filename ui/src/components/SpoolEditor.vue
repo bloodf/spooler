@@ -1,14 +1,15 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, nextTick, ref, watch } from 'vue';
 import Dialog from 'primevue/dialog';
 import Button from 'primevue/button';
 import InputText from 'primevue/inputtext';
+import Listbox from 'primevue/listbox';
 import MultiSelect from 'primevue/multiselect';
 import Select from 'primevue/select';
 import SelectButton from 'primevue/selectbutton';
 import Textarea from 'primevue/textarea';
 import ToggleSwitch from 'primevue/toggleswitch';
-import { longList, OuiBanner, OuiFormRow, OuiIcon, OuiLevel, OuiPresetMatch, OuiSpool, OuiSwatch } from '@orca-plugins/ui-foundation/src/components';
+import { longList, OuiBanner, OuiFormRow, OuiHint, OuiIcon, OuiLevel, OuiPresetMatch, OuiSpool, OuiSwatch } from '@orca-plugins/ui-foundation/src/components';
 import { plus, rfid, x } from '@orca-plugins/ui-foundation/src/icons';
 import EditorNumber from './EditorNumber.vue';
 import EditorExtra from './EditorExtra.vue';
@@ -21,18 +22,21 @@ import { formatWeight, spoolDirection, spoolPaint, swatchHex, type Filament } fr
 import { matchFilament, rfidPrefill } from '../logic/rfid';
 import { changed, densityFor, editable, filamentForm, filamentPayload, filled, previewFilament, problems, spoolForm, spoolPayload, wasOf,
   type FilamentForm, type Raw, type SpoolForm } from '../logic/editor';
-import { useWithChanged, useWithPayload, type UseWithInfo } from '../logic/presets';
-import { reasonTexts } from '../logic/match';
-import type { MessageKey } from '../core/messages';
+import { presetLabels, useWithChanged, useWithPayload, type UseWithInfo } from '../logic/presets';
 
-// Add Spool (pick a Spoolman filament to restock, or make a new one, then the spool) and Edit Spool (the spool's fields
-// and its filament's, which every spool of that filament shares), with a live preview drawn like the list's reels.
+// Add Spool (pick a Spoolman filament to restock, or make a new one, then the spool) and Edit Spool, with a live preview
+// drawn like the list's reels. Edit Spool is three tabs: the spool's own fields, its filament's (which every spool of that
+// filament shares) and the OrcaSlicer presets made from it. Every tab stays in the form, so Save sends them all.
 const adding = computed(() => editor.id == null);
 const data = computed(() => editor.data);
 const defs = computed(() => ({ spool: editable(data.value?.fields?.spool, boot.own_fields), filament: editable(data.value?.fields?.filament, boot.own_fields) }));
 const raw = computed<Raw | undefined>(() => data.value?.spool ?? undefined);
 const rawFil = computed<Raw | undefined>(() => raw.value?.filament ?? undefined);
 const step = ref<1 | 2>(1);
+type Tab = 'spool' | 'filament' | 'presets';
+const tab = ref<Tab>('spool');
+// A new filament: what it is first; diameter, density, temperatures and weights are filled from its material and stay folded.
+const moreOpen = ref(false);
 const source = ref<'existing' | 'new'>('existing');
 const pickId = ref<number | null>(null);
 const sf = ref<SpoolForm>(spoolForm(undefined, []));
@@ -52,16 +56,25 @@ const linkFil = ref('');
 const linkOf = (v: unknown) => (typeof v === 'string' ? v.trim() : '');
 let suggested: number | null = null;
 // Based on: per printer, the OrcaSlicer system preset Spooler's preset of this filament copies (filmatch's pick, Advanced
-// tuning's, or one picked here by hand), with its score and reasons; Change picks another at once (remembered by the plugin).
+// tuning's, or one picked here by hand); Change picks another at once (remembered by the plugin). The plugin's score and
+// reasons stay in the plugin: the row shows the preset's name, without the printer part its hint already says.
 // An Open Filament Database preset is picked in Add Spool only (Look up in OFD); here it shows as the pick, and Change
 // offers the OrcaSlicer candidates and Automatic.
-type MatchRow = { target: string; label: string; name: string; source: 'auto' | 'tuned' | 'remembered' | 'ofd'; score: number | null; reasons: unknown;
-  confident: boolean; candidates: { name: string; score: number; reasons: unknown }[] };
+type MatchRow = { target: string; label: string; name: string; source: 'auto' | 'tuned' | 'remembered' | 'ofd'; confident: boolean; candidates: { name: string }[] };
 const matches = computed<MatchRow[]>(() => (Array.isArray(data.value?.preset_match) ? data.value.preset_match : []));
-const words = (reasons: unknown) => reasonTexts(reasons, (code, v) => t(`match.r.${code}` as MessageKey, { v }));
-const matchLabels = computed(() => ({ change: t('match.change'), none: t('match.none'), score: t('match.score'), auto: t('match.auto'), autoHint: t('match.autoHint') }));
+const matchLabels = computed(() => ({ change: t('match.change'), none: t('match.none'), score: '', auto: t('match.auto'), autoHint: t('match.autoHint') }));
+// What a row shows for each of its presets, and the preset a shown name stands for when it is picked.
+const shownNames = (row: MatchRow) => presetLabels([row.name, ...row.candidates.map(c => c.name)].filter(Boolean));
+const nameOf = (row: MatchRow, label: string | null) => (label === null ? null : [...shownNames(row)].find(([, l]) => l === label)?.[0] ?? label);
 const matchBadge = (row: MatchRow) => (row.source === 'remembered' ? t('match.remembered') : row.source === 'tuned' ? t('match.tuned') : row.source === 'ofd' ? t('ofd.badge') : undefined);
-const pickMatch = (row: MatchRow, name: string | null) => pickParent(rawFil.value?.id ?? null, row.target, name);
+const pickMatch = (row: MatchRow, label: string | null) => pickParent(rawFil.value?.id ?? null, row.target, nameOf(row, label));
+const tabs = computed(() => [{ value: 'spool', label: t('list.col.spool') }, { value: 'filament', label: t('editor.tabFilament') },
+  ...(pl.value || matches.value.length || showUseWith.value ? [{ value: 'presets', label: t('presets.title') }] : [])]);
+// The keyboard starts in the form (the dialog itself would start on its Close button): the filament search, or the first
+// field. The field is marked `autofocus` too: the dialog focuses that when it has opened, if the data came before then.
+function focusFirst() {
+  void nextTick(() => { const el = document.querySelector<HTMLElement>(adding.value ? '.se-pick input, #se-vendor' : '#se-initial'); el?.setAttribute('autofocus', ''); el?.focus(); });
+}
 
 watch(data, d => {
   if (!d) return;
@@ -69,13 +82,14 @@ watch(data, d => {
   const pre = editor.rfid ? rfidPrefill(editor.rfid.offer) : null;
   sf.value = spoolForm(pre?.spool ?? raw.value, defs.value.spool);
   ff.value = filamentForm(pre?.filament ?? rawFil.value, defs.value.filament);
-  step.value = 1;
+  step.value = 1; tab.value = 'spool'; moreOpen.value = !adding.value || !!pre;
   pickId.value = editor.rfid ? matchFilament(d.filaments, editor.rfid.offer) : null;
   source.value = (d.filaments ?? []).length && (!pre || pickId.value !== null) ? 'existing' : 'new';
   tried.value = false; suggested = pre?.filament.density ?? null;
   useWith.value = [...(d.use_with?.value ?? [])];
   ofdPick.value = null;
   linkSpool.value = d.preset_link?.spool ?? ''; linkFil.value = d.preset_link?.filament ?? '';
+  focusFirst();
 }, { immediate: true });
 // The new filament was made but Spoolman refused the spool: it is an existing filament now, picked for the retry.
 watch(() => editor.made, id => {
@@ -90,14 +104,22 @@ watch(() => ff.value.material, mat => {
 });
 
 const sources = computed(() => [{ value: 'existing', label: t('editor.existing') }, { value: 'new', label: t('editor.new') }]);
+// A filament in the list: its name, then its manufacturer and its material (left out when the name already says it).
 const filaments = computed(() => ((data.value?.filaments ?? []) as Raw[])
-  .map(f => ({ value: f.id as number, label: [f.vendor?.name, f.name || `#${f.id}`, f.material].filter(Boolean).join(' · '), f: f as Filament }))
+  .map(f => { const name = f.name || `#${f.id}`, material = f.material && !name.toLowerCase().includes(String(f.material).toLowerCase()) ? f.material : '';
+    return { value: f.id as number, name, sub: [f.vendor?.name, material].filter(Boolean).join(' · '), label: [f.vendor?.name, name, material].filter(Boolean).join(' · '), f: f as Filament }; })
   .sort((a, b) => a.label.localeCompare(b.label, locale.value)));
+// The preview and the wide dialog come with the fields; picking a filament to restock is a list, which shows it already.
+const listStep = computed(() => adding.value && step.value === 1 && source.value === 'existing');
+const materials = computed(() => [...new Set([...m.spools.map(s => s.filament?.material), ...((data.value?.filaments ?? []) as Raw[]).map(f => f.material)].filter(Boolean) as string[])].sort());
 const picked = computed(() => filaments.value.find(o => o.value === pickId.value)?.f ?? null);
 const withFilament = computed(() => !adding.value || source.value === 'new');
 const baseSpool = computed(() => (raw.value ? spoolForm(raw.value, defs.value.spool) : undefined));
 const issues = computed(() => problems(sf.value, withFilament.value ? ff.value : null, defs.value, adding.value, baseSpool.value));
 const err = (key: string) => (tried.value || key === 'remaining_weight' || key === 'initial_weight') && issues.value[key] ? t(`editor.problem.${issues.value[key]}` as any) : undefined;
+// Which tab holds a field with a problem; Save opens it, so a refused save is never about a field out of sight.
+const tabOf = (key: string): Tab => (key === 'density' || key === 'diameter' || key.startsWith('filament.') ? 'filament' : 'spool');
+const badTab = (v: string) => tried.value && Object.keys(issues.value).some(k => tabOf(k) === v);
 const shared = computed(() => m.spools.filter(s => rawFil.value?.id != null && s.filament?.id === rawFil.value.id && s.id !== editor.id).length);
 const title = computed(() => (adding.value ? t('editor.addTitle') : t('editor.editTitle', { id: editor.id })));
 
@@ -126,7 +148,7 @@ const ofdNow = computed(() => (editor.ofd?.key === ofdKey.value ? editor.ofd : n
 const ofdList = computed(() => ofdNow.value?.list ?? []);
 const ofdChosen = computed(() => ofdList.value.find(c => c.id === ofdPick.value) ?? null);
 const ofdLabels = computed(() => ({ ...matchLabels.value, none: t('ofd.notPicked') }));
-function lookUp(consent: boolean) { if (ofdReady.value) ofdSuggest(ofdFor.value.vendor, ofdFor.value.material, ofdFor.value.name, consent); }
+function lookUp(consent: boolean, retry = false) { if (ofdReady.value) ofdSuggest(ofdFor.value.vendor, ofdFor.value.material, ofdFor.value.name, consent, retry); }
 const pickOfd = (name: string | null) => { ofdPick.value = (name && ofdList.value.find(c => c.name === name)?.id) || null; };
 // With consent given, opening the spool step looks up by itself; another manufacturer or material forgets the pick.
 watch([step, ofdKey], () => {
@@ -145,11 +167,17 @@ const directions = computed(() => (['coaxial', 'longitudinal'] as const).map(v =
 // ------------------------------------------------------------------ steps and save
 const stepOk = computed(() => (source.value === 'existing' ? pickId.value !== null
   : !Object.keys(issues.value).some(k => k === 'density' || k === 'diameter' || k.startsWith('filament.'))));
-function next() { tried.value = true; if (stepOk.value) { step.value = 2; tried.value = false; } }
+function next() {
+  tried.value = true;
+  if (stepOk.value) { step.value = 2; tried.value = false; void nextTick(() => document.getElementById('se-initial')?.focus()); }
+  else if (source.value === 'new') moreOpen.value = true;   // the problem may be in the folded details
+}
 async function save() {
   tried.value = true;
   if (adding.value && step.value === 1) { next(); return; }
-  if (Object.keys(issues.value).length || editor.busy) return;
+  const bad = Object.keys(issues.value);
+  if (bad.length && !adding.value && !bad.some(k => tabOf(k) === tab.value)) tab.value = tabOf(bad[0]);
+  if (bad.length || editor.busy) return;
   const spool = spoolPayload(sf.value, defs.value.spool);
   if (adding.value) {
     const tag = editor.rfid ? { tag: editor.rfid.offer.tag } : {};
@@ -181,74 +209,82 @@ async function save() {
 
 <template>
   <Dialog v-model:visible="editor.open" modal :header="title" :draggable="false" class="se-dialog" data-test="editor"
-          :style="{ width: 'min(940px, calc(100vw - 32px))' }" :close-button-props="{ severity: 'secondary', text: true, rounded: true, 'aria-label': t('common.close') }">
+          :style="{ width: `min(${listStep ? 600 : 940}px, calc(100vw - 32px))` }" :close-button-props="{ severity: 'secondary', text: true, rounded: true, 'aria-label': t('common.close') }">
     <div class="se">
       <OuiBanner v-if="editor.error" tone="error" :title="editor.error" role="alert" data-test="editor-error" />
       <OuiBanner v-if="editor.rfid" tone="info" :icon="rfid" :title="t('rfid.editorTitle', { where: editor.rfid.where })" data-test="editor-rfid">{{ t('rfid.editorText') }}</OuiBanner>
       <p v-if="!data && !editor.error" class="oui-meta" role="status">{{ t('common.loading') }}</p>
-      <div v-if="data" class="se-grid">
+      <div v-if="data" class="se-grid" :data-solo="listStep || undefined">
         <form id="se-form" class="se-form" novalidate @submit.prevent="save">
           <p v-if="adding" class="oui-label se-step" aria-live="polite">{{ t('editor.step', { n: step, name: step === 1 ? t('editor.stepFilament') : t('editor.stepSpool') }) }}</p>
+          <SelectButton v-else v-model="tab" :options="tabs" option-label="label" option-value="value" :allow-empty="false" :aria-label="t('editor.tabs')" class="se-tabs" data-test="editor-tabs">
+            <template #option="{ option }"><span :data-tab="option.value">{{ option.label }}</span><span v-if="badTab(option.value)" class="se-tabflag" :title="t('set.hasError')" aria-hidden="true" /></template>
+          </SelectButton>
 
           <template v-if="adding && step === 1">
             <SelectButton v-model="source" :options="sources" option-label="label" option-value="value" :allow-empty="false" :aria-label="t('editor.sourceLabel')" data-test="editor-source" />
             <div v-if="source === 'existing'" class="oui-field se-pick">
-              <label for="se-pick">{{ t('editor.pick') }}</label>
-              <Select v-model="pickId" input-id="se-pick" :options="filaments" option-label="label" option-value="value" :virtual-scroller-options="longList(filaments.length, 32)" filter :placeholder="t('editor.pickPh')"
-                      :invalid="tried && pickId === null" :empty-message="t('editor.noFilaments')" aria-describedby="se-pick-h" data-test="editor-pick">
-                <template #option="{ option }"><span class="se-opt"><OuiSwatch v-bind="spoolPaint(option.f)" />{{ option.label }}</span></template>
-              </Select>
+              <label id="se-pick-l">{{ t('editor.pick') }}</label>
+              <!-- The list is the step: always open, searched by typing; a double click or Enter goes on. A picked row stays picked. -->
+              <Listbox :model-value="pickId" :options="filaments" option-label="label" option-value="value" filter :filter-placeholder="t('editor.pickSearch')" scroll-height="228px"
+                       :virtual-scroller-options="longList(filaments.length, 38)" :invalid="tried && pickId === null" :empty-message="t('editor.noFilaments')" :empty-filter-message="t('picker.noMatch')"
+                       aria-labelledby="se-pick-l" aria-describedby="se-pick-h" data-test="editor-pick" @update:model-value="v => { if (v != null) pickId = v; }" @option-dblclick="next">
+                <template #option="{ option }"><span class="se-opt" :data-filament="option.value" :data-label="option.label"><OuiSwatch v-bind="spoolPaint(option.f)" /><span class="oui-truncate oui-strong">{{ option.name }}</span>
+                  <span v-if="option.sub" class="oui-meta oui-truncate se-opt-sub">{{ option.sub }}</span></span></template>
+              </Listbox>
               <p id="se-pick-h" class="oui-meta" :class="{ 'se-bad': tried && pickId === null }">{{ tried && pickId === null ? t('editor.pickPh') : t('editor.pickHelp') }}</p>
             </div>
           </template>
 
-          <section v-if="!adding || step === 2" class="se-sec" :aria-label="t('editor.stepSpool')">
-            <h3 v-if="!adding" class="oui-label se-h">{{ t('editor.stepSpool') }}</h3>
-            <OuiFormRow :label="t('editor.initial')" for="se-initial" :hint="t('editor.initialHelp')" :error="err('initial_weight')">
-              <EditorNumber id="se-initial" v-model="sf.initial_weight" :min="0" :max="100000" :digits="1" unit="g" :invalid="!!err('initial_weight')" /></OuiFormRow>
+          <section v-if="!adding || step === 2" v-show="adding || tab === 'spool'" class="se-sec" :aria-label="t('editor.stepSpool')" data-test="editor-spool">
+            <OuiFormRow :label="t('editor.initial')" for="se-initial" :error="err('initial_weight')">
+              <EditorNumber id="se-initial" v-model="sf.initial_weight" :min="0" :max="100000" :digits="1" unit="g" :placeholder="typeof pf.weight === 'number' ? w(pf.weight) : undefined" :invalid="!!err('initial_weight')" /></OuiFormRow>
             <OuiFormRow :label="t('editor.remaining')" for="se-left" :error="err('remaining_weight')">
-              <EditorNumber id="se-left" v-model="sf.remaining_weight" :min="0" :max="100000" :digits="1" unit="g" :invalid="!!err('remaining_weight')" /></OuiFormRow>
+              <EditorNumber id="se-left" v-model="sf.remaining_weight" :min="0" :max="100000" :digits="1" unit="g" :placeholder="adding ? t('editor.sameAsStart') : undefined" :invalid="!!err('remaining_weight')" /></OuiFormRow>
             <OuiFormRow :label="t('menu.location')" for="se-loc">
               <InputText id="se-loc" v-model="sf.location" maxlength="64" list="se-locs" /></OuiFormRow>
             <datalist id="se-locs"><option v-for="l in [...new Set(m.spools.map(s => s.location).filter(Boolean))]" :key="l" :value="l" /></datalist>
             <OuiFormRow :label="t('editor.lot')" for="se-lot"><InputText id="se-lot" v-model="sf.lot_nr" maxlength="64" /></OuiFormRow>
-            <OuiFormRow :label="t('detail.price')" for="se-price"><EditorNumber id="se-price" v-model="sf.price" :min="0" :max="10000000" :digits="2" /></OuiFormRow>
+            <OuiFormRow :label="t('detail.price')" for="se-price"><EditorNumber id="se-price" v-model="sf.price" :min="0" :max="10000000" :digits="2" :unit="boot.settings.cur_code || null" /></OuiFormRow>
             <OuiFormRow :label="t('menu.noteLabel')" for="se-note" stacked><Textarea id="se-note" v-model="sf.comment" maxlength="1024" rows="2" auto-resize fluid /></OuiFormRow>
-            <OuiFormRow :label="t('editor.archived')" for="se-arch"><ToggleSwitch v-model="sf.archived" input-id="se-arch" /></OuiFormRow>
-            <OuiFormRow v-if="showUseWith" :label="t('presets.useWith')" for="se-usewith" :hint="t('presets.useWithHelp')">
-              <MultiSelect v-model="useWith" input-id="se-usewith" :options="uw?.printers ?? []" option-label="label" option-value="target" display="chip"
-                           :placeholder="t('presets.useWithAuto')" :show-toggle-all="false" fluid aria-describedby="se-usewith-h" data-test="editor-usewith" />
-              <span id="se-usewith-h" class="oui-sr">{{ t('presets.useWithHelp') }}</span></OuiFormRow>
-            <OuiFormRow v-if="!adding && pl" :label="t('editor.presetLink')" for="se-link" :hint="t('editor.presetLinkHelp')">
-              <Select v-model="linkSpool" input-id="se-link" :options="pl.presets" :virtual-scroller-options="longList(pl.presets.length, 32)" editable show-clear :placeholder="t('editor.presetLinkNone')" fluid data-test="editor-link" /></OuiFormRow>
+            <OuiFormRow v-if="!adding" :label="t('editor.archived')" for="se-arch"><ToggleSwitch v-model="sf.archived" input-id="se-arch" /></OuiFormRow>
+            <h3 v-if="defs.spool.length" class="oui-label se-h" data-test="editor-own-spool">{{ t('editor.ownFields') }}</h3>
             <OuiFormRow v-for="d in defs.spool" :key="d.key" :label="d.name || d.key" :for="`se-sx-${d.key}`" :error="err('spool.' + d.key)">
               <EditorExtra v-model="sf.extra[d.key]" :def="d" :id="`se-sx-${d.key}`" :invalid="!!err('spool.' + d.key)" /></OuiFormRow>
-            <OuiFormRow v-if="adding" :label="t('ofd.title')" :hint="t('ofd.lookupHelp')" stacked data-test="editor-ofd">
+            <!-- The Open Filament Database is asked only from here, by this button (or by itself once that was allowed). -->
+            <OuiFormRow v-if="adding" :label="t('ofd.start')" stacked data-test="editor-ofd">
               <p v-if="!ofdReady" class="oui-meta">{{ t('ofd.needVendor') }}</p>
-              <div v-else-if="!ofdNow" class="oui-row">
-                <Button severity="secondary" size="small" :label="t('ofd.lookup')" data-test="ofd-lookup" @click="lookUp(true)" />
-                <span v-if="!data.ofd_consent" class="oui-meta">{{ t('ofd.askFirst') }}</span></div>
-              <p v-else-if="ofdNow.busy" class="oui-meta" role="status">{{ t('ofd.looking') }}</p>
-              <p v-else-if="!ofdList.length" class="oui-meta" role="status" data-test="ofd-none">{{ ofdNow.error ? t('ofd.failed', { error: ofdNow.error })
-                : t('ofd.noneFound', { vendor: ofdFor.vendor, material: ofdFor.material }) }}</p>
-              <OuiPresetMatch v-else :name="ofdChosen?.name ?? null" :score="ofdChosen?.score ?? null" :confident="true" :reasons="ofdChosen ? words(ofdChosen.reasons) : []"
-                              :badge="ofdChosen ? t('ofd.badge') : undefined" :remembered="!!ofdChosen" :labels="ofdLabels"
-                              :candidates="ofdList.map(c => ({ name: c.name, score: c.score, reasons: words(c.reasons), badge: t('ofd.badge'), note: t('ofd.note') }))"
-                              @pick="pickOfd" />
-              <p v-if="ofdNow && !ofdNow.busy" class="oui-meta">{{ t('ofd.credit') }}</p>
+              <template v-else-if="!ofdList.length">
+                <div class="oui-row">
+                  <Button v-if="!ofdNow || ofdNow.busy || ofdNow.error" severity="secondary" size="small" :label="ofdNow?.error ? t('common.retry') : t('ofd.lookup')" :loading="!!ofdNow?.busy"
+                          data-test="ofd-lookup" @click="lookUp(true, !!ofdNow?.error)" />
+                  <span v-if="ofdNow && !ofdNow.busy" class="oui-meta" role="status" data-test="ofd-none">{{ ofdNow.error ? t('ofd.failed') : t('ofd.noneFound', { vendor: ofdFor.vendor, material: ofdFor.material }) }}</span>
+                  <span v-else-if="ofdNow" class="oui-sr" role="status">{{ t('ofd.looking') }}</span>
+                  <span v-else-if="!data.ofd_consent" class="oui-meta">{{ t('ofd.askFirst') }}</span>
+                  <OuiHint :label="t('ofd.title')" :text="t('ofd.credit')" data-test="ofd-credit" />
+                </div>
+                <p class="oui-meta">{{ t('ofd.notPicked') }}</p>
+              </template>
+              <div v-else class="oui-row se-ofd">
+                <OuiPresetMatch :name="ofdChosen?.name ?? null" :confident="true" :badge="ofdChosen ? t('ofd.badge') : undefined" :remembered="!!ofdChosen" :labels="ofdLabels"
+                                :candidates="ofdList.map(c => ({ name: c.name }))" @pick="pickOfd" />
+                <OuiHint :label="t('ofd.title')" :text="t('ofd.credit')" data-test="ofd-credit" />
+              </div>
             </OuiFormRow>
           </section>
 
-          <section v-if="withFilament && (!adding || step === 1)" class="se-sec" :aria-label="t('editor.filament')" data-test="editor-filament">
-            <h3 class="oui-label se-h">{{ adding ? t('editor.new') : t('editor.filament') }}</h3>
-            <OuiBanner v-if="!adding" tone="info" :title="shared ? tn('editor.shared', shared) : t('editor.sharedNone')" data-test="editor-shared" />
+          <section v-if="withFilament && (!adding || step === 1)" v-show="adding || tab === 'filament'" class="se-sec" :aria-label="t('editor.filament')" data-test="editor-filament">
+            <h3 v-if="adding" class="oui-label se-h">{{ t('editor.new') }}</h3>
+            <OuiBanner v-else tone="info" :title="shared ? tn('editor.shared', shared) : t('editor.sharedNone')" data-test="editor-shared" />
             <datalist id="se-vendors"><option v-for="v in data.vendors" :key="v" :value="v" /></datalist>
+            <datalist id="se-mats"><option v-for="v in materials" :key="v" :value="v" /></datalist>
             <OuiFormRow :label="t('disp.head_vendor')" for="se-vendor"><InputText id="se-vendor" v-model="ff.vendor" maxlength="64" list="se-vendors" /></OuiFormRow>
             <OuiFormRow :label="t('editor.name')" for="se-name"><InputText id="se-name" v-model="ff.name" maxlength="64" /></OuiFormRow>
-            <OuiFormRow :label="t('filters.material')" for="se-mat"><InputText id="se-mat" v-model="ff.material" maxlength="64" /></OuiFormRow>
+            <OuiFormRow :label="t('filters.material')" for="se-mat"><InputText id="se-mat" v-model="ff.material" maxlength="64" list="se-mats" /></OuiFormRow>
             <OuiFormRow :label="t('editor.colour')" for="se-col-0">
               <span class="se-cols">
-                <span v-for="(c, i) in ff.colors" :key="i" class="se-col">
+                <!-- No colour yet: a hatched box, never a grey that reads as a colour someone chose. -->
+                <span v-for="(c, i) in ff.colors" :key="i" class="se-col" :data-none="!swatchHex(c) || undefined">
                   <input :id="`se-col-${i}`" type="color" :value="swatchHex(c) || '#888888'" :aria-label="t('editor.colourN', { n: i + 1 })" @input="e => setColour(i, (e.target as HTMLInputElement).value)">
                   <Button v-if="ff.colors.length > 1" severity="secondary" text size="small" :aria-label="t('editor.removeColour', { n: i + 1 })" :title="t('editor.removeColour', { n: i + 1 })"
                           @click="removeColour(i)"><template #icon><OuiIcon :icon="x" :size="12" /></template></Button>
@@ -258,26 +294,47 @@ async function save() {
               </span></OuiFormRow>
             <OuiFormRow v-if="ff.colors.length > 1" :label="t('editor.direction')" for="se-dir">
               <Select v-model="ff.direction" input-id="se-dir" :options="directions" option-label="label" option-value="value" /></OuiFormRow>
-            <OuiFormRow :label="t('disp.diameter')" for="se-dia" :error="err('diameter')">
-              <EditorNumber id="se-dia" v-model="ff.diameter" :min="0" :max="10" :digits="2" unit="mm" :invalid="!!err('diameter')" /></OuiFormRow>
-            <OuiFormRow :label="t('editor.density')" for="se-den" :error="err('density')">
-              <EditorNumber id="se-den" v-model="ff.density" :min="0" :max="100" :digits="3" unit="g/cm³" :invalid="!!err('density')" /></OuiFormRow>
-            <OuiFormRow :label="t('editor.nozzle')" for="se-noz"><EditorNumber id="se-noz" v-model="ff.settings_extruder_temp" :min="0" :max="600" unit="°C" /></OuiFormRow>
-            <OuiFormRow :label="t('editor.bed')" for="se-bed"><EditorNumber id="se-bed" v-model="ff.settings_bed_temp" :min="0" :max="300" unit="°C" /></OuiFormRow>
-            <OuiFormRow :label="t('editor.weight')" for="se-fw"><EditorNumber id="se-fw" v-model="ff.weight" :min="0" :max="100000" :digits="1" unit="g" /></OuiFormRow>
-            <OuiFormRow :label="t('editor.spoolWeight')" for="se-sw"><EditorNumber id="se-sw" v-model="ff.spool_weight" :min="0" :max="100000" :digits="1" unit="g" /></OuiFormRow>
-            <OuiFormRow v-if="!adding && pl" :label="t('editor.presetLink')" for="se-link-fil" :hint="t('editor.presetLinkFilHelp')">
-              <Select v-model="linkFil" input-id="se-link-fil" :options="pl.presets" :virtual-scroller-options="longList(pl.presets.length, 32)" editable show-clear :placeholder="t('editor.presetLinkNone')" fluid data-test="editor-link-fil" /></OuiFormRow>
-            <OuiFormRow v-for="row in (adding ? [] : matches)" :key="row.target" :label="t('match.title')" :hint="t('match.help', { printer: row.label })" stacked data-test="editor-match">
-              <OuiPresetMatch :name="row.name" :score="row.score" :confident="row.confident" :reasons="words(row.reasons)" :badge="matchBadge(row)" :remembered="row.source === 'remembered' || row.source === 'ofd'"
-                              :candidates="row.candidates.map(c => ({ name: c.name, score: c.score, reasons: words(c.reasons) }))" :labels="matchLabels" :busy="editor.busy"
-                              @pick="name => pickMatch(row, name)" /></OuiFormRow>
+            <details class="se-more" :open="moreOpen" data-test="editor-more" @toggle="e => (moreOpen = (e.target as HTMLDetailsElement).open)">
+              <summary class="oui-label se-h">{{ t('editor.more') }}</summary>
+              <div class="se-more-rows">
+                <OuiFormRow :label="t('disp.diameter')" for="se-dia" :error="err('diameter')">
+                  <EditorNumber id="se-dia" v-model="ff.diameter" :min="0" :max="10" :digits="2" unit="mm" :invalid="!!err('diameter')" /></OuiFormRow>
+                <OuiFormRow :label="t('editor.density')" for="se-den" :error="err('density')">
+                  <EditorNumber id="se-den" v-model="ff.density" :min="0" :max="100" :digits="3" unit="g/cm³" :invalid="!!err('density')" /></OuiFormRow>
+                <OuiFormRow :label="t('editor.nozzle')" for="se-noz"><EditorNumber id="se-noz" v-model="ff.settings_extruder_temp" :min="0" :max="600" unit="°C" /></OuiFormRow>
+                <OuiFormRow :label="t('editor.bed')" for="se-bed"><EditorNumber id="se-bed" v-model="ff.settings_bed_temp" :min="0" :max="300" unit="°C" /></OuiFormRow>
+                <OuiFormRow :label="t('editor.weight')" for="se-fw"><EditorNumber id="se-fw" v-model="ff.weight" :min="0" :max="100000" :digits="1" unit="g" /></OuiFormRow>
+                <OuiFormRow :label="t('editor.spoolWeight')" for="se-sw"><EditorNumber id="se-sw" v-model="ff.spool_weight" :min="0" :max="100000" :digits="1" unit="g" /></OuiFormRow>
+              </div>
+            </details>
+            <h3 v-if="defs.filament.length" class="oui-label se-h" data-test="editor-own-filament">{{ t('editor.ownFields') }}</h3>
             <OuiFormRow v-for="d in defs.filament" :key="d.key" :label="d.name || d.key" :for="`se-fx-${d.key}`" :error="err('filament.' + d.key)">
               <EditorExtra v-model="ff.extra[d.key]" :def="d" :id="`se-fx-${d.key}`" :invalid="!!err('filament.' + d.key)" /></OuiFormRow>
           </section>
+
+          <!-- Presets: your own preset for the spool or for its filament, the OrcaSlicer preset Spooler copies on each printer, and the printers a spool preset is for. -->
+          <section v-if="!adding" v-show="tab === 'presets'" class="se-sec" :aria-label="t('presets.title')" data-test="editor-presets">
+            <template v-if="pl">
+              <OuiFormRow :label="t('editor.linkSpool')" for="se-link">
+                <Select v-model="linkSpool" input-id="se-link" :options="pl.presets" :virtual-scroller-options="longList(pl.presets.length, 32)" editable show-clear :placeholder="t('editor.presetLinkNone')" fluid aria-describedby="se-link-h" data-test="editor-link" />
+                <OuiHint id="se-link-h" :label="t('editor.linkSpool')" :text="t('editor.presetLinkHelp')" /></OuiFormRow>
+              <OuiFormRow :label="t('editor.linkFil')" for="se-link-fil">
+                <Select v-model="linkFil" input-id="se-link-fil" :options="pl.presets" :virtual-scroller-options="longList(pl.presets.length, 32)" editable show-clear :placeholder="t('editor.presetLinkNone')" fluid aria-describedby="se-link-fil-h" data-test="editor-link-fil" />
+                <OuiHint id="se-link-fil-h" :label="t('editor.linkFil')" :text="t('editor.presetLinkFilHelp')" /></OuiFormRow>
+            </template>
+            <h3 v-if="matches.length" class="oui-label se-h oui-row">{{ t('match.title') }}<OuiHint :label="t('match.title')" :text="t('match.help')" /></h3>
+            <OuiFormRow v-for="row in matches" :key="row.target" :label="row.label" data-test="editor-match">
+              <OuiPresetMatch :name="shownNames(row).get(row.name) ?? row.name" :confident="row.confident" :badge="matchBadge(row)" :remembered="row.source === 'remembered' || row.source === 'ofd'"
+                              :candidates="row.candidates.map(c => ({ name: shownNames(row).get(c.name) ?? c.name }))" :labels="matchLabels" :busy="editor.busy"
+                              @pick="name => pickMatch(row, name)" /></OuiFormRow>
+            <OuiFormRow v-if="showUseWith" :label="t('presets.useWith')" for="se-usewith">
+              <MultiSelect v-model="useWith" input-id="se-usewith" :options="uw?.printers ?? []" option-label="label" option-value="target" display="chip"
+                           :placeholder="t('presets.useWithAuto')" :show-toggle-all="false" aria-describedby="se-usewith-h" data-test="editor-usewith" />
+              <OuiHint id="se-usewith-h" :label="t('presets.useWith')" :text="t('presets.useWithHelp')" /></OuiFormRow>
+          </section>
         </form>
 
-        <aside class="se-preview" :aria-label="t('editor.preview')" data-test="editor-preview">
+        <aside v-if="!listStep" class="se-preview" :aria-label="t('editor.preview')" data-test="editor-preview">
           <p class="oui-label">{{ t('editor.preview') }}</p>
           <div class="se-card">
             <div class="se-well oui-well"><OuiSpool v-bind="spoolPaint(pf)" :direction="spoolDirection(pf)" :fraction="fraction" :size="120" /></div>
@@ -305,18 +362,33 @@ async function save() {
 <style>
 .se { display: grid; gap: var(--oui-s3); container: se / inline-size; }
 .se-grid { display: grid; gap: var(--oui-s4); grid-template-columns: minmax(0, 1fr); align-items: start; }
-@container se (min-width: 720px) { .se-grid { grid-template-columns: minmax(0, 1fr) 280px; } .se-preview { position: sticky; top: 0; } }
+@container se (min-width: 720px) { .se-grid:not([data-solo]) { grid-template-columns: minmax(0, 1fr) 280px; } .se-preview { position: sticky; top: 0; } }
 .se-form { display: grid; gap: var(--oui-s3); container: oui-form / inline-size; min-width: 0; }
 .se-sec { display: grid; border: 1px solid var(--oui-border); border-radius: var(--oui-radius); }
 .se-sec > * + * { border-top: 1px solid var(--oui-border); }
 .se-sec > datalist { display: none; }
+/* A candidate list is as wide as its row; a printer's row gives its preset the room, so its badge and Change stay beside the name. */
+.se-sec .oui-match { flex: 1 1 100%; }
+.se-sec .oui-match-id { flex-basis: 120px; }
+.se-sec [data-test="editor-match"] { grid-template-columns: minmax(120px, 1fr) minmax(0, 2.4fr); }
+.se-sec .oui-formrow-control > .p-multiselect { flex: 1 1 160px; min-width: 0; }
+.se-ofd { align-items: flex-start; flex-wrap: nowrap; width: 100%; }
+.se-tabs { justify-self: start; }
+.se-tabflag { display: inline-block; width: 6px; height: 6px; margin-inline-start: 6px; border-radius: 50%; background: var(--oui-danger); vertical-align: middle; }
+.se-more > summary { cursor: pointer; }
+.se-more-rows > * { border-top: 1px solid var(--oui-border); }
 .se-h { padding: var(--oui-s2) var(--oui-s4); }
 .se-step { margin: 0; }
 .se-pick { gap: var(--oui-s1); }
-.se-opt { display: inline-flex; align-items: center; gap: var(--oui-s2); }
+.se-opt { display: flex; align-items: center; gap: var(--oui-s2); min-width: 0; width: 100%; }
+.se-opt > .oui-swatch { flex: none; }
+.se-opt-sub { margin-inline-start: auto; padding-inline-start: var(--oui-s3); flex: none; max-width: 50%; }
 .se-bad { color: var(--oui-danger); }
 .se-cols { display: flex; flex-wrap: wrap; align-items: center; gap: var(--oui-s2); }
 .se-col { display: inline-flex; align-items: center; }
+.se-col[data-none] > input[type=color] { background: repeating-linear-gradient(135deg, var(--oui-control-border) 0 2px, transparent 2px 7px); }
+.se-col[data-none] > input[type=color]::-webkit-color-swatch { opacity: 0; }
+.se-col[data-none] > input[type=color]::-moz-color-swatch { opacity: 0; }
 .se-col input[type=color] { width: 40px; height: var(--oui-control-sm, 32px); padding: 0; border: 1px solid var(--oui-control-border); border-radius: var(--oui-radius); background: none; }
 .se-preview { display: grid; gap: var(--oui-s2); }
 .se-card { display: grid; gap: var(--oui-s3); }

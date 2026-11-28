@@ -77,7 +77,7 @@ export const editor = reactive({ open: false, id: null as number | null, data: n
   rfid: null as null | { offer: RfidOffer; where: string },
   /** Add Spool > Look up in OFD: the lookup for `key` (manufacturer|material), its proposals, or why there are none. */
   ofd: null as null | { key: string; busy: boolean; list: OfdProposal[]; error: string } });
-export interface OfdProposal { id: string; name: string; score: number; reasons: unknown }
+export interface OfdProposal { id: string; name: string }
 // Each editor opened gets its own ref, which the plugin sends back: an answer for an editor closed since never touches the next one.
 // rfid: Add Spool for a new RFID spool in a printer slot, pre-filled from the printer; its tag goes with the create.
 export function openEditor(id: number | null, rfid: { offer: RfidOffer; where: string } | null = null): void {
@@ -99,11 +99,12 @@ export function pickParent(filament: number | null, target: string, name: string
 /**
  * Add Spool > Look up in OFD: the plugin contacts the Open Filament Database only after this (consent: the user's click,
  * remembered by the plugin, so later Add Spool dialogs look up by themselves) and answers with the proposals.
+ * retry: Try again after a failed lookup, which asks the database now instead of waiting out the plugin's pause.
  */
-export function ofdSuggest(vendor: string, material: string, name: string, consent: boolean): void {
+export function ofdSuggest(vendor: string, material: string, name: string, consent: boolean, retry = false): void {
   const key = `${vendor.trim()}|${material.trim()}`.toLowerCase();
   editor.ofd = { key, busy: true, list: [], error: '' };
-  bridge.postMain({ type: 'spool_action', action: 'ofd_suggest', vendor, material, name, key, ...(consent ? { consent: true } : {}), origin: m.origin, ref: editor.ref });
+  bridge.postMain({ type: 'spool_action', action: 'ofd_suggest', vendor, material, name, key, ...(consent ? { consent: true } : {}), ...(retry ? { retry: true } : {}), origin: m.origin, ref: editor.ref });
 }
 on('editor', d => {
   if (!editor.open || d.ref !== editor.ref) return;

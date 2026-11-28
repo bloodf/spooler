@@ -189,8 +189,10 @@ const soonLabel = (s: any) => {
 </template>
 
 <style>
-.stv-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: var(--oui-s4) var(--oui-s3); }
-.stv-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); gap: var(--oui-s3); align-items: start; }
+.stv-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: var(--oui-s4) var(--oui-s3); }
+/* One column, two from 900 px: the weekly chart across both, then the cards in pairs, so no cell is left empty. */
+.stv-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--oui-s3); align-items: start; }
+@container oui-page (min-width: 900px) { .stv-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .stv-grid > :first-child { grid-column: 1 / -1; } }
 .stv-wide { grid-column: 1 / -1; }
 /* weekly use: one bar per week, split by filament; the grams are written over each bar */
 .stv-weeks { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: var(--oui-s2); height: 168px; margin-bottom: var(--oui-s2); }
@@ -211,7 +213,7 @@ const soonLabel = (s: any) => {
 .stv-k { flex: none; width: 10px; height: 10px; border-radius: 2px; background: var(--oui-tone); }
 .stv-row { display: grid; grid-template-columns: 12px minmax(0, 1.4fr) minmax(48px, 1fr) auto; gap: var(--oui-s2); align-items: center; padding: 4px 0; }
 .stv-l { overflow-wrap: anywhere; }
-.stv-row.stv-sp { grid-template-columns: 32px minmax(0, 1.4fr) minmax(48px, 1fr) auto; padding: 0; }
+.stv-row.stv-sp { grid-template-columns: 32px minmax(0, 1.4fr) minmax(48px, 1fr) auto; }
 .stv-t { height: 6px; border-radius: 3px; background: var(--oui-border); overflow: hidden; }
 .stv-t i { display: block; height: 100%; min-width: 3px; border-radius: 3px; background: var(--oui-tone); }
 .stv-wi { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: var(--oui-s4) var(--oui-s6); }

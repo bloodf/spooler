@@ -1,14 +1,14 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 import Button from 'primevue/button';
 import Checkbox from 'primevue/checkbox';
 import RadioButton from 'primevue/radiobutton';
 import Select from 'primevue/select';
-import { longList, OuiBanner, OuiFormRow, OuiFormSection, OuiStatus } from '@orca-plugins/ui-foundation/src/components';
+import { longList, OuiBanner, OuiFormRow, OuiFormSection, OuiHint, OuiStatus } from '@orca-plugins/ui-foundation/src/components';
 import { files } from '@orca-plugins/ui-foundation/src/icons';
 import EditorNumber from '../components/EditorNumber.vue';
 import { form, saved } from './state';
-import { fmt, t } from '../core/i18n';
+import { t } from '../core/i18n';
 import * as bridge from '../core/bridge';
 import { TUNE_FIELDS, basesFor, matName, setTune, tuneMaterials, type TuneKey } from '../logic/presets';
 
@@ -20,32 +20,15 @@ const mode = computed({ get: () => (form.presets.per_spool ? 'spool' : 'filament
 const switching = computed(() => form.presets.per_spool !== !!saved.value.presets?.per_spool);
 const tuning = computed({ get: () => form.presets.tuning, set: v => { form.presets = { ...form.presets, tuning: !!v }; } });
 
-// Open Filament Database: contacted only once the user agreed, with Look up in OFD in Add Spool (the old toggle, when it
-// was on, counts as that). Here the consent is shown and can be revoked; the line says which index is kept (the plugin
-// answers "ofd" with "ofd_state"), Read again asks OFD now. The consent is not part of the form: Save never changes it.
+// Open Filament Database: contacted only from Add Spool, once the user agreed there (Find a community preset; the old
+// toggle, when it was on, counts as that). Here the consent is shown and can be revoked, and nothing on this page contacts
+// it: the list it keeps is the plugin's business. The consent is not part of the form: Save never changes it.
 const ofdSaved = ref(!!saved.value.presets?.ofd);
 watch(() => saved.value.presets?.ofd, v => { ofdSaved.value = !!v; });
-const ofdState = ref<{ on: boolean; fetched?: number; version?: string; count?: number; stale?: boolean; error?: string } | null>(null);
-const ofdBusy = ref(false);
-const askOfd = (refresh: boolean) => { ofdBusy.value = refresh; bridge.postSettings({ type: 'ofd', refresh }); };
 const revokeOfd = () => { bridge.postSettings({ type: 'ofd', revoke: true }); ofdSaved.value = false; };
-const ofdLine = computed(() => {
-  const st = ofdState.value;
-  if (!st?.on) return '';
-  if (!st.count) return st.error ? t('ofd.failed', { error: st.error }) : t('ofd.none');
-  const line = t('ofd.status', { date: fmt.dateTime(st.fetched ?? 0), n: st.count });
-  return st.error ? `${line} · ${t('ofd.kept', { error: st.error })}` : line;
-});
-let offOfd: (() => void) | null = null;
-onMounted(() => {
-  offOfd = bridge.onMessage((d: any) => { if (d?.type === 'ofd_state') { ofdState.value = d; ofdBusy.value = false; ofdSaved.value = !!d.on; } });
-  if (ofdSaved.value) askOfd(false);
-});
-onBeforeUnmount(() => offOfd?.());
-watch(ofdSaved, on => { if (on) askOfd(false); else ofdState.value = null; });
 
 const mat = ref('PLA');
-const mats = computed(() => tuneMaterials(form.presets.materials).map(name => ({ name, label: form.presets.materials[name] ? `${name} ●` : name })));
+const mats = computed(() => tuneMaterials(form.presets.materials).map(name => ({ name, label: form.presets.materials[name] ? t('presets.tunedMark', { name }) : name })));
 const pickMat = (v: unknown) => { const name = matName(String(v ?? '')); if (name) mat.value = name; };
 const row = computed(() => form.presets.materials[mat.value] ?? {});
 const bases = computed(() => [{ name: '', label: t('presets.baseAuto') }, ...basesFor(form.parents ?? [], mat.value).map(p => ({ name: p.name, label: p.name }))]);
@@ -67,14 +50,11 @@ function set(key: TuneKey | 'parent', v: number | string | null): void {
                  dismissible :dismiss-key="`preset-switch:${form.presets.per_spool ? 'spool' : 'filament'}`" :close-label="t('common.close')" />
     </div>
 
-    <OuiFormRow :label="t('ofd.title')" :hint="t('ofd.help')" data-test="ofd-consent">
-      <OuiStatus :state="ofdSaved ? 'ok' : 'idle'" variant="plain">{{ ofdSaved ? t('ofd.consentOn') : t('ofd.consentOff') }}</OuiStatus></OuiFormRow>
-    <div v-if="ofdSaved" class="set-pad oui-row" data-test="ofd-state">
-      <OuiStatus v-if="ofdLine" :state="ofdState?.error || ofdState?.stale ? 'warn' : ofdState?.count ? 'ok' : 'idle'" variant="plain">{{ ofdLine }}</OuiStatus>
-      <Button severity="secondary" size="small" :label="t('ofd.refresh')" :loading="ofdBusy" data-test="ofd-refresh" @click="askOfd(true)" />
-      <Button severity="secondary" text size="small" :label="t('ofd.revoke')" data-test="ofd-revoke" @click="revokeOfd" />
-      <p class="oui-meta">{{ t('ofd.credit') }}</p>
-    </div>
+    <OuiFormRow :label="t('ofd.setTitle')" data-test="ofd-consent">
+      <OuiStatus :state="ofdSaved ? 'ok' : 'idle'" variant="plain">{{ ofdSaved ? t('ofd.consentOn') : t('ofd.consentOff') }}</OuiStatus>
+      <Button v-if="ofdSaved" severity="secondary" size="small" :label="t('ofd.revoke')" data-test="ofd-revoke" @click="revokeOfd" />
+      <OuiHint :label="t('ofd.title')" data-test="ofd-help"><span class="sp-hint-p">{{ t('ofd.help') }}</span><span class="sp-hint-p">{{ t('ofd.credit') }}</span></OuiHint>
+    </OuiFormRow>
     <OuiFormRow :label="t('presets.tuning')" for="tune-on" :hint="t('presets.tuningHelp')">
       <Checkbox v-model="tuning" input-id="tune-on" binary aria-describedby="tune-help" data-test="tune-on" /><span id="tune-help" class="oui-sr">{{ t('presets.tuningHelp') }}</span></OuiFormRow>
     <template v-if="tuning">
@@ -85,7 +65,7 @@ function set(key: TuneKey | 'parent', v: number | string | null): void {
         <Select :model-value="(row.parent as string) ?? ''" input-id="tune-base" :options="bases" option-label="label" option-value="name" :virtual-scroller-options="longList(bases.length, 32)" filter data-test="tune-base"
                 @update:model-value="v => set('parent', v || null)" /></OuiFormRow>
       <OuiFormRow v-for="f in TUNE_FIELDS" :key="f.key" :label="t(`presets.key.${f.key}`)" :for="`tune-${f.key}`">
-        <EditorNumber :id="`tune-${f.key}`" :model-value="value(f.key)" :min="f.min" :max="f.max" :digits="f.digits" :unit="f.unit" :data-test="`tune-${f.key}`"
+        <EditorNumber :id="`tune-${f.key}`" :model-value="value(f.key)" :min="f.min" :max="f.max" :digits="f.digits" :unit="f.unit" :placeholder="t('presets.inherited')" :data-test="`tune-${f.key}`"
                       @update:model-value="v => set(f.key, v)" /></OuiFormRow>
       <p class="oui-meta set-pad">{{ t('presets.tuningNote') }}</p>
     </template>

@@ -2,7 +2,7 @@
 import { computed, onBeforeUnmount, watch } from 'vue';
 import Button from 'primevue/button';
 import { OuiAppBar, OuiIcon, OuiStatus, OuiToastHost, type OuiState, type OuiTab } from '@orca-plugins/ui-foundation/src/components';
-import { chart, note, printer, refresh as refreshIcon, settings, spool } from '@orca-plugins/ui-foundation/src/icons';
+import { chart, printer, refresh as refreshIcon, settings, spool } from '@orca-plugins/ui-foundation/src/icons';
 import Logo from './components/Logo.vue';
 import CalibrationPanel from './components/CalibrationPanel.vue';
 import SpoolsView from './components/SpoolsView.vue';
@@ -12,7 +12,6 @@ import ConfirmDialog from './components/ConfirmDialog.vue';
 import SlicePick from './components/SlicePick.vue';
 import SettingsView from './settings/SettingsView.vue';
 import { leave, saved } from './settings/state';
-import * as bridge from './core/bridge';
 import { boot } from './core/boot';
 import { m, start, setTab, statsOn, plateAttention, usageAttention, pollLive, pending, refresh, openSettings } from './state/main';
 import { t, fmt } from './core/i18n';
@@ -44,17 +43,17 @@ async function go(value: string) {
   setTab(value as Tab);
 }
 
-// The page's one source state. A list kept from an earlier read is stale, never "ok".
+// The page's one source state. A list kept from an earlier read is stale, never "ok". The bar says how fresh the list is;
+// where it was read from is configuration, kept to the chip's tooltip.
 const sourceName = computed(() => (m.source === 'bambu' ? 'Bambu Cloud' : 'Spoolman'));
+const host = computed(() => (m.source === 'spoolman' ? String(saved.value.url || '').replace(/^[a-z]+:\/\//i, '').replace(/\/+$/, '') : ''));
 const state = computed<{ state: OuiState; label: string; text: string }>(() => {
   if (!m.received) return { state: 'connecting', label: sourceName.value, text: t('list.loading') };
   if (m.errorCode === 'no_url') return { state: 'idle', label: sourceName.value, text: t('list.noUrl.short') };
   if (m.loadError) return m.spools.length
     ? { state: 'stale', label: sourceName.value, text: t('app.readAt', { time: fmt.time(m.loadedAt / 1000) }) }
     : { state: 'error', label: sourceName.value, text: t('list.readFailed.short') };
-  const host = m.source === 'spoolman' ? String(saved.value.url || '').replace(/^[a-z]+:\/\//i, '').replace(/\/+$/, '') : '';
-  const read = t('app.read', { ago: fmt.ago(m.loadedAt / 1000, m.now / 1000) });
-  return { state: 'ok', label: sourceName.value, text: host ? `${host} · ${read}` : read };
+  return { state: 'ok', label: sourceName.value, text: t('app.read', { ago: fmt.ago(m.loadedAt / 1000, m.now / 1000) }) };
 });
 </script>
 
@@ -64,7 +63,7 @@ const state = computed<{ state: OuiState; label: string; text: string }>(() => {
       <template #mark><Logo /></template>
       <template #status>
         <span v-if="settingsOnly" class="oui-truncate">{{ t('nav.settings') }}</span>
-        <template v-else><OuiStatus :state="state.state">{{ state.label }}</OuiStatus><span class="oui-truncate sp-state" data-test="source-state">{{ state.text }}</span></template>
+        <template v-else><OuiStatus :state="state.state" :title="host || undefined" data-test="source-chip">{{ state.label }}</OuiStatus><span class="oui-truncate sp-state" data-test="source-state">{{ state.text }}</span></template>
       </template>
       <template #actions>
         <template v-if="!settingsOnly && m.view === 'main'">
@@ -74,8 +73,6 @@ const state = computed<{ state: OuiState; label: string; text: string }>(() => {
           <Button v-if="boot.mode === 'main'" severity="secondary" text size="small" :aria-label="t('nav.settings')" :title="t('nav.settings')" data-test="settings-btn" @click="openSettings()">
             <template #icon><OuiIcon :icon="settings" :size="14" /></template></Button>
         </template>
-        <Button v-else severity="secondary" text size="small" :aria-label="t('set.feedback')" :title="t('set.feedback')" @click="bridge.postSettings({ type: 'feedback' })">
-          <template #icon><OuiIcon :icon="note" :size="14" /></template></Button>
       </template>
     </OuiAppBar>
     <SettingsView v-if="settingsOnly" />

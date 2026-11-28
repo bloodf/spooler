@@ -68,7 +68,7 @@ const warnLate = computed(() => late.value && (!!props.lv.heads || !!props.lv.hh
         <TrayCard :tray="lv.ext" label="E" :empty-label="t('moon.none')" :empty-hint="t('moon.noneHelp')">
           <SpoolPicker v-if="picking" :label="t('moon.change')" :selected="lv.ext?.spool == null ? null : Number(lv.ext.spool)" @pick="pick" @close="ui.picking = null" />
           <template #actions>
-            <Button severity="secondary" size="small" :label="t('moon.change')" :aria-expanded="!!picking" :data-focus-key="`moon-pick:${link}`" data-act="moon-pick"
+            <Button severity="secondary" size="small" :label="picking ? t('common.cancel') : t('moon.change')" :aria-expanded="!!picking" :data-focus-key="`moon-pick:${link}`" data-act="moon-pick"
                     @click="ui.picking = picking ? null : { p: link, moon: true }" />
             <Button v-if="lv.ext" severity="secondary" text size="small" :label="t('moon.clear')" :data-focus-key="`moon-clear:${link}`" @click="clear" />
           </template>
@@ -82,7 +82,7 @@ const warnLate = computed(() => late.value && (!!props.lv.heads || !!props.lv.hh
           <TrayCard v-for="(tr, i) in x.u.trays" :key="i" :tray="tr" :label="lv.heads ? 'T' + (i + 1) : String(i + 1)" :tool="tool(i)" :active="!!act && act.unit === x.u.id && act.slot === i">
             <SpoolPicker v-if="canBind(tr) && isBinding(slotOf(x.u, i))" :label="t(bound(tr) ? 'bind.change' : 'bind.assign')" :selected="tr.spool == null ? null : Number(tr.spool)" @pick="id => bindPick(slotOf(x.u, i), id)" @close="ui.picking = null" />
             <template v-if="canBind(tr)" #actions>
-              <Button severity="secondary" size="small" :label="t(bound(tr) ? 'bind.change' : 'bind.assign')" :aria-expanded="isBinding(slotOf(x.u, i))"
+              <Button severity="secondary" size="small" :label="isBinding(slotOf(x.u, i)) ? t('common.cancel') : t(bound(tr) ? 'bind.change' : 'bind.assign')" :aria-expanded="isBinding(slotOf(x.u, i))"
                       :aria-label="t(bound(tr) ? 'bind.changeLabel' : 'bind.assignLabel', { slot: lv.heads ? 'T' + (i + 1) : x.label + ' ' + (i + 1), printer: lv.name })"
                       data-act="bind" @click="ui.picking = isBinding(slotOf(x.u, i)) ? null : { p: link, s: slotOf(x.u, i), bind: true }" />
               <Button v-if="bound(tr)" severity="secondary" text size="small" :label="t('bind.clear')" data-act="unbind" @click="unbind(slotOf(x.u, i), tr)" />

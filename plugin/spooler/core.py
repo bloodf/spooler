@@ -343,7 +343,7 @@ DISPLAY_DEFAULTS = {
     # Printer tab: each slot's card
     "head_vendor": True,
     "head_material": True,
-    "head_colour_code": True,
+    "head_colour_code": False,   # as colour_code: a code is noise on a slot that already shows the colour
     "head_weight": True,    # grams left of the spool's weight
     "head_bar": True,
     "head_spool": True,     # spool id and location
