@@ -5,6 +5,11 @@ Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); 
 
 ## [Unreleased]
 
+## [0.35.1] - 2026-11-28
+
+### Changed
+- Shared UI foundation 5.13.1 with PrimeVue 5.0.6.
+
 ## [0.35.0] - 2026-11-27
 
 ### Changed
