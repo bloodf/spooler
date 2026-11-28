@@ -165,7 +165,7 @@ class StockTest(PeerCase):
             sp.peer_tick()
         doc = self.stock()
         self.assertEqual(doc["spools"], [])
-        self.assertIn("refused", doc["error"])
+        self.assertEqual(doc["error"], "Spooler couldn't reach Spoolman at http://Box:7912.")   # a sentence, not the system's error
 
     def test_bambu_source_says_there_is_no_spoolman_stock(self):
         self.settings["spool_source"] = "bambu"
