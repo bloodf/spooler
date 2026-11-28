@@ -74,11 +74,14 @@ export function sendAction(action: string, extra: Record<string, unknown> = {}):
 // The plugin answers "editor" with Spoolman's extra-field definitions, filaments, vendors and (for an edit) the spool as
 // Spoolman has it now; a save or create answers like any card action. The editor stays open on a refusal, showing why.
 export const editor = reactive({ open: false, id: null as number | null, data: null as any, busy: false, error: '', made: null as number | null, ref: 0,
-  rfid: null as null | { offer: RfidOffer; where: string } });
+  rfid: null as null | { offer: RfidOffer; where: string },
+  /** Add Spool > Look up in OFD: the lookup for `key` (manufacturer|material), its proposals, or why there are none. */
+  ofd: null as null | { key: string; busy: boolean; list: OfdProposal[]; error: string } });
+export interface OfdProposal { id: string; name: string; score: number; reasons: unknown }
 // Each editor opened gets its own ref, which the plugin sends back: an answer for an editor closed since never touches the next one.
 // rfid: Add Spool for a new RFID spool in a printer slot, pre-filled from the printer; its tag goes with the create.
 export function openEditor(id: number | null, rfid: { offer: RfidOffer; where: string } | null = null): void {
-  Object.assign(editor, { open: true, id, data: null, busy: false, error: '', made: null, ref: editor.ref + 1, rfid: id == null ? rfid : null });
+  Object.assign(editor, { open: true, id, data: null, busy: false, error: '', made: null, ref: editor.ref + 1, rfid: id == null ? rfid : null, ofd: null });
   bridge.postMain({ type: 'spool_action', action: 'editor', ...(id == null ? {} : { id }), origin: m.origin, ref: editor.ref });
 }
 export function submitEditor(message: Record<string, unknown>): void {
@@ -93,8 +96,23 @@ export function pickParent(filament: number | null, target: string, name: string
   Object.assign(editor, { busy: true, error: '' });
   bridge.postMain({ type: 'spool_action', action: 'match_parent', filament, target, name, ...(ofd ? { ofd } : {}), origin: m.origin, ref: editor.ref });
 }
+/**
+ * Add Spool > Look up in OFD: the plugin contacts the Open Filament Database only after this (consent: the user's click,
+ * remembered by the plugin, so later Add Spool dialogs look up by themselves) and answers with the proposals.
+ */
+export function ofdSuggest(vendor: string, material: string, name: string, consent: boolean): void {
+  const key = `${vendor.trim()}|${material.trim()}`.toLowerCase();
+  editor.ofd = { key, busy: true, list: [], error: '' };
+  bridge.postMain({ type: 'spool_action', action: 'ofd_suggest', vendor, material, name, key, ...(consent ? { consent: true } : {}), origin: m.origin, ref: editor.ref });
+}
 on('editor', d => {
   if (!editor.open || d.ref !== editor.ref) return;
+  if (d.action === 'ofd_suggest') {
+    if (editor.ofd?.key !== d.key) return;   // an answer for a manufacturer or material changed since
+    editor.ofd = { key: d.key, busy: false, list: d.ok && Array.isArray(d.ofd) ? d.ofd : [], error: d.ok ? d.ofd_error || '' : d.text || '' };
+    if (editor.data && typeof d.consent === 'boolean') editor.data.ofd_consent = d.consent;
+    return;
+  }
   if (d.action === 'match_parent') { editor.busy = false; if (d.ok && editor.data) editor.data.preset_match = d.match; else if (!d.ok) editor.error = d.text || t('common.unknownError'); return; }
   if (d.action === 'editor') { if (d.ok) editor.data = d.editor; else editor.error = d.text || t('common.unknownError'); return; }
   editor.busy = false;

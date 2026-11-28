@@ -5,6 +5,17 @@ Spooler is a fork of [Spoolio](https://github.com/danm1989/spoolio-orcaslicer); 
 
 ## [Unreleased]
 
+## [0.35.0] - 2026-11-27
+
+### Changed
+- The slot spool picker (Assign spool, Change spool, a Klipper printer's Change spool) asks for the colour first. It shows one swatch per colour, with a count when several spools share it, instead of a list of drawn spools. A colour with one spool picks it at once; with several, a dialog lists them fullest first, with grams, a fill bar, manufacturer, material, id and location. The search (brand, name, material, location, `#id`) and a material filter stay; the spool in the slot now is marked. With 2000 spools in 15 colours the open picker has 59 elements and no drawn spool, against 117 elements and 12 drawn spools before. Shared UI foundation 5.13.0.
+- The Open Filament Database (OFD) is only in Add Spool, behind a **Look up in OFD** button. Spooler contacts OFD only after that click and remembers the consent, so later Add Spool dialogs look up by themselves. A proposal picked there is remembered for the new spool's filament on every printer it fits. Edit Spool no longer lists OFD presets and never contacts OFD; a preset already picked from OFD keeps working offline from the kept copy. Settings > Presets shows the consent instead of the on/off switch, with Read again and Revoke; the switch, if it was on, counts as consent.
+
+### Fixed
+- Without network and without a kept OFD index, every OFD lookup waited up to 10 s for the timeout. After a failed fetch Spooler now waits 15 minutes before it asks OFD again, unless you click Read again.
+
+## [0.34.0] - 2026-11-27
+
 ### Changed
 - Picking a spool is quick, also with a large Spoolman inventory. Spooler keeps the last spool list (in memory and in `spool-list.json` in its data folder, without the Spoolman address), so the page opens with it at once and reads Spoolman right after, as before. Assigning a spool to a U1 toolhead or an Anycubic Kobra slot, unassigning it, or moving it to a location shows in the slot the moment you pick it (and goes back if Spoolman refuses it), and the list the plugin already changed is shown without waiting for a full read. The presets are no longer built again for a list that changed only in a location, a weight or a date, and Spoolman's echo of Spooler's own write no longer triggers another full read. With 2000 spools and a 50 ms Spoolman, a refresh took 1.4 s and each assignment 3.4 s of reading (two full reads) before the slot updated; the page now opens with the kept list in 5 ms and an assignment shows at once.
 

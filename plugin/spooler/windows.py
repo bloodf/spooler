@@ -133,8 +133,10 @@ class SpoolerWindow(orca.script.ScriptPluginCapabilityBase):
             url = (data.get("url") or "").strip()
             if self._settings_window is not None:
                 self._check_connection(url, self._settings_window, data.get("source"))
-        elif msg_type == "ofd":   # Settings > Presets: the Open Filament Database line; refresh: Read again
+        elif msg_type == "ofd":   # Settings > Presets: the Open Filament Database line; refresh: Read again; revoke
             window = self._settings_window
+            if data.get("revoke") is True:
+                _filament_profiles.set_ofd_consent(False)
             if window is not None:
                 _filament_profiles.spawn(lambda: window.is_open() and window.post({"type": "ofd_state", **_filament_profiles.ofd_status(data.get("refresh") is True)}))
         elif msg_type == "save":
@@ -638,8 +640,10 @@ if _core._PAGES:
             elif msg_type == "test":
                 url = (data.get("url") or "").strip()
                 self._check_connection(url, self._settings_window, data.get("source"))
-            elif msg_type == "ofd":   # Settings > Presets: the Open Filament Database line; refresh: Read again
+            elif msg_type == "ofd":   # Settings > Presets: the Open Filament Database line; refresh: Read again; revoke
                 window = self._settings_window
+                if data.get("revoke") is True:
+                    _filament_profiles.set_ofd_consent(False)
                 _filament_profiles.spawn(lambda: window.post({"type": "ofd_state", **_filament_profiles.ofd_status(data.get("refresh") is True)}))
             elif msg_type == "save":
                 _core.save_display(data.get("display"))
