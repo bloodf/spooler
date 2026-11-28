@@ -164,7 +164,7 @@ const toolOf = (u: ManualUnit) => { const n = u.kind === 'tool' ? p.value.units.
             <Button v-if="r.remove >= 0" severity="secondary" text size="small" :label="t('printer.removeUnit', { unit: r.label })" @click="dropUnit(r.remove)" /></div>
           <div class="oui-cards">
             <SpoolSlot v-for="c in r.cells" :key="c.u + ':' + c.s" :label="slotLabel(c.unit, c.s)" :tool="toolOf(c.unit)" :spool="c.id ? byId.get(String(c.id)) : null" :missing="!!c.id && !byId.get(String(c.id))">
-              <SpoolPicker v-if="isPicking(c.u, c.s)" exclude-taken :label="t('printer.assign')" @pick="id2 => pick(c.u, c.s, id2)" @close="closePicker(c.u, c.s)" />
+              <SpoolPicker v-if="isPicking(c.u, c.s)" exclude-taken :label="t('printer.assign')" :selected="c.id == null ? null : Number(c.id)" @pick="id2 => pick(c.u, c.s, id2)" @close="closePicker(c.u, c.s)" />
               <template #actions>
                 <template v-if="c.id">
                   <Button severity="secondary" size="small" :label="t('bind.change')" :aria-expanded="isPicking(c.u, c.s)" :data-focus-key="`assign:${p.id}:${c.u}:${c.s}`"

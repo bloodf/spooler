@@ -385,6 +385,8 @@ def editor_data(sid: int | None) -> dict:
     return {"fields": _editor_fields(), "filaments": filaments, "vendors": vendors, "spool": spool,
             "use_with": {"on": _filament_profiles.presets_settings()["per_spool"], "printers": printers, "value": chosen},
             "preset_link": link,
+            # Add Spool > Look up in OFD runs at once when the user already agreed to contact the Open Filament Database.
+            "ofd_consent": _filament_profiles.presets_settings()["ofd"],
             # Preset: the parent Spooler's presets of this filament copy, per printer, and the other candidates.
             "preset_match": _filament_profiles.preset_match((spool or {}).get("filament") if isinstance(spool, dict) else None,
                                                             _filament_profiles._ui_snap)}
@@ -602,9 +604,24 @@ def editor_create(data: dict) -> dict:
         return {**no(_i18n.tr("Created filament #{filament}, but Spoolman refused the spool: {error}",
                         filament=made, error=_error_text(exc))), "filament": made}
     sid = (added or {}).get("id", "?") if isinstance(added, dict) else "?"
-    if made is not None:
-        return {"ok": True, "text": _i18n.tr("Added spool #{id} with the new filament #{filament}.", id=sid, filament=made), "spool": sid}
-    return {"ok": True, "text": _i18n.tr("Added spool #{id}.", id=sid), "spool": sid}
+    text = (_i18n.tr("Added spool #{id} with the new filament #{filament}.", id=sid, filament=made) if made is not None
+            else _i18n.tr("Added spool #{id}.", id=sid))
+    if isinstance(data.get("ofd"), str):   # Look up in OFD: the preset picked there, for the filament on every printer it fits
+        text += " " + _ofd_after_create(fid, data["ofd"])
+    return {"ok": True, "text": text, "spool": sid}
+
+
+def _ofd_after_create(fid: int, ofd: str) -> str:
+    """Remember the OFD preset picked in Add Spool for the spool's filament; what to add to the result text."""
+    try:
+        filament = _spoolman_sync.spoolman_call("GET", f"filament/{fid}")
+        done = _filament_profiles.remember_ofd(filament, ofd) if isinstance(filament, dict) else []
+    except Exception as exc:   # the spool is added; only the preset choice is lost
+        _core.log.warning("Remembering OFD preset %s for filament #%s failed: %s", ofd, fid, exc)
+        done = []
+    if done:
+        return _i18n.tr("Its presets use the Open Filament Database preset on {printers}.", printers=", ".join(done))
+    return _i18n.tr("The Open Filament Database preset fits none of your printers, so Spooler picks the preset itself.")
 
 
 STALE_LIST = "The spool source changed since this list was read; nothing was written. Refresh and try again."
@@ -624,14 +641,14 @@ def spool_action(data: object) -> dict:
     if action == "show_archived":
         _core.save_display({**_core.display_settings(), "archived": data.get("on") is True})
         return {"ok": True, "text": ""}
-    if action not in ("locations", "editor", "create", "save", "match_parent") and action not in SPOOL_ACTIONS:
+    if action not in ("locations", "editor", "create", "save", "match_parent", "ofd_suggest") and action not in SPOOL_ACTIONS:
         return {"ok": False, "text": _i18n.tr("Unknown spool action.")}
     if _sources.source() != "spoolman":
         return {"ok": False, "text": _i18n.tr("Spool actions need Spoolman as the source.")}
     sid = _pos_int(data.get("id"))
-    if sid is None and action not in ("locations", "editor", "create", "match_parent"):
+    if sid is None and action not in ("locations", "editor", "create", "match_parent", "ofd_suggest"):
         return {"ok": False, "text": _i18n.tr("No spool chosen.")}
-    if action not in ("locations", "editor") and stale_list(data):
+    if action not in ("locations", "editor", "ofd_suggest") and stale_list(data):
         return {"ok": False, "text": _i18n.tr(STALE_LIST)}
     try:
         with _spoolman_sync.pinned_origin():
@@ -645,6 +662,9 @@ def spool_action(data: object) -> dict:
                 return editor_create(data)
             if action == "save":
                 return editor_save(sid, data)
+            if action == "ofd_suggest":   # Add Spool > Look up in OFD
+                key = data.get("key") if isinstance(data.get("key"), str) else ""   # the page's lookup, sent back
+                return {**_filament_profiles.ofd_suggest(data.get("vendor"), data.get("material"), data.get("name")), "key": key}
             if action == "match_parent":
                 fid = _pos_int(data.get("filament"))
                 filament = _spoolman_sync.spoolman_call("GET", f"filament/{fid}") if fid else None
@@ -660,10 +680,14 @@ def start_spool_action(data: object, post) -> None:
     """Run a card action off the UI thread and post {"type": "action_result", ...}. The page asks
     for a refresh when it gets it, so the list is re-read on the UI thread."""
     action = data.get("action") if isinstance(data, dict) else None
+    if action == "ofd_suggest" and data.get("consent") is True and not _filament_profiles.presets_settings()["ofd"]:
+        # The user's click on Look up in OFD is the consent: kept, and OFD's address declared, here on the UI thread.
+        _filament_profiles.set_ofd_consent(True)
+        _capabilities.request_permissions()
 
     def work():
         result = spool_action(data)
-        if action not in ("locations", "editor"):
+        if action not in ("locations", "editor", "ofd_suggest"):
             _core._spool_cache["time"] = 0.0
             _rfid._archived_tags["time"] = 0.0  # an archive or unarchive changes them
         ref = data.get("ref") if isinstance(data, dict) else None  # the editor's own count: its answer finds the right editor
@@ -801,6 +825,7 @@ def usage_undo(entry_id: str) -> str:
 
 
 # Modules used only when a function runs, imported last: they may import this one in turn.
+from . import capabilities as _capabilities  # noqa: E402
 from . import i18n as _i18n  # noqa: E402
 from . import live_updates as _live_updates  # noqa: E402
 from . import moonraker as _moonraker  # noqa: E402

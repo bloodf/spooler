@@ -64,6 +64,15 @@ async function loaded(spool) {
 }
 const RAW1 = {...SPOOLS[0], remaining_weight: 734.5678, extra: {dryer: '"Box 1"', dried: '"2026-11-10"'}, filament: FILS[0]};
 const stackText = () => [q('[data-stack]'), ...qa('tr.sp-child')].map(vis).join(' ');
+// The colour-first slot picker: searched by #id, the spool's colour holds it alone, so its swatch picks it at once.
+async function pickId(id, root = document) {
+  await until(() => q('[data-test="picker"] [data-spick="search"]', root), 'the picker opens');
+  const box = q('[data-test="picker"]', root), i = q('[data-spick="search"]', box);
+  i.value = '#' + id; i.dispatchEvent(new Event('input', {bubbles: true})); await settle();
+  eq(qa('[data-colour]', box).length, 1, 'one colour holds #' + id);
+  await click(q('[data-colour]', box));
+}
+const swatchNames = (root = document) => qa('[data-test="picker"] [data-colour]', root).map(b => b.title.split(' · ')[0]);
 `;
 
 const scenarios = [];
@@ -752,15 +761,15 @@ test('F11: assign and picker are keyboard controls; focus returns to the slot', 
   const a = q('[data-focus-key="assign:p1:0:2"]');
   eq(a.getAttribute('aria-label'), 'Assign a spool to slot 3 of P', 'named control');
   a.focus(); await press('Enter');
-  await until(() => document.activeElement && document.activeElement.matches('[data-test="picker-search"]'), 'search focused');
+  await until(() => document.activeElement && document.activeElement.matches('[data-spick="search"]'), 'search focused');
   await press('ArrowDown');
-  assert(document.activeElement.dataset.pick === '7', 'Down moves into the list');
+  assert(document.activeElement.matches('[data-colour]'), 'Down moves to the colours');
   await press('Escape');
   await until(() => document.activeElement === q('[data-focus-key="assign:p1:0:2"]'), 'Escape returns to the slot');
   await press('Enter');
-  await until(() => document.activeElement && document.activeElement.matches('[data-test="picker-search"]'));
+  await until(() => document.activeElement && document.activeElement.matches('[data-spick="search"]'));
   await press('Enter');
-  eq(lastOf('printers').printers[0].units[0].slots[2], '7', 'Enter takes the first spool');
+  eq(lastOf('printers').printers[0].units[0].slots[2], '7', 'Enter takes the first colour, its one spool');
   await until(() => document.activeElement === q('[data-focus-key="clear:p1:0:2"]'), 'focus on the slot\\'s remove button');
 `);
 test('picker search: words in any order, accents ignored, an id is exact', `
@@ -769,12 +778,13 @@ test('picker search: words in any order, accents ignored, an id is exact', `
     {printers: [{id: 'p1', name: 'P', units: [{kind: 'ams', slots: [null, null, null, null]}]}]});
   await tab('printer');
   q('[data-focus-key="assign:p1:0:2"]').focus(); await press('Enter');
-  await until(() => document.activeElement && document.activeElement.matches('[data-test="picker-search"]'), 'search focused');
-  const typeIn = async v => { const i = q('[data-test="picker-search"]'); i.value = v; i.dispatchEvent(new Event('input', {bubbles: true})); await new Promise(r => setTimeout(r, 50)); return qa('[data-pick]').map(b => b.dataset.pick); };
-  eq(await typeIn('polymaker preto'), ['7'], 'vendor and name, any order');
-  eq(await typeIn('cafe'), ['70'], 'accents');
-  eq(await typeIn('7'), ['7'], 'an id is exact: not 70');
-  eq(await typeIn('#70'), ['70'], '#id');
+  await until(() => document.activeElement && document.activeElement.matches('[data-spick="search"]'), 'search focused');
+  // Neither has a colour: one swatch, named after the fullest spool it holds.
+  const typeIn = async v => { const i = q('[data-spick="search"]'); i.value = v; i.dispatchEvent(new Event('input', {bubbles: true})); await new Promise(r => setTimeout(r, 50)); return swatchNames(); };
+  eq(await typeIn('polymaker preto'), ['Preto Fosco'], 'vendor and name, any order');
+  eq(await typeIn('cafe'), ['Café Brown'], 'accents');
+  eq(await typeIn('7'), ['Preto Fosco'], 'an id is exact: not 70');
+  eq(await typeIn('#70'), ['Café Brown'], '#id');
 `);
 test('F12: age alone does not redraw a slot; going stale is shown', `
   await spools(SPOOLS, {printers: [{id: 'p', name: 'X1', auto: true, ip: '10.0.0.9', units: []}], live_ok: true});
@@ -804,8 +814,7 @@ test('single-extruder Klipper card: change spool, clear only with a spool, resul
   await post({type: 'live', live: {links: {'auto-sv': 'live'}, printers: [sv(null)]}});
   assert(btn('Change spool') && !btn('Clear'), 'no active spool: change only');
   await click(btn('Change spool'));
-  await until(() => q('[data-pick="7"]'));
-  await click(q('[data-pick="7"]'));
+  await pickId(7);
   eq(lastOf('moon_spool'), {type: 'moon_spool', id: 'auto-sv', spool: 7, origin: 3}, 'set with the list origin');
 `);
 test('changing the active spool while printing asks again, naming the consequence', `
@@ -815,8 +824,7 @@ test('changing the active spool while printing asks again, naming the consequenc
   await tab('printer');
   await post({type: 'live', live: {links: {'auto-sv': 'live'}, printers: [sv]}});
   await click(btn('Change spool'));
-  await until(() => q('[data-pick="8"]'));
-  await click(q('[data-pick="8"]'));
+  await pickId(8);
   eq(lastOf('moon_spool'), {type: 'moon_spool', id: 'auto-sv', spool: 8, origin: 3}, 'first try has no confirmation');
   await post({type: 'moon_spool', id: 'auto-sv', spool: 8, ok: false, confirm: true, state: 'RUNNING', text: 'SV06 is running a print'});
   await until(() => dialogOpen(), 'asks');
@@ -921,8 +929,7 @@ test('Klipper printer: hand-set gates, toolheads, slice fill switch and presets 
   eq(saved.units, [{kind: 'gate', slots: [null, null, null, null, null, null]}], 'six gates saved');
   assert(vis(kc()).includes('MMU gates') && qa('[data-act="assign"]', kc()).length === 6, 'gates shown to assign');
   await click(qa('[data-act="assign"]', kc())[1]);
-  await until(() => q('[data-pick="2"]'));
-  await click(q('[data-pick="2"]'));
+  await pickId(2);
   eq(lastOf('printers').printers.find(p => p.id === 'auto-v').units[0].slots[1], '2', 'spool on gate 2');
   await click(q('[data-test="klipper-fill"] input') || q('[data-test="klipper-fill"]'));
   eq(lastOf('printers').printers.find(p => p.id === 'auto-v').slice_fill, false, 'slice fill off');
@@ -965,13 +972,25 @@ test('assign spool: a Kobra ACE slot and a U1 toolhead take a spool from a searc
   eq(qa('[data-act="bind"]', u).map(text), ['Change spool'], 'U1: a spool the printer itself reports (extended firmware) is not offered');
   assert(!q('[data-act="bind"]', s), 'nothing to link on a printer that is neither');
   await click(qa('[data-act="bind"]', k)[1]);
-  const picker = q('.pk', k);
-  assert(picker && q('.oui-spool', picker) && text(picker).includes('Acme · PLA · #1') && text(picker).includes('400 g'), 'picker shows the spool, its material and weight: ' + text(picker));
-  await type(q('[data-test="picker-search"]', k), 'Shelf B');
-  eq(qa('[data-pick]', k).map(b => b.dataset.pick), ['2'], 'search narrows the list');
-  await click(q('[data-pick="2"]', k));
+  const picker = q('[data-test="picker"]', k);
+  eq(qa('[data-colour]', picker).length, 1, 'colour first: both spools are Black, one swatch');
+  assert(!q('.oui-spool', picker) && text(q('[data-colour]', picker)) === '2', 'no spool drawn, the count on the swatch: ' + text(picker));
+  await type(q('[data-spick="search"]', k), 'Shelf B');
+  eq(q('[data-colour]', picker).title, 'Black · #111111 · Spools: 1', 'search narrows the colour to its spools');
+  await type(q('[data-spick="search"]', k), '');
+  await click(q('[data-colour]', picker));
+  await until(() => qa('.oui-spick-list [data-spool]').length === 2, 'several spools of that colour: the dialog lists them');
+  eq(qa('.oui-spick-list [data-spool]').map(b => b.dataset.spool), ['2', '1'], 'fullest first');
+  const one = vis(q('.oui-spick-list [data-spool="1"]'));
+  assert(one.includes('Acme · PLA · #1 · Shelf A') && one.includes('400 g'), 'a row: manufacturer, material, id, location and weight: ' + one);
+  eq(sentOf('spool_action').length, 0, 'nothing picked yet');
+  await click(q('.oui-spick-list [data-spool="2"]'));
+  await until(() => sentOf('spool_action').length, 'picked once the dialog closed');
   eq(lastOf('spool_action'), {type: 'spool_action', action: 'bind', id: 2, printer: 'auto-k', slot: 1, origin: 3}, 'ACE slot 2 linked, with the list origin');
-  await click(qa('[data-act="bind"]', u)[0]); await click(q('[data-pick="1"]', u));
+  await click(qa('[data-act="bind"]', u)[0]);
+  await until(() => q('[data-test="picker"]', u), 'the U1 picker');
+  assert(q('[data-colour][aria-current="true"]', u), 'the colour of the spool in the slot now is marked');
+  await pickId(1, u);
   eq(lastOf('spool_action'), {type: 'spool_action', action: 'bind', id: 1, printer: 'auto-u', slot: 0, origin: 3}, 'U1 T1 linked');
   await click(q('[data-act="unbind"]', u));
   await until(dialogOpen, 'unassign asks'); await no();
@@ -984,12 +1003,12 @@ test('a picked spool shows in its slot at once; a refused write puts the slot ba
   const k = panelOf('Anycubic Kobra X');
   const slot2 = () => text(qa('.tc', k)[1]);
   assert(!slot2().includes('#2'), 'the slot holds no spool: ' + slot2());
-  await click(qa('[data-act="bind"]', k)[1]); await click(q('[data-pick="2"]', k));
+  await click(qa('[data-act="bind"]', k)[1]); await pickId(2, k);
   assert(slot2().includes('#2') && slot2().includes('Kobra Control'), 'shown before any answer: ' + slot2());
   await post({type: 'action_result', ok: false, action: 'bind', text: 'refused'});
   assert(!slot2().includes('#2'), 'put back when refused: ' + slot2());
   eq(lastOf('refresh'), {type: 'refresh'}, 'a refusal reads Spoolman as before');
-  await click(qa('[data-act="bind"]', k)[1]); await click(q('[data-pick="2"]', k));
+  await click(qa('[data-act="bind"]', k)[1]); await pickId(2, k);
   await post({type: 'action_result', ok: true, patched: true, action: 'bind', text: 'linked'});
   assert(slot2().includes('#2'), 'kept when it worked: ' + slot2());
   eq(lastOf('refresh'), {type: 'refresh', cached: true}, 'the list the plugin already changed comes first');
@@ -1005,10 +1024,10 @@ test('the last list shows at once and the read that follows settles the status',
 test('assign spool while the printer prints asks first', LIVE_SLOTS + `
   await three({state: 'RUNNING', name: 'plate', pct: 10});
   const k = panelOf('Anycubic Kobra X');
-  await click(qa('[data-act="bind"]', k)[1]); await click(q('[data-pick="2"]', k));
+  await click(qa('[data-act="bind"]', k)[1]); await pickId(2, k);
   await until(dialogOpen, 'printing asks'); assert(dialogText().includes('is printing'), dialogText()); await no();
   eq(sentOf('spool_action').length, 0, 'nothing sent when going back');
-  await click(qa('[data-act="bind"]', k)[1]); await click(q('[data-pick="2"]', k)); await yes();
+  await click(qa('[data-act="bind"]', k)[1]); await pickId(2, k); await yes();
   eq(lastOf('spool_action').action, 'bind', 'sent once confirmed');
 `);
 test('printer notes once at the top, one true chip per printer, no made-up printer percentage, one plus on Add printer', LIVE_SLOTS + `
@@ -1763,50 +1782,83 @@ test('settings: presets per spool and Advanced tuning, off by default, saved wit
     pressure_advance: 0.035, fan_max_speed: 80}}}, 'saved');
 `, { lang: 'de' });
 
-test('settings: Open Filament Database is off by default; on and saved, its list line and Read again', `
+test('settings: the Open Filament Database consent is shown, not a toggle; with it, its list line, Read again and Revoke', `
   const show = ofd => post({type: 'show_view', view: 'settings', url: 'http://spoolman:7912', source: 'spoolman', low_stock: 100, display: DEFAULTS, drying: {}, progress: {}, stats: {},
     presets: {per_spool: false, tuning: false, materials: {}, ofd}, parents: []});
   await show(false);
-  await until(() => byTest('ofd-on'), 'the OFD row');
-  assert(!q('#ofd-on').checked && !byTest('ofd-state'), 'off by default, nothing more shown');
-  assert(!sent().some(m => m.type === 'ofd'), 'nothing asked while off');
-  await click(q('#ofd-on'));
-  await until(() => byTest('ofd-state'), 'turned on');
-  assert(text(byTest('ofd-state')).includes('Save to turn it on') && !byTest('ofd-refresh'), 'read only once saved: ' + text(byTest('ofd-state')));
-  assert(text(byTest('ofd-state')).includes('MIT'), 'the licence and the source are named');
-  assert(!sent().some(m => m.type === 'ofd'), 'still nothing asked before the save');
-  await post({type: 'test_result', source: 'spoolman', ok: true, url: 'http://spoolman:7912', version: '0.26', view: 'settings'});
-  await click(byTest('save'));
-  eq(lastOf('save').presets.ofd, true, 'saved on');
+  await until(() => byTest('ofd-consent'), 'the OFD row');
+  assert(text(byTest('ofd-consent')).includes('Not contacted') && !byTest('ofd-state'), 'no consent: said so, nothing more: ' + text(byTest('ofd-consent')));
+  assert(!q('#ofd-on') && !q('input', byTest('ofd-consent')), 'no toggle: consent is given in Add Spool');
+  assert(!sent().some(m => m.type === 'ofd'), 'nothing asked without consent');
   await show(true);
-  await until(() => sent().some(m => m.type === 'ofd' && m.refresh === false), 'once saved on, the line asks for the kept list');
+  await until(() => sent().some(m => m.type === 'ofd' && m.refresh === false), 'with consent (or the old toggle on), the line asks for the kept list');
+  assert(text(byTest('ofd-consent')).includes('Allowed'), 'consent shown: ' + text(byTest('ofd-consent')));
+  assert(text(byTest('ofd-state')).includes('MIT'), 'the licence and the source are named');
   await post({type: 'ofd_state', on: true, fetched: 1795371399, version: '2026.11.22', count: 2133, stale: false, error: '', view: 'settings'});
   await until(() => text(byTest('ofd-state')).includes('2133'), 'the list line: ' + text(byTest('ofd-state')));
   await click(byTest('ofd-refresh'));
   eq(lastOf('ofd').refresh, true, 'Read again asks OFD now');
   await post({type: 'ofd_state', on: true, fetched: 1795371399, version: '2026.11.22', count: 2133, stale: true, error: 'timed out', view: 'settings'});
   await until(() => text(byTest('ofd-state')).includes('timed out'), 'a failed read keeps the old list and says why');
+  await click(byTest('ofd-revoke'));
+  eq(lastOf('ofd').revoke, true, 'Revoke tells the plugin');
+  await until(() => !byTest('ofd-state') && text(byTest('ofd-consent')).includes('Not contacted'), 'revoked at once');
 `);
-test('editor: an Open Filament Database proposal is marked untuned; picking it sends its id', `
+test('editor: Edit Spool never looks up the Open Filament Database; an OFD pick still shows', `
   await spools(SPOOLS, {display: {...DEFAULTS, group_same: false}});
   await click(q('[data-edit="1"]'));
-  const base = {target: 'Snapmaker U1 (0.4 nozzle)', label: 'Snapmaker U1', name: 'Generic PLA @U1', source: 'auto', score: 10, reasons: [['material', 'PLA']], confident: true,
-    candidates: [{name: 'Generic PLA @U1', score: 10, reasons: [['material', 'PLA']]}],
-    ofd: [{id: 'ee9f', name: 'Polymaker Dual Panchroma Matte PLA (OFD)', score: 58, reasons: [['material', 'PLA'], ['vendor', 'Polymaker'], ['word', 'matte']], source: 'ofd'}]};
-  await post({...editorData(RAW1), editor: {...editorData(RAW1).editor, preset_match: [base]}});
+  const base = {target: 'Snapmaker U1 (0.4 nozzle)', label: 'Snapmaker U1', name: 'Polymaker Dual Panchroma Matte PLA (OFD)', source: 'ofd', score: null, reasons: [], confident: true,
+    candidates: [{name: 'Generic PLA @U1', score: 10, reasons: [['material', 'PLA']]}]};
+  await post({...editorData(RAW1), editor: {...editorData(RAW1).editor, preset_match: [base], ofd_consent: true}});
   await until(() => byTest('editor-match'), 'the row');
+  assert(text(byTest('editor-match')).includes('OFD, untuned') && text(byTest('editor-match')).includes('Polymaker Dual'), 'a preset picked from OFD shows as such');
+  assert(!byTest('editor-ofd') && !byTest('ofd-lookup'), 'no lookup when editing');
   await click(q('.oui-match-change', byTest('editor-match')));
-  await until(() => qa('.oui-match-option', byTest('editor-match')).length === 2, 'the candidate and the OFD proposal');
-  const ofdRow = qa('.oui-match-option', byTest('editor-match'))[1];
-  assert(text(ofdRow).includes('OFD, untuned') && text(ofdRow).includes('Open Filament Database') && !ofdRow.disabled, 'marked and pickable: ' + text(ofdRow));
-  await click(ofdRow);
-  const picked = lastOf('spool_action');
-  eq([picked.action, picked.ofd, picked.name, picked.target], ['match_parent', 'ee9f', null, 'Snapmaker U1 (0.4 nozzle)'], 'picked by its OFD id');
-  await post({type: 'action_result', action: 'match_parent', ok: true, text: '', ref: editorRef(),
-              match: [{...base, name: 'Polymaker Dual Panchroma Matte PLA (OFD)', source: 'ofd', score: 58, reasons: base.ofd[0].reasons}]});
-  await until(() => text(byTest('editor-match')).includes('OFD, untuned') && text(byTest('editor-match')).includes('Polymaker Dual'), 'shown as the OFD preset');
-  await click(q('.oui-match-change', byTest('editor-match')));
-  await until(() => qa('.oui-match-option', byTest('editor-match')).some(b => text(b).includes('Automatic')), 'Automatic goes back to Spooler’s pick');
+  await until(() => qa('.oui-match-option', byTest('editor-match')).length === 2, 'Automatic and the OrcaSlicer candidate');
+  assert(!qa('.oui-match-option', byTest('editor-match')).some(b => text(b).includes('OFD')), 'no OFD proposals');
+  assert(!sent().some(m => m.action === 'ofd_suggest'), 'nothing asked of OFD');
+`);
+test('editor: Add Spool looks up the Open Filament Database only after the click; the pick goes with the create; with consent it looks up by itself', `
+  await spools(SPOOLS);
+  await click(byTest('add-spool'));
+  await loaded();
+  await click(byTest('editor-next'));
+  await pick(byTest('editor-pick'), 'Acme · Black · PLA');
+  await click(byTest('editor-next'));
+  await until(() => byTest('ofd-lookup'), 'the Look up button');
+  assert(text(byTest('editor-ofd')).includes('only after this click'), 'it says OFD is contacted only after the click: ' + text(byTest('editor-ofd')));
+  assert(!sent().some(m => m.action === 'ofd_suggest'), 'nothing asked before the click');
+  await click(byTest('ofd-lookup'));
+  const ask = lastOf('spool_action');
+  eq([ask.action, ask.vendor, ask.material, ask.name, ask.consent, ask.key], ['ofd_suggest', 'Acme', 'PLA', 'Black', true, 'acme|pla'], 'the lookup carries the consent');
+  assert(text(byTest('editor-ofd')).includes('Looking up'), 'busy');
+  const ofd = [{id: 'ee9f', name: 'Acme Matte PLA (OFD)', score: 58, reasons: [['material', 'PLA'], ['vendor', 'Acme']], source: 'ofd'},
+    {id: 'aa01', name: 'Acme PLA (OFD)', score: 50, reasons: [['material', 'PLA']], source: 'ofd'}];
+  await post({type: 'action_result', action: 'ofd_suggest', ok: true, text: '', consent: true, key: 'acme|pla', ofd, ofd_error: '', ref: editorRef()});
+  await until(() => q('.oui-match-change', byTest('editor-ofd')), 'the proposals');
+  assert(text(byTest('editor-ofd')).includes('None picked'), 'nothing picked by itself');
+  await click(q('.oui-match-change', byTest('editor-ofd')));
+  await click(qa('.oui-match-option', byTest('editor-ofd')).find(b => text(b).includes('Acme Matte PLA')));
+  assert(text(byTest('editor-ofd')).includes('Acme Matte PLA (OFD)') && text(byTest('editor-ofd')).includes('OFD, untuned'), 'the pick shows');
+  await click(byTest('editor-save'));
+  eq([lastOf('spool_action').action, lastOf('spool_action').filament_id, lastOf('spool_action').ofd], ['create', 5, 'ee9f'], 'the create carries the OFD id');
+  await post({type: 'action_result', action: 'create', ok: true, text: 'Added spool #44.', ref: editorRef()});
+  await until(() => !dialogOpen(), 'the editor closes');
+  // Consent given: the next Add Spool looks up as soon as the spool step opens, without a click.
+  const before = sentOf('spool_action').filter(m => m.action === 'ofd_suggest').length;
+  await click(byTest('add-spool'));
+  await post({...editorData(null), editor: {...editorData(null).editor, ofd_consent: true}});
+  await until(() => dialogEl() && !/enter|leave/.test(dialogEl().className), 'editor open');
+  await click(byTest('editor-next'));
+  await pick(byTest('editor-pick'), 'Acme · Blue · PETG');
+  await click(byTest('editor-next'));
+  await until(() => sentOf('spool_action').filter(m => m.action === 'ofd_suggest').length === before + 1, 'looked up by itself');
+  eq([lastOf('spool_action').material, 'consent' in lastOf('spool_action')], ['PETG', false], 'for the new material, no consent asked again');
+  await post({type: 'action_result', action: 'ofd_suggest', ok: true, text: '', consent: true, key: 'acme|petg', ofd: [], ofd_error: '', ref: editorRef()});
+  await until(() => byTest('ofd-none'), 'none found');
+  assert(text(byTest('ofd-none')).includes('Acme PETG'), 'says for what: ' + text(byTest('ofd-none')));
+  await click(byTest('editor-save'));
+  assert(!('ofd' in lastOf('spool_action')), 'nothing picked: no OFD id');
 `);
 
 // ------------------------------------------------------------------ settings pages (one page per section)
@@ -1877,28 +1929,37 @@ test('settings pages: a failed test marks the source page in the list', PAGES_JS
   assert(link('s-src').querySelector('.oui-settings-flag'), 'with the flag icon');
   assert((link('s-src').getAttribute('aria-label') || '').includes('has a value to fix'), 'and in its name');
 `, { mode: 'settings' });
-test('2000 spools: the slot picker and the usage spool list open at once, draw only the rows in view, and still reach every spool', `
-  const N = 2000;
-  const BIG = Array.from({length: N}, (_, k) => ({id: k + 1, remaining_weight: 400, initial_weight: 1000,
-    filament: {id: k + 1, name: 'Spool ' + String(k + 1).padStart(4, '0'), material: k % 3 ? 'PLA' : 'PETG', color_hex: '336699', vendor: {name: 'Acme'}}}));
+test('2000 spools: the slot picker draws one swatch per colour and a colour\'s dialog its spools; the usage spool list draws only the rows in view; every spool is reached', `
+  const N = 2000, HUES = ['111111', 'eeeeee', 'c12e1f', 'e8742a', 'f2c94c', '3fa34d', '2850a8', '6b3fa0', 'd94f8c', '8a5a2b', '00a0a0', '7f7f7f', 'ff99cc', '0b3d2e', 'b0c4de'];
+  const BIG = Array.from({length: N}, (_, k) => ({id: k + 1, remaining_weight: (k * 37) % 1000, initial_weight: 1000,
+    filament: {id: k + 1, name: 'Spool ' + String(k + 1).padStart(4, '0'), material: k % 3 ? 'PLA' : 'PETG', color_hex: HUES[k % HUES.length], vendor: {name: 'Acme'}}}));
   const usage = {enabled: true, mode: 'ask', prints: [{id: 'a', name: 'Benchy', printer: 'X1', result: 'finished', time: Date.now() / 1000, state: 'pending',
     rows: [{slot: 1, grams: 12.3, label: '', spool: null, material: 'PLA'}]}]};
   await spools(BIG, {usage, printers: [{id: 'p1', name: 'P', units: [{kind: 'ams', slots: [null, null, null, null]}]}]});
   await tab('printer');
   let t0 = performance.now();
   q('[data-focus-key="assign:p1:0:2"]').focus(); await press('Enter');
-  await until(() => qa('[data-pick]').length, 'the picker opens');
-  const opened = performance.now() - t0;
-  assert(qa('[data-pick]').length < 40, 'only the rows in view are drawn, not all ' + N + ': ' + qa('[data-pick]').length);
+  await until(() => qa('[data-colour]').length, 'the picker opens');
+  const opened = performance.now() - t0, picker = q('[data-test="picker"]');
+  eq(qa('[data-colour]', picker).length, HUES.length, 'one swatch per colour, not one row per spool');
+  assert(!q('.oui-spool', picker), 'no spool drawing in the picker');
+  assert(picker.querySelectorAll('*').length < 150, 'a small picker: ' + picker.querySelectorAll('*').length + ' elements');
   assert(opened < 750, 'the picker opens at once: ' + Math.round(opened) + ' ms');
-  await press('ArrowDown');
-  for (let k = 0; k < 30; k++) await press('ArrowDown');
-  eq(document.activeElement.dataset.pick, '31', 'Down walks past the drawn rows (sorted by name: Spool 0031)');
-  for (let k = 0; k < 31; k++) await press('ArrowUp');
-  assert(document.activeElement.matches('[data-test="picker-search"]'), 'Up from the first row returns to the search');
-  const i = q('[data-test="picker-search"]'); i.value = '#1999'; i.dispatchEvent(new Event('input', {bubbles: true})); await settle();
-  eq(qa('[data-pick]').map(b => b.dataset.pick), ['1999'], 'search reaches a spool far down the list');
-  await press('Escape'); await settle();
+  t0 = performance.now();
+  await click(qa('[data-colour]', picker).find(b => b.dataset.colour === '#c12e1f'));
+  await until(() => qa('.oui-spick-list [data-spool]').length, 'the colour\\'s dialog');
+  const rows = qa('.oui-spick-list [data-spool]');
+  eq(rows.length, BIG.filter(s => s.filament.color_hex === 'c12e1f').length, 'the dialog lists that colour\\'s spools only');
+  const grams = rows.map(r => BIG[Number(r.dataset.spool) - 1].remaining_weight);
+  eq(grams, [...grams].sort((x, y) => y - x), 'fullest first');
+  assert(performance.now() - t0 < 750, 'the dialog opens at once: ' + Math.round(performance.now() - t0) + ' ms');
+  await press('Escape');
+  await until(() => !q('.oui-spick-list'), 'Escape closes the dialog');
+  const i = q('[data-spick="search"]'); i.value = '#1999'; i.dispatchEvent(new Event('input', {bubbles: true})); await settle();
+  eq(qa('[data-colour]', picker).length, 1, 'search reaches a spool far down the list');
+  await click(q('[data-colour]', picker));
+  eq(lastOf('printers').printers[0].units[0].slots[2], '1999', 'its colour holds only it: picked at once');
+  await settle();
   if (!q('#us-list')) await click(q('.us-toggle'));
   t0 = performance.now();
   q('[data-run="a"] .us-sel').click();
@@ -1906,7 +1967,7 @@ test('2000 spools: the slot picker and the usage spool list open at once, draw o
   assert(qa('.p-select-overlay [role=option]').length < 60, 'usage list: only the rows in view are drawn: ' + qa('.p-select-overlay [role=option]').length);
   assert(performance.now() - t0 < 750, 'the usage list opens at once');
   await type(q('.p-select-overlay .p-select-filter'), '#1999'); await settle();
-  eq(qa('.p-select-overlay [role=option]').map(text), ['Acme · Spool 1999 · #1999 · 400 g'], 'every spool can be found, not only the first 300');
+  eq(qa('.p-select-overlay [role=option]').map(text), ['Acme · Spool 1999 · #1999 · 926 g'], 'every spool can be found, not only the first 300');
   await press('Escape'); await settle();
 `);
 test('2000 spools: the inventory draws only the rows in view, a refresh redraws little, and every spool stays reachable', `
